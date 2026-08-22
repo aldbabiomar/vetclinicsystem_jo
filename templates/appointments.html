@@ -8,6 +8,33 @@
   </div>
 </div>
 
+{% if orphaned %}
+<div class="card" style="margin-bottom:16px; border-left:3px solid var(--warn);">
+  <div style="font-weight:650; margin-bottom:6px;">{{ orphaned|length }} appointment(s) need attention — not shown on the grid below</div>
+  <p class="small muted" style="margin:0 0 10px;">
+    Still booked, but either the vet assigned is no longer active, or the appointment's time no longer matches
+    the clinic's current scheduling hours/slot length (Settings). Cancel and rebook to fix.
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Time</th><th>Pet</th><th>Owner</th><th>Assigned To</th><th>Why</th><th></th></tr></thead>
+      <tbody>
+        {% for a in orphaned %}
+        <tr>
+          <td class="small">{{ a.appt_date }}</td>
+          <td class="small">{{ a.slot_label }}</td>
+          <td>{{ a.pet_name }}</td>
+          <td>{{ a.owner_name }}</td>
+          <td class="small">{{ a.vet_name if a.resource_type=='vet' else 'Grooming' }}</td>
+          <td class="small muted">{{ a.reason }}</td>
+          <td><button class="btn small danger" type="button" data-appt-id="{{ a.id }}" data-pet-name="{{ a.pet_name }}" onclick="cancelAppt(this)">Cancel</button></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 <div class="tabs">
   {% for d in days %}
   <a class="{{ 'active' if d.isoformat()==selected_day }}" href="{{ url_for('appointments_page', week=week_anchor, day=d.isoformat()) }}">

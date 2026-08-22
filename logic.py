@@ -1865,6 +1865,43 @@ def day_grid(db, day_iso):
     return columns, grid
 
 
+def orphaned_appointments(db):
+    """Upcoming appointments whose (slot_label, resource_type,
+    resource_id) no longer matches anything day_grid() currently renders
+    — either the vet they're booked against was deactivated since, or
+    the slot-length/hours settings changed since they were booked.
+    day_grid() only looks a cell up by exact key match against whatever
+    generate_slots()/the active-vet list return *right now*, so a row
+    like this is still perfectly valid in the database but was
+    completely unreachable from the Appointments page — no cell ever
+    renders it, and there's no other page listing appointments by id.
+    This is the fallback that guarantees one always exists, regardless
+    of what caused the mismatch (existing UI also warns at the two
+    known trigger points — deactivating a vet, changing
+    appt_start_time/appt_end_time/appt_slot_minutes — but this doesn't
+    depend on that warning having been heeded, or on every possible
+    future cause having been thought of ahead of time)."""
+    valid_labels = {s["label"] for s in generate_slots(db)}
+    active_vet_ids = {v["id"] for v in db.execute(
+        "SELECT id FROM users WHERE role_id IN (SELECT id FROM roles WHERE is_vet_role=true) AND active=1"
+    ).fetchall()}
+    rows = db.execute(
+        "SELECT a.*, u.full_name AS vet_name FROM appointments a "
+        "LEFT JOIN users u ON u.id = a.resource_id "
+        "WHERE a.appt_date >= ? ORDER BY a.appt_date, a.slot_label",
+        (date.today().isoformat(),),
+    ).fetchall()
+    out = []
+    for a in rows:
+        stale_slot = a["slot_label"] not in valid_labels
+        stale_vet = a["resource_type"] == "vet" and a["resource_id"] not in active_vet_ids
+        if stale_slot or stale_vet:
+            d = dict(a)
+            d["reason"] = "Vet no longer active" if stale_vet else "Time slot no longer exists"
+            out.append(d)
+    return out
+
+
 def slot_conflict(db, appt_date, slot_label, resource_type, resource_id):
     row = db.execute(
         "SELECT 1 FROM appointments WHERE appt_date=? AND slot_label=? AND resource_type=? AND "

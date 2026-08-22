@@ -785,6 +785,15 @@ def admin_user_toggle(user_id):
     auth.log_change(db, "users", user_id, "update", {"active": (row["active"], new_val)})
     db.commit()
     flash("User updated.", "success")
+    if new_val == 0:
+        future_appts = db.execute(
+            "SELECT COUNT(*) c FROM appointments WHERE resource_type='vet' AND resource_id=? AND appt_date >= ?",
+            (user_id, date.today().isoformat()),
+        ).fetchone()["c"]
+        if future_appts:
+            flash(f"Heads up: {future_appts} upcoming appointment(s) were booked against this person — "
+                  f"they won't show on the Appointments grid anymore. Check Appointments for the "
+                  f"\"need attention\" list to reschedule them.", "error")
     return redirect(url_for("admin_users"))
 
 
@@ -3731,9 +3740,10 @@ def appointments_page():
     columns, grid = logic.day_grid(db, selected_day)
     prev_week = (days[0] - timedelta(days=7)).isoformat()
     next_week = (days[0] + timedelta(days=7)).isoformat()
+    orphaned = logic.orphaned_appointments(db)
     return render_template("appointments.html", days=days, selected_day=selected_day, columns=columns,
                             grid=grid, week_anchor=week_anchor, prev_week=prev_week, next_week=next_week,
-                            today_iso=today_iso)
+                            today_iso=today_iso, orphaned=orphaned)
 
 
 @app.route("/appointments/new", methods=["POST"])
@@ -4154,6 +4164,14 @@ def settings_page():
         if start and end and start >= end:
             flash("Day Ends At must be after Day Starts At.", "error")
             return redirect(url_for("settings_page"))
+        # Snapshot before the change — appt_start_time/appt_end_time/
+        # appt_slot_minutes feed generate_slots(), which day_grid() (and
+        # logic.orphaned_appointments()) key every appointment's slot_label
+        # against. Comparing the orphaned count before/after this save is
+        # how we know whether *this specific change* just stranded any
+        # existing bookings, without hand-duplicating the slot-generation
+        # logic here to simulate it separately.
+        orphaned_before = len(logic.orphaned_appointments(db))
         for key in ["clinic_name", "clinic_location", "audit_overdue_days", "expiry_soon_days", "opening_date",
                     "appt_start_time", "appt_end_time", "appt_slot_minutes",
                     "backup_dir", "backup_time", "backup_retention"]:
@@ -4190,6 +4208,11 @@ def settings_page():
             import scheduler
             scheduler.reschedule(request.form.get("backup_time"))
         flash("Settings saved.", "success")
+        newly_orphaned = len(logic.orphaned_appointments(db)) - orphaned_before
+        if newly_orphaned > 0:
+            flash(f"Heads up: changing the scheduling hours/slot length just made {newly_orphaned} upcoming "
+                  f"appointment(s) stop matching a slot on the grid. They're still booked — check "
+                  f"Appointments for the \"need attention\" list to reschedule them.", "error")
         return redirect(url_for("settings_page"))
     rows = db.execute("SELECT * FROM settings").fetchall()
     settings = {r["key"]: r["value"] for r in rows}
