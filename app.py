@@ -1501,6 +1501,12 @@ def visit_edit(visit_id):
 def visit_billing_save(visit_id):
     db = get_db()
     f = request.form
+    # Locked for the same reason visit_discount_save() locks this row —
+    # see the comment there. A pure mutex against a concurrent discount
+    # save on the same visit; nothing about the visits row itself changes.
+    if not db.execute("SELECT id FROM visits WHERE id=? FOR UPDATE", (visit_id,)).fetchone():
+        flash("Visit not found.", "error")
+        return redirect(url_for("visits_list"))
     billing_type = f.get("billing_type", "Automatic")
     if billing_type not in BILLING_TYPES:
         flash("Billing type must be one of: " + ", ".join(BILLING_TYPES) + ".", "error")
@@ -1613,6 +1619,15 @@ def visit_discount_save(visit_id):
     if percent > cap or percent < 0:
         flash(f"Discount must be between 0% and {cap}% for your role.", "error")
         return redirect(url_for("visit_detail", visit_id=visit_id))
+    # Locked before checking non-discountable items and before writing the
+    # discount below — without this, a concurrent visit_billing_save() for
+    # the same visit could read the bill's lines before this request's
+    # check but write a new (non-discountable) line after it, and both
+    # requests' writes would land having each only validated against a
+    # snapshot the other had already invalidated.
+    if not db.execute("SELECT id FROM visits WHERE id=? FOR UPDATE", (visit_id,)).fetchone():
+        flash("Visit not found.", "error")
+        return redirect(url_for("visits_list"))
     if percent > 0:
         summary = logic.visit_billing_summary(db, visit_id)
         blocked = logic.non_discountable_line_names(db, [l["id"] for l in summary["lines"]])
@@ -1641,6 +1656,13 @@ def visit_discount_save(visit_id):
 def visit_payment_add(visit_id):
     db = get_db()
     f = request.form
+    # Locked before computing the balance — same reasoning as
+    # boarding_payment(): there's no delete/edit route for a payment once
+    # recorded, so an overpayment here can never be undone, only journaled
+    # around.
+    if not db.execute("SELECT id FROM visits WHERE id=? FOR UPDATE", (visit_id,)).fetchone():
+        flash("Visit not found.", "error")
+        return redirect(url_for("visits_list"))
     try:
         amount = parse_money(f.get("amount"), required=True)
     except BadNumber:
@@ -1648,6 +1670,10 @@ def visit_payment_add(visit_id):
         return redirect(url_for("visit_detail", visit_id=visit_id))
     if amount <= 0:
         flash("Payment amount must be greater than 0.", "error")
+        return redirect(url_for("visit_detail", visit_id=visit_id))
+    balance = logic.visit_billing_summary(db, visit_id)["balance"]
+    if amount > balance:
+        flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this visit.", "error")
         return redirect(url_for("visit_detail", visit_id=visit_id))
     try:
         payment_date = clean_date(f.get("date"), field="date") or date.today().isoformat()
@@ -1692,6 +1718,7 @@ def serve_attachment(relpath):
 
 
 @app.route("/attachments/<int:attachment_id>/delete", methods=["POST"])
+@auth.permission_required("manage_visits", "manage_inpatient")
 def attachment_delete(attachment_id):
     """
     Deletes one uploaded Additional Test / X-Ray — from both the database
@@ -2853,6 +2880,9 @@ def consignment_settlement_new(distributor_id):
     if amount_paid < 0:
         flash("Amount Paid can't be negative.", "error")
         return redirect(url_for("consignment_settlements_page", distributor_id=distributor_id))
+    if amount_paid > balance["amount_owed"]:
+        flash(f"That's more than the {logic.fmt_money(balance['amount_owed'])} JOD owed this period.", "error")
+        return redirect(url_for("consignment_settlements_page", distributor_id=distributor_id))
     amount_paid = round(amount_paid, 3)
     cur = db.execute(
         "INSERT INTO consignment_settlements (distributor_id, period_start, period_end, amount_owed, amount_paid, "
@@ -2935,6 +2965,13 @@ def cash_register_payout_new():
     reason = (f.get("reason") or "").strip()
     if not reason:
         flash("Enter a reason for this payout.", "error")
+        return redirect(url_for("cash_register_page", date=day))
+    # Recomputed fresh at submit time — cash_register_totals() already
+    # subtracts every payout already logged for this day, so this is
+    # exactly how much is left in the drawer before this new one.
+    drawer_cash = logic.cash_register_totals(db, day)["Cash"]
+    if amount > drawer_cash:
+        flash(f"That's more than the {logic.fmt_money(drawer_cash)} JOD currently expected in the drawer for this day.", "error")
         return redirect(url_for("cash_register_page", date=day))
     cur = db.execute(
         "INSERT INTO cash_register_payouts (payout_date, amount, reason, logged_by, created_at) "
@@ -3514,6 +3551,10 @@ def pos_checkout():
             flash("Cash Received must be a valid number.", "error")
             return redirect(url_for("pos_page"))
         if cash_received is not None:
+            if cash_received < total:
+                flash(f"Cash received ({cash_received:,.3f} JOD) is less than the total "
+                      f"({total:,.3f} JOD).", "error")
+                return redirect(url_for("pos_page"))
             change_given = max(round(cash_received - total, 3), 0)
     now = datetime.now().isoformat(timespec="seconds")
     cur = db.execute(
@@ -3737,11 +3778,34 @@ def inpatient_contact_add(case_id):
 @app.route("/inpatient/<int:case_id>/billing", methods=["POST"])
 def inpatient_billing_add(case_id):
     db = get_db()
+    # Locked for the same reason inpatient_discount_save() locks this row
+    # — see the comment there. A pure mutex against a concurrent discount
+    # save on the same case; nothing about the inpatient_cases row itself
+    # changes here.
+    if not db.execute("SELECT id FROM inpatient_cases WHERE id=? FOR UPDATE", (case_id,)).fetchone():
+        flash("Inpatient case not found.", "error")
+        return redirect(url_for("inpatient_list"))
     price_ids = request.form.getlist("price_id")
     now = datetime.now().isoformat(timespec="seconds")
     added = 0
     had_bad_number = False
     had_bad_price = False
+    had_blocked = False
+    # inpatient_discount_save() only checks non-discountable items against
+    # whatever's on the bill *at the moment a discount is applied* — it
+    # has no way to know the bill will change later. Re-checking here too
+    # closes the gap where a discount already applied earlier would
+    # otherwise silently carry forward onto procedures added afterward
+    # that were never supposed to be discountable at all (mirrors
+    # visit_billing_save()'s equivalent check).
+    existing_case = db.execute("SELECT discount_percent FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
+    existing_discount = (existing_case["discount_percent"] or 0) if existing_case else 0
+    blocked_pids = set()
+    if existing_discount > 0:
+        blocked_pids = {r["id"] for r in db.execute(
+            f"SELECT id FROM price_list WHERE id IN ({','.join('?' * len(price_ids))}) AND can_discount=false",
+            price_ids,
+        ).fetchall()} if price_ids else set()
     for pid in price_ids:
         raw_qty = request.form.get(f"qty_{pid}", "").strip()
         try:
@@ -3750,6 +3814,9 @@ def inpatient_billing_add(case_id):
             had_bad_number = True
             continue
         if not qty or qty <= 0:
+            continue
+        if pid in blocked_pids:
+            had_blocked = True
             continue
         # Snapshot the current Price List sale price/cost right now, at
         # the moment this procedure is added to the bill — so a price
@@ -3774,6 +3841,9 @@ def inpatient_billing_add(case_id):
         flash("Some quantities weren't valid numbers and were skipped.", "error")
     if had_bad_price:
         flash("Some selected items no longer exist in the Price List and were skipped.", "error")
+    if had_blocked:
+        flash("Some selected items are marked as not discountable and can't be added to a bill "
+              "that already has a discount applied — remove the discount first, or leave them off this bill.", "error")
     if added:
         flash(f"{added} procedure(s) added to the bill.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
@@ -3808,6 +3878,14 @@ def inpatient_discount_save(case_id):
     if percent > cap or percent < 0:
         flash(f"Discount must be between 0% and {cap}% for your role.", "error")
         return redirect(url_for("inpatient_detail", case_id=case_id))
+    # Locked before checking non-discountable items and before writing the
+    # discount below — same reasoning as visit_discount_save(): without
+    # this, a concurrent inpatient_billing_add() for the same case could
+    # read the bill's lines before this request's check but write a new
+    # (non-discountable) line after it.
+    if not db.execute("SELECT id FROM inpatient_cases WHERE id=? FOR UPDATE", (case_id,)).fetchone():
+        flash("Inpatient case not found.", "error")
+        return redirect(url_for("inpatient_list"))
     if percent > 0:
         price_ids = [r["price_id"] for r in db.execute(
             "SELECT DISTINCT price_id FROM inpatient_billing WHERE case_id=?", (case_id,)
@@ -3831,6 +3909,13 @@ def inpatient_discount_save(case_id):
 def inpatient_payment_add(case_id):
     db = get_db()
     f = request.form
+    # Locked before computing the balance — same reasoning as
+    # boarding_payment()/visit_payment_add(): there's no delete/edit route
+    # for a payment once recorded, so an overpayment here can never be
+    # undone, only journaled around.
+    if not db.execute("SELECT id FROM inpatient_cases WHERE id=? FOR UPDATE", (case_id,)).fetchone():
+        flash("Inpatient case not found.", "error")
+        return redirect(url_for("inpatient_list"))
     try:
         amount = parse_money(f.get("amount"), required=True)
     except BadNumber:
@@ -3838,6 +3923,10 @@ def inpatient_payment_add(case_id):
         return redirect(url_for("inpatient_detail", case_id=case_id))
     if amount <= 0:
         flash("Payment amount must be greater than 0.", "error")
+        return redirect(url_for("inpatient_detail", case_id=case_id))
+    balance = logic.inpatient_billing_summary(db, case_id)["balance"]
+    if amount > balance:
+        flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this case.", "error")
         return redirect(url_for("inpatient_detail", case_id=case_id))
     try:
         payment_date = clean_date(f.get("date"), field="date") or date.today().isoformat()
@@ -4223,18 +4312,40 @@ def refund_service_save():
         flash("Refund amount must be greater than 0.", "error")
         return redirect(url_for("refunds_page"))
 
-    if visit_id and not db.execute("SELECT 1 FROM visits WHERE id=?", (visit_id,)).fetchone():
-        flash(f"Visit {visit_id} not found.", "error")
-        return redirect(url_for("refunds_page"))
+    # Locked before computing the cap — same reasoning as
+    # consignment_settlement_new()/boarding_payment(): without this, two
+    # near-simultaneous service refunds against the same visit/case could
+    # each read the same "amount paid so far minus prior refunds" before
+    # either commits, and both pass a cap check that together they exceed.
+    if visit_id:
+        if not db.execute("SELECT 1 FROM visits WHERE id=? FOR UPDATE", (visit_id,)).fetchone():
+            flash(f"Visit {visit_id} not found.", "error")
+            return redirect(url_for("refunds_page"))
+        paid = logic.visit_billing_summary(db, visit_id)["paid"]
+        already_refunded = db.execute(
+            "SELECT COALESCE(SUM(amount),0) s FROM refunds WHERE refund_type='service' AND visit_id=?", (visit_id,)
+        ).fetchone()["s"]
+        cap = paid - already_refunded
+        if amount > cap:
+            flash(f"That's more than what's left refundable on this visit ({logic.fmt_money(cap)} JOD).", "error")
+            return redirect(url_for("refunds_page"))
 
     case_id = None
     if case_id_raw:
         if not case_id_raw.isdigit() or not db.execute(
-            "SELECT 1 FROM inpatient_cases WHERE id=?", (int(case_id_raw),)
+            "SELECT 1 FROM inpatient_cases WHERE id=? FOR UPDATE", (int(case_id_raw),)
         ).fetchone():
             flash(f"Inpatient case {case_id_raw} not found.", "error")
             return redirect(url_for("refunds_page"))
         case_id = int(case_id_raw)
+        paid = logic.inpatient_billing_summary(db, case_id)["paid"]
+        already_refunded = db.execute(
+            "SELECT COALESCE(SUM(amount),0) s FROM refunds WHERE refund_type='service' AND inpatient_case_id=?", (case_id,)
+        ).fetchone()["s"]
+        cap = paid - already_refunded
+        if amount > cap:
+            flash(f"That's more than what's left refundable on this case ({logic.fmt_money(cap)} JOD).", "error")
+            return redirect(url_for("refunds_page"))
 
     now = datetime.now().isoformat(timespec="seconds")
     cur = db.execute(

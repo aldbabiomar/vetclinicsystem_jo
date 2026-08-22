@@ -430,7 +430,14 @@ def compute_bill_totals(subtotal, discount_percent, paid):
         status = "N/A"
     elif paid <= 0:
         status = "Unpaid"
-    elif balance <= 0.5:
+    # A plain <= 0 here, not a tolerance — this used to be `<= 0.5`, a
+    # threshold carried over unchanged from the IQD fork, where it was
+    # meaningless noise-absorption (money there is rounded to a 250 IQD
+    # note, so anything this small was rounding artifact, not real debt).
+    # In JOD, every amount is an exact Decimal to 3 places (1 fils), so
+    # there's no rounding noise to absorb — a leftover 0.5 JOD (500 fils)
+    # is real, uncollected money, not noise, and shouldn't display as paid.
+    elif balance <= 0:
         status = "Fully Paid"
     else:
         status = "Partially Paid"
