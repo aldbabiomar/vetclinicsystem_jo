@@ -381,7 +381,7 @@ def main():
         SELECT rtype,
                (current_date - (floor(random()*{HISTORY_MONTHS}*30))::int),
                round((5000+random()*50000)::numeric,0)::float,
-               (rtype='retail' AND random()<0.5)::int,
+               (rtype='retail' AND random()<0.5),
                CASE WHEN rtype='service' AND random()<0.7 THEN vid[1 + floor(random()*array_length(vid,1))::int] ELSE NULL END,
                NULL, NULL,
                uid[1 + floor(random()*array_length(uid,1))::int], now()::text

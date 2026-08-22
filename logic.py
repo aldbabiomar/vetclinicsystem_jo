@@ -1554,7 +1554,7 @@ def consignment_balance(db, distributor_id):
     # docstring above.
     cost_by_item = {r["id"]: r["cost_price"] or 0 for r in db.execute("SELECT id, cost_price FROM inventory_list").fetchall()}
     restock_where = (
-        "WHERE i.ownership_type='Consignment' AND i.distributor_id=? AND r.restocked=1 "
+        "WHERE i.ownership_type='Consignment' AND i.distributor_id=? AND r.restocked=true "
         "AND r.refund_date > GREATEST(?::date, COALESCE(i.consignment_since::date, '-infinity'::date))"
     )
     restock_params = [distributor_id, period_start[:10] if period_start else "-infinity"]

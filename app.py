@@ -4071,7 +4071,7 @@ def refund_retail_save():
     cur = db.execute(
         "INSERT INTO refunds (refund_type, refund_date, amount, restocked, sale_id, reason, refund_method, processed_by, created_at) "
         "VALUES ('retail',?,?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(total, 2), 1 if restock else 0, sale_id, reason, f.get("refund_method"), session["user_id"], now),
+        (refund_date, round(total, 2), restock, sale_id, reason, f.get("refund_method"), session["user_id"], now),
     )
     refund_id = cur.fetchone()["id"]
 
