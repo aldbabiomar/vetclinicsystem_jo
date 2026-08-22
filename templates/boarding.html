@@ -135,12 +135,14 @@
       <td colspan="10">
         <form method="post" action="{{ url_for('boarding_edit', boarding_id=s.id) }}" class="form-grid" style="padding:10px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="expected_updated_at" value="{{ s.updated_at or '' }}">
           <div class="field"><label>Entry Date</label><input type="date" name="entry_date" value="{{ s.entry_date }}"></div>
           <div class="field"><label>Dismissal Date</label><input type="date" name="dismissal_date" value="{{ s.dismissal_date or '' }}"></div>
           <div class="field"><label>Room</label><input name="room" value="{{ s.room or '' }}"></div>
           <div class="field"><label>Admitted Items</label><input name="admitted_items" value="{{ s.admitted_items or '' }}"></div>
           <div class="field"><label>Price per Day (JOD)</label><input type="number" step="1" name="price_per_day" value="{{ s.price_per_day if s.price_per_day is not none else '' }}"></div>
-          <div class="field"><label>Total (JOD)</label><input type="number" step="1" name="total" value="{{ s.total if s.total is not none else '' }}"></div>
+          <div class="field"><label>Total (JOD)</label><input type="number" step="1" name="total" placeholder="Auto-suggested from price × nights"
+            value="{{ s.total if (s.total is not none and not s.total_is_auto) else '' }}"></div>
           <div class="field full">
             <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
               <input type="checkbox" name="special_needs" id="specialNeedsCheck-{{ s.id }}" {{ 'checked' if s.special_needs }} onchange="document.getElementById('specialNeedsNotesField-' + {{ s.id }}).style.display = this.checked ? 'block' : 'none';"> Special Needs?

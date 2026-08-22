@@ -538,12 +538,48 @@ def boarding_suggested_total(price_per_day, entry_date, dismissal_date):
     return round(price_per_day * boarding_nights(entry_date, dismissal_date), 2)
 
 
-def boarding_billing_summary(db, boarding_id):
-    b = db.execute("SELECT total FROM boarding_sessions WHERE id=?", (boarding_id,)).fetchone()
-    subtotal = (b["total"] or 0) if b else 0
-    paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE boarding_id=?", (boarding_id,)).fetchone()
-    total, paid, balance, status = compute_bill_totals(subtotal, 0, paid_row["s"])
+def boarding_billing_summary_from_fields(b, paid):
+    """Same computation as boarding_billing_summary(), factored out so a
+    caller that already has the boarding_sessions row in hand (e.g. a list
+    page rendering many rows at once) can skip re-fetching it and the
+    per-row payments query — see boarding_page() in app.py, which batches
+    `paid` across the whole page in one query instead of one per row.
+    `b` needs total, total_is_auto, price_per_day, entry_date,
+    dismissal_date, dismissed."""
+    if not b:
+        subtotal = 0
+    elif b["total_is_auto"] and not b["dismissed"] and b["price_per_day"]:
+        # Still an active stay, and `total` has never been overridden with
+        # a deliberately-typed figure — the stored value is only ever the
+        # suggestion computed once, back when the stay was created/last
+        # edited (usually 1 night, since dismissal_date is normally still
+        # unknown then). Recompute live from price_per_day x nights-so-far
+        # so the bill never sits frozen at a stale night count while the
+        # animal is still boarding. Once dismissed, boarding_dismiss()
+        # locks in the final figure and this branch no longer applies.
+        subtotal = boarding_suggested_total(b["price_per_day"], b["entry_date"], b["dismissal_date"]) or 0
+    else:
+        subtotal = b["total"] or 0
+    total, paid, balance, status = compute_bill_totals(subtotal, 0, paid)
     return {"total": total, "paid": paid, "balance": balance, "status": status}
+
+
+def boarding_billing_summary(db, boarding_id):
+    b = db.execute(
+        "SELECT total, total_is_auto, price_per_day, entry_date, dismissal_date, dismissed "
+        "FROM boarding_sessions WHERE id=?", (boarding_id,)
+    ).fetchone()
+    paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE boarding_id=?", (boarding_id,)).fetchone()
+    return boarding_billing_summary_from_fields(b, paid_row["s"])
+
+
+def refresh_boarding_total(db, boarding_id):
+    """Recomputes and persists boarding_sessions.billed_total — the figure
+    boarding_page()'s batched list view and any report read instead of
+    recomputing per row. Call this in the same transaction right after the
+    session is saved, before commit. See refresh_visit_billing_total()."""
+    total = boarding_billing_summary(db, boarding_id)["total"]
+    db.execute("UPDATE boarding_sessions SET billed_total=? WHERE id=?", (total, boarding_id))
 
 
 def boarding_sessions_for_patient(db, patient_id):

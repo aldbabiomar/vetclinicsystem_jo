@@ -447,9 +447,24 @@ CREATE TABLE IF NOT EXISTS boarding_sessions (
     special_needs_notes TEXT,
     room TEXT,
     price_per_day DOUBLE PRECISION,
-    total DOUBLE PRECISION,
+    total DOUBLE PRECISION,           -- raw subtotal (price_per_day * nights, or entered manually)
+    -- 1 when `total` was auto-suggested (the Total field was left blank at
+    -- create/edit time) rather than typed explicitly. While the stay is
+    -- still active and this is 1, boarding_billing_summary() recomputes the
+    -- subtotal live from price_per_day x nights-so-far instead of trusting
+    -- this stale snapshot — but only when it's still the auto-suggested
+    -- figure, so a deliberately-typed custom total is never silently
+    -- overwritten.
+    total_is_auto INTEGER NOT NULL DEFAULT 1,
+    -- The persisted figure boarding_page()'s batched list view and any
+    -- report read instead of recomputing per row — kept in sync by
+    -- logic.refresh_boarding_total() every time the session is saved.
+    billed_total DOUBLE PRECISION,
     dismissed INTEGER NOT NULL DEFAULT 0,   -- has the animal actually left yet
     created_by TEXT,
+    -- Set on every boarding_edit() save — lets the edit form detect (and
+    -- refuse to silently overwrite) a concurrent edit by someone else.
+    updated_at TEXT,
     FOREIGN KEY (patient_id) REFERENCES patients(id)
 );
 CREATE INDEX IF NOT EXISTS idx_boarding_patient ON boarding_sessions(patient_id);

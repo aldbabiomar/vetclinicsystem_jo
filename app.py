@@ -281,6 +281,33 @@ def clean_date(v, field="date"):
     return v
 
 
+def has_negative(*values):
+    """True if any of the given already-parsed numbers (None is fine —
+    skipped, since an absent value isn't a negative one) is below zero.
+    Used to reject negative cost/sale prices, weights, and unit costs at
+    the point of entry — parse_money()/parse_int() already reject NaN/
+    Infinity/non-numeric input, but a plain negative number passes those
+    checks fine, so this is the separate guard for fields where negative
+    is never a valid real-world value."""
+    return any(v is not None and v < 0 for v in values)
+
+
+def stale_edit_error(old_updated_at, submitted_updated_at, what):
+    """Optimistic-locking guard for "edit whole record" routes — previously
+    last-write-wins with no warning: two staff editing the same record at
+    once meant the second save silently erased the first's changes.
+    Compares the updated_at the edit form was loaded with against the
+    record's current value; a mismatch means someone else saved in
+    between. Returns an error string, or None if it's safe to save.
+    old_updated_at is None for a row this mechanism has never touched
+    (created before this existed, or its very first edit), in which case
+    there's nothing to compare against and saving proceeds."""
+    if old_updated_at and submitted_updated_at != old_updated_at:
+        return (f"This {what} was changed by someone else while you had it open — "
+                f"reload the page to see the latest version before saving your changes.")
+    return None
+
+
 # Each deployment of this app serves exactly one clinic in one country, so a
 # small self-contained normalizer (rather than pulling in a general-purpose
 # library like `phonenumbers`) is simpler and has no extra dependency to
@@ -2903,11 +2930,26 @@ def boarding_page():
         q += " WHERE b.dismissed=0"
     q += " ORDER BY b.entry_date DESC LIMIT ? OFFSET ?"
     rows = [dict(r) for r in db.execute(q, (PER_PAGE, page_offset(page))).fetchall()]
+    # Batched across the whole page instead of a paid-sum + incident-count
+    # query per row (boarding_billing_summary() alone was also redundantly
+    # re-fetching the boarding_sessions row this page already has) — see
+    # logic.boarding_billing_summary_from_fields().
+    ids = [r["id"] for r in rows]
+    paid_by_id = {}
+    incidents_by_id = {}
+    if ids:
+        placeholders = ",".join("?" * len(ids))
+        paid_by_id = {p["boarding_id"]: p["s"] for p in db.execute(
+            f"SELECT boarding_id, COALESCE(SUM(amount),0) s FROM payments "
+            f"WHERE boarding_id IN ({placeholders}) GROUP BY boarding_id", ids
+        ).fetchall()}
+        incidents_by_id = {i["boarding_id"]: i["c"] for i in db.execute(
+            f"SELECT boarding_id, COUNT(*) c FROM boarding_incidents "
+            f"WHERE boarding_id IN ({placeholders}) GROUP BY boarding_id", ids
+        ).fetchall()}
     for r in rows:
-        r["billing"] = logic.boarding_billing_summary(db, r["id"])
-        r["incident_count"] = db.execute(
-            "SELECT COUNT(*) c FROM boarding_incidents WHERE boarding_id=?", (r["id"],)
-        ).fetchone()["c"]
+        r["billing"] = logic.boarding_billing_summary_from_fields(r, paid_by_id.get(r["id"], 0))
+        r["incident_count"] = incidents_by_id.get(r["id"], 0)
     return render_template("boarding.html", sessions=rows, show_all=show_all, today=date.today().isoformat(),
                             page=page, total_pages=page_count(total), total_count=total)
 
@@ -2926,23 +2968,29 @@ def boarding_new():
     except BadNumber:
         flash("Price per Day and Total must be valid numbers.", "error")
         return redirect(url_for("boarding_page"))
+    if has_negative(price_per_day, total):
+        flash("Price per Day and Total can't be negative.", "error")
+        return redirect(url_for("boarding_page"))
     try:
         entry_date = clean_date(f.get("entry_date"), field="entry_date") or date.today().isoformat()
         dismissal_date = clean_date(f.get("dismissal_date"), field="dismissal_date")
     except BadDate as e:
         flash(str(e), "error")
         return redirect(url_for("boarding_page"))
-    if total is None:
+    total_is_auto = total is None
+    if total_is_auto:
         total = logic.boarding_suggested_total(price_per_day, entry_date, dismissal_date)
     special_needs = 1 if f.get("special_needs") == "on" else 0
     cur = db.execute(
         "INSERT INTO boarding_sessions (patient_id, entry_date, dismissal_date, admitted_items, special_needs, "
-        "special_needs_notes, room, price_per_day, total, dismissed, created_by) VALUES (?,?,?,?,?,?,?,?,?,0,?) RETURNING id",
+        "special_needs_notes, room, price_per_day, total, total_is_auto, dismissed, created_by) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,0,?) RETURNING id",
         (patient_id, entry_date, dismissal_date, f.get("admitted_items"), special_needs,
          f.get("special_needs_notes") if special_needs else None, f.get("room"), price_per_day, total,
-         session.get("user_id")),
+         1 if total_is_auto else 0, session.get("user_id")),
     )
     boarding_id = cur.fetchone()["id"]
+    logic.refresh_boarding_total(db, boarding_id)
     logic.recompute_month_summary(db, logic.month_key(entry_date))
     auth.log_change(db, "boarding_sessions", str(boarding_id), "create")
     db.commit()
@@ -2958,11 +3006,18 @@ def boarding_edit(boarding_id):
     if not old:
         flash("Boarding session not found.", "error")
         return redirect(url_for("boarding_page"))
+    conflict = stale_edit_error(old["updated_at"], f.get("expected_updated_at"), "boarding session")
+    if conflict:
+        flash(conflict, "error")
+        return redirect(url_for("boarding_page"))
     try:
         price_per_day = parse_money(f.get("price_per_day"))
         total = parse_money(f.get("total"))
     except BadNumber:
         flash("Price per Day and Total must be valid numbers.", "error")
+        return redirect(url_for("boarding_page"))
+    if has_negative(price_per_day, total):
+        flash("Price per Day and Total can't be negative.", "error")
         return redirect(url_for("boarding_page"))
     try:
         entry_date = clean_date(f.get("entry_date"), field="entry_date") or old["entry_date"]
@@ -2970,34 +3025,70 @@ def boarding_edit(boarding_id):
     except BadDate as e:
         flash(str(e), "error")
         return redirect(url_for("boarding_page"))
-    if total is None:
+    total_is_auto = total is None
+    if total_is_auto:
         total = logic.boarding_suggested_total(price_per_day, entry_date, dismissal_date)
+    # Once picked up, boarding_dismiss() locked in the final billed figure —
+    # dates/price/total from this form are ignored from that point on, same
+    # as a settled invoice. Other fields (room, admitted items, special
+    # needs) stay editable for ordinary record corrections.
+    if old["dismissed"]:
+        entry_date, dismissal_date = old["entry_date"], old["dismissal_date"]
+        price_per_day, total, total_is_auto = old["price_per_day"], old["total"], bool(old["total_is_auto"])
     special_needs = 1 if f.get("special_needs") == "on" else 0
     new_vals = {
         "entry_date": entry_date, "dismissal_date": dismissal_date, "admitted_items": f.get("admitted_items"),
         "special_needs": special_needs, "special_needs_notes": f.get("special_needs_notes") if special_needs else None,
-        "room": f.get("room"), "price_per_day": price_per_day, "total": total,
+        "room": f.get("room"), "price_per_day": price_per_day, "total": total, "total_is_auto": 1 if total_is_auto else 0,
     }
     changes = auth.diff_dict(old, new_vals)
     db.execute(
         "UPDATE boarding_sessions SET entry_date=?, dismissal_date=?, admitted_items=?, special_needs=?, "
-        "special_needs_notes=?, room=?, price_per_day=?, total=? WHERE id=?",
-        (*new_vals.values(), boarding_id),
+        "special_needs_notes=?, room=?, price_per_day=?, total=?, total_is_auto=?, updated_at=? WHERE id=?",
+        (*new_vals.values(), datetime.now().isoformat(timespec="seconds"), boarding_id),
     )
+    logic.refresh_boarding_total(db, boarding_id)
     old_month = logic.month_key(old["entry_date"])
     new_month = logic.month_key(entry_date)
     logic.recompute_months_summary(db, [old_month, new_month])
     auth.log_change(db, "boarding_sessions", str(boarding_id), "update", changes)
     db.commit()
     flash("Boarding session updated.", "success")
+    if old["dismissed"]:
+        flash("This stay is already picked up, so dates/price/total stayed locked at the billed figure — "
+              "only room, admitted items, and special needs were changed.", "error")
     return redirect(url_for("boarding_page"))
 
 
 @app.route("/boarding/<int:boarding_id>/dismiss", methods=["POST"])
 def boarding_dismiss(boarding_id):
     db = get_db()
-    db.execute("UPDATE boarding_sessions SET dismissed=1, dismissal_date=COALESCE(dismissal_date, ?) WHERE id=?",
-               (date.today().isoformat(), boarding_id))
+    row = db.execute(
+        "SELECT price_per_day, entry_date, dismissal_date, total, total_is_auto FROM boarding_sessions WHERE id=?",
+        (boarding_id,),
+    ).fetchone()
+    if not row:
+        flash("Boarding session not found.", "error")
+        return redirect(url_for("boarding_page"))
+    dismissal_date = row["dismissal_date"] or date.today().isoformat()
+    final_total = row["total"]
+    if row["total_is_auto"] and row["price_per_day"]:
+        # Lock in the final night count now that the stay is actually
+        # over — while active, boarding_billing_summary() was recomputing
+        # this live; once dismissed, nothing recomputes it anymore, so
+        # `total` needs to hold the real final figure, not whatever
+        # (usually 1 night) it was left at when the session was created.
+        final_total = logic.boarding_suggested_total(row["price_per_day"], row["entry_date"], dismissal_date)
+    db.execute("UPDATE boarding_sessions SET dismissed=1, dismissal_date=?, total=? WHERE id=?",
+               (dismissal_date, final_total, boarding_id))
+    logic.refresh_boarding_total(db, boarding_id)
+    # Boarding revenue is attributed to entry_date's month, and that
+    # month's P&L was already cached back when this session was created —
+    # using whatever `total` was at that moment (usually a 1-night
+    # placeholder, per the comment above). Locking in the real final total
+    # here without this would leave that month's cached revenue
+    # permanently understated.
+    logic.recompute_month_summary(db, logic.month_key(row["entry_date"]))
     auth.log_change(db, "boarding_sessions", str(boarding_id), "update", {"dismissed": (0, 1)})
     db.commit()
     flash("Marked as picked up.", "success")
