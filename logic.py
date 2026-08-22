@@ -1412,7 +1412,7 @@ def record_consignment_shrinkage(db, item_id, distributor_id, quantity, reason, 
         "INSERT INTO consignment_shrinkage (item_id, distributor_id, quantity, reason, liable_party, "
         "liability_overridden, unit_cost, notes, logged_by, logged_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
         (item_id, distributor_id, quantity, reason, liable_party,
-         1 if liability_overridden else 0, unit_cost, notes, logged_by, now),
+         bool(liability_overridden), unit_cost, notes, logged_by, now),
     )
     shrinkage_id = cur.fetchone()["id"]
     db.execute(
