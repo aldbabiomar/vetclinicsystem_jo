@@ -2908,16 +2908,13 @@ def pos_checkout():
             flash(f"Can't apply a discount — the cart includes item(s) marked as not discountable: {', '.join(blocked)}.", "error")
             return redirect(url_for("pos_page"))
 
-    # Cost basis snapshotted alongside price at checkout time, so COGS
-    # reporting reflects what this item actually cost when it was sold —
-    # not whatever inventory_list.cost_price says whenever the report is
-    # later run (see sale_items.unit_cost's own column comment).
-    cost_by_item = {r["id"]: r["cost_price"] for r in db.execute(
-        "SELECT id, cost_price FROM inventory_list WHERE id IN (" + ",".join("?" * len(item_ids)) + ")",
-        item_ids,
-    ).fetchall()} if item_ids else {}
-
-    subtotal, lines = 0, []
+    # Merge quantities for any item that appears in more than one cart line
+    # before checking stock. The normal UI cart already merges duplicates
+    # client-side, but nothing on the server enforced that — checking each
+    # submitted line against the *live* current_stock independently meant
+    # two lines of the same item (e.g. 3 + 3 against a stock of 5) could
+    # each individually pass the check and together oversell the item.
+    qty_by_item = {}
     for iid, qty in zip(item_ids, quantities):
         try:
             qty = parse_money(qty, required=True)
@@ -2926,12 +2923,56 @@ def pos_checkout():
             return redirect(url_for("pos_page"))
         if qty <= 0:
             continue
+        qty_by_item[iid] = qty_by_item.get(iid, 0) + qty
+
+    subtotal, lines = 0, []
+    # Lock every cart item's inventory_list row up front, in a fixed order
+    # (sorted by id — never "the order items happen to be in this cart"),
+    # before computing or checking stock for any of them. This is what
+    # actually closes the oversell race: previously two concurrent
+    # checkouts for the same item could both read "5 in stock" before
+    # either had written its sale, and both would pass the check. Now the
+    # second checkout's SELECT ... FOR UPDATE blocks until the first
+    # checkout's transaction commits (or rolls back) and releases the
+    # lock, and Postgres gives that blocked SELECT a fresh read once it
+    # proceeds — so the stock check below always reflects any sale that
+    # just committed for the same item, not a stale snapshot from before
+    # this request started waiting. Locking every cart item in the same
+    # fixed order (regardless of the order either cart added them) is
+    # what prevents two carts sharing two items from deadlocking on each
+    # other (cart A locks item1 then waits on item2, while cart B locks
+    # item2 then waits on item1).
+    for iid in sorted(qty_by_item.keys()):
+        db.execute("SELECT id FROM inventory_list WHERE id=? FOR UPDATE", (iid,))
+
+    # Cost basis snapshotted alongside price at checkout time, so COGS
+    # reporting reflects what this item actually cost when it was sold —
+    # not whatever inventory_list.cost_price says whenever the report is
+    # later run (see sale_items.unit_cost's own column comment). Read
+    # once, right after locking, alongside the row lock above — this is
+    # the cost that will actually be recorded against this sale.
+    cost_by_item = {r["id"]: r["cost_price"] for r in db.execute(
+        "SELECT id, cost_price FROM inventory_list WHERE id IN (" + ",".join("?" * len(qty_by_item)) + ")",
+        list(qty_by_item.keys()),
+    ).fetchall()} if qty_by_item else {}
+
+    for iid, qty in qty_by_item.items():
         price = logic.item_sale_price(db, iid)
         if price is None:
             flash(f"Item {iid} has no sale price set in the Price List — skipped.", "error")
             continue
         status = logic.inventory_status_by_id(db, iid)
-        if status and status["current_stock"] is not None and qty > status["current_stock"]:
+        # current_stock is None until this item has been through at least
+        # one confirmed inventory audit — treated as zero available stock
+        # here (fail closed) rather than skipping the check, since
+        # skipping it let a never-audited item be oversold via POS with
+        # no limit at all, silently and deterministically (not just under
+        # a race). A clinic sells a brand-new item for the first time by
+        # running a quick audit on it first, same as any other item.
+        if status and status["current_stock"] is None:
+            flash(f"{status['name']} hasn't been through an inventory audit yet — run an audit before selling it.", "error")
+            return redirect(url_for("pos_page"))
+        if status and qty > status["current_stock"]:
             flash(f"Only {status['current_stock']} {status['unit'] or ''} of {status['name']} in stock — sale blocked.", "error")
             return redirect(url_for("pos_page"))
         line_total = price * qty
