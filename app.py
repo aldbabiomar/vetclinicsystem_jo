@@ -1684,6 +1684,9 @@ def followup_status_update(visit_id):
     db = get_db()
     status = request.form.get("status")
     old = db.execute("SELECT followup_status FROM visits WHERE id=?", (visit_id,)).fetchone()
+    if not old:
+        flash("Visit not found.", "error")
+        return redirect(request.referrer or url_for("followups_list"))
     db.execute("UPDATE visits SET followup_status=? WHERE id=?", (status, visit_id))
     auth.log_change(db, "visits", visit_id, "update", {"followup_status": (old["followup_status"], status)})
     db.commit()
@@ -1708,6 +1711,9 @@ def wellness_update(visit_id):
     db = get_db()
     f = request.form
     old = db.execute("SELECT wellness_contacted, wellness_contact_method FROM visits WHERE id=?", (visit_id,)).fetchone()
+    if not old:
+        flash("Visit not found.", "error")
+        return redirect(url_for("wellness_list"))
     db.execute("UPDATE visits SET wellness_contacted=?, wellness_contact_method=? WHERE id=?",
               (f.get("wellness_contacted", "N"), f.get("wellness_contact_method") or None, visit_id))
     auth.log_change(db, "visits", visit_id, "update", {"wellness_contacted": (old["wellness_contacted"], f.get("wellness_contacted", "N"))})
@@ -1734,6 +1740,9 @@ def grooming_update(visit_id):
     db = get_db()
     f = request.form
     old = db.execute("SELECT grooming_status, grooming_contacted FROM visits WHERE id=?", (visit_id,)).fetchone()
+    if not old:
+        flash("Visit not found.", "error")
+        return redirect(url_for("grooming_list"))
     db.execute("UPDATE visits SET grooming_status=?, grooming_contacted=? WHERE id=?",
               (f.get("grooming_status"), f.get("grooming_contacted", "N"), visit_id))
     auth.log_change(db, "visits", visit_id, "update", {"grooming_status": (old["grooming_status"], f.get("grooming_status"))})
@@ -2021,6 +2030,12 @@ def inventory_catalog_edit(item_id):
         cost_price = parse_money(f.get("cost_price"))
     except BadNumber:
         flash("Cost Price must be a valid number.", "error")
+        return redirect(url_for("inventory_catalog"))
+    if has_negative(cost_price):
+        flash("Cost Price can't be negative.", "error")
+        return redirect(url_for("inventory_catalog"))
+    if f.get("category", "Medical") not in INVENTORY_CATEGORIES:
+        flash("Category must be one of: " + ", ".join(INVENTORY_CATEGORIES) + ".", "error")
         return redirect(url_for("inventory_catalog"))
     old = db.execute("SELECT * FROM inventory_list WHERE id=?", (item_id,)).fetchone()
     new_vals = {"name": f["name"], "category": f.get("category", "Medical"), "unit": f.get("unit"),
@@ -3201,18 +3216,23 @@ def boarding_dismiss(boarding_id):
 @app.route("/boarding/<int:boarding_id>/incident", methods=["POST"])
 def boarding_incident(boarding_id):
     db = get_db()
+    if not db.execute("SELECT 1 FROM boarding_sessions WHERE id=?", (boarding_id,)).fetchone():
+        flash("Boarding session not found.", "error")
+        return redirect(url_for("boarding_page"))
     f = request.form
     issue = (f.get("issue") or "").strip()
     if not issue:
         flash("Describe what's wrong before submitting.", "error")
         return redirect(url_for("boarding_page"))
     contacted = "Y" if f.get("contacted") == "on" else "N"
-    db.execute(
+    cur = db.execute(
         "INSERT INTO boarding_incidents (boarding_id, timestamp, issue, contacted, contact_method, response, user_id) "
-        "VALUES (?,?,?,?,?,?,?)",
+        "VALUES (?,?,?,?,?,?,?) RETURNING id",
         (boarding_id, datetime.now().isoformat(timespec="seconds"), issue, contacted,
          f.get("contact_method") if contacted == "Y" else None, f.get("response"), session.get("user_id")),
     )
+    incident_id = cur.fetchone()["id"]
+    auth.log_change(db, "boarding_incidents", str(incident_id), "create")
     db.commit()
     flash("Incident logged.", "success")
     return redirect(url_for("boarding_page"))
@@ -3708,6 +3728,9 @@ def inpatient_payment_add(case_id):
 def inpatient_attachment_upload(case_id):
     db = get_db()
     case = db.execute("SELECT patient_id FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
+    if not case:
+        flash("Inpatient case not found.", "error")
+        return redirect(url_for("inpatient_list"))
     file = request.files.get("file")
     if not file or not file.filename:
         flash("No file selected.", "error")
