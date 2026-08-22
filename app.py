@@ -65,10 +65,16 @@ class _DecimalJSONProvider(DefaultJSONProvider):
 app = Flask(__name__)
 app.json = _DecimalJSONProvider(app)
 app.secret_key = os.environ.get("SECRET_KEY")
-if not app.secret_key:
+# The unset check alone doesn't catch someone hand-copying .env.example to
+# .env instead of running setup.py (which is what actually replaces this
+# placeholder with a real random key) — that would otherwise boot fine
+# with a well-known, publicly-visible-in-source-control value signing
+# every session cookie and CSRF token.
+if not app.secret_key or app.secret_key == "change-me":
     raise SystemExit(
-        "SECRET_KEY is not set. Copy .env.example to .env (setup.py does this "
-        "for you) before starting the app."
+        "SECRET_KEY is not set (or still the placeholder value). Copy "
+        ".env.example to .env (setup.py does this for you, with a real "
+        "random key) before starting the app."
     )
 csrf = CSRFProtect(app)
 
