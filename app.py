@@ -3672,18 +3672,46 @@ def appointment_new():
         flash("Appointment type must be one of: " + ", ".join(APPOINTMENT_TYPES) + ".", "error")
         return redirect(url_for("appointments_page", day=appt_date))
     resource_id = f.get("resource_id") or None
+    if resource_type == "grooming":
+        # Grooming has no per-resource distinction — every grooming booking
+        # shares one column on the grid, keyed as (slot_label, "grooming",
+        # NULL) by day_grid()/slot_conflict(). A tampered request smuggling
+        # a non-null resource_id here would create a row neither of those
+        # ever looks at — invisible on the grid — so this is the only slot
+        # type where the value has to be forced rather than merely validated.
+        resource_id = None
+    elif not resource_id or not any(v["id"] == resource_id for v in vet_users(db)):
+        flash("Pick a valid, active vet for this appointment.", "error")
+        return redirect(url_for("appointments_page", day=appt_date))
+    if not any(s["label"] == slot_label for s in logic.generate_slots(db)):
+        flash("That's not a valid time slot — the schedule may have changed. Reload and try again.", "error")
+        return redirect(url_for("appointments_page", day=appt_date))
 
     if logic.slot_conflict(db, appt_date, slot_label, resource_type, resource_id):
         flash("That slot is already booked for this vet/groomer.", "error")
         return redirect(url_for("appointments_page", day=appt_date))
 
-    db.execute(
-        "INSERT INTO appointments (appt_date, slot_label, resource_type, resource_id, pet_name, owner_name, "
-        "appointment_type, reason, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-        (appt_date, slot_label, resource_type, resource_id, f["pet_name"], f["owner_name"],
-         appointment_type, f.get("reason"), session["user_id"], datetime.now().isoformat(timespec="seconds")),
-    )
-    db.commit()
+    # The check above is a friendly fast-path, not the real guarantee — two
+    # concurrent bookings for the same slot could both pass it before either
+    # inserts. The database's uq_appointments_slot unique index (see
+    # schema_postgres.sql) is what actually prevents the double-booking;
+    # this catches the resulting IntegrityError for whichever request loses
+    # that race and turns it into the same friendly message instead of a
+    # raw 500.
+    try:
+        cur = db.execute(
+            "INSERT INTO appointments (appt_date, slot_label, resource_type, resource_id, pet_name, owner_name, "
+            "appointment_type, reason, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
+            (appt_date, slot_label, resource_type, resource_id, f["pet_name"], f["owner_name"],
+             appointment_type, f.get("reason"), session["user_id"], datetime.now().isoformat(timespec="seconds")),
+        )
+        appt_id = cur.fetchone()["id"]
+        auth.log_change(db, "appointments", str(appt_id), "create")
+        db.commit()
+    except dbmod.IntegrityError:
+        db.rollback()
+        flash("That slot is already booked for this vet/groomer.", "error")
+        return redirect(url_for("appointments_page", day=appt_date))
     flash("Appointment booked.", "success")
     return redirect(url_for("appointments_page", day=appt_date))
 
@@ -3692,10 +3720,14 @@ def appointment_new():
 def appointment_cancel(appt_id):
     db = get_db()
     row = db.execute("SELECT appt_date FROM appointments WHERE id=?", (appt_id,)).fetchone()
+    if not row:
+        flash("Appointment not found.", "error")
+        return redirect(url_for("appointments_page"))
     db.execute("DELETE FROM appointments WHERE id=?", (appt_id,))
+    auth.log_change(db, "appointments", str(appt_id), "delete")
     db.commit()
     flash("Appointment cancelled.", "success")
-    return redirect(url_for("appointments_page", day=str(row["appt_date"]) if row else date.today().isoformat()))
+    return redirect(url_for("appointments_page", day=str(row["appt_date"])))
 
 
 # ---------------------------------------------------------------------------

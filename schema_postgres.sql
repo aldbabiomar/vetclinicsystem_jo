@@ -754,3 +754,15 @@ CREATE TABLE IF NOT EXISTS appointments (
 );
 CREATE INDEX IF NOT EXISTS idx_appt_date ON appointments(appt_date);
 
+-- Enforces at the database level what logic.slot_conflict() only checks at
+-- the application level: two appointments can't occupy the same slot for
+-- the same vet/groomer. The app-level check-then-insert alone has a race
+-- window — two concurrent bookings for the same slot can both pass the
+-- check before either inserts. COALESCE(resource_id, '') is needed because
+-- resource_id is NULL for grooming rows, and Postgres otherwise treats
+-- every NULL as distinct (so two grooming rows for the same slot would
+-- never actually collide on a plain (appt_date, slot_label, resource_type,
+-- resource_id) unique index).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_appointments_slot
+    ON appointments (appt_date, slot_label, resource_type, COALESCE(resource_id, ''));
+
