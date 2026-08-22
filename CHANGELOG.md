@@ -3,6 +3,25 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.0.2] - 2026-08-22
+
+### Fixed
+- POS checkout no longer accepts cash tendered below the sale total.
+- Service refunds are capped at what was actually paid on the linked visit
+  or inpatient case, minus refunds already recorded against it.
+- Visit and inpatient payments are capped at the remaining balance.
+- Consignment settlements can no longer overpay past the amount owed.
+- Cash-register payouts are capped at the drawer's expected cash for the day.
+- Closed a race between applying a discount and adding a non-discountable
+  item to a visit or inpatient bill; inpatient billing also gained the
+  same protection visit billing already had for this.
+- A bill could show "Fully Paid" with up to half a Dinar genuinely still
+  owed — a rounding-tolerance threshold left over from an earlier
+  currency model. Bills now only show "Fully Paid" when nothing is left.
+- Attachment deletion now requires the same permission it does everywhere
+  else in the app (previously any logged-in user could delete any
+  patient's attachment).
+
 ## [1.0.1] - 2026-08-22
 
 ### Fixed
