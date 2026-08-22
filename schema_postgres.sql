@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS users (
     full_name TEXT NOT NULL,
     role_id TEXT NOT NULL REFERENCES roles(id),
     custom_discount_cap INTEGER CHECK (custom_discount_cap BETWEEN 0 AND 100),
-    active INTEGER NOT NULL DEFAULT 1,
-    must_change_password INTEGER NOT NULL DEFAULT 0,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id);
@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS inventory_list (
     name TEXT NOT NULL,
     category TEXT NOT NULL DEFAULT 'Medical' CHECK (category IN ('Medical','Retail')),
     unit TEXT,
-    track_expiry INTEGER NOT NULL DEFAULT 1,
+    track_expiry BOOLEAN NOT NULL DEFAULT TRUE,
     cost_price DOUBLE PRECISION,
     distributor_id TEXT,
     -- 'Owned' (you bought this stock outright — the default) or
@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS inventory_list (
     -- so a sale from before the item was actually Consignment (e.g. years
     -- of prior Retail sales) never gets swept into what's owed.
     consignment_since TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
     barcode TEXT UNIQUE,
     notes TEXT,
     FOREIGN KEY (distributor_id) REFERENCES distributors(id)
@@ -210,9 +210,9 @@ CREATE TABLE IF NOT EXISTS price_list (
     cost_price DOUBLE PRECISION,
     sale_price DOUBLE PRECISION,
     notes TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
     linked_item_id TEXT,             -- Retail rows only: links to inventory_list.id for POS
-    can_discount INTEGER NOT NULL DEFAULT 0,   -- if 0, a bill containing this item can't have a discount applied
+    can_discount BOOLEAN NOT NULL DEFAULT FALSE,   -- if false, a bill containing this item can't have a discount applied
     FOREIGN KEY (linked_item_id) REFERENCES inventory_list(id)
 );
 
@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS consignment_shrinkage (
     quantity DOUBLE PRECISION NOT NULL,
     reason TEXT NOT NULL CHECK (reason IN ('Damaged','Expired','Other')),
     liable_party TEXT NOT NULL CHECK (liable_party IN ('Distributor','Clinic')),
-    liability_overridden INTEGER NOT NULL DEFAULT 0,
+    liability_overridden BOOLEAN NOT NULL DEFAULT FALSE,
     unit_cost DOUBLE PRECISION NOT NULL,
     notes TEXT,
     logged_by TEXT,
@@ -446,7 +446,7 @@ CREATE TABLE IF NOT EXISTS boarding_sessions (
     entry_date DATE NOT NULL,
     dismissal_date DATE,              -- expected/actual end date; editable if the stay is extended or shortened
     admitted_items TEXT,
-    special_needs INTEGER NOT NULL DEFAULT 0,   -- 'Y'/'N' as 1/0 — chronic disease or custom requirement flag
+    special_needs BOOLEAN NOT NULL DEFAULT FALSE,   -- chronic disease or custom requirement flag
     special_needs_notes TEXT,
     room TEXT,
     price_per_day DOUBLE PRECISION,
@@ -458,12 +458,12 @@ CREATE TABLE IF NOT EXISTS boarding_sessions (
     -- this stale snapshot — but only when it's still the auto-suggested
     -- figure, so a deliberately-typed custom total is never silently
     -- overwritten.
-    total_is_auto INTEGER NOT NULL DEFAULT 1,
+    total_is_auto BOOLEAN NOT NULL DEFAULT TRUE,
     -- The persisted figure boarding_page()'s batched list view and any
     -- report read instead of recomputing per row — kept in sync by
     -- logic.refresh_boarding_total() every time the session is saved.
     billed_total DOUBLE PRECISION,
-    dismissed INTEGER NOT NULL DEFAULT 0,   -- has the animal actually left yet
+    dismissed BOOLEAN NOT NULL DEFAULT FALSE,   -- has the animal actually left yet
     created_by TEXT,
     -- Set on every boarding_edit() save — lets the edit form detect (and
     -- refuse to silently overwrite) a concurrent edit by someone else.
@@ -497,7 +497,7 @@ CREATE TABLE IF NOT EXISTS inpatient_cases (
     bcs INTEGER CHECK (bcs BETWEEN 1 AND 9),   -- Body Condition Score, 1-9 scale
     admission_date DATE NOT NULL,
     admitted_items TEXT,
-    dismissed INTEGER NOT NULL DEFAULT 0,
+    dismissed BOOLEAN NOT NULL DEFAULT FALSE,
     dismissal_date DATE,
     attending_vet_id TEXT,
     supervising_vet_id TEXT,
@@ -645,7 +645,7 @@ CREATE TABLE IF NOT EXISTS refunds (
     refund_type TEXT NOT NULL CHECK (refund_type IN ('retail','service')),
     refund_date DATE NOT NULL,
     amount DOUBLE PRECISION NOT NULL,
-    restocked INTEGER NOT NULL DEFAULT 0,   -- retail only: were the returned items put back into inventory?
+    restocked BOOLEAN NOT NULL DEFAULT FALSE,   -- retail only: were the returned items put back into inventory?
     -- Retail only — which POS sale this refund is against. Required at
     -- the app layer (refund_retail_save() in app.py) so a retail refund
     -- can never be recorded against an item that was never actually
