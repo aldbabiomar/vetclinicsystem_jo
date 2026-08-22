@@ -1776,15 +1776,32 @@ def price_list_new():
     except BadNumber:
         flash("Cost Price and Sale Price must be valid numbers.", "error")
         return redirect(url_for("price_list"))
+    if has_negative(cost_price, sale_price):
+        flash("Cost Price and Sale Price can't be negative.", "error")
+        return redirect(url_for("price_list"))
     if f.get("category") not in PRICE_CATEGORIES:
         flash("Category must be one of: " + ", ".join(PRICE_CATEGORIES) + ".", "error")
         return redirect(url_for("price_list"))
+    linked_item_id = f.get("linked_item_id") or None
+    if linked_item_id:
+        # Two active rows linking to the same inventory item makes POS
+        # pricing nondeterministic — item_sale_price() picks whichever one
+        # a plain LIMIT 1 happens to return, with no ordering guarantee,
+        # so the same product could ring up at two different prices with
+        # no error or warning telling staff the catalog is inconsistent.
+        existing_link = db.execute(
+            "SELECT id, name FROM price_list WHERE linked_item_id=? AND active=1", (linked_item_id,)
+        ).fetchone()
+        if existing_link:
+            flash(f"That inventory item is already linked to {existing_link['id']} ({existing_link['name']}) — "
+                  f"an item can only be linked from one active Price List row at a time.", "error")
+            return redirect(url_for("price_list"))
     pid = dbmod.next_id(db, "P")
     can_discount = 1 if f.get("can_discount") == "on" else 0
     db.execute(
         "INSERT INTO price_list (id,name,category,cost_price,sale_price,notes,active,linked_item_id,can_discount) VALUES (?,?,?,?,?,?,1,?,?)",
         (pid, f["name"], f["category"], cost_price, sale_price,
-         f.get("notes"), f.get("linked_item_id") or None, can_discount),
+         f.get("notes"), linked_item_id, can_discount),
     )
     auth.log_change(db, "price_list", pid, "create")
     db.commit()
@@ -1803,13 +1820,29 @@ def price_list_edit(item_id):
     except BadNumber:
         flash("Cost Price and Sale Price must be valid numbers.", "error")
         return redirect(url_for("price_list"))
+    if has_negative(cost_price, sale_price):
+        flash("Cost Price and Sale Price can't be negative.", "error")
+        return redirect(url_for("price_list"))
     if f.get("category") not in PRICE_CATEGORIES:
         flash("Category must be one of: " + ", ".join(PRICE_CATEGORIES) + ".", "error")
         return redirect(url_for("price_list"))
     old = db.execute("SELECT * FROM price_list WHERE id=?", (item_id,)).fetchone()
+    if not old:
+        flash("Price list item not found.", "error")
+        return redirect(url_for("price_list"))
+    new_linked_item_id = (f.get("linked_item_id") or None) if "linked_item_id" in f else old["linked_item_id"]
+    if new_linked_item_id and new_linked_item_id != old["linked_item_id"]:
+        dup = db.execute(
+            "SELECT id, name FROM price_list WHERE linked_item_id=? AND active=1 AND id != ?",
+            (new_linked_item_id, item_id),
+        ).fetchone()
+        if dup:
+            flash(f"That inventory item is already linked to {dup['id']} ({dup['name']}) — "
+                  f"an item can only be linked from one active Price List row at a time.", "error")
+            return redirect(url_for("price_list"))
     new_vals = {"name": f["name"], "category": f["category"], "cost_price": cost_price,
                 "sale_price": sale_price, "notes": f.get("notes"),
-                "linked_item_id": (f.get("linked_item_id") or None) if "linked_item_id" in f else old["linked_item_id"],
+                "linked_item_id": new_linked_item_id,
                 "can_discount": 1 if f.get("can_discount") == "on" else 0}
     changes = auth.diff_dict(old, new_vals)
     db.execute("UPDATE price_list SET name=?, category=?, cost_price=?, sale_price=?, notes=?, linked_item_id=?, can_discount=? WHERE id=?",
@@ -1847,6 +1880,7 @@ def price_list_bulk_edit():
     items = payload.get("items") or []
     saved, errors = [], {}
     any_price_changed = False
+    claimed_in_batch = {}
     for item in items:
         item_id = str(item.get("id", ""))
         fields = item.get("fields") or {}
@@ -1856,13 +1890,30 @@ def price_list_bulk_edit():
         except BadNumber:
             errors[item_id] = "Cost Price and Sale Price must be valid numbers."
             continue
+        if has_negative(cost_price, sale_price):
+            errors[item_id] = "Cost Price and Sale Price can't be negative."
+            continue
         old = db.execute("SELECT * FROM price_list WHERE id=?", (item_id,)).fetchone()
         if not old:
             errors[item_id] = "Item not found."
             continue
+        new_linked_item_id = (fields.get("linked_item_id") or None) if "linked_item_id" in fields else old["linked_item_id"]
+        if new_linked_item_id:
+            # Checked against both the database (another row, unrelated to
+            # this batch) and what this same batch has already claimed (two
+            # rows in one bulk save both trying to link the same item).
+            dup = db.execute(
+                "SELECT id FROM price_list WHERE linked_item_id=? AND active=1 AND id != ?",
+                (new_linked_item_id, item_id),
+            ).fetchone()
+            dup_id = dup["id"] if dup else claimed_in_batch.get(new_linked_item_id)
+            if dup_id and dup_id != item_id:
+                errors[item_id] = f"That inventory item is already linked to {dup_id} — an item can only be linked from one active row at a time."
+                continue
+            claimed_in_batch[new_linked_item_id] = item_id
         new_vals = {"name": fields.get("name", ""), "category": fields.get("category", ""),
                     "cost_price": cost_price, "sale_price": sale_price, "notes": fields.get("notes"),
-                    "linked_item_id": (fields.get("linked_item_id") or None) if "linked_item_id" in fields else old["linked_item_id"],
+                    "linked_item_id": new_linked_item_id,
                     "can_discount": 1 if fields.get("can_discount") == "on" else 0}
         changes = auth.diff_dict(old, new_vals)
         db.execute(
