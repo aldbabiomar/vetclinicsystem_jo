@@ -18,7 +18,7 @@ load_dotenv()
 
 from flask import (
     Flask, render_template, request, redirect, url_for, flash, g, jsonify,
-    session, send_from_directory, send_file
+    session, send_from_directory, send_file, abort
 )
 from flask_wtf import CSRFProtect
 from werkzeug.exceptions import HTTPException
@@ -1145,6 +1145,8 @@ def patient_history(patient_id):
 @app.route("/patients/<patient_id>/export/file")
 def patient_export_file(patient_id):
     db = get_db()
+    if not db.execute("SELECT 1 FROM patients WHERE id=?", (patient_id,)).fetchone():
+        abort(404)
     buf = pdf_export.export_patient_file(db, patient_id)
     return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=f"{patient_id}_patient_file.pdf")
 
@@ -1152,6 +1154,8 @@ def patient_export_file(patient_id):
 @app.route("/patients/<patient_id>/export/billing")
 def patient_export_billing(patient_id):
     db = get_db()
+    if not db.execute("SELECT 1 FROM patients WHERE id=?", (patient_id,)).fetchone():
+        abort(404)
     buf = pdf_export.export_patient_billing(db, patient_id)
     return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=f"{patient_id}_billing.pdf")
 
@@ -1159,6 +1163,8 @@ def patient_export_billing(patient_id):
 @app.route("/pos/history/<int:sale_id>/export")
 def pos_export_receipt(sale_id):
     db = get_db()
+    if not db.execute("SELECT 1 FROM sales WHERE id=?", (sale_id,)).fetchone():
+        abort(404)
     buf = pdf_export.export_sale_receipt(db, sale_id)
     return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=f"sale_{sale_id}_receipt.pdf")
 
@@ -1166,6 +1172,8 @@ def pos_export_receipt(sale_id):
 @app.route("/visits/<visit_id>/export")
 def visit_export_pdf(visit_id):
     db = get_db()
+    if not db.execute("SELECT 1 FROM visits WHERE id=?", (visit_id,)).fetchone():
+        abort(404)
     buf = pdf_export.export_visit_pdf(db, visit_id)
     return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=f"{visit_id}_visit.pdf")
 
@@ -1173,6 +1181,8 @@ def visit_export_pdf(visit_id):
 @app.route("/inpatient/<int:case_id>/export")
 def inpatient_export_pdf(case_id):
     db = get_db()
+    if not db.execute("SELECT 1 FROM inpatient_cases WHERE id=?", (case_id,)).fetchone():
+        abort(404)
     buf = pdf_export.export_inpatient_pdf(db, case_id)
     return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=f"inpatient_{case_id}.pdf")
 
@@ -3186,6 +3196,8 @@ def boarding_payment(boarding_id):
 @app.route("/boarding/<int:boarding_id>/export")
 def boarding_export_pdf(boarding_id):
     db = get_db()
+    if not db.execute("SELECT 1 FROM boarding_sessions WHERE id=?", (boarding_id,)).fetchone():
+        abort(404)
     buf = pdf_export.export_boarding_pdf(db, boarding_id)
     return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=f"boarding_{boarding_id}.pdf")
 

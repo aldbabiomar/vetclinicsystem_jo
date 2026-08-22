@@ -58,7 +58,7 @@ def _attachments_note(ss, files):
         return []
     flow = [Paragraph("Attachments on file (not included in this PDF)", ss["H2"])]
     for f in files:
-        flow.append(Paragraph(f"\u2022 {f['original_name']} — uploaded {f['uploaded_at'][:10]}", ss["Body"]))
+        flow.append(Paragraph(f"\u2022 {X(f['original_name'])} — uploaded {X(f['uploaded_at'][:10])}", ss["Body"]))
     flow.append(Paragraph(
         "These files are stored in the system but are not embedded in this export. "
         "Open the record on-screen to view them, and print them separately if needed.",
@@ -95,9 +95,9 @@ def export_patient_file(db, patient_id):
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
-        Paragraph(f"Patient file — {patient['animal_name']}", ss["H1"]),
-        Paragraph(f"{patient_id} \u00b7 {patient['species'] or ''} \u00b7 Owner: {patient['owner_name']}"
-                  f"{' (' + patient['owner_phone'] + ')' if patient['owner_phone'] else ''}", ss["Small"]),
+        Paragraph(f"Patient file — {X(patient['animal_name'])}", ss["H1"]),
+        Paragraph(f"{X(patient_id)} \u00b7 {X(patient['species'] or '')} \u00b7 Owner: {X(patient['owner_name'])}"
+                  f"{' (' + X(patient['owner_phone']) + ')' if patient['owner_phone'] else ''}", ss["Small"]),
         Spacer(1, 10),
     ]
 
@@ -106,13 +106,13 @@ def export_patient_file(db, patient_id):
         for v in visits:
             summary = logic.visit_billing_summary(db, v["id"])
             proc_names = ", ".join(l["name"] for l in summary["lines"]) or "\u2014"
-            story.append(Paragraph(f"<b>{v['date'] or ''}</b> — {v['visit_type'] or ''} \u00b7 Dr. {v['doctor'] or '\u2014'} \u00b7 Status: {v['case_status'] or '\u2014'}", ss["Body"]))
-            story.append(Paragraph(f"Complaint: {v['complaint'] or '\u2014'}", ss["Body"]))
+            story.append(Paragraph(f"<b>{X(v['date'] or '')}</b> — {X(v['visit_type'] or '')} \u00b7 Dr. {X(v['doctor'] or '\u2014')} \u00b7 Status: {X(v['case_status'] or '\u2014')}", ss["Body"]))
+            story.append(Paragraph(f"Complaint: {X(v['complaint'] or '\u2014')}", ss["Body"]))
             if v["exam"]:
-                story.append(Paragraph(f"Exam/diagnostics: {v['exam']}", ss["Body"]))
+                story.append(Paragraph(f"Exam/diagnostics: {X(v['exam'])}", ss["Body"]))
             if v["treatment"]:
-                story.append(Paragraph(f"Treatment: {v['treatment']}", ss["Body"]))
-            story.append(Paragraph(f"Procedures billed: {proc_names}", ss["Body"]))
+                story.append(Paragraph(f"Treatment: {X(v['treatment'])}", ss["Body"]))
+            story.append(Paragraph(f"Procedures billed: {X(proc_names)}", ss["Body"]))
             story.append(Spacer(1, 8))
     else:
         story.append(Paragraph("No outpatient visits on file.", ss["Small"]))
@@ -123,13 +123,13 @@ def export_patient_file(db, patient_id):
             bsum = logic.inpatient_billing_summary(db, c["id"])
             proc_names = ", ".join(l["name"] for l in bsum["lines"]) or "\u2014"
             story.append(Paragraph(
-                f"<b>Admitted {c['admission_date']}</b>"
-                f"{' — Discharged ' + str(c['dismissal_date']) if c['dismissal_date'] else ' — Currently admitted'}",
+                f"<b>Admitted {X(c['admission_date'])}</b>"
+                f"{' — Discharged ' + X(c['dismissal_date']) if c['dismissal_date'] else ' — Currently admitted'}",
                 ss["Body"]))
-            story.append(Paragraph(f"Complaint: {c['complaint'] or '\u2014'}", ss["Body"]))
+            story.append(Paragraph(f"Complaint: {X(c['complaint'] or '\u2014')}", ss["Body"]))
             if c["exam_findings"]:
-                story.append(Paragraph(f"Exam findings: {c['exam_findings']}", ss["Body"]))
-            story.append(Paragraph(f"Procedures billed: {proc_names}", ss["Body"]))
+                story.append(Paragraph(f"Exam findings: {X(c['exam_findings'])}", ss["Body"]))
+            story.append(Paragraph(f"Procedures billed: {X(proc_names)}", ss["Body"]))
             story.append(Spacer(1, 8))
     else:
         story.append(Paragraph("No inpatient stays on file.", ss["Small"]))
@@ -159,8 +159,8 @@ def export_patient_billing(db, patient_id):
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
-        Paragraph(f"Billing history — {patient['animal_name']}", ss["H1"]),
-        Paragraph(f"{patient_id} \u00b7 Owner: {patient['owner_name']}", ss["Small"]),
+        Paragraph(f"Billing history — {X(patient['animal_name'])}", ss["H1"]),
+        Paragraph(f"{X(patient_id)} \u00b7 Owner: {X(patient['owner_name'])}", ss["Small"]),
         Spacer(1, 10),
     ]
 
@@ -169,7 +169,7 @@ def export_patient_billing(db, patient_id):
         summary = logic.visit_billing_summary(db, v["id"])
         if not summary["lines"]:
             continue
-        story.append(Paragraph(f"<b>{v['date'] or ''}</b> \u2014 {v['id']}", ss["H2"]))
+        story.append(Paragraph(f"<b>{X(v['date'] or '')}</b> \u2014 {X(v['id'])}", ss["H2"]))
         data = [["Service", "Price (JOD)"]]
         for l in summary["lines"]:
             amount = l.get("line_total", l["price"])
@@ -218,7 +218,7 @@ def export_sale_receipt(db, sale_id):
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
         Paragraph("Sale receipt", ss["H1"]),
-        Paragraph(f"Sale #{sale_id} \u00b7 {sale['sale_date']} \u00b7 Sold by {sale['cashier_name'] or '\u2014'}", ss["Small"]),
+        Paragraph(f"Sale #{X(sale_id)} \u00b7 {X(sale['sale_date'])} \u00b7 Sold by {X(sale['cashier_name'] or '\u2014')}", ss["Small"]),
         Spacer(1, 12),
     ]
 
@@ -269,17 +269,17 @@ def export_visit_pdf(db, visit_id):
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
-        Paragraph(f"Visit record \u2014 {v['animal_name']}", ss["H1"]),
-        Paragraph(f"{visit_id} \u00b7 {v['species'] or ''} \u00b7 Owner: {v['owner_name']}"
-                  f"{' (' + v['owner_phone'] + ')' if v['owner_phone'] else ''}"
-                  f"{' \u00b7 ' + v['owner_address'] if v['owner_address'] else ''}", ss["Small"]),
+        Paragraph(f"Visit record \u2014 {X(v['animal_name'])}", ss["H1"]),
+        Paragraph(f"{X(visit_id)} \u00b7 {X(v['species'] or '')} \u00b7 Owner: {X(v['owner_name'])}"
+                  f"{' (' + X(v['owner_phone']) + ')' if v['owner_phone'] else ''}"
+                  f"{' \u00b7 ' + X(v['owner_address']) if v['owner_address'] else ''}", ss["Small"]),
         Spacer(1, 10),
     ]
 
     story.append(Paragraph("Visit Details", ss["H2"]))
     story.append(Paragraph(
-        f"<b>{v['date'] or ''}</b> \u2014 {v['visit_type'] or ''} \u00b7 Dr. {v['doctor'] or '\u2014'} "
-        f"\u00b7 Status: {v['case_status'] or '\u2014'}", ss["Body"]))
+        f"<b>{X(v['date'] or '')}</b> \u2014 {X(v['visit_type'] or '')} \u00b7 Dr. {X(v['doctor'] or '\u2014')} "
+        f"\u00b7 Status: {X(v['case_status'] or '\u2014')}", ss["Body"]))
     if v["weight_kg"] is not None or v["bcs"] is not None:
         bits = []
         if v["weight_kg"] is not None:
@@ -287,29 +287,29 @@ def export_visit_pdf(db, visit_id):
         if v["bcs"] is not None:
             bits.append(f"BCS: {v['bcs']}/9")
         story.append(Paragraph(" \u00b7 ".join(bits), ss["Body"]))
-    story.append(Paragraph(f"Complaint: {v['complaint'] or '\u2014'}", ss["Body"]))
+    story.append(Paragraph(f"Complaint: {X(v['complaint'] or '\u2014')}", ss["Body"]))
     if v["history"]:
-        story.append(Paragraph(f"History: {v['history']}", ss["Body"]))
+        story.append(Paragraph(f"History: {X(v['history'])}", ss["Body"]))
     if v["exam"]:
-        story.append(Paragraph(f"Exam/diagnostics: {v['exam']}", ss["Body"]))
+        story.append(Paragraph(f"Exam/diagnostics: {X(v['exam'])}", ss["Body"]))
     if v["treatment"]:
-        story.append(Paragraph(f"Treatment: {v['treatment']}", ss["Body"]))
+        story.append(Paragraph(f"Treatment: {X(v['treatment'])}", ss["Body"]))
     story.append(Spacer(1, 8))
 
     if v["followup_needed"] == "Y":
         story.append(Paragraph("Follow-Up", ss["H2"]))
         story.append(Paragraph(
-            f"{v['followup_method'] or '\u2014'} \u2014 {v['followup_reason'] or ''} "
-            f"(due {v['followup_date'] or '\u2014'}, status: {v['followup_status'] or '\u2014'})", ss["Body"]))
+            f"{X(v['followup_method'] or '\u2014')} \u2014 {X(v['followup_reason'] or '')} "
+            f"(due {X(v['followup_date'] or '\u2014')}, status: {X(v['followup_status'] or '\u2014')})", ss["Body"]))
 
     if v["wellness_needed"] == "Y":
         story.append(Paragraph("Wellness", ss["H2"]))
         story.append(Paragraph(
-            f"{v['wellness_type'] or '\u2014'} \u2014 next dose {v['wellness_next_dose_date'] or '\u2014'}", ss["Body"]))
+            f"{X(v['wellness_type'] or '\u2014')} \u2014 next dose {X(v['wellness_next_dose_date'] or '\u2014')}", ss["Body"]))
 
     if v["grooming_needed"] == "Y":
         story.append(Paragraph("Grooming", ss["H2"]))
-        story.append(Paragraph(f"{v['grooming_services'] or '\u2014'} \u2014 status: {v['grooming_status'] or '\u2014'}", ss["Body"]))
+        story.append(Paragraph(f"{X(v['grooming_services'] or '\u2014')} \u2014 status: {X(v['grooming_status'] or '\u2014')}", ss["Body"]))
 
     story.append(Paragraph("Billing", ss["H2"]))
     if summary["lines"]:
@@ -361,18 +361,18 @@ def export_inpatient_pdf(db, case_id):
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
-        Paragraph(f"Inpatient record \u2014 {c['animal_name']}", ss["H1"]),
-        Paragraph(f"Case #{case_id} \u00b7 {c['species'] or ''} \u00b7 Owner: {c['owner_name']}"
-                  f"{' (' + c['owner_phone'] + ')' if c['owner_phone'] else ''}"
-                  f"{' \u00b7 ' + c['owner_address'] if c['owner_address'] else ''}", ss["Small"]),
+        Paragraph(f"Inpatient record \u2014 {X(c['animal_name'])}", ss["H1"]),
+        Paragraph(f"Case #{X(case_id)} \u00b7 {X(c['species'] or '')} \u00b7 Owner: {X(c['owner_name'])}"
+                  f"{' (' + X(c['owner_phone']) + ')' if c['owner_phone'] else ''}"
+                  f"{' \u00b7 ' + X(c['owner_address']) if c['owner_address'] else ''}", ss["Small"]),
         Spacer(1, 10),
     ]
 
     story.append(Paragraph("Inpatient Stay", ss["H2"]))
     story.append(Paragraph(
-        f"<b>Admitted {c['admission_date']}</b>"
-        f"{' \u2014 Discharged ' + str(c['dismissal_date']) if c['dismissal_date'] else ' \u2014 Currently admitted'}"
-        f" \u00b7 Attending: {c['attending_name'] or '\u2014'} \u00b7 Supervising: {c['supervising_name'] or '\u2014'}",
+        f"<b>Admitted {X(c['admission_date'])}</b>"
+        f"{' \u2014 Discharged ' + X(c['dismissal_date']) if c['dismissal_date'] else ' \u2014 Currently admitted'}"
+        f" \u00b7 Attending: {X(c['attending_name'] or '\u2014')} \u00b7 Supervising: {X(c['supervising_name'] or '\u2014')}",
         ss["Body"]))
     if c["weight_kg"] is not None or c["bcs"] is not None:
         bits = []
@@ -384,14 +384,14 @@ def export_inpatient_pdf(db, case_id):
     story.append(Spacer(1, 8))
 
     story.append(Paragraph("Clinical Notes", ss["H2"]))
-    story.append(Paragraph(f"<b>Presenting Complaint:</b> {c['complaint'] or '\u2014'}", ss["Body"]))
-    story.append(Paragraph(f"<b>Exam Findings:</b> {c['exam_findings'] or '\u2014'}", ss["Body"]))
-    story.append(Paragraph(f"<b>Admitted Items:</b> {c['admitted_items'] or '\u2014'}", ss["Body"]))
+    story.append(Paragraph(f"<b>Presenting Complaint:</b> {X(c['complaint'] or '\u2014')}", ss["Body"]))
+    story.append(Paragraph(f"<b>Exam Findings:</b> {X(c['exam_findings'] or '\u2014')}", ss["Body"]))
+    story.append(Paragraph(f"<b>Admitted Items:</b> {X(c['admitted_items'] or '\u2014')}", ss["Body"]))
 
     story.append(Paragraph("Daily Updates", ss["H2"]))
     if updates:
         for u in updates:
-            story.append(Paragraph(f"<b>{u['timestamp']}</b> ({u['full_name'] or '\u2014'}): {u['note']}", ss["Body"]))
+            story.append(Paragraph(f"<b>{X(u['timestamp'])}</b> ({X(u['full_name'] or '\u2014')}): {X(u['note'])}", ss["Body"]))
     else:
         story.append(Paragraph("No daily updates logged.", ss["Small"]))
 
@@ -443,31 +443,31 @@ def export_boarding_pdf(db, boarding_id):
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
-        Paragraph(f"Boarding record \u2014 {b['animal_name']}", ss["H1"]),
-        Paragraph(f"Booking #{boarding_id} \u00b7 {b['species'] or ''} \u00b7 Owner: {b['owner_name']}"
-                  f"{' (' + b['owner_phone'] + ')' if b['owner_phone'] else ''}"
-                  f"{' \u00b7 ' + b['owner_address'] if b['owner_address'] else ''}", ss["Small"]),
+        Paragraph(f"Boarding record \u2014 {X(b['animal_name'])}", ss["H1"]),
+        Paragraph(f"Booking #{X(boarding_id)} \u00b7 {X(b['species'] or '')} \u00b7 Owner: {X(b['owner_name'])}"
+                  f"{' (' + X(b['owner_phone']) + ')' if b['owner_phone'] else ''}"
+                  f"{' \u00b7 ' + X(b['owner_address']) if b['owner_address'] else ''}", ss["Small"]),
         Spacer(1, 10),
     ]
 
     story.append(Paragraph("Boarding Stay", ss["H2"]))
     story.append(Paragraph(
-        f"<b>Entry {b['entry_date']}</b>"
-        f"{' \u2014 Dismissal ' + str(b['dismissal_date']) if b['dismissal_date'] else (' \u2014 Picked up' if b['dismissed'] else ' \u2014 Currently boarding')}"
-        f" \u00b7 Room: {b['room'] or '\u2014'}", ss["Body"]))
-    story.append(Paragraph(f"Admitted Items: {b['admitted_items'] or '\u2014'}", ss["Body"]))
+        f"<b>Entry {X(b['entry_date'])}</b>"
+        f"{' \u2014 Dismissal ' + X(b['dismissal_date']) if b['dismissal_date'] else (' \u2014 Picked up' if b['dismissed'] else ' \u2014 Currently boarding')}"
+        f" \u00b7 Room: {X(b['room'] or '\u2014')}", ss["Body"]))
+    story.append(Paragraph(f"Admitted Items: {X(b['admitted_items'] or '\u2014')}", ss["Body"]))
     story.append(Paragraph(
-        f"Special Needs: {(b['special_needs_notes'] or 'Yes, no details given') if b['special_needs'] else 'None reported'}",
+        f"Special Needs: {X((b['special_needs_notes'] or 'Yes, no details given') if b['special_needs'] else 'None reported')}",
         ss["Body"]))
     story.append(Spacer(1, 8))
 
     story.append(Paragraph("Something's Wrong \u2014 Incident Log", ss["H2"]))
     if incidents:
         for i in incidents:
-            contact_bit = f" \u2014 Contacted owner via {i['contact_method']}" if i["contacted"] == "Y" else " \u2014 Owner not contacted"
-            story.append(Paragraph(f"<b>{i['timestamp']}</b> ({i['full_name'] or '\u2014'}): {i['issue']}{contact_bit}", ss["Body"]))
+            contact_bit = f" \u2014 Contacted owner via {X(i['contact_method'])}" if i["contacted"] == "Y" else " \u2014 Owner not contacted"
+            story.append(Paragraph(f"<b>{X(i['timestamp'])}</b> ({X(i['full_name'] or '\u2014')}): {X(i['issue'])}{contact_bit}", ss["Body"]))
             if i["response"]:
-                story.append(Paragraph(f"Response: {i['response']}", ss["Body"]))
+                story.append(Paragraph(f"Response: {X(i['response'])}", ss["Body"]))
     else:
         story.append(Paragraph("No incidents logged.", ss["Small"]))
 
