@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Consignment Receiving — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Consignment Receiving</h1>
+    <p class="page-sub">Stock a distributor drops off. {{ total_count }} receipt(s) on file.</p>
+  </div>
+  {% if has_permission('manage_consignment_stock') %}
+  <button class="btn" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Log Receipt</button>
+  {% endif %}
+</div>
+
+{% if has_permission('manage_consignment_stock') %}
+<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+  <form method="post" action="{{ url_for('consignment_receiving_new') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="field"><label>Item</label>
+        <select name="item_id" required>
+          <option value="">—</option>
+          {% for i in items %}<option value="{{ i.id }}">{{ i.name }} ({{ i.distributor_name }})</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Quantity</label><input type="number" step="any" name="quantity" required></div>
+      <div class="field"><label>Unit Cost (JOD)</label><input type="number" step="1" name="unit_cost" required></div>
+      <div class="field"><label>Received Date</label><input type="date" name="received_date" value="{{ today }}"></div>
+      <div class="field"><label>Delivery Reference</label><input name="delivery_reference" placeholder="Invoice/delivery note #"></div>
+      <div class="field full"><label>Notes</label><input name="notes"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Log Receipt</button>
+      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="table-wrap sticky-scroll">
+<table>
+  <thead class="sticky-header"><tr>
+    <th>Date</th><th>Item</th><th>Distributor</th><th class="num-col">Quantity</th>
+    <th class="num-col">Unit Cost (JOD)</th><th>Reference</th><th>Notes</th>
+  </tr></thead>
+  <tbody>
+    {% for r in receipts %}
+    <tr>
+      <td>{{ r.received_date }}</td>
+      <td>{{ r.item_name }}</td>
+      <td>{{ r.distributor_name }}</td>
+      <td class="num-col">{{ r.quantity|round(2) }}</td>
+      <td class="num-col">{{ r.unit_cost_at_receipt|money }}</td>
+      <td>{{ r.delivery_reference or '—' }}</td>
+      <td>{{ r.notes or '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="empty-note">No receipts logged yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

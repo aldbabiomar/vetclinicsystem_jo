@@ -222,6 +222,7 @@ def inventory_status(db):
             "days_to_expiry": days_to_expiry, "stock_status": stock_status, "expiry_status": expiry_status,
             "audit_status": audit_status, "critical_item": critical_item,
             "target_coverage_days": target_coverage_days, "distributor_id": it["distributor_id"],
+            "ownership_type": it["ownership_type"],
         })
     return status
 
@@ -1113,6 +1114,364 @@ def distributor_payables_summary(db):
         "unpaid_bill_count": unpaid_bill_count,
         "top_outstanding": ranked,
     }
+
+
+# ---------------------------------------------------------------------------
+# Consignment — a distributor's stock sitting on your shelf; they're owed
+# cost_price per unit once it sells, you keep the markup. Consignment
+# items are ordinary Retail inventory_list rows (ownership_type=
+# 'Consignment'), so they already flow through pos_checkout / audit
+# sessions / P&L exactly like owned stock with zero special-casing there.
+# This section is the distributor-facing receiving/shrinkage/returns/
+# settlement layer on top of that shared data.
+# ---------------------------------------------------------------------------
+def record_consignment_receipt(db, item_id, distributor_id, quantity, unit_cost_at_receipt,
+                                received_date, delivery_reference, notes, received_by):
+    """Logs stock a distributor drops off. Paired with an
+    inventory_transactions row (+quantity), same pattern pos_checkout and
+    refund restocking already use — this is what makes the new stock
+    immediately visible on Inventory Status and the next audit walk with
+    zero changes to inventory_status(). Does not commit."""
+    now = datetime.now().isoformat(timespec="seconds")
+    cur = db.execute(
+        "INSERT INTO consignment_receipts (item_id, distributor_id, quantity, unit_cost_at_receipt, "
+        "received_date, delivery_reference, notes, received_by, created_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
+        (item_id, distributor_id, quantity, unit_cost_at_receipt, received_date,
+         delivery_reference, notes, received_by, now),
+    )
+    receipt_id = cur.fetchone()["id"]
+    db.execute(
+        "INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
+        "VALUES (?,?,?,?,?,?)",
+        (item_id, quantity, "consignment_receipt", str(receipt_id), now, received_by),
+    )
+    return receipt_id
+
+
+def record_consignment_shrinkage(db, item_id, distributor_id, quantity, reason, liable_party,
+                                  liability_overridden, notes, logged_by):
+    """
+    Writes off damaged/expired consignment stock before it ever sold.
+    Locks the item's inventory_list row (SELECT ... FOR UPDATE) before
+    checking quantity against current shelf stock — same race this app's
+    POS checkout should also close (two concurrent write-offs could
+    otherwise both read the same "before" stock and together take it
+    negative). unit_cost is snapshotted from the item's current
+    cost_price at the moment of write-off. Paired with an
+    inventory_transactions row (-quantity), same shelf-count effect as a
+    sale. Does not commit.
+
+    Returns (ok, shrinkage_id_or_None, error_message_or_None).
+    """
+    db.execute("SELECT id FROM inventory_list WHERE id=? FOR UPDATE", (item_id,))
+    status = inventory_status_by_id(db, item_id)
+    # current_stock is None until this item has a confirmed audit — fail
+    # closed rather than let `quantity > None` either silently pass or
+    # raise a TypeError.
+    if status and status["current_stock"] is None:
+        return False, None, "This item hasn't been through an inventory audit yet — run an audit before writing off stock."
+    current_stock = status["current_stock"] if status else 0
+    if quantity > current_stock:
+        return False, None, f"Only {current_stock:g} unit(s) on the shelf — can't write off {quantity:g}."
+    item = db.execute("SELECT cost_price FROM inventory_list WHERE id=?", (item_id,)).fetchone()
+    unit_cost = (item["cost_price"] or 0) if item else 0
+    now = datetime.now().isoformat(timespec="seconds")
+    cur = db.execute(
+        "INSERT INTO consignment_shrinkage (item_id, distributor_id, quantity, reason, liable_party, "
+        "liability_overridden, unit_cost, notes, logged_by, logged_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
+        (item_id, distributor_id, quantity, reason, liable_party,
+         1 if liability_overridden else 0, unit_cost, notes, logged_by, now),
+    )
+    shrinkage_id = cur.fetchone()["id"]
+    db.execute(
+        "INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
+        "VALUES (?,?,?,?,?,?)",
+        (item_id, -quantity, "shrinkage", str(shrinkage_id), now, logged_by),
+    )
+    return True, shrinkage_id, None
+
+
+def record_consignment_return(db, item_id, distributor_id, quantity, return_date, reason, notes, returned_by):
+    """
+    Logs unsold stock physically handed back to the distributor — mirror
+    image of receiving. Same locking/capping pattern as
+    record_consignment_shrinkage() above (can't return more than what's
+    actually on the shelf). unit_cost_at_return is snapshotted from the
+    item's current cost_price. Paired with an inventory_transactions row
+    (-quantity). No revenue/COGS/settlement impact — nothing sold, so
+    nothing owed either way; returns never appear in
+    consignment_balance()'s formula. Does not commit.
+
+    Returns (ok, return_id_or_None, error_message_or_None).
+    """
+    db.execute("SELECT id FROM inventory_list WHERE id=? FOR UPDATE", (item_id,))
+    status = inventory_status_by_id(db, item_id)
+    if status and status["current_stock"] is None:
+        return False, None, "This item hasn't been through an inventory audit yet — run an audit before returning stock."
+    current_stock = status["current_stock"] if status else 0
+    if quantity > current_stock:
+        return False, None, f"Only {current_stock:g} unit(s) on the shelf — can't return {quantity:g}."
+    item = db.execute("SELECT cost_price FROM inventory_list WHERE id=?", (item_id,)).fetchone()
+    unit_cost = (item["cost_price"] or 0) if item else 0
+    now = datetime.now().isoformat(timespec="seconds")
+    cur = db.execute(
+        "INSERT INTO consignment_returns (item_id, distributor_id, quantity, unit_cost_at_return, "
+        "return_date, reason, notes, returned_by, created_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
+        (item_id, distributor_id, quantity, unit_cost, return_date, reason, notes, returned_by, now),
+    )
+    return_id = cur.fetchone()["id"]
+    db.execute(
+        "INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
+        "VALUES (?,?,?,?,?,?)",
+        (item_id, -quantity, "consignment_return", str(return_id), now, returned_by),
+    )
+    return True, return_id, None
+
+
+def consignment_balance(db, distributor_id):
+    """
+    The payable balance for one distributor, as of right now.
+
+        amount_owed = residual_from_last_settlement + new_activity_since
+
+    residual_from_last_settlement: (last_settlement.amount_owed -
+    amount_paid) — 0 if there's no prior settlement, or it was paid in
+    full. A confirmed partial settlement's unpaid remainder carries
+    forward exactly this way into the next period.
+
+    new_activity_since, restricted to this distributor's Consignment
+    items, uses sale_items.unit_cost — snapshotted at sale time, so this
+    can't retroactively change if a Price List / Inventory cost is edited
+    later (unlike a live join to inventory_list.cost_price would):
+        + units sold                 sale_items.quantity * unit_cost
+        - sales reversed & restocked refund_items.quantity * cost
+        + Clinic-liable shrinkage    consignment_shrinkage.quantity * unit_cost
+    Distributor-liable shrinkage adds nothing — they absorb that loss
+    directly, not you. Returns never appear here — no money changes
+    hands on a return.
+
+    The restock-reversal term is the one place this can't use a
+    per-line snapshot: refund_items doesn't link back to the specific
+    sale_items row it came from (only item_id + quantity), so it values
+    the reversal at *current* inventory_list.cost_price rather than the
+    original sale's cost. In practice this only matters if that item's
+    cost_price changed between the original sale and the refund, which
+    is a narrow window for something a clinic would return.
+
+    period_start/period_end are exclusive/inclusive bounds matching
+    consignment_settlements' own column semantics — a caller recording a
+    new settlement should write this call's period_start/period_end
+    straight into those columns.
+
+    The sales/refund scan is additionally floored per item at
+    inventory_list.consignment_since (when set) — GREATEST'd against
+    period_start — so a sale from before that specific item was actually
+    flagged Consignment (e.g. years of prior Retail sales on an item that
+    only just got flagged) never counts toward what's owed. Without this,
+    a brand-new distributor with no receiving logged yet has no
+    period_start at all, and every historical sale of a newly-flagged
+    item would be swept in.
+
+    Returns a dict: residual, period_start, period_end, new_activity,
+    amount_owed, units_sold_since, last_settlement_date.
+    """
+    last = db.execute(
+        "SELECT * FROM consignment_settlements WHERE distributor_id=? ORDER BY created_at DESC LIMIT 1",
+        (distributor_id,),
+    ).fetchone()
+    if last:
+        residual = round((last["amount_owed"] or 0) - (last["amount_paid"] or 0), 2)
+        period_start = last["period_end"]
+        last_settlement_date = last["created_at"]
+    else:
+        # No prior settlement — start from this distributor's earliest
+        # consignment activity of any kind (receiving is when their
+        # stock first became sellable at all).
+        earliest = db.execute(
+            "SELECT MIN(x) AS m FROM ("
+            "  SELECT MIN(created_at) AS x FROM consignment_receipts WHERE distributor_id=?"
+            "  UNION ALL SELECT MIN(logged_at) FROM consignment_shrinkage WHERE distributor_id=?"
+            "  UNION ALL SELECT MIN(created_at) FROM consignment_returns WHERE distributor_id=?"
+            ") t",
+            (distributor_id, distributor_id, distributor_id),
+        ).fetchone()
+        residual = 0
+        period_start = earliest["m"] if earliest else None
+        last_settlement_date = None
+
+    period_end = datetime.now().isoformat(timespec="seconds")
+
+    sold_where = (
+        "WHERE i.ownership_type='Consignment' AND i.distributor_id=? "
+        "AND s.sale_date > GREATEST(?, COALESCE(i.consignment_since, ''))"
+    )
+    sold_params = [distributor_id, period_start or ""]
+    sold_row = db.execute(
+        "SELECT COALESCE(SUM(si.quantity * COALESCE(si.unit_cost, 0)), 0) AS cost, "
+        "COALESCE(SUM(si.quantity), 0) AS units "
+        "FROM sale_items si JOIN sales s ON s.id = si.sale_id JOIN inventory_list i ON i.id = si.item_id "
+        + sold_where,
+        sold_params,
+    ).fetchone()
+    sold_cost = sold_row["cost"] or 0
+    units_sold = sold_row["units"] or 0
+
+    # refund_date is a DATE column (day precision only) while
+    # period_start/consignment_since are full timestamps — comparing at
+    # day granularity is the best this data actually supports; see the
+    # docstring above.
+    cost_by_item = {r["id"]: r["cost_price"] or 0 for r in db.execute("SELECT id, cost_price FROM inventory_list").fetchall()}
+    restock_where = (
+        "WHERE i.ownership_type='Consignment' AND i.distributor_id=? AND r.restocked=1 "
+        "AND r.refund_date > GREATEST(?::date, COALESCE(i.consignment_since::date, '-infinity'::date))"
+    )
+    restock_params = [distributor_id, period_start[:10] if period_start else "-infinity"]
+    restocked_rows = db.execute(
+        "SELECT ri.item_id, ri.quantity FROM refund_items ri JOIN refunds r ON r.id=ri.refund_id "
+        "JOIN inventory_list i ON i.id = ri.item_id " + restock_where,
+        restock_params,
+    ).fetchall()
+    restocked_cost = sum(rr["quantity"] * cost_by_item.get(rr["item_id"], 0) for rr in restocked_rows)
+
+    shrink_where = "WHERE distributor_id=? AND liable_party='Clinic'"
+    shrink_params = [distributor_id]
+    if period_start:
+        shrink_where += " AND logged_at > ?"
+        shrink_params.append(period_start)
+    shrink_row = db.execute(
+        "SELECT COALESCE(SUM(quantity * unit_cost), 0) AS cost FROM consignment_shrinkage " + shrink_where,
+        shrink_params,
+    ).fetchone()
+    shrinkage_cost = shrink_row["cost"] or 0
+
+    new_activity = round(sold_cost - restocked_cost + shrinkage_cost, 2)
+    amount_owed = round(residual + new_activity, 2)
+
+    return {
+        "residual": residual, "period_start": period_start, "period_end": period_end,
+        "new_activity": new_activity, "amount_owed": amount_owed,
+        "units_sold_since": units_sold, "last_settlement_date": last_settlement_date,
+    }
+
+
+def consignment_distributors_overview(db):
+    """
+    One row per distributor with >=1 Consignment item: shelf stock (units
+    + value at their cost), amount owed right now, last settlement date,
+    units sold this month. Calls consignment_balance() per distributor —
+    fine at the scale this screen is for (a clinic's number of
+    distributor relationships, not its transaction volume).
+
+    inventory_status(db) is computed exactly ONCE up front and looked up
+    by item_id from a dict — NOT via inventory_status_by_id() per
+    Consignment item, which would recompute the whole catalog's status
+    just to return one row (O(distributors x items-per-distributor x
+    full-catalog-size) — fine with a handful of test rows, severe on a
+    clinic's real inventory history).
+    """
+    status_by_item = {s["item_id"]: s for s in inventory_status(db)}
+    distributors = db.execute(
+        "SELECT DISTINCT d.id, d.name FROM distributors d "
+        "JOIN inventory_list i ON i.distributor_id = d.id "
+        "WHERE i.ownership_type='Consignment' ORDER BY d.name"
+    ).fetchall()
+    this_month = date.today().isoformat()[:7]
+    out = []
+    for d in distributors:
+        items = db.execute(
+            "SELECT id, cost_price FROM inventory_list WHERE distributor_id=? AND ownership_type='Consignment'",
+            (d["id"],),
+        ).fetchall()
+        shelf_units, shelf_value = 0, 0
+        for it in items:
+            status = status_by_item.get(it["id"])
+            stock = (status["current_stock"] if status else 0) or 0
+            shelf_units += stock
+            shelf_value += stock * (it["cost_price"] or 0)
+        month_units = db.execute(
+            "SELECT COALESCE(SUM(si.quantity), 0) AS u FROM sale_items si "
+            "JOIN sales s ON s.id=si.sale_id JOIN inventory_list i ON i.id=si.item_id "
+            "WHERE i.distributor_id=? AND i.ownership_type='Consignment' AND s.sale_date LIKE ?",
+            (d["id"], this_month + "%"),
+        ).fetchone()["u"] or 0
+        balance = consignment_balance(db, d["id"])
+        out.append({
+            "distributor_id": d["id"], "distributor_name": d["name"],
+            "shelf_units": shelf_units, "shelf_value": round(shelf_value, 2),
+            "amount_owed": balance["amount_owed"], "last_settlement_date": balance["last_settlement_date"],
+            "units_sold_this_month": month_units,
+        })
+    return out
+
+
+def consignment_sales_by_distributor(db, distributor_id=None, date_from=None, date_to=None):
+    """
+    Sales-by-distributor report. Uses sale_items.unit_cost — the
+    price/cost as it actually stood at the moment of that specific sale
+    (snapshotted at sale time) — not a live join to inventory_list, so
+    this always agrees with consignment_balance()'s own settlement math
+    on the same number for the same sale.
+    """
+    where = ["i.ownership_type = 'Consignment'"]
+    params = []
+    if distributor_id:
+        where.append("d.id = ?")
+        params.append(distributor_id)
+    if date_from:
+        where.append("s.sale_date >= ?")
+        params.append(date_from)
+    if date_to:
+        where.append("s.sale_date < ?")
+        params.append(date_to)
+    rows = db.execute(
+        "SELECT d.id AS distributor_id, d.name AS distributor_name, "
+        "substring(s.sale_date, 1, 7) AS month, i.id AS item_id, i.name AS item_name, "
+        "SUM(si.quantity) AS units_sold, SUM(si.line_total) AS revenue, "
+        "SUM(si.quantity * COALESCE(si.unit_cost, 0)) AS owed_to_distributor, "
+        "SUM(si.line_total) - SUM(si.quantity * COALESCE(si.unit_cost, 0)) AS your_markup "
+        "FROM sale_items si JOIN sales s ON s.id = si.sale_id JOIN inventory_list i ON i.id = si.item_id "
+        "JOIN distributors d ON d.id = i.distributor_id "
+        "WHERE " + " AND ".join(where) +
+        " GROUP BY d.id, d.name, month, i.id, i.name ORDER BY month DESC, d.name, i.name",
+        params,
+    ).fetchall()
+    return rows
+
+
+def consignment_item_locked(db, item_id):
+    """
+    True once a Consignment item has ever had a receipt, sale, or
+    settlement-relevant activity against it — at that point its
+    distributor_id becomes uneditable in the UI (an item never switches
+    distributors mid-life; a supply-source change means a new
+    inventory_list row, not a re-point of this one, so historical
+    settlement math for the old distributor can't silently break).
+
+    The sale_items check is deliberately scoped to items that are
+    CURRENTLY ownership_type='Consignment' — consignment_balance() only
+    ever sums a sale_items row into a distributor's balance while its
+    item is presently Consignment (see that function's own query), so a
+    plain Retail item's sale history from whenever it was Owned isn't
+    "consignment-relevant activity" and shouldn't block it from being
+    flagged as Consignment for the first time. Checking unconditionally
+    would mean almost any actively-sold retail item could never be
+    flagged at all. consignment_receipts/shrinkage/returns don't have
+    this problem: those tables can only ever gain a row for an item that
+    was Consignment at the moment it happened (each recording route
+    itself requires ownership_type='Consignment' first), so an Owned item
+    can never have false-positive rows there.
+    """
+    if db.execute("SELECT 1 FROM consignment_receipts WHERE item_id=?", (item_id,)).fetchone():
+        return True
+    item = db.execute("SELECT ownership_type FROM inventory_list WHERE id=?", (item_id,)).fetchone()
+    if item and item["ownership_type"] == "Consignment":
+        if db.execute("SELECT 1 FROM sale_items WHERE item_id=?", (item_id,)).fetchone():
+            return True
+    if db.execute("SELECT 1 FROM consignment_shrinkage WHERE item_id=?", (item_id,)).fetchone():
+        return True
+    if db.execute("SELECT 1 FROM consignment_returns WHERE item_id=?", (item_id,)).fetchone():
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------

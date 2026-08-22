@@ -33,7 +33,7 @@
   <tbody>
     {% for r in rows %}
     <tr>
-      <td><strong>{{ r.name }}</strong>{% if r.critical_item %} <span class="badge danger" style="margin-left:4px;">critical</span>{% endif %}</td>
+      <td><strong>{{ r.name }}</strong>{% if r.critical_item %} <span class="badge danger" style="margin-left:4px;">critical</span>{% endif %}{% if r.ownership_type == 'Consignment' %} <span class="badge" style="margin-left:4px;">consignment</span>{% endif %}</td>
       <td class="muted">{{ r.unit or "—" }}</td>
       <td class="num-col">{{ r.current_stock if r.current_stock is not none else "—" }}</td>
       <td class="num-col">{{ r.reorder_threshold if r.reorder_threshold is not none else "—" }}</td>

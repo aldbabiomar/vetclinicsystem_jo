@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Settle — {{ distributor.name }} — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Settle with {{ distributor.name }}</h1>
+    <p class="page-sub">{{ distributor.contact_person or '' }}{% if distributor.phone %} · {{ distributor.phone }}{% endif %}</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('consignment_overview') }}">← Back to Overview</a>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <h2 style="margin-top:0;">Current Balance</h2>
+  <table style="width:100%; max-width:520px;">
+    <tr><td>Carried forward from last settlement</td><td class="num-col">{{ balance.residual|money }} JOD</td></tr>
+    <tr><td>New activity this period</td><td class="num-col">{{ balance.new_activity|money }} JOD</td></tr>
+    <tr style="font-weight:600; border-top:1px solid var(--line);"><td>Amount Owed Now</td><td class="num-col">{{ balance.amount_owed|money }} JOD</td></tr>
+  </table>
+  <p class="small muted" style="margin-top:10px;">Period: {{ balance.period_start[:10] if balance.period_start else 'start' }} — {{ balance.period_end[:10] }}
+    · {{ balance.units_sold_since|round(2) }} unit(s) sold since last settlement.</p>
+
+  {% if has_permission('manage_consignment_settlements') %}
+  <form method="post" action="{{ url_for('consignment_settlement_new', distributor_id=distributor.id) }}" class="form-grid" style="margin-top:16px;" onsubmit="return confirm('Record this settlement? The amount owed will be recalculated at the moment you submit.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field"><label>Amount Paid (JOD)</label><input type="number" step="1" name="amount_paid" value="{{ balance.amount_owed|round|int }}" required></div>
+    <div class="field"><label>Payment Method</label>
+      <select name="payment_method">
+        <option value="">—</option>
+        <option>Cash</option><option>Card</option><option>Transfer</option>
+      </select>
+    </div>
+    <div class="field full"><label>Notes</label><input name="notes"></div>
+    <div class="field full">
+      <button class="btn" type="submit">Record Settlement</button>
+    </div>
+  </form>
+  <p class="small muted">A partial payment carries the remainder forward as the starting balance for the next settlement.</p>
+  {% endif %}
+</div>
+
+<h2>Settlement History</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Date</th><th>Period</th><th class="num-col">Owed (JOD)</th><th class="num-col">Paid (JOD)</th>
+    <th class="num-col">Residual (JOD)</th><th>Method</th><th>Recorded By</th><th></th>
+  </tr></thead>
+  <tbody>
+    {% for s in history %}
+    <tr>
+      <td>{{ s.created_at[:10] }}</td>
+      <td>{{ (s.period_start[:10] if s.period_start else 'start') }} — {{ s.period_end[:10] }}</td>
+      <td class="num-col">{{ s.amount_owed|money }}</td>
+      <td class="num-col">{{ s.amount_paid|money }}</td>
+      <td class="num-col">{{ (s.amount_owed - s.amount_paid)|money }}</td>
+      <td>{{ s.payment_method or '—' }}</td>
+      <td>{{ s.settled_by_name or '—' }}</td>
+      <td><a class="btn small secondary" href="{{ url_for('consignment_settlement_export', settlement_id=s.id) }}">PDF</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty-note">No settlements recorded yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

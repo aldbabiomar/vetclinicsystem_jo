@@ -64,6 +64,24 @@
       <a class="nav-link {{ 'active' if request.endpoint=='distributors_list' }}" href="{{ url_for('distributors_list') }}">Distributors</a>
     </div>
 
+    {% set consignment_perms = ['view_consignment','manage_consignment_items','manage_consignment_stock','manage_consignment_settlements'] %}
+    {% if consignment_perms | select('in', session.get('permissions', [])) | list | length > 0 %}
+    <div class="nav-group">
+      <div class="nav-label">Consignment</div>
+      {% if has_permission('view_consignment') %}
+      <a class="nav-link {{ 'active' if request.endpoint=='consignment_overview' }}" href="{{ url_for('consignment_overview') }}">Overview</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='consignment_items' }}" href="{{ url_for('consignment_items') }}">Items</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='consignment_receiving_page' }}" href="{{ url_for('consignment_receiving_page') }}">Receiving</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='consignment_shrinkage_page' }}" href="{{ url_for('consignment_shrinkage_page') }}">Shrinkage</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='consignment_returns_page' }}" href="{{ url_for('consignment_returns_page') }}">Returns</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='consignment_sales_page' }}" href="{{ url_for('consignment_sales_page') }}">Sales by Distributor</a>
+      {% endif %}
+      {% if has_permission('manage_consignment_settlements') %}
+      <a class="nav-link {{ 'active' if request.endpoint=='consignment_settlements_page' }}" href="{{ url_for('consignment_overview') }}">Settlements</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <div class="nav-group">
       <div class="nav-label">Sales &amp; Billing</div>
       <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('pos_page') }}">Point of Sale</a>

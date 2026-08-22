@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Consignment Sales by Distributor — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Sales by Distributor</h1>
+    <p class="page-sub">What sold, what's owed the distributor, and your markup — priced at what each sale actually
+      charged and cost at the time, not today's Price List.</p>
+  </div>
+</div>
+
+<form class="search-bar" method="get">
+  <select name="distributor_id">
+    <option value="">All Distributors</option>
+    {% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if distributor_id==d.id }}>{{ d.name }}</option>{% endfor %}
+  </select>
+  <input type="date" name="date_from" value="{{ date_from }}" placeholder="From">
+  <input type="date" name="date_to" value="{{ date_to }}" placeholder="To">
+  <button class="btn secondary" type="submit">Filter</button>
+  {% if distributor_id or date_from or date_to %}<a class="btn secondary" href="{{ url_for('consignment_sales_page') }}">Clear</a>{% endif %}
+</form>
+
+<div class="table-wrap sticky-scroll">
+<table>
+  <thead class="sticky-header"><tr>
+    <th>Month</th><th>Distributor</th><th>Item</th><th class="num-col">Units Sold</th>
+    <th class="num-col">Revenue (JOD)</th><th class="num-col">Owed to Distributor (JOD)</th><th class="num-col">Your Markup (JOD)</th>
+  </tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.month }}</td>
+      <td>{{ r.distributor_name }}</td>
+      <td>{{ r.item_name }}</td>
+      <td class="num-col">{{ r.units_sold|round(2) }}</td>
+      <td class="num-col">{{ r.revenue|money }}</td>
+      <td class="num-col">{{ r.owed_to_distributor|money }}</td>
+      <td class="num-col">{{ r.your_markup|money }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="empty-note">No Consignment sales in this range.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

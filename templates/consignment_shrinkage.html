@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Consignment Shrinkage — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Consignment Shrinkage</h1>
+    <p class="page-sub">Damaged/expired Consignment stock, written off before it sold. {{ total_count }} entr{{ 'y' if total_count == 1 else 'ies' }} on file.</p>
+  </div>
+  {% if has_permission('manage_consignment_stock') %}
+  <button class="btn" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Log Shrinkage</button>
+  {% endif %}
+</div>
+
+{% if has_permission('manage_consignment_stock') %}
+<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+  <form method="post" action="{{ url_for('consignment_shrinkage_new') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="field"><label>Item</label>
+        <select name="item_id" required>
+          <option value="">—</option>
+          {% for i in items %}<option value="{{ i.id }}">{{ i.name }} ({{ i.distributor_name }})</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Quantity</label><input type="number" step="any" name="quantity" required></div>
+      <div class="field"><label>Reason</label>
+        <select name="reason" required>
+          <option value="Damaged">Damaged</option>
+          <option value="Expired">Expired</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Liable Party</label>
+        <select name="liable_party">
+          <option value="">Default for reason (Expired → Distributor, else → Clinic)</option>
+          <option value="Distributor">Distributor</option>
+          <option value="Clinic">Clinic</option>
+        </select>
+      </div>
+      <div class="field full"><label>Notes</label><input name="notes"></div>
+    </div>
+    <p class="small muted" style="margin:4px 0 12px;">Clinic-liable shrinkage adds to what's owed the distributor at settlement — they're
+      still owed for stock lost on your side. Distributor-liable shrinkage adds nothing — they absorb that loss directly.</p>
+    <div class="form-actions">
+      <button class="btn" type="submit">Log Shrinkage</button>
+      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="table-wrap sticky-scroll">
+<table>
+  <thead class="sticky-header"><tr>
+    <th>Date</th><th>Item</th><th>Distributor</th><th class="num-col">Quantity</th>
+    <th>Reason</th><th>Liable</th><th class="num-col">Unit Cost (JOD)</th><th>Notes</th>
+  </tr></thead>
+  <tbody>
+    {% for l in lines %}
+    <tr>
+      <td>{{ l.logged_at[:10] }}</td>
+      <td>{{ l.item_name }}</td>
+      <td>{{ l.distributor_name }}</td>
+      <td class="num-col">{{ l.quantity|round(2) }}</td>
+      <td>{{ l.reason }}</td>
+      <td>{{ l.liable_party }}{% if l.liability_overridden %} <span class="small muted">(overridden)</span>{% endif %}</td>
+      <td class="num-col">{{ l.unit_cost|money }}</td>
+      <td>{{ l.notes or '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty-note">No shrinkage logged yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

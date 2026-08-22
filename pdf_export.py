@@ -491,6 +491,59 @@ def export_boarding_pdf(db, boarding_id):
     return buf
 
 
+def export_consignment_settlement_pdf(db, settlement_id):
+    """One consignment settlement — what was owed, what was paid, any
+    residual carried forward, and the period it covers. A paper trail a
+    distributor can be handed alongside payment."""
+    ss = _styles()
+    s = db.execute(
+        "SELECT cs.*, d.name AS distributor_name, d.contact_person, d.phone, u.full_name AS settled_by_name "
+        "FROM consignment_settlements cs JOIN distributors d ON d.id=cs.distributor_id "
+        "LEFT JOIN users u ON u.id=cs.settled_by WHERE cs.id=?",
+        (settlement_id,),
+    ).fetchone()
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
+                             leftMargin=18 * mm, rightMargin=18 * mm)
+    residual = round((s["amount_owed"] or 0) - (s["amount_paid"] or 0), 2)
+    contact_bits = " · ".join(x for x in [s["contact_person"], s["phone"]] if x)
+    story = [
+        Paragraph("Consignment settlement", ss["H1"]),
+        Paragraph(f"Settlement #{X(settlement_id)} · {X(s['distributor_name'])}"
+                  f"{' · ' + X(contact_bits) if contact_bits else ''}", ss["Small"]),
+        Paragraph(f"Period: {X(s['period_start'] or 'start')} — {X(s['period_end'])}", ss["Small"]),
+        Paragraph(f"Recorded by {X(s['settled_by_name'] or '—')} on {X(s['created_at'])}", ss["Small"]),
+        Spacer(1, 14),
+    ]
+
+    rows = [
+        ["Amount Owed", f"{s['amount_owed']:,.0f} JOD"],
+        ["Amount Paid", f"{s['amount_paid']:,.0f} JOD"],
+        ["Payment Method", s["payment_method"] or "—"],
+    ]
+    if residual > 0:
+        rows.append(["Carried Forward to Next Settlement", f"{residual:,.0f} JOD"])
+    t = Table(rows, colWidths=[110 * mm, 55 * mm])
+    t.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("FONTNAME", (0, 0), (-1, 1), "Helvetica-Bold"),
+        ("LINEBELOW", (0, 1), (-1, 1), 0.75, PRIMARY),
+        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(t)
+
+    if s["notes"]:
+        story.append(Spacer(1, 12))
+        story.append(Paragraph("Notes", ss["H2"]))
+        story.append(Paragraph(X(s["notes"]), ss["Body"]))
+
+    doc.build(story)
+    buf.seek(0)
+    return buf
+
+
 def export_distributor_ledger(db, distributor_id):
     """One distributor — every bill, its payments, and running totals."""
     ss = _styles()

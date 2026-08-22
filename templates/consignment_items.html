@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Consignment Items — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Consignment Items</h1>
+    <p class="page-sub">Retail inventory items. Check "Consignment?" and pick a distributor to attach one and start
+      logging receiving/shrinkage/returns against it — check the box for as many items as you need, then save them
+      all at once.</p>
+  </div>
+  <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('consignment_items_bulk_edit') }}">Save Changes</button>
+</div>
+
+<div class="table-wrap sticky-scroll">
+<table>
+  <thead class="sticky-header"><tr>
+    <th>ID</th><th>Name</th><th>Consignment?</th><th>Distributor</th><th class="num-col">Cost Price (JOD)</th><th></th>
+  </tr></thead>
+  <tbody>
+    {% for i in items %}
+    {% set is_locked = locked.get(i.id) if i.ownership_type == 'Consignment' else false %}
+    {% if not is_locked and has_permission('manage_consignment_items') %}
+    <form id="edit-{{ i.id }}" method="post" action="{{ url_for('consignment_items_bulk_edit') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
+    {% endif %}
+    <tr {% if not is_locked and has_permission('manage_consignment_items') %}data-edit-form="edit-{{ i.id }}"{% endif %}>
+      <td class="muted" style="white-space:nowrap;">{{ i.id }}</td>
+      <td>{{ i.name }}</td>
+      <td>
+        {% if is_locked %}
+          <input type="checkbox" checked disabled title="Locked — has consignment activity">
+        {% elif has_permission('manage_consignment_items') %}
+          <input type="checkbox" form="edit-{{ i.id }}" name="is_consignment" id="isConsignment-{{ i.id }}"
+                 {{ 'checked' if i.ownership_type == 'Consignment' }}
+                 onchange="toggleConsignmentFields('{{ i.id }}')">
+        {% else %}
+          {{ 'Yes' if i.ownership_type == 'Consignment' else 'No' }}
+        {% endif %}
+      </td>
+      <td class="dist-cell">
+        {% if is_locked %}
+          <span class="small muted">{{ i.distributor_name or '—' }}</span>
+        {% elif has_permission('manage_consignment_items') %}
+          <select form="edit-{{ i.id }}" name="distributor_id" id="distSelect-{{ i.id }}"
+                  {{ '' if i.ownership_type == 'Consignment' else 'disabled' }}>
+            <option value="">—</option>
+            {% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if i.distributor_id==d.id }}>{{ d.name }}</option>{% endfor %}
+          </select>
+        {% else %}
+          {{ i.distributor_name or '—' }}
+        {% endif %}
+      </td>
+      <td class="num-col">
+        {% if is_locked %}
+          {{ i.cost_price|money if i.cost_price is not none else '—' }}
+        {% elif has_permission('manage_consignment_items') %}
+          <input type="number" step="1" form="edit-{{ i.id }}" name="cost_price" id="costPrice-{{ i.id }}"
+                 value="{{ i.cost_price if i.cost_price is not none else '' }}"
+                 {{ '' if i.ownership_type == 'Consignment' else 'disabled' }}
+                 style="width:90px; text-align:right;">
+        {% else %}
+          {{ i.cost_price|money if i.cost_price is not none else '—' }}
+        {% endif %}
+      </td>
+      <td class="small muted" style="white-space:nowrap;">
+        {% if is_locked %}Locked — has activity{% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty-note">No active Retail items — add one from Inventory Catalog first.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+
+<script>
+// Distributor/Cost Price only mean anything once "Consignment?" is
+// checked — greyed out (and excluded from what gets submitted, since a
+// disabled field's form= association is simply skipped) otherwise, and
+// re-enabled the instant the box is checked so a distributor can be
+// picked before saving.
+function toggleConsignmentFields(id) {
+  const on = document.getElementById('isConsignment-' + id).checked;
+  const dist = document.getElementById('distSelect-' + id);
+  const cost = document.getElementById('costPrice-' + id);
+  if (dist) dist.disabled = !on;
+  if (cost) cost.disabled = !on;
+  if (on && dist) dist.focus();
+}
+</script>
+<script src="{{ url_for('static', filename='unsaved-changes.js') }}"></script>
+{% endblock %}

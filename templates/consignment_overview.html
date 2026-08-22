@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Consignment — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Consignment</h1>
+    <p class="page-sub">Distributor-owned stock on your shelves. {{ rows|length }} distributor(s) with Consignment items.</p>
+  </div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Distributor</th>
+    <th class="num-col">Shelf Units</th>
+    <th class="num-col">Shelf Value (JOD)</th>
+    <th class="num-col">Amount Owed (JOD)</th>
+    <th>Last Settlement</th>
+    <th class="num-col">Sold This Month</th>
+    <th></th>
+  </tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.distributor_name }}</td>
+      <td class="num-col">{{ r.shelf_units|round(2) }}</td>
+      <td class="num-col">{{ r.shelf_value|money }}</td>
+      <td class="num-col">{{ r.amount_owed|money }}</td>
+      <td>{{ r.last_settlement_date[:10] if r.last_settlement_date else 'Never settled' }}</td>
+      <td class="num-col">{{ r.units_sold_this_month|round(2) }}</td>
+      <td style="white-space:nowrap;">
+        {% if has_permission('manage_consignment_settlements') %}
+        <a class="btn small secondary" href="{{ url_for('consignment_settlements_page', distributor_id=r.distributor_id) }}">Settle</a>
+        {% endif %}
+        <a class="btn small secondary" href="{{ url_for('consignment_sales_page', distributor_id=r.distributor_id) }}">Sales</a>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="empty-note">No Consignment items flagged yet — start from Consignment &gt; Items.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

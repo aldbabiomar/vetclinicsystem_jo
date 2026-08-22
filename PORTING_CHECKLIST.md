@@ -98,11 +98,32 @@ Confirmed by direct schema/code diff, not changelog description alone.
    table → PDF export produces a valid PDF → delete guards correctly block
    while dependents exist and correctly allow once cleared, in order
    (payment → bill → distributor).
-5. **Consignment** — new feature (4 new tables, 16 routes, 7 templates). The
-   original build explicitly used plain `float` + `round(x, 2)`, "no
-   dependency on Decimal/NUMERIC migration" — directly portable to Jordan
-   with no money-model rewrite needed. Depends on Phase A.1 (RBAC) for its
-   4 new permissions.
+5. **Consignment** ✅ DONE — `inventory_list.ownership_type`/`consignment_since`,
+   4 new tables (`consignment_receipts`/`shrinkage`/`returns`/`settlements`),
+   13 routes (overview, items + bulk-edit, receiving + new, shrinkage + new,
+   returns + new, sales-by-distributor, settlements + new + PDF export),
+   7 templates, a Consignment nav group (gated on the 4 permissions already
+   seeded in Phase A.1), and "consignment" badges on Inventory Status and
+   the Audit Session view. Adapted two Iraq-only pieces while porting:
+   `money.round_to_denomination()` on settlement `amount_paid` → plain
+   `round(x, 2)`, and `restocked=true`/boolean columns → Jordan's `=1`/
+   INTEGER convention throughout the new tables. The original build used
+   plain float with no Decimal dependency, so no other money-model rewrite
+   was needed. Skipped as lower-priority polish, not correctness: the
+   collapsible nav-group JS/CSS VetIQ added around the same time (Jordan's
+   nav groups stay simple/always-expanded, matching every other group),
+   and the non-blocking "shortfall on audit confirm" nudge message.
+   Verified end-to-end against a real Postgres: flag an item Consignment
+   via bulk-edit, receive stock (confirmed it appears on Inventory
+   Status), sell some via POS (confirmed `unit_cost` snapshot on
+   `sale_items`), balance/shelf-value/shelf-units all computed correctly
+   on the Overview page, shrinkage write-off and a return both correctly
+   adjusted the balance and shelf count, a partial settlement correctly
+   carried its residual into the next balance calculation, PDF export
+   produced a valid file, the Sales-by-Distributor report matched the
+   POS sale exactly, the item-lock guard held even against a raw POST
+   bypassing the UI, and shrinkage/returns were correctly rejected for an
+   item that's never been through a confirmed audit.
 6. **Cash Register** — new feature unifying POS/visit/inpatient/boarding
    payments + refunds into one end-of-day reconciliation page. Depends on
    Phase A.1 (new `manage_cash_register` permission) and requires Refunds to
@@ -151,12 +172,12 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | 1.0.0 | `parse_money()` accepted NaN/Infinity | **PORT** | Confirmed Jordan's `parse_money()` (`app.py:116`) does `float(raw)` with no NaN/Infinity guard — same bug is live in Jordan today. |
 | 1.1.0 | In-app updates on by default / versioned layout | **SKIP** | Depends on Phase A.7 decision. |
 | 1.1.1 / 1.1.2 | Settings spacing fix, native confirm→styled dialog | **PORT** | Trivial CSS/JS. |
-| 1.2.0 | Consignment bulk-edit UI, loading screen | **BLOCKED** on A.5 | |
-| 1.2.0 | Consignment-lock-on-any-past-sale bug fix | **BLOCKED** on A.5 | |
-| 1.2.1 | Consignment balance floor by `consignment_since` | **BLOCKED** on A.5 | |
+| 1.2.0 | Consignment bulk-edit UI, loading screen | ✅ **DONE** via A.5 | The Consignment Overview page's own loading-shell (VetIQ's `_render_with_progress`) wasn't ported — Jordan has no such background-job infrastructure elsewhere, and the page renders directly (fast enough at Jordan's scale: O(distributors), not O(catalog)). |
+| 1.2.0 | Consignment-lock-on-any-past-sale bug fix | ✅ **DONE** via A.5 | Ported the already-fixed `consignment_item_locked()` directly — the bug (any historical sale permanently locking an item) never existed in what shipped to Jordan. |
+| 1.2.1 | Consignment balance floor by `consignment_since` | ✅ **DONE** via A.5 | Ported directly — `consignment_balance()` already floors its scan at `inventory_list.consignment_since`. |
 | 1.3.0 | Bulk Barcode Print | **PORT** | No currency/RBAC dependency beyond an existing permission. |
 | 1.3.0 | Sales History end-of-day tally | **SKIP** | Superseded by Cash Register (A.6) one version later upstream — port Cash Register instead of this intermediate step. |
-| 1.3.0 | Pagination on Consignment pages | **BLOCKED** on A.5 | |
+| 1.3.0 | Pagination on Consignment pages | ✅ **DONE** via A.5 | Every Consignment list route ported with SQL pagination already in place. |
 | 1.3.0 | Barcode label box overflow fix | **PORT** | Confirmed Jordan has `barcode_label.html`/`barcode-render.js`-equivalent via `barcode.py`; check current CSS width. |
 | 1.3.0 | Refund routes: 250-rounded amount saved but un-rounded shown | **SKIP** | Iraq-only rounding bug. |
 | 1.3.0 | Payment-audit logged against parent id not payment id | **PORT [unverified]** | |
@@ -165,7 +186,7 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | 1.4.0 | "Bank Transfer"/"Transfer" label unification | **PORT [unverified]** | Check Jordan's payment-method values first. |
 | 1.4.0 | 4 delete routes logging "delete" even when nothing deleted | **PORT [unverified]** | |
 | 1.4.1 | Sticky table headers | **PORT** | Pure CSS. |
-| 1.4.1 | Payment-method dropdown instead of free text (distributor/consignment payments) | ✅ **DONE** (distributor half, via A.4) | Ported directly with the dropdown already in place — the free-text version this changelog entry replaced was never built in Jordan. Consignment half still blocked on A.5. |
+| 1.4.1 | Payment-method dropdown instead of free text (distributor/consignment payments) | ✅ **DONE** (both halves, via A.4 + A.5) | Ported directly with the dropdown already in place on both — the free-text version this changelog entry replaced was never built in Jordan. |
 | 1.4.1 | Grooming badge wrap fix, Cash Register note margin fix | **PORT (Grooming part only)** | Cash Register part blocked on A.6. |
 | 1.4.2 | Malformed date-filter crash guard (Visits/Refunds/Cash Register) | **PORT [unverified]** | Cash Register part blocked on A.6; Visits/Refunds part portable now. |
 | 1.4.2 | 6 PDF export crash-on-missing-record fixes + billing PDF number formatting | **PORT [unverified]** | Check Jordan's `pdf_export.py` for the same unguarded lookups. |
@@ -183,7 +204,7 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | 1.4.4 | Boarding pickup not updating monthly P&L cache | **PORT [unverified]** | |
 | 1.4.4 | Audit-confirm re-running inventory status per item instead of once | **PORT [unverified]** | Performance fix, portable regardless of consignment. |
 | 1.4.4 | Distributor bill payment overpay + double-submit race | ✅ **DONE** via A.4 | Ported directly with `SELECT ... FOR UPDATE` locking + the balance check already in place — verified live that an overpayment attempt is rejected. |
-| 1.4.4 | Consignment settlement double-submit race | **BLOCKED** on A.5 | |
+| 1.4.4 | Consignment settlement double-submit race | ✅ **DONE** via A.5 | Ported directly with the `SELECT ... FOR UPDATE` mutex on the distributor row already in place. |
 | 1.4.4 | Price List row linked to already-linked inventory item | **PORT [unverified]** | |
 | 1.4.4 | Phone number validation (short input, mis-normalized foreign number) | **PORT [unverified]** | Check Jordan's phone validator — this one may already differ since Jordan phone formats (Jordan +962) vs Iraq (+964) aren't interchangeable; port the *validation logic pattern*, not the literal country code. |
 | 1.4.5 | Refunding a discounted POS sale refunded pre-discount price | **PORT — high priority** | Real money-correctness bug, currency-model independent. Check Jordan's checkout/refund code for the same "discount only applied to total, not snapshotted per-item" pattern. |
