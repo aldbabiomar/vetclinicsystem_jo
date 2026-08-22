@@ -1,5 +1,5 @@
 """
-Database backups for Jordan Referral Center.
+Database backups for VetClinicSystem JO.
 
 Runs `pg_dump` against the running Postgres database and writes a
 timestamped, restorable dump file into whatever folder is configured on
@@ -18,7 +18,7 @@ from datetime import datetime
 
 import logic
 
-FILENAME_PREFIX = "jrc_backup_"
+FILENAME_PREFIX = "vetclinicsystemjo_backup_"
 FILENAME_SUFFIX = ".dump"
 
 
@@ -34,7 +34,7 @@ def _pg_conn_parts():
         host, port = (hostport.split(":", 1) + ["5432"])[:2]
         return user, dbname, host, port
     except Exception:
-        return "jrc", "jrc", "127.0.0.1", "5432"
+        return "vetclinicsystemjo", "vetclinicsystemjo", "127.0.0.1", "5432"
 
 
 def _run_pg_dump(out_path):
@@ -46,7 +46,7 @@ def _run_pg_dump(out_path):
         subprocess.run(cmd, check=True, env=env, capture_output=True, text=True)
         return
 
-    container = os.environ.get("JRC_PG_CONTAINER", "jrc_postgres")
+    container = os.environ.get("VETCLINICSYSTEMJO_PG_CONTAINER", "vetclinicsystemjo_postgres")
     if shutil.which("docker"):
         cmd = ["docker", "exec", container, "pg_dump", "-U", user, "-F", "c", dbname]
         with open(out_path, "wb") as f:
@@ -74,7 +74,7 @@ def run_backup(db, dest_dir=None, retention=None, triggered_by=None):
 
     try:
         os.makedirs(dest_dir, exist_ok=True)
-        probe = os.path.join(dest_dir, ".jrc_write_test")
+        probe = os.path.join(dest_dir, ".vetclinicsystemjo_write_test")
         with open(probe, "w") as f:
             f.write("ok")
         os.remove(probe)

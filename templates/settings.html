@@ -36,7 +36,7 @@
 
   <div class="section-title">Backups</div>
   <div class="form-grid">
-    <div class="field"><label>Backup Folder (on this computer)</label><input name="backup_dir" placeholder="e.g. /Users/you/JordanReferralCenterBackups or D:\JordanReferralCenterBackups" value="{{ settings.backup_dir }}"></div>
+    <div class="field"><label>Backup Folder (on this computer)</label><input name="backup_dir" placeholder="e.g. /Users/you/VetClinicSystemJOBackups or D:\VetClinicSystemJOBackups" value="{{ settings.backup_dir }}"></div>
     <div class="field"><label>Nightly Backup Time</label><input type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
     <div class="field"><label>Keep Last N Backups</label><input type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
   </div>

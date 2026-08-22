@@ -1,5 +1,5 @@
 """
-Jordan Referral Center — one-command setup.
+VetClinicSystem JO — one-command setup.
 Works the same way on macOS and Windows.
 
     python3 setup.py
@@ -86,7 +86,7 @@ def start_postgres():
     print("  Waiting for the database to be ready...")
     for _ in range(60):
         r = run(
-            compose + ["exec", "-T", "db", "pg_isready", "-U", "jrc", "-d", "jrc"],
+            compose + ["exec", "-T", "db", "pg_isready", "-U", "vetclinicsystemjo", "-d", "vetclinicsystemjo"],
             capture_output=True, text=True,
         )
         if r.returncode == 0:
@@ -203,8 +203,8 @@ def main():
     print(
         "\nAll set. Start the app with:\n"
         "  python3 app.py\n"
-        "\n(macOS: double-click 'Start Jordan Referral Center.command'."
-        "  Windows: double-click 'Start Jordan Referral Center.bat'.)\n"
+        "\n(macOS: double-click 'Start VetClinicSystem JO.command'."
+        "  Windows: double-click 'Start VetClinicSystem JO.bat'.)\n"
     )
 
 

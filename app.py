@@ -76,7 +76,7 @@ csrf = CSRFProtect(app)
 # HTTP, so this must stay off for a plain-HTTP LAN deployment — Waitress
 # itself doesn't terminate TLS, by its own design, so TLS here always means
 # "there's a reverse proxy in front", never "pass Waitress a certificate").
-BIND_PORT = int(os.environ.get("JRC_PORT", "5050"))
+BIND_PORT = int(os.environ.get("VETCLINICSYSTEMJO_PORT", "5050"))
 BEHIND_TLS_PROXY = os.environ.get("BEHIND_TLS_PROXY") == "1"
 if BEHIND_TLS_PROXY:
     from werkzeug.middleware.proxy_fix import ProxyFix
@@ -103,7 +103,7 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
 # devices) restrict which source addresses can reach the app at all,
 # independent of and in addition to login/permissions.
 _ALLOWED_NETWORKS = []
-for _cidr in os.environ.get("JRC_ALLOWED_NETWORKS", "").split(","):
+for _cidr in os.environ.get("VETCLINICSYSTEMJO_ALLOWED_NETWORKS", "").split(","):
     _cidr = _cidr.strip()
     if _cidr:
         _ALLOWED_NETWORKS.append(ipaddress.ip_network(_cidr, strict=False))
@@ -355,7 +355,7 @@ def stale_edit_error(old_updated_at, submitted_updated_at, what):
 # small self-contained normalizer (rather than pulling in a general-purpose
 # library like `phonenumbers`) is simpler and has no extra dependency to
 # install. Differs per clinic — these are the two lines that change between
-# ChamPet (Iraq) and Jordan Referral Center (Jordan).
+# ChamPet (Iraq) and VetClinicSystem JO (Jordan).
 PHONE_COUNTRY_CODE = "962"
 PHONE_LOCAL_LENGTH = 9  # digits after the country code, for a number with no explicit +/00 prefix — Jordan mobile numbers (07X XXX XXXX) are 9 digits once the leading trunk 0 is stripped
 
@@ -511,7 +511,7 @@ def inject_globals():
     trying to *show* the first one."""
     try:
         db = get_db()
-        clinic_name = logic.get_setting(db, "clinic_name", "Jordan Referral Center")
+        clinic_name = logic.get_setting(db, "clinic_name", "VetClinicSystem JO")
         clinic_location = logic.get_setting(db, "clinic_location", "Amman, Jordan")
         ctx = dict(clinic_name=clinic_name, clinic_location=clinic_location, today=date.today().isoformat(),
                    current_role=session.get("role"), current_username=session.get("username"))
@@ -532,7 +532,7 @@ def inject_globals():
             request.method, request.path, traceback.format_exc()
         )
         return dict(
-            clinic_name="Jordan Referral Center", clinic_location="",
+            clinic_name="VetClinicSystem JO", clinic_location="",
             today=date.today().isoformat(),
             current_role=session.get("role"), current_username=session.get("username"),
             alert_count=0,
@@ -4404,15 +4404,15 @@ if __name__ == "__main__":
     # unchanged (0.0.0.0:5050). BEHIND_TLS_PROXY above is how this app
     # supports HTTPS: via a reverse proxy in front, not by binding
     # Waitress directly to a different scheme.
-    bind_host = os.environ.get("JRC_HOST", "0.0.0.0")
+    bind_host = os.environ.get("VETCLINICSYSTEMJO_HOST", "0.0.0.0")
     scheme = "https" if BEHIND_TLS_PROXY else "http"
 
-    if os.environ.get("JRC_DEV") == "1":
+    if os.environ.get("VETCLINICSYSTEMJO_DEV") == "1":
         # Flask's dev server — convenient for local debugging only; not used
         # for normal clinic operation.
         app.run(debug=True, host=bind_host, port=BIND_PORT)
     else:
         from waitress import serve
-        print("Jordan Referral Center is running — reachable on the clinic network at "
+        print("VetClinicSystem JO is running — reachable on the clinic network at "
               f"{scheme}://{lan_address()}:{BIND_PORT}")
         serve(app, host=bind_host, port=BIND_PORT, threads=8)

@@ -1,5 +1,5 @@
 """
-Jordan Referral Center — computation engine (v3).
+VetClinicSystem JO — computation engine (v3).
 Pure computation over SQLite tables; no Flask imports.
 """
 import calendar

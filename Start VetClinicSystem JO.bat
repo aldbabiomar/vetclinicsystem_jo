@@ -1,12 +1,12 @@
 @echo off
-REM Jordan Referral Center — double-click launcher (Windows)
+REM VetClinicSystem JO — double-click launcher (Windows)
 REM First run: creates a virtual environment, installs dependencies, sets up
 REM PostgreSQL in Docker, and loads your data. Every run after that: just
 REM starts the app and opens it in your browser.
 
 cd /d "%~dp0"
 
-echo Jordan Referral Center - starting up...
+echo VetClinicSystem JO - starting up...
 echo.
 
 REM 1. Create the virtual environment if it doesn't exist yet
@@ -47,7 +47,7 @@ REM 5. Open the browser shortly after the server starts, then start the server
 start "" cmd /c "timeout /t 2 >nul && start http://127.0.0.1:5050"
 
 echo.
-echo Jordan Referral Center is running at http://127.0.0.1:5050
+echo VetClinicSystem JO is running at http://127.0.0.1:5050
 echo Leave this window open while you use the app.
 echo Close this window ^(or press Ctrl+C^) to stop it.
 echo.

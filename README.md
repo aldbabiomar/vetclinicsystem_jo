@@ -1,6 +1,6 @@
-# Jordan Referral Center — clinic management system
+# VetClinicSystem JO — clinic management system
 
-A full clinic management system for Jordan Referral Center (Amman, Jordan) — patients, visits,
+A full clinic management system for VetClinicSystem JO (Amman, Jordan) — patients, visits,
 inpatient care, wellness & grooming tracking, appointments, a point of sale,
 inventory & ordering, billing, and P&L reporting — running entirely on one
 computer in the clinic, reachable from any device on the clinic's WiFi.
@@ -16,8 +16,8 @@ needs to be installed once.
 
 **One-time only:**
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (free) and open it once so it finishes starting up.
-2. **macOS:** double-click `Start Jordan Referral Center.command` (first time, macOS will refuse to open it — right-click → **Open** → **Open** again; you only need to do this once).
-   **Windows:** double-click `Start Jordan Referral Center.bat`.
+2. **macOS:** double-click `Start VetClinicSystem JO.command` (first time, macOS will refuse to open it — right-click → **Open** → **Open** again; you only need to do this once).
+   **Windows:** double-click `Start VetClinicSystem JO.bat`.
 
 That single script creates the Python environment, installs dependencies,
 starts PostgreSQL, and sets up the database, seeding it with the clinic's
@@ -26,7 +26,7 @@ in your browser.
 
 **Manual setup**, if you'd rather run it yourself:
 ```bash
-cd 'Jordan Referral Center'
+cd 'VetClinicSystem_JO'
 python3 -m venv venv
 source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -183,7 +183,7 @@ can also click **Back Up Now** any time.
 To restore a backup (only needed if you're recovering from a serious
 problem):
 ```bash
-pg_restore --clean --if-exists -d "$DATABASE_URL" path/to/jrc_backup_XXXXXXXX_XXXXXX.dump
+pg_restore --clean --if-exists -d "$DATABASE_URL" path/to/vetclinicsystemjo_backup_XXXXXXXX_XXXXXX.dump
 ```
 
 ## Running on multiple computers / higher traffic
@@ -195,7 +195,7 @@ Docker container — nothing else in the app needs to change.
 
 ## Your data
 
-Everything lives in PostgreSQL (inside the `jrc_pgdata` Docker volume) —
+Everything lives in PostgreSQL (inside the `vetclinicsystemjo_pgdata` Docker volume) —
 see **Nightly Backups** above for how it's backed up automatically.
 Uploaded X-rays/bloodwork still live in the `uploads/` folder alongside the
 app — that folder isn't part of the database backup, so also back it up

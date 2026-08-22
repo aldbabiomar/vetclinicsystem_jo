@@ -1,12 +1,12 @@
 #!/bin/bash
-# Jordan Referral Center — double-click launcher (macOS)
+# VetClinicSystem JO — double-click launcher (macOS)
 # First run: creates a virtual environment, installs dependencies, sets up
 # PostgreSQL in Docker, and loads your data. Every run after that: just
 # starts the app and opens it in your browser.
 
 cd "$(dirname "$0")" || exit 1
 
-echo "Jordan Referral Center — starting up..."
+echo "VetClinicSystem JO — starting up..."
 echo ""
 
 # 1. Create the virtual environment if it doesn't exist yet
@@ -45,7 +45,7 @@ fi
 ( sleep 1.5 && open "http://127.0.0.1:5050" ) &
 
 echo ""
-echo "Jordan Referral Center is running at http://127.0.0.1:5050"
+echo "VetClinicSystem JO is running at http://127.0.0.1:5050"
 echo "Leave this window open while you use the app."
 echo "Close this window (or press Control-C) to stop it."
 echo ""

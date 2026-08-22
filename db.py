@@ -1,5 +1,5 @@
 """
-Postgres connection layer for Jordan Referral Center.
+Postgres connection layer for VetClinicSystem JO.
 
 This module exists so the rest of the codebase (app.py, logic.py, auth.py,
 attachments.py, ...) can use a consistent, simple data-access style. It provides:

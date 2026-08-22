@@ -1,6 +1,6 @@
 """
 Authentication, roles, permissions, audit trail, and discount-cap logic for
-Jordan Referral Center.
+VetClinicSystem JO.
 """
 import uuid
 from datetime import datetime, timedelta

@@ -1,4 +1,4 @@
--- Jordan Referral Center database schema — v3 (PostgreSQL)
+-- VetClinicSystem JO database schema — v3 (PostgreSQL)
 -- Ported from the original SQLite schema.sql. Table/column names, types,
 -- and constraints are unchanged except: AUTOINCREMENT -> IDENTITY, and
 -- REAL -> DOUBLE PRECISION (same practical behavior, more standard on PG).

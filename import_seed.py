@@ -1,5 +1,5 @@
 """
-Database builder for Jordan Referral Center (v3 schema).
+Database builder for VetClinicSystem JO (v3 schema).
 Run once with:  python3 import_seed.py
 Builds the Postgres schema and loads any starter data from seed_data.json
 (currently empty - fill it in, or just enter data through the app once it's running).
@@ -251,7 +251,7 @@ def main():
 
     # ---------------- Default settings ----------------
     defaults = {
-        "clinic_name": "Jordan Referral Center",
+        "clinic_name": "VetClinicSystem JO",
         "clinic_location": "Amman, Jordan",
         "currency": "JOD",
         "audit_overdue_days": "35",

@@ -1,6 +1,6 @@
 """
 Generates a large, internally-consistent manufactured dataset for
-stress-testing Jordan Referral Center (used to validate the Insights / Retention BI
+stress-testing VetClinicSystem JO (used to validate the Insights / Retention BI
 tabs against ~1.7M rows). Pure set-based SQL (generate_series + array
 lookups) — no per-row Python inserts — so it can build the whole dataset
 in well under a minute even at this scale.
