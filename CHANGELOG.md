@@ -3,6 +3,26 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.0.3] - 2026-08-23
+
+### Fixed
+- An account lockout could be kept renewed indefinitely by firing a fresh
+  burst of wrong-password guesses right as the previous lockout expired.
+  Lockouts now escalate (15/30/60/120 min, capped at 4 hours) across
+  repeated episodes and reset on a successful login.
+- Changing or resetting a password now signs out that user's other active
+  sessions immediately, instead of leaving them valid for up to 12 hours.
+- Logging out while forced to change your password now actually logs you
+  out, instead of bouncing back to the Change Password page.
+- Backup dump files are now restricted to owner-only permissions — they
+  contain full patient/owner information.
+- A very large `?page=` value, a null byte in a URL or form field, and a
+  malformed date filter on Visits/POS History/Refunds no longer produce a
+  raw error page.
+
+### Added
+- A baseline Content-Security-Policy header.
+
 ## [1.0.2] - 2026-08-22
 
 ### Fixed
