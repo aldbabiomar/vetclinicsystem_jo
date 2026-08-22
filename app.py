@@ -909,10 +909,16 @@ def api_inventory_lookup():
     if q:
         rows = db.execute("SELECT id, name FROM inventory_list WHERE active=1 AND category='Retail' AND name ILIKE ? LIMIT 10",
                           (f"%{q}%",)).fetchall()
+        # inventory_status_by_id() re-runs the whole catalog-wide status
+        # computation and linear-scans for one item — fine called once, not
+        # once per matched row here (up to 10x per autocomplete keystroke
+        # otherwise). Computed once up front and looked up by item_id
+        # instead.
+        status_by_item = {s["item_id"]: s for s in logic.inventory_status(db)}
         out = []
         for r in rows:
             price = logic.item_sale_price(db, r["id"])
-            status = logic.inventory_status_by_id(db, r["id"])
+            status = status_by_item.get(r["id"])
             out.append({"id": r["id"], "name": r["name"], "price": price,
                         "stock": status["current_stock"] if status else None})
         return jsonify(out)
