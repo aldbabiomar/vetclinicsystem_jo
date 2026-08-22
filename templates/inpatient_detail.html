@@ -180,7 +180,15 @@
 <div class="tab-pane" id="tab-files" style="display:none;">
   <div class="card">
     {% for file in files %}
-    <div class="list-line"><a href="{{ url_for('serve_attachment', relpath=file.relative_path) }}" target="_blank">{{ file.original_name }}</a><span class="meta">{{ file.uploaded_at[:10] }}</span></div>
+    <div class="list-line">
+      <a href="{{ url_for('serve_attachment', relpath=file.relative_path) }}" target="_blank">{{ file.original_name }}</a>
+      <span class="meta">{{ file.uploaded_at[:10] }}
+        <form method="post" action="{{ url_for('attachment_delete', attachment_id=file.id) }}" style="display:inline;" onsubmit="return confirm('Delete {{ file.original_name }}?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn small danger" type="submit" style="margin-left:8px;">Delete</button>
+        </form>
+      </span>
+    </div>
     {% else %}<div class="empty-note">No files uploaded yet.</div>{% endfor %}
     <form method="post" action="{{ url_for('inpatient_attachment_upload', case_id=case.id) }}" enctype="multipart/form-data" style="margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

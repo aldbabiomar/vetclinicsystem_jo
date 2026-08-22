@@ -1523,6 +1523,42 @@ def serve_attachment(relpath):
     return send_from_directory(attach_mod.UPLOAD_ROOT, relpath)
 
 
+@app.route("/attachments/<int:attachment_id>/delete", methods=["POST"])
+def attachment_delete(attachment_id):
+    """
+    Deletes one uploaded Additional Test / X-Ray — from both the database
+    and the uploads/ folder on disk — and records it in the audit log so
+    a removed file still shows up in Admin > Logins and Changes. Shared by
+    every place in the app that lists attachments (Visit Detail, Inpatient
+    Detail), since a visit's and an inpatient case's attachments both live
+    in the same `attachments` table.
+    """
+    db = get_db()
+    row = attach_mod.get_attachment(db, attachment_id)
+    if row is None:
+        flash("File not found — it may have already been deleted.", "error")
+        return redirect(request.referrer or url_for("dashboard"))
+
+    if row["visit_id"]:
+        redirect_target = url_for("visit_detail", visit_id=row["visit_id"])
+    elif row["inpatient_case_id"]:
+        redirect_target = url_for("inpatient_detail", case_id=row["inpatient_case_id"])
+    else:
+        redirect_target = url_for("dashboard")
+
+    deleted, err = attach_mod.delete_attachment(db, attachment_id)
+    if err:
+        flash(err, "error")
+        return redirect(redirect_target)
+    if deleted is None:
+        flash("File not found — it may have already been deleted.", "error")
+        return redirect(redirect_target)
+    auth.log_change(db, "attachments", str(attachment_id), "delete")
+    db.commit()
+    flash(f"Deleted {deleted['original_name']}.", "success")
+    return redirect(redirect_target)
+
+
 # ---------------------------------------------------------------------------
 # Follow-ups
 # ---------------------------------------------------------------------------
