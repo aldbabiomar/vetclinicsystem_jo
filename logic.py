@@ -79,6 +79,7 @@ def get_or_create_draft_session(db, audit_date, user_id):
         (audit_date, user_id, datetime.now().isoformat(timespec="seconds")),
     )
     new_id = cur.fetchone()["id"]
+    authmod.log_change(db, "audit_sessions", str(new_id), "create")
     db.commit()
     return new_id
 

@@ -710,13 +710,14 @@ def change_password():
         user = db.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
         if not auth.verify_password(user["password_hash"], current):
             flash("Current password is incorrect.", "error")
-        elif len(new) < 6:
-            flash("New password must be at least 6 characters.", "error")
+        elif len(new) < 8:
+            flash("New password must be at least 8 characters.", "error")
         elif new != confirm:
             flash("New password and confirmation don't match.", "error")
         else:
             db.execute("UPDATE users SET password_hash=?, must_change_password=0 WHERE id=?",
                        (auth.hash_password(new), user["id"]))
+            auth.log_change(db, "users", user["id"], "update", {"password": ("(hidden)", "(self-service change)")})
             db.commit()
             flash("Password updated.", "success")
             return redirect(url_for("dashboard"))
@@ -750,8 +751,8 @@ def admin_user_new():
     if not username or not full_name or not role:
         flash("Fill in a username, full name, and role.", "error")
         return redirect(url_for("admin_users"))
-    if len(password) < 6:
-        flash("Password must be at least 6 characters.", "error")
+    if len(password) < 8:
+        flash("Password must be at least 8 characters.", "error")
         return redirect(url_for("admin_users"))
     if db.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
         flash("That username is already taken.", "error")
@@ -834,8 +835,8 @@ def admin_user_role(user_id):
 def admin_user_reset_password(user_id):
     db = get_db()
     new_pw = request.form.get("new_password", "")
-    if len(new_pw) < 6:
-        flash("Password must be at least 6 characters.", "error")
+    if len(new_pw) < 8:
+        flash("Password must be at least 8 characters.", "error")
         return redirect(url_for("admin_users"))
     db.execute("UPDATE users SET password_hash=?, must_change_password=1 WHERE id=?",
                (auth.hash_password(new_pw), user_id))
