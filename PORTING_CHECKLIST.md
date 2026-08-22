@@ -24,6 +24,48 @@ currency-model one.
 
 ---
 
+## In-app update mechanism (ported from VetClinicSystem_IQ)
+
+✅ **DONE** (v1.0.0). Ported IQ's self-update flow as-is: `updater.py`,
+`jobs.py`, the `/health` endpoint, and setup.py's `--enable-updates`
+(on by default for new installs) that restructures an install onto a
+persistent-data / versioned-release layout. Settings now has a Check for
+Updates / Update Now / Rollback section, pulling tagged releases from
+`aldbabiomar/vetclinicsystem_jo` via `GITHUB_REPO`. `VERSION` and
+`CHANGELOG.md` start at 1.0.0 here — Jordan wasn't under changelog
+tracking before this.
+
+Adapted rather than copied verbatim: `updater._run_schema_sync()` calls
+only `setup.apply_schema()` here (Jordan's version already runs
+`apply_incremental_migrations()` internally — IQ's two are separate
+calls). The Settings UI doesn't use IQ's VZProgress/VZToast/VZDialog
+JS framework (Jordan's frontend never adopted it) — built with plain
+`fetch`/`confirm()`/text-status polling instead, same underlying job
+API.
+
+Two gaps found in IQ's own reference implementation while porting (fixed
+here from the start, flagged separately for IQ rather than fixed there):
+`attachments.py`'s `UPLOAD_ROOT` and `app.py`'s `ERROR_LOG_PATH` resolve
+against `VETCLINICSYSTEMJO_DATA_DIR` when the versioned-release layout is
+active, instead of always resolving relative to whichever release folder
+happens to be running — otherwise the very first real update would
+orphan every existing attachment and start writing logs into a folder
+`updater.py` prunes a couple of releases later. Also found (via live
+testing, not inspection) that `OPEN_ENDPOINTS` didn't exempt `health`,
+which made every update's health probe redirect to `/login` and fail —
+IQ's own `OPEN_ENDPOINTS` already includes it; Jordan's didn't yet.
+
+Live-verified end to end in an isolated scratch checkout (own Postgres
+database, own venv, never touching the real dev checkout): a real
+`--enable-updates` run, `Check for Updates` resolving the real
+`v1.0.0` GitHub Release, a full `apply_update()` cycle against a
+locally-served "next version" tarball (backup → download → validate →
+isolated venv install → schema sync → throwaway-port health probe →
+promote → supervisor restart), and a manual rollback — all succeeded,
+zero errors, database untouched by the rollback.
+
+---
+
 ## Jordan-specific: float → Decimal/NUMERIC (JOD is a real 3-decimal currency, unlike IQD)
 
 ✅ **DONE.** Unlike VetClinicSystem_IQ, JOD is one of three currencies
