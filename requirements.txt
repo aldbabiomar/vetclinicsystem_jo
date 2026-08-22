@@ -7,3 +7,4 @@ waitress>=3.0
 APScheduler>=3.10
 python-dotenv>=1.0
 Flask-WTF>=1.2
+requests>=2.31

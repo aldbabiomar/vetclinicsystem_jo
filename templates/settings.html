@@ -49,6 +49,136 @@
   <button class="btn secondary" type="submit">Back Up Now</button>
 </form>
 
+<div class="section-title">Updates</div>
+<div id="updatesConfigured" style="display:none;">
+  <div class="detail-item"><div class="k">Current Version</div><div class="v" id="updCurrentVersion">VetClinicSystem JO v{{ app_version }}</div></div>
+  <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+    <button class="btn secondary" type="button" id="updCheckBtn" onclick="checkForUpdates()">Check for Updates</button>
+    <span id="updCheckStatus" class="small muted"></span>
+  </div>
+  <div id="updAvailablePanel" style="display:none; margin-top:14px; padding:14px; border:1px solid var(--line-soft); border-radius:10px;">
+    <div style="font-weight:600; margin-bottom:6px;">Version <span id="updLatestTag"></span> is available</div>
+    <pre id="updChangelogBody" class="small" style="white-space:pre-wrap; font-family:inherit; margin:0 0 12px;"></pre>
+    <div style="display:flex; gap:10px;">
+      <button class="btn" type="button" id="updApplyBtn" onclick="applyUpdate()">Update Now</button>
+      <button class="btn secondary" type="button" onclick="document.getElementById('updAvailablePanel').style.display='none';">Not Now</button>
+    </div>
+  </div>
+  <div id="updateProgress" class="small muted" style="display:none; margin-top:12px;"></div>
+  <div style="margin-top:14px;">
+    <button class="btn secondary" type="button" id="updRollbackBtn" onclick="rollbackUpdate()">Rollback to Previous Version</button>
+  </div>
+</div>
+<div id="updatesNotConfigured" class="small muted" style="display:none;">
+  Automatic updates aren't set up on this install yet. An administrator can enable them by running
+  <code>python3 setup.py --enable-updates</code> on the computer running VetClinicSystem JO.
+</div>
+<script>
+async function loadUpdatesStatus() {
+  try {
+    const res = await fetch('/settings/updates/check');
+    const data = await res.json();
+    document.getElementById('updatesConfigured').style.display = data.configured ? '' : 'none';
+    document.getElementById('updatesNotConfigured').style.display = data.configured ? 'none' : '';
+    if (data.configured && data.current_version) {
+      document.getElementById('updCurrentVersion').textContent = 'VetClinicSystem JO v' + data.current_version;
+    }
+  } catch (err) { /* leave both panels hidden on load failure */ }
+}
+loadUpdatesStatus();
+
+async function checkForUpdates() {
+  const btn = document.getElementById('updCheckBtn');
+  const statusEl = document.getElementById('updCheckStatus');
+  btn.disabled = true;
+  statusEl.textContent = 'Checking…';
+  try {
+    const res = await fetch('/settings/updates/check');
+    const data = await res.json();
+    if (data.error) { statusEl.textContent = data.error; return; }
+    if (data.available) {
+      statusEl.textContent = '';
+      document.getElementById('updLatestTag').textContent = data.latest_tag;
+      document.getElementById('updChangelogBody').textContent = data.latest_body || '';
+      document.getElementById('updAvailablePanel').style.display = '';
+    } else {
+      statusEl.textContent = "You're on the latest version.";
+      document.getElementById('updAvailablePanel').style.display = 'none';
+    }
+  } catch (err) {
+    statusEl.textContent = "Couldn't check for updates.";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function waitForRestart(successMessage) {
+  const panel = document.getElementById('updateProgress');
+  panel.style.display = 'block';
+  panel.textContent = 'Restarting VetClinicSystem JO — this page will reconnect automatically.';
+  let attempts = 0;
+  const poll = setInterval(async () => {
+    attempts++;
+    try {
+      const res = await fetch('/health', { cache: 'no-store' });
+      if (res.ok) {
+        clearInterval(poll);
+        panel.textContent = successMessage;
+        setTimeout(() => window.location.reload(), 800);
+      }
+    } catch (err) { /* still restarting — keep polling */ }
+    if (attempts > 60) {  // ~2 minutes
+      clearInterval(poll);
+      panel.textContent = "Taking longer than expected to come back — check with whoever manages this computer.";
+    }
+  }, 2000);
+}
+
+function runUpdateJob(startUrl, actionLabel) {
+  const panel = document.getElementById('updateProgress');
+  panel.style.display = 'block';
+  panel.textContent = actionLabel + ' starting…';
+  fetch(startUrl, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+  })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok || !data.job_id) { panel.textContent = data.error || (actionLabel + ' failed to start.'); return; }
+      const poll = setInterval(async () => {
+        const res = await fetch('/settings/job-status?job_id=' + data.job_id);
+        const s = await res.json();
+        if (s.status === 'not_found') { clearInterval(poll); return; }
+        if (s.status === 'running') {
+          const label = s.steps[s.current] || actionLabel + '…';
+          panel.textContent = label + ' (' + (s.current + 1) + '/' + s.steps.length + ')';
+        } else if (s.status === 'done') {
+          clearInterval(poll);
+          if (s.ok) {
+            waitForRestart(s.message || (actionLabel + ' complete.'));
+          } else {
+            panel.textContent = s.message || (actionLabel + ' failed.');
+          }
+        } else if (s.status === 'error') {
+          clearInterval(poll);
+          panel.textContent = s.message || (actionLabel + ' failed.');
+        }
+      }, 1500);
+    })
+    .catch(() => { panel.textContent = actionLabel + ' failed to start.'; });
+}
+
+function applyUpdate() {
+  if (!confirm('This will restart VetClinicSystem JO for everyone for about 30 seconds. A backup will be taken first. Continue?')) return;
+  runUpdateJob('/settings/updates/apply', 'Update');
+}
+
+function rollbackUpdate() {
+  if (!confirm('This will roll back to the previous version and restart VetClinicSystem JO for everyone for about 30 seconds. Continue?')) return;
+  runUpdateJob('/settings/updates/rollback', 'Rollback');
+}
+</script>
+
 {% if recent_backups %}
 <div class="section-title">Recent Backups</div>
 <div class="table-wrap">

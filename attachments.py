@@ -14,7 +14,15 @@ from datetime import datetime
 
 import auth
 
-UPLOAD_ROOT = os.path.join(os.path.dirname(__file__), "uploads")
+# On the versioned-release layout (VETCLINICSYSTEMJO_DATA_DIR set by the
+# launcher script — see updater.py / setup.py --enable-updates), uploads
+# must live in the persistent data dir, not next to this file — a release
+# folder is replaced wholesale on every update, and anything stored
+# relative to it would be orphaned (or deleted outright, once old releases
+# get pruned) the moment that happens.
+_data_dir = os.environ.get("VETCLINICSYSTEMJO_DATA_DIR")
+UPLOAD_ROOT = (os.path.join(_data_dir, "attachments", "uploads") if _data_dir
+               else os.path.join(os.path.dirname(__file__), "uploads"))
 ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg"}
 
 # Magic-byte signatures so a renamed file can't slip past the extension check.

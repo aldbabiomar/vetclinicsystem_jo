@@ -14,12 +14,18 @@ To restore a backup later:
 import os
 import shutil
 import subprocess
+import threading
 from datetime import datetime
 
 import logic
 
 FILENAME_PREFIX = "vetclinicsystemjo_backup_"
 FILENAME_SUFFIX = ".dump"
+
+# Held for the duration of a backup, restore, or in-app update (see
+# updater.py) so none of those three can start while another is already
+# running against the same database.
+maintenance_lock = threading.Lock()
 
 
 def _pg_conn_parts():

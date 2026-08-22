@@ -200,13 +200,227 @@ def main():
     apply_schema()
     migrate_or_seed()
 
+    # In-app updates (Settings -> Updates) are on by default for every new
+    # install — this switches onto the versioned-release layout
+    # automatically, the same as running setup.py --enable-updates by hand
+    # used to require. Skipped when already running from inside a managed
+    # release, or when --no-enable-updates is passed (e.g. a plain local
+    # dev checkout that deliberately wants to keep running in place).
+    # "Already inside a managed release" is checked two ways: VETCLINICSYSTEMJO_DATA_DIR
+    # is set when launched through the real launcher, but someone can also
+    # cd into a release folder and run setup.py by hand with no env vars
+    # set at all — the structural check (this folder is literally named
+    # app_v* directly under a vetclinicsystemjo-releases/ folder) catches that case
+    # too, since re-running enable_updates() from in there would resolve
+    # data_dir/releases_dir relative to the WRONG parent and nest a second,
+    # broken layout inside the first.
+    in_release_folder = (
+        os.path.basename(BASE_DIR).startswith("app_v")
+        and os.path.basename(os.path.dirname(BASE_DIR)) == "vetclinicsystemjo-releases"
+    )
+    already_managed = bool(os.environ.get("VETCLINICSYSTEMJO_DATA_DIR")) or in_release_folder
+    if already_managed or "--no-enable-updates" in sys.argv:
+        print(
+            "\nAll set. Start the app with:\n"
+            "  python3 app.py\n"
+            "\n(macOS: double-click 'Start VetClinicSystem JO.command'."
+            "  Windows: double-click 'Start VetClinicSystem JO.bat'.)\n"
+        )
+        return
+
+    enable_updates()
+
+
+# ---------------------------------------------------------------------------
+# One-time opt-in: switch this install onto the versioned-release layout
+# the in-app updater (Settings -> Updates, updater.py) needs. Not run by
+# default main() — an admin runs `python3 setup.py --enable-updates`
+# deliberately, since it moves .env/logs/attachments out of this folder.
+# See UPDATE_MECHANISM_PLAN.md §3 for the target layout.
+# ---------------------------------------------------------------------------
+_MACOS_LAUNCHER = """#!/bin/bash
+# VetClinicSystem JO — supervisor launcher (macOS). Lives in vetclinicsystemjo-data/,
+# OUTSIDE any versioned release folder, so it survives every update.
+# Reads active_release.txt fresh on every loop iteration to know which
+# vetclinicsystemjo-releases/app_vX.Y.Z/ to run, and restarts automatically if the
+# app process exits for any reason — a crash, or the deliberate exit
+# updater.py triggers after promoting a new release (see
+# updater.py's _request_restart()). updater.py has already proven the new
+# release boots and passes /health, on a throwaway port, before ever
+# flipping the pointer that controls what this loop runs next — this
+# script's only job is to keep something running and pick up that change.
+set -u
+DATA_DIR="$(cd "$(dirname "$0")" && pwd)"
+RELEASES_DIR="$(cd "$DATA_DIR/../vetclinicsystemjo-releases" && pwd)"
+POINTER="$DATA_DIR/active_release.txt"
+PORT="${VETCLINICSYSTEMJO_PORT:-5050}"
+opened_browser=false
+
+echo "VetClinicSystem JO is running at http://127.0.0.1:$PORT"
+echo "Leave this window open while you use the app."
+echo "Close this window (or press Control-C) to stop it."
+echo ""
+
+while true; do
+  ACTIVE=$(cat "$POINTER" 2>/dev/null || true)
+  if [ -z "$ACTIVE" ] || [ ! -d "$RELEASES_DIR/$ACTIVE" ]; then
+    echo "No valid release at $POINTER — can't start. Run setup.py --enable-updates again?"
+    read -p "Press Return to close this window..."
+    exit 1
+  fi
+  RELEASE_DIR="$RELEASES_DIR/$ACTIVE"
+  echo "Starting $ACTIVE..."
+  VETCLINICSYSTEMJO_DATA_DIR="$DATA_DIR" VETCLINICSYSTEMJO_RELEASES_DIR="$RELEASES_DIR" VETCLINICSYSTEMJO_PORT="$PORT" \\
+    "$RELEASE_DIR/venv/bin/python3" "$RELEASE_DIR/app.py" &
+  APP_PID=$!
+
+  if [ "$opened_browser" = false ]; then
+    ( sleep 1.5 && open "http://127.0.0.1:$PORT" ) &
+    opened_browser=true
+  fi
+
+  wait "$APP_PID"
+  echo "VetClinicSystem JO exited (code $?) — restarting in 2 seconds..."
+  sleep 2
+done
+"""
+
+_WINDOWS_LAUNCHER = """@echo off
+REM VetClinicSystem JO — supervisor launcher (Windows). Lives in vetclinicsystemjo-data\\,
+REM OUTSIDE any versioned release folder, so it survives every update.
+REM Reads active_release.txt fresh on every loop iteration — see the
+REM matching comment in the macOS launcher (Start VetClinicSystem JO.command) for
+REM why this loop doesn't need its own health-check/rollback logic.
+setlocal
+set "DATA_DIR=%~dp0"
+set "RELEASES_DIR=%DATA_DIR%..\\vetclinicsystemjo-releases"
+set "POINTER=%DATA_DIR%active_release.txt"
+if not defined VETCLINICSYSTEMJO_PORT set "VETCLINICSYSTEMJO_PORT=5050"
+set "OPENED_BROWSER=0"
+
+:loop
+set /p ACTIVE=<"%POINTER%"
+if not exist "%RELEASES_DIR%\\%ACTIVE%" (
+  echo No valid release at %POINTER% — can't start. Run setup.py --enable-updates again?
+  pause
+  exit /b 1
+)
+set "RELEASE_DIR=%RELEASES_DIR%\\%ACTIVE%"
+echo Starting %ACTIVE%...
+set "VETCLINICSYSTEMJO_DATA_DIR=%DATA_DIR%"
+set "VETCLINICSYSTEMJO_RELEASES_DIR=%RELEASES_DIR%"
+if "%OPENED_BROWSER%"=="0" (
+  start "" http://127.0.0.1:%VETCLINICSYSTEMJO_PORT%
+  set "OPENED_BROWSER=1"
+)
+"%RELEASE_DIR%\\venv\\Scripts\\python.exe" "%RELEASE_DIR%\\app.py"
+echo VetClinicSystem JO exited — restarting in 2 seconds...
+timeout /t 2 /nobreak >nul
+goto loop
+"""
+
+
+def _copy_release_snapshot(dest):
+    """Copies the current codebase into dest, excluding everything that
+    belongs to a specific machine/install rather than the versioned app
+    itself (venv, .git, __pycache__, and anything already destined for
+    vetclinicsystemjo-data/)."""
+    exclude = {"venv", ".git", "__pycache__", "logs", ".env", "vetclinicsystemjo-data", "vetclinicsystemjo-releases"}
+    shutil.copytree(
+        BASE_DIR, dest,
+        ignore=lambda src, names: [n for n in names if n in exclude or n.startswith(".env")],
+    )
+
+
+def enable_updates(data_dir=None, releases_dir=None):
+    step("Switching to the versioned-release layout")
+    parent = os.path.dirname(BASE_DIR)
+    data_dir = os.path.abspath(data_dir or os.path.join(parent, "vetclinicsystemjo-data"))
+    releases_dir = os.path.abspath(releases_dir or os.path.join(parent, "vetclinicsystemjo-releases"))
+    pointer = os.path.join(data_dir, "active_release.txt")
+
+    if os.path.isfile(pointer):
+        print(f"  Already enabled — {pointer} exists.")
+        print(f"  VETCLINICSYSTEMJO_DATA_DIR={data_dir}\n  VETCLINICSYSTEMJO_RELEASES_DIR={releases_dir}")
+        return
+
+    version_path = os.path.join(BASE_DIR, "VERSION")
+    if not os.path.isfile(version_path):
+        print("  No VERSION file in this codebase — can't determine the release name. Aborting.")
+        sys.exit(1)
+    version = open(version_path).read().strip()
+    release_name = f"app_v{version}"
+    release_path = os.path.join(releases_dir, release_name)
+
+    print(f"  This will:\n"
+          f"    - create {data_dir}/ (persistent: .env, logs, attachments, backups)\n"
+          f"    - create {releases_dir}/{release_name}/ (a copy of this codebase)\n"
+          f"    - move .env, logs/, attachments/uploads/ into {data_dir}/\n"
+          f"    - write new launcher scripts into {data_dir}/\n"
+          f"  This folder ({BASE_DIR}) is left as-is otherwise — nothing here is deleted.\n")
+
+    os.makedirs(data_dir, exist_ok=True)
+    os.makedirs(releases_dir, exist_ok=True)
+    os.makedirs(os.path.join(data_dir, "backups"), exist_ok=True)
+
+    print(f"  Copying codebase into {release_path} ...")
+    if os.path.isdir(release_path):
+        shutil.rmtree(release_path)
+    _copy_release_snapshot(release_path)
+
+    print("  Creating this release's own virtual environment...")
+    subprocess.run([sys.executable, "-m", "venv", os.path.join(release_path, "venv")], check=True)
+    venv_py = os.path.join(release_path, "venv", "Scripts" if sys.platform == "win32" else "bin",
+                            "python.exe" if sys.platform == "win32" else "python3")
+    subprocess.run([venv_py, "-m", "pip", "install", "-q", "-r", "requirements.txt"],
+                    check=True, cwd=release_path)
+
+    env_src = os.path.join(BASE_DIR, ".env")
+    env_dst = os.path.join(data_dir, ".env")
+    if os.path.isfile(env_src) and not os.path.isfile(env_dst):
+        shutil.move(env_src, env_dst)
+        print(f"  Moved .env -> {env_dst}")
+
+    logs_src = os.path.join(BASE_DIR, "logs")
+    logs_dst = os.path.join(data_dir, "logs")
+    os.makedirs(logs_dst, exist_ok=True)
+    if os.path.isdir(logs_src):
+        for name in os.listdir(logs_src):
+            shutil.move(os.path.join(logs_src, name), os.path.join(logs_dst, name))
+
+    uploads_src = os.path.join(BASE_DIR, "uploads")
+    uploads_dst = os.path.join(data_dir, "attachments", "uploads")
+    if os.path.isdir(uploads_src):
+        os.makedirs(os.path.dirname(uploads_dst), exist_ok=True)
+        shutil.move(uploads_src, uploads_dst)
+        print(f"  Moved uploads/ -> {uploads_dst}")
+
+    with open(pointer, "w") as f:
+        f.write(release_name)
+
+    mac_launcher = os.path.join(data_dir, "Start VetClinicSystem JO.command")
+    win_launcher = os.path.join(data_dir, "Start VetClinicSystem JO.bat")
+    with open(mac_launcher, "w", newline="\n") as f:
+        f.write(_MACOS_LAUNCHER)
+    os.chmod(mac_launcher, 0o755)
+    with open(win_launcher, "w", newline="\r\n") as f:
+        f.write(_WINDOWS_LAUNCHER)
+
     print(
-        "\nAll set. Start the app with:\n"
-        "  python3 app.py\n"
-        "\n(macOS: double-click 'Start VetClinicSystem JO.command'."
-        "  Windows: double-click 'Start VetClinicSystem JO.bat'.)\n"
+        f"\nDone. Add these two lines to {env_dst}:\n\n"
+        f"  VETCLINICSYSTEMJO_DATA_DIR={data_dir}\n"
+        f"  VETCLINICSYSTEMJO_RELEASES_DIR={releases_dir}\n\n"
+        f"Then start the app from now on with:\n"
+        f"  {mac_launcher}   (macOS)\n"
+        f"  {win_launcher}   (Windows)\n\n"
+        f"Not from {os.path.join(BASE_DIR, 'Start VetClinicSystem JO.command')} anymore — that copy has no "
+        f"way to pick up future updates. This original folder is untouched and safe to keep "
+        f"around, but the copy under {releases_dir}/ is what actually runs from now on.\n"
     )
 
 
 if __name__ == "__main__":
-    main()
+    if "--enable-updates" in sys.argv:
+        enable_updates()
+    else:
+        main()

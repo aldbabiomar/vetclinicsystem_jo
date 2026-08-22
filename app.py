@@ -15,7 +15,17 @@ from decimal import Decimal, InvalidOperation
 from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
-load_dotenv()
+# On the versioned-release layout (VETCLINICSYSTEMJO_DATA_DIR set by the
+# launcher script — see updater.py / setup.py --enable-updates), .env
+# lives in the data dir, not next to this file, and code here runs from a
+# release folder whose working directory at launch isn't guaranteed.
+# Falls back to load_dotenv()'s normal upward search from cwd otherwise,
+# unchanged from before this option existed.
+_data_dir = os.environ.get("VETCLINICSYSTEMJO_DATA_DIR")
+if _data_dir:
+    load_dotenv(os.path.join(_data_dir, ".env"))
+else:
+    load_dotenv()
 
 from flask import (
     Flask, render_template, request, redirect, url_for, flash, g, jsonify,
@@ -30,9 +40,12 @@ import auth
 import db as dbmod
 import barcode as barcode_mod
 import attachments as attach_mod
+import jobs
 import pdf_export
 
 BASE_DIR = os.path.dirname(__file__)
+_version_path = os.path.join(BASE_DIR, "VERSION")
+VERSION = open(_version_path).read().strip() if os.path.exists(_version_path) else "unknown"
 
 class _DecimalJSONProvider(DefaultJSONProvider):
     """Flask's default JSON provider has no idea what a Decimal is (it only
@@ -178,7 +191,8 @@ def add_security_headers(resp):
 # A dedicated file+logger, independent of the DB, so a crash caused by the
 # database itself being unreachable still gets captured.
 # ---------------------------------------------------------------------------
-ERROR_LOG_PATH = os.path.join(BASE_DIR, "logs", "errors.log")
+ERROR_LOG_PATH = (os.path.join(_data_dir, "logs", "errors.log") if _data_dir
+                  else os.path.join(BASE_DIR, "logs", "errors.log"))
 os.makedirs(os.path.dirname(ERROR_LOG_PATH), exist_ok=True)
 
 error_logger = logging.getLogger("vetzone.errors")
@@ -482,7 +496,7 @@ app.jinja_env.globals["bind_port"] = BIND_PORT
 # ---------------------------------------------------------------------------
 # Auth gate
 # ---------------------------------------------------------------------------
-OPEN_ENDPOINTS = {"login", "static"}
+OPEN_ENDPOINTS = {"login", "static", "health"}
 
 
 @app.before_request
@@ -4263,6 +4277,20 @@ def reports_opex_save():
     return redirect(url_for("reports"))
 
 
+@app.route("/health")
+def health():
+    """Used by updater.py to confirm a new release actually boots and can
+    reach the database — not just that the process started. No auth
+    required (harmless — reveals nothing beyond the version string; the
+    updater probes this on a throwaway localhost port before the release
+    it's checking is ever promoted)."""
+    try:
+        get_db().execute("SELECT 1")
+        return {"status": "ok", "version": VERSION}, 200
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}, 503
+
+
 # ---------------------------------------------------------------------------
 # Settings (Admin only)
 # ---------------------------------------------------------------------------
@@ -4358,6 +4386,7 @@ def settings_page():
     return render_template(
         "settings.html", settings=settings, lan_address=lan_address(),
         recent_backups=backup_mod.recent_backups(db),
+        app_version=VERSION,
     )
 
 
@@ -4366,9 +4395,104 @@ def settings_page():
 def settings_backup_now():
     db = get_db()
     import backup as backup_mod
-    ok, message = backup_mod.run_backup(db)
+    if not backup_mod.maintenance_lock.acquire(blocking=False):
+        flash("A backup, restore, or update is already running — try again once it finishes.", "error")
+        return redirect(url_for("settings_page"))
+    try:
+        ok, message = backup_mod.run_backup(db)
+    finally:
+        backup_mod.maintenance_lock.release()
     flash(message, "success" if ok else "error")
     return redirect(url_for("settings_page"))
+
+
+@app.route("/settings/job-status")
+@auth.permission_required("manage_settings")
+def settings_job_status():
+    """Polled by the progress panel on the Updates section."""
+    job_id = request.args.get("job_id", "")
+    state = jobs.status(job_id)
+    if state is None:
+        return jsonify({"status": "not_found"}), 404
+    payload = {
+        "status": state["status"],
+        "steps": state["steps"],
+        "current": state["current"],
+        "fraction": state.get("fraction"),
+        "started_at": state["started_at"],
+    }
+    if state["status"] == "done":
+        result = state.get("result") or {}
+        payload["ok"] = result.get("ok")
+        payload["message"] = result.get("message")
+    elif state["status"] == "error":
+        payload["message"] = state.get("error")
+    return jsonify(payload)
+
+
+@app.route("/settings/updates/check")
+@auth.permission_required("manage_settings")
+def settings_updates_check():
+    import updater
+    if not updater.is_configured():
+        return jsonify({"configured": False, "current_version": VERSION})
+    try:
+        available, latest = updater.is_update_available()
+    except Exception:
+        return jsonify({"configured": True, "current_version": updater.current_version(),
+                         "error": "Couldn't check for updates — offline, or GitHub is unreachable."}), 502
+    return jsonify({
+        "configured": True,
+        "current_version": updater.current_version(),
+        "available": available,
+        "latest_tag": latest.get("tag_name"),
+        "latest_body": latest.get("body"),
+    })
+
+
+@app.route("/settings/updates/apply", methods=["POST"])
+@auth.permission_required("manage_settings")
+def settings_updates_apply():
+    import updater
+    if not updater.is_configured():
+        return jsonify({"error": "Updates aren't set up on this install yet."}), 400
+    try:
+        available, latest = updater.is_update_available()
+    except Exception:
+        return jsonify({"error": "Couldn't check for updates — offline, or GitHub is unreachable."}), 502
+    if not available:
+        return jsonify({"error": "Already on the latest version."}), 400
+    tag_name, tarball_url = latest.get("tag_name"), latest.get("tarball_url")
+
+    def task(update):
+        ok, message = updater.apply_update(tag_name, tarball_url, on_progress=update)
+        return {"ok": ok, "message": message}
+
+    job_id = jobs.start(
+        ["Backing up database", "Downloading release", "Validating release",
+         "Applying database changes", "Verifying the new version", "Switching to the new version"],
+        task,
+    )
+    return jsonify({"job_id": job_id})
+
+
+@app.route("/settings/updates/rollback", methods=["POST"])
+@auth.permission_required("manage_settings")
+def settings_updates_rollback():
+    import updater
+    if not updater.is_configured():
+        return jsonify({"error": "Updates aren't set up on this install yet."}), 400
+    candidates = [n for n in updater.list_releases() if n != updater.active_release_name()]
+    if not candidates:
+        return jsonify({"error": "No previous release available to roll back to."}), 400
+
+    def task(update):
+        update(0)
+        ok, message = updater.rollback_to_previous()
+        return {"ok": ok, "message": message}
+
+    job_id = jobs.start(["Rolling back"], task)
+    return jsonify({"job_id": job_id})
 
 
 if __name__ == "__main__":
