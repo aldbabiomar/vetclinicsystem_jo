@@ -4095,6 +4095,9 @@ def reports_opex_save():
     if not month:
         flash("Pick a month first.", "error")
         return redirect(url_for("reports"))
+    if not re.fullmatch(r"\d{4}-\d{2}", month):
+        flash("That's not a valid month.", "error")
+        return redirect(url_for("reports"))
     try:
         rent = parse_money(f.get("rent")) or 0
         salaries = parse_money(f.get("salaries")) or 0
