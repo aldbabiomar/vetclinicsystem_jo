@@ -72,7 +72,7 @@ def main():
                       'Rania Fadhil','Yousif Kamal','Sara Adnan','Omar Fawzi','Maha Rasheed',
                       'Layla Sabah'])[g],
                (SELECT id FROM roles WHERE name = CASE WHEN g=1 THEN 'Admin' WHEN g<=6 THEN 'Vet' ELSE 'Reception' END),
-               1, 0, now()::text
+               true, false, now()::text
         FROM generate_series(1,{n['users']}) g
     """)
 

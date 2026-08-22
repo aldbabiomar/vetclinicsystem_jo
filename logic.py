@@ -1845,7 +1845,7 @@ def week_dates(anchor_iso):
 
 
 def day_grid(db, day_iso):
-    vets = db.execute("SELECT id, full_name FROM users WHERE role_id IN (SELECT id FROM roles WHERE is_vet_role=true) AND active=1 ORDER BY full_name").fetchall()
+    vets = db.execute("SELECT id, full_name FROM users WHERE role_id IN (SELECT id FROM roles WHERE is_vet_role=true) AND active=true ORDER BY full_name").fetchall()
     slots = generate_slots(db)
     appts = db.execute("SELECT * FROM appointments WHERE appt_date=?", (day_iso,)).fetchall()
 
@@ -1884,7 +1884,7 @@ def orphaned_appointments(db):
     future cause having been thought of ahead of time)."""
     valid_labels = {s["label"] for s in generate_slots(db)}
     active_vet_ids = {v["id"] for v in db.execute(
-        "SELECT id FROM users WHERE role_id IN (SELECT id FROM roles WHERE is_vet_role=true) AND active=1"
+        "SELECT id FROM users WHERE role_id IN (SELECT id FROM roles WHERE is_vet_role=true) AND active=true"
     ).fetchall()}
     rows = db.execute(
         "SELECT a.*, u.full_name AS vet_name FROM appointments a "

@@ -82,7 +82,7 @@ def main():
     admin_role_id = cur.execute("SELECT id FROM roles WHERE name='Admin'").fetchone()["id"]
     cur.execute(
         "INSERT INTO users (id,username,password_hash,full_name,role_id,active,must_change_password,created_at) "
-        "VALUES (?,?,?,?,?,1,1,?)",
+        "VALUES (?,?,?,?,?,true,true,?)",
         (admin_id, "admin", auth.hash_password("admin123"), "Clinic Admin", admin_role_id,
          datetime.now().isoformat(timespec="seconds")),
     )

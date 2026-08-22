@@ -399,7 +399,7 @@ def lan_address():
 
 
 def vet_users(db):
-    return db.execute("SELECT id, full_name FROM users WHERE role_id IN (SELECT id FROM roles WHERE is_vet_role=true) AND active=1 ORDER BY full_name").fetchall()
+    return db.execute("SELECT id, full_name FROM users WHERE role_id IN (SELECT id FROM roles WHERE is_vet_role=true) AND active=true ORDER BY full_name").fetchall()
 
 
 def cached_dashboard_snapshot(db):
@@ -715,7 +715,7 @@ def change_password():
         elif new != confirm:
             flash("New password and confirmation don't match.", "error")
         else:
-            db.execute("UPDATE users SET password_hash=?, must_change_password=0 WHERE id=?",
+            db.execute("UPDATE users SET password_hash=?, must_change_password=false WHERE id=?",
                        (auth.hash_password(new), user["id"]))
             auth.log_change(db, "users", user["id"], "update", {"password": ("(hidden)", "(self-service change)")})
             db.commit()
@@ -760,7 +760,7 @@ def admin_user_new():
     uid = auth.new_user_id()
     db.execute(
         "INSERT INTO users (id,username,password_hash,full_name,role_id,active,must_change_password,created_at) "
-        "VALUES (?,?,?,?,?,1,1,?)",
+        "VALUES (?,?,?,?,?,true,true,?)",
         (uid, username, auth.hash_password(password), full_name, role_id,
          datetime.now().isoformat(timespec="seconds")),
     )
@@ -781,12 +781,12 @@ def admin_user_toggle(user_id):
     if row is None:
         flash("User not found.", "error")
         return redirect(url_for("admin_users"))
-    new_val = 0 if row["active"] else 1
+    new_val = not row["active"]
     db.execute("UPDATE users SET active=? WHERE id=?", (new_val, user_id))
     auth.log_change(db, "users", user_id, "update", {"active": (row["active"], new_val)})
     db.commit()
     flash("User updated.", "success")
-    if new_val == 0:
+    if new_val is False:
         future_appts = db.execute(
             "SELECT COUNT(*) c FROM appointments WHERE resource_type='vet' AND resource_id=? AND appt_date >= ?",
             (user_id, date.today().isoformat()),
@@ -817,7 +817,7 @@ def admin_user_role(user_id):
     if user_id == session["user_id"] and row and row["role_name"] == "Admin" and new_role["name"] != "Admin":
         remaining_admins = db.execute(
             "SELECT COUNT(*) AS n FROM users u JOIN roles r ON r.id=u.role_id "
-            "WHERE r.name='Admin' AND u.active=1 AND u.id != ?",
+            "WHERE r.name='Admin' AND u.active=true AND u.id != ?",
             (user_id,),
         ).fetchone()["n"]
         if remaining_admins == 0:
@@ -838,7 +838,7 @@ def admin_user_reset_password(user_id):
     if len(new_pw) < 8:
         flash("Password must be at least 8 characters.", "error")
         return redirect(url_for("admin_users"))
-    db.execute("UPDATE users SET password_hash=?, must_change_password=1 WHERE id=?",
+    db.execute("UPDATE users SET password_hash=?, must_change_password=true WHERE id=?",
                (auth.hash_password(new_pw), user_id))
     auth.log_change(db, "users", user_id, "update", {"password": ("(hidden)", "(reset by admin)")})
     db.commit()

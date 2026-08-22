@@ -127,7 +127,7 @@ def current_user(db):
     uid = session.get("user_id")
     if not uid:
         return None
-    return db.execute("SELECT * FROM users WHERE id=? AND active=1", (uid,)).fetchone()
+    return db.execute("SELECT * FROM users WHERE id=? AND active=true", (uid,)).fetchone()
 
 
 def permission_required(*perm_keys):
