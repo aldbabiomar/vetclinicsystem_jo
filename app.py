@@ -3400,12 +3400,22 @@ def pos_checkout():
         return redirect(url_for("pos_page"))
 
     total = round(subtotal * (1 - discount_percent / 100), 2)
+    payment_method = f.get("payment_method")
+    cash_received = change_given = None
+    if payment_method == "Cash":
+        try:
+            cash_received = parse_money(f.get("cash_received"))
+        except BadNumber:
+            flash("Cash Received must be a valid number.", "error")
+            return redirect(url_for("pos_page"))
+        if cash_received is not None:
+            change_given = max(round(cash_received - total, 2), 0)
     now = datetime.now().isoformat(timespec="seconds")
     cur = db.execute(
-        "INSERT INTO sales (sale_date, cashier_id, subtotal, discount_percent, discount_applied_by, total, payment_method) "
-        "VALUES (?,?,?,?,?,?,?) RETURNING id",
+        "INSERT INTO sales (sale_date, cashier_id, subtotal, discount_percent, discount_applied_by, total, "
+        "payment_method, cash_received, change_given) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
         (now, session["user_id"], round(subtotal, 2), discount_percent,
-         session["user_id"] if discount_percent else None, total, f.get("payment_method")),
+         session["user_id"] if discount_percent else None, total, payment_method, cash_received, change_given),
     )
     sale_id = cur.fetchone()["id"]
     for iid, qty, price, line_total, unit_cost in lines:

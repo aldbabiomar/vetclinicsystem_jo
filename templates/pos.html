@@ -24,12 +24,21 @@
       <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 JOD</div></div>
       <div class="field" style="margin:10px 0;">
         <label>Payment Method</label>
-        <select id="paymentMethod"><option>Cash</option><option>Card</option><option>Transfer</option></select>
+        <select id="paymentMethod" onchange="toggleCashFields()"><option>Cash</option><option>Card</option><option>Transfer</option></select>
+      </div>
+      <div id="cashFields">
+        <div class="field" style="margin:10px 0;">
+          <label>Cash Received (JOD)</label>
+          <input type="number" id="cashReceivedInput" step="0.01" min="0" oninput="renderCart()">
+        </div>
+        <div class="detail-item"><div class="k">Change Due</div><div class="v" style="font-size:18px; font-weight:700;" id="changeDue">—</div></div>
+        <div class="meta small" id="changeNote" style="margin-top:2px;"></div>
       </div>
       <form method="post" action="{{ url_for('pos_checkout') }}" id="checkoutForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="discount_percent" id="discountHidden">
         <input type="hidden" name="payment_method" id="paymentHidden">
+        <input type="hidden" name="cash_received" id="cashReceivedHidden">
         <div id="cartFieldsHidden"></div>
         <button class="btn" type="submit" style="width:100%; justify-content:center;" onclick="return prepareSubmit()">Complete Sale</button>
       </form>
@@ -120,11 +129,35 @@ function renderCart() {
   const total = Math.round(subtotal * (1 - discount/100));
   document.getElementById('cartSubtotal').textContent = subtotal.toLocaleString() + ' JOD';
   document.getElementById('cartTotal').textContent = total.toLocaleString() + ' JOD';
+  renderChange(total);
+}
+function toggleCashFields() {
+  const isCash = document.getElementById('paymentMethod').value === 'Cash';
+  document.getElementById('cashFields').style.display = isCash ? '' : 'none';
+  if (!isCash) document.getElementById('cashReceivedInput').value = '';
+  renderCart();
+}
+function renderChange(total) {
+  const changeDueEl = document.getElementById('changeDue');
+  const noteEl = document.getElementById('changeNote');
+  const cashReceived = parseFloat(document.getElementById('cashReceivedInput').value);
+  if (!Number.isFinite(cashReceived) || cashReceived <= 0) {
+    changeDueEl.textContent = '—';
+    noteEl.textContent = '';
+    return;
+  }
+  const change = Math.max(cashReceived - total, 0);
+  changeDueEl.textContent = change.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' JOD';
+  noteEl.textContent = cashReceived < total
+    ? `Cash received is ${(total - cashReceived).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} JOD short of the total.`
+    : '';
 }
 function prepareSubmit() {
   if (!cart.length) { alert('Cart is empty.'); return false; }
   document.getElementById('discountHidden').value = document.getElementById('discountInput').value;
   document.getElementById('paymentHidden').value = document.getElementById('paymentMethod').value;
+  document.getElementById('cashReceivedHidden').value =
+    document.getElementById('paymentMethod').value === 'Cash' ? document.getElementById('cashReceivedInput').value : '';
   const container = document.getElementById('cartFieldsHidden');
   container.innerHTML = '';
   cart.forEach(c => {

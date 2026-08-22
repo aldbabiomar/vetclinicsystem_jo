@@ -607,6 +607,12 @@ CREATE TABLE IF NOT EXISTS sales (
     discount_applied_by TEXT,
     total DOUBLE PRECISION NOT NULL,
     payment_method TEXT,
+    -- Cash payment method only — what the customer actually handed over
+    -- and what was handed back, for the cashier's own reconciliation.
+    -- Optional: NULL for non-cash sales, and NULL for cash too if the
+    -- cashier didn't bother entering it.
+    cash_received DOUBLE PRECISION,
+    change_given DOUBLE PRECISION,
     FOREIGN KEY (cashier_id) REFERENCES users(id)
 );
 

@@ -12,5 +12,9 @@
   {% if sale.discount_percent %}<div class="detail-item"><div class="k">Discount</div><div class="v">{{ sale.discount_percent }}%</div></div>{% endif %}
   <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ sale.total|money }} JOD</div></div>
   <div class="detail-item"><div class="k">Payment Method</div><div class="v">{{ sale.payment_method or "—" }}</div></div>
+  {% if sale.cash_received is not none %}
+  <div class="detail-item"><div class="k">Cash Received</div><div class="v">{{ sale.cash_received|money }} JOD</div></div>
+  <div class="detail-item"><div class="k">Change Due</div><div class="v">{{ sale.change_given|money }} JOD</div></div>
+  {% endif %}
 </div>
 {% endblock %}
