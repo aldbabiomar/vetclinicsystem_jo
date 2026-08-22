@@ -1,4 +1,5 @@
 import ipaddress
+import math
 import os
 import re
 import signal
@@ -223,9 +224,18 @@ def parse_money(raw, required=False):
             raise BadNumber("required")
         return None
     try:
-        return float(raw)
+        val = float(raw)
     except ValueError:
         raise BadNumber(raw)
+    # float() happily parses "nan"/"inf"/"-inf" without raising — and every
+    # bound check elsewhere in the app (`x > cap`, `x < 0`, etc.) silently
+    # evaluates to False against NaN, so an unchecked NaN doesn't just slip
+    # past validation, it appears to *pass* every check downstream. Reject
+    # both here, once, so every one of this function's call sites inherits
+    # the fix instead of needing its own guard.
+    if not math.isfinite(val):
+        raise BadNumber(raw)
+    return val
 
 
 def parse_int(raw, required=False):
