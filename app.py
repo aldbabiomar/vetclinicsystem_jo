@@ -2026,8 +2026,25 @@ def inventory_catalog_toggle(item_id):
 @app.route("/inventory-catalog/<item_id>/create-barcode", methods=["POST"])
 def inventory_catalog_create_barcode(item_id):
     db = get_db()
+    item = db.execute("SELECT barcode FROM inventory_list WHERE id=?", (item_id,)).fetchone()
+    if not item:
+        flash("Item not found.", "error")
+        return redirect(url_for("inventory_catalog"))
+    if item["barcode"]:
+        flash("This item already has a barcode. Remove it first if you want a different one.", "error")
+        return redirect(url_for("inventory_barcode_label", item_id=item_id))
     code = barcode_mod.generate_barcode(db)
-    db.execute("UPDATE inventory_list SET barcode=? WHERE id=?", (code, item_id))
+    # The check above is a friendly fast-path, not the real guarantee — two
+    # concurrent "Generate" clicks racing into the same candidate code (low
+    # but non-zero probability) would otherwise surface as a raw 500 instead
+    # of a friendly error; inventory_list.barcode is DB-UNIQUE, so the loser
+    # raises instead of corrupting anything.
+    try:
+        db.execute("UPDATE inventory_list SET barcode=? WHERE id=?", (code, item_id))
+    except dbmod.IntegrityError:
+        db.rollback()
+        flash("That code was just claimed by another item — try again.", "error")
+        return redirect(url_for("inventory_catalog"))
     auth.log_change(db, "inventory_list", item_id, "update", {"barcode": (None, code)})
     db.commit()
     flash(f"Barcode {code} created.", "success")
