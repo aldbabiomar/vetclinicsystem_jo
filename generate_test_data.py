@@ -79,7 +79,7 @@ def main():
     # ------------------------------------------------------------ distributors
     run(con, "distributors", f"""
         INSERT INTO distributors (id, name, contact_person, phone, email, catalog_link, lead_time_days, payment_terms, notes)
-        SELECT 'D' || g, 'Distributor ' || g, 'Contact ' || g, '07' || (700000000 + g),
+        SELECT 'D' || g, 'Distributor ' || g, 'Contact ' || g, '+962' || (700000000 + g),
                'dist' || g || '@example.com', NULL, 3 + (g % 10), 'Net 30', NULL
         FROM generate_series(1,{n['distributors']}) g
     """)
@@ -93,7 +93,7 @@ def main():
                  || ' ' ||
                (ARRAY['Al-Sudani','Al-Jubouri','Al-Bayati','Al-Khafaji','Al-Tamimi','Al-Rubaie','Al-Musawi',
                       'Al-Hilali','Al-Zubaidi','Al-Anbari'])[1 + (g % 10)],
-               '07' || (700000000 + g),
+               '+962' || (700000000 + g),
                'Baghdad, ' || (ARRAY['Karrada','Mansour','Zayouna','Jadriya','Adhamiyah','Kadhimiya',
                       'Harthiya','Yarmouk','Ghazaliya','Zawra'])[1 + (g % 10)],
                NULL

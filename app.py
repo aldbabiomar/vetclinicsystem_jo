@@ -284,9 +284,10 @@ def clean_date(v, field="date"):
 # Each deployment of this app serves exactly one clinic in one country, so a
 # small self-contained normalizer (rather than pulling in a general-purpose
 # library like `phonenumbers`) is simpler and has no extra dependency to
-# install. Differs per clinic — this is the ONE line that changes between
+# install. Differs per clinic — these are the two lines that change between
 # ChamPet (Iraq) and Jordan Referral Center (Jordan).
 PHONE_COUNTRY_CODE = "962"
+PHONE_LOCAL_LENGTH = 9  # digits after the country code, for a number with no explicit +/00 prefix — Jordan mobile numbers (07X XXX XXXX) are 9 digits once the leading trunk 0 is stripped
 
 
 class BadPhone(ValueError):
@@ -300,9 +301,23 @@ def normalize_phone(raw):
     """
     Normalizes a phone number to E.164 (+<countrycode><number>). Returns
     None for a blank/optional field. Accepts a local number with a leading
-    trunk 0 (e.g. "07701234567"), a number already carrying the country
+    trunk 0 (e.g. "0791234567"), a number already carrying the country
     code (with or without a leading + or 00), or raises BadPhone if what
     was typed doesn't resemble a real phone number at all.
+
+    A number with no explicit +/00 prefix is ambiguous — there's no way to
+    tell "a local number, missing its usual leading 0" from "a foreign
+    number, typed without its country code" from the digits alone — so
+    that case is held to a strict PHONE_LOCAL_LENGTH-digit count (a real
+    local mobile number's actual length) rather than just "looks like
+    *some* valid-length phone number." Without this, an implausibly short
+    entry (a typo, a truncated paste) or a foreign number missing its
+    country code both silently normalize into *something* that passes a
+    generic E.164 length check, just not the number anyone actually meant
+    — and it's stored with no error, discovered only when a WhatsApp
+    message to it fails later. A number given WITH an explicit +/00 is
+    unambiguous (the owner is intentionally recording a foreign contact
+    number), so that case only needs the general E.164 sanity check.
     """
     if raw is None or not str(raw).strip():
         return None
@@ -312,16 +327,21 @@ def normalize_phone(raw):
         raise BadPhone(raw)
     if raw.startswith("+"):
         candidate = "+" + digits
+        if re.fullmatch(r"\+[1-9]\d{7,14}", candidate):
+            return candidate
     elif digits.startswith("00"):
         candidate = "+" + digits[2:]
-    elif digits.startswith("0"):
-        candidate = "+" + PHONE_COUNTRY_CODE + digits[1:]
-    elif digits.startswith(PHONE_COUNTRY_CODE):
-        candidate = "+" + digits
+        if re.fullmatch(r"\+[1-9]\d{7,14}", candidate):
+            return candidate
     else:
-        candidate = "+" + PHONE_COUNTRY_CODE + digits
-    if re.fullmatch(r"\+[1-9]\d{7,14}", candidate):
-        return candidate
+        if digits.startswith("0"):
+            local = digits[1:]
+        elif digits.startswith(PHONE_COUNTRY_CODE) and len(digits) == len(PHONE_COUNTRY_CODE) + PHONE_LOCAL_LENGTH:
+            local = digits[len(PHONE_COUNTRY_CODE):]
+        else:
+            local = digits
+        if len(local) == PHONE_LOCAL_LENGTH:
+            return "+" + PHONE_COUNTRY_CODE + local
     raise BadPhone(raw)
 
 
