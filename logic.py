@@ -191,7 +191,7 @@ def inventory_status(db):
     expiry_soon_days = int(get_setting(db, "expiry_soon_days", 60))
     today = date.today()
 
-    items = [dict(r) for r in db.execute("SELECT * FROM inventory_list WHERE active=1 ORDER BY name").fetchall()]
+    items = [dict(r) for r in db.execute("SELECT * FROM inventory_list WHERE active=true ORDER BY name").fetchall()]
     all_confirmed = confirmed_audit_rows_by_item(db)
     by_item = defaultdict(list)
     for r in all_confirmed:
@@ -352,10 +352,10 @@ def retail_consistency_flags(db):
         Retail row links to it
     """
     price_rows = db.execute(
-        "SELECT id, linked_item_id FROM price_list WHERE active=1 AND category='Retail'"
+        "SELECT id, linked_item_id FROM price_list WHERE active=true AND category='Retail'"
     ).fetchall()
     inv_ids = {r["id"] for r in db.execute(
-        "SELECT id FROM inventory_list WHERE active=1 AND category='Retail'"
+        "SELECT id FROM inventory_list WHERE active=true AND category='Retail'"
     ).fetchall()}
 
     flagged_price = {r["id"] for r in price_rows if not r["linked_item_id"] or r["linked_item_id"] not in inv_ids}
@@ -367,7 +367,7 @@ def retail_consistency_flags(db):
 
 def non_discountable_line_names(db, price_ids):
     """Given a set/list of price_list IDs on a bill, returns the display
-    names of any that are marked as not discountable (can_discount=0)."""
+    names of any that are marked as not discountable (can_discount=false)."""
     if not price_ids:
         return []
     ids = [i for i in price_ids if i]
@@ -375,7 +375,7 @@ def non_discountable_line_names(db, price_ids):
         return []
     placeholders = ",".join("?" * len(ids))
     rows = db.execute(
-        f"SELECT name FROM price_list WHERE id IN ({placeholders}) AND can_discount=0",
+        f"SELECT name FROM price_list WHERE id IN ({placeholders}) AND can_discount=false",
         tuple(ids),
     ).fetchall()
     return [r["name"] for r in rows]
@@ -390,7 +390,7 @@ def non_discountable_line_names_for_items(db, inventory_item_ids):
         return []
     placeholders = ",".join("?" * len(ids))
     rows = db.execute(
-        f"SELECT name FROM price_list WHERE linked_item_id IN ({placeholders}) AND can_discount=0",
+        f"SELECT name FROM price_list WHERE linked_item_id IN ({placeholders}) AND can_discount=false",
         tuple(ids),
     ).fetchall()
     return [r["name"] for r in rows]
@@ -1245,11 +1245,11 @@ def logins_on_date(db, day_str):
 # Point of sale (Retail only)
 # ---------------------------------------------------------------------------
 def sellable_items(db):
-    return db.execute("SELECT id, name, barcode, cost_price, unit FROM inventory_list WHERE active=1 AND category='Retail' ORDER BY name").fetchall()
+    return db.execute("SELECT id, name, barcode, cost_price, unit FROM inventory_list WHERE active=true AND category='Retail' ORDER BY name").fetchall()
 
 
 def item_sale_price(db, item_id):
-    row = db.execute("SELECT sale_price FROM price_list WHERE linked_item_id=? AND active=1 LIMIT 1", (item_id,)).fetchone()
+    row = db.execute("SELECT sale_price FROM price_list WHERE linked_item_id=? AND active=true LIMIT 1", (item_id,)).fetchone()
     return row["sale_price"] if row else None
 
 

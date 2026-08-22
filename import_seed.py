@@ -121,7 +121,7 @@ def main():
 
     for pid, name, cat, cost, sale, notes in price_rows:
         cur.execute(
-            "INSERT INTO price_list (id,name,category,cost_price,sale_price,notes,active) VALUES (?,?,?,?,?,?,1) "
+            "INSERT INTO price_list (id,name,category,cost_price,sale_price,notes,active) VALUES (?,?,?,?,?,?,true) "
             "ON CONFLICT (id) DO NOTHING",
             (pid, name, cat, cost, sale, notes),
         )
@@ -137,8 +137,8 @@ def main():
             continue
         old_cat = s(row[2])
         new_cat = INVENTORY_CATEGORY_MAP.get(old_cat, "Medical")
-        track_expiry = 1 if s(row[4]) == "Y" else 0
-        active = 1 if s(row[7]) != "N" else 0
+        track_expiry = s(row[4]) == "Y"
+        active = s(row[7]) != "N"
         name = s(row[1])
         cur.execute(
             "INSERT INTO inventory_list (id,name,category,unit,track_expiry,cost_price,distributor_id,active,barcode,notes) "

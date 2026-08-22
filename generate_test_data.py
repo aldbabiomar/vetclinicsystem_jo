@@ -125,7 +125,7 @@ def main():
                (ARRAY['Service','Medicine','Retail'])[1 + (g % 3)],
                (5000 + (g*137 % 40000))::float,
                (10000 + (g*271 % 80000))::float,
-               NULL, 1, NULL, CASE WHEN g % 10 = 0 THEN 0 ELSE 1 END
+               NULL, true, NULL, CASE WHEN g % 10 = 0 THEN false ELSE true END
         FROM generate_series(1,{n['price_list']}) g
     """)
 
@@ -135,9 +135,9 @@ def main():
         SELECT 'IN' || g,
                'Inventory Item ' || g,
                (ARRAY['Medical','Retail'])[1 + (g % 2)],
-               'unit', 1, (2000 + (g*91 % 20000))::float,
+               'unit', true, (2000 + (g*91 % 20000))::float,
                did[1 + floor(random()*array_length(did,1))::int],
-               1, 'BC' || lpad(g::text,8,'0'), NULL
+               true, 'BC' || lpad(g::text,8,'0'), NULL
         FROM generate_series(1,{n['inventory_list']}) g,
              (SELECT array_agg(id) AS did FROM distributors) d
     """)

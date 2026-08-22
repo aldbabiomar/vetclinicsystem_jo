@@ -909,7 +909,7 @@ def api_inventory_lookup():
     barcode_val = request.args.get("barcode", "").strip()
     q = request.args.get("q", "").strip()
     if barcode_val:
-        row = db.execute("SELECT id, name, barcode FROM inventory_list WHERE barcode=? AND active=1", (barcode_val,)).fetchone()
+        row = db.execute("SELECT id, name, barcode FROM inventory_list WHERE barcode=? AND active=true", (barcode_val,)).fetchone()
         if not row:
             return jsonify(None)
         price = logic.item_sale_price(db, row["id"])
@@ -917,7 +917,7 @@ def api_inventory_lookup():
         return jsonify({"id": row["id"], "name": row["name"], "price": price,
                         "stock": status["current_stock"] if status else None})
     if q:
-        rows = db.execute("SELECT id, name FROM inventory_list WHERE active=1 AND category='Retail' AND name ILIKE ? LIMIT 10",
+        rows = db.execute("SELECT id, name FROM inventory_list WHERE active=true AND category='Retail' AND name ILIKE ? LIMIT 10",
                           (f"%{q}%",)).fetchall()
         # inventory_status_by_id() re-runs the whole catalog-wide status
         # computation and linear-scans for one item — fine called once, not
@@ -948,7 +948,7 @@ def api_price_list_lookup():
         return jsonify([])
     placeholders = ",".join("?" * len(categories))
     sql = (f"SELECT id, name, category, sale_price FROM price_list "
-           f"WHERE active=1 AND sale_price IS NOT NULL AND category IN ({placeholders}) "
+           f"WHERE active=true AND sale_price IS NOT NULL AND category IN ({placeholders}) "
            f"AND (id ILIKE ? OR name ILIKE ?) ORDER BY name LIMIT 15")
     params = [*categories, f"%{q}%", f"%{q}%"]
     rows = db.execute(sql, params).fetchall()
@@ -1772,7 +1772,7 @@ def price_list():
     cat = request.args.get("category")
     search = request.args.get("q", "").strip()
     page = get_page()
-    where = ["active=1"]
+    where = ["active=true"]
     params = []
     if cat:
         where.append("category=?")
@@ -1784,7 +1784,7 @@ def price_list():
     total = db.execute(f"SELECT COUNT(*) c FROM price_list{where_sql}", params).fetchone()["c"]
     q = f"SELECT * FROM price_list{where_sql} ORDER BY category, name LIMIT ? OFFSET ?"
     rows = db.execute(q, params + [PER_PAGE, page_offset(page)]).fetchall()
-    inv_items = db.execute("SELECT id, name, cost_price FROM inventory_list WHERE active=1 AND category='Retail' ORDER BY name").fetchall()
+    inv_items = db.execute("SELECT id, name, cost_price FROM inventory_list WHERE active=true AND category='Retail' ORDER BY name").fetchall()
     flagged_price, _ = logic.retail_consistency_flags(db)
     return render_template("price_list.html", items=rows, categories=PRICE_CATEGORIES, active_cat=cat,
                             inv_items=inv_items, search=search, flagged_price=flagged_price,
@@ -1816,16 +1816,16 @@ def price_list_new():
         # so the same product could ring up at two different prices with
         # no error or warning telling staff the catalog is inconsistent.
         existing_link = db.execute(
-            "SELECT id, name FROM price_list WHERE linked_item_id=? AND active=1", (linked_item_id,)
+            "SELECT id, name FROM price_list WHERE linked_item_id=? AND active=true", (linked_item_id,)
         ).fetchone()
         if existing_link:
             flash(f"That inventory item is already linked to {existing_link['id']} ({existing_link['name']}) — "
                   f"an item can only be linked from one active Price List row at a time.", "error")
             return redirect(url_for("price_list"))
     pid = dbmod.next_id(db, "P")
-    can_discount = 1 if f.get("can_discount") == "on" else 0
+    can_discount = f.get("can_discount") == "on"
     db.execute(
-        "INSERT INTO price_list (id,name,category,cost_price,sale_price,notes,active,linked_item_id,can_discount) VALUES (?,?,?,?,?,?,1,?,?)",
+        "INSERT INTO price_list (id,name,category,cost_price,sale_price,notes,active,linked_item_id,can_discount) VALUES (?,?,?,?,?,?,true,?,?)",
         (pid, f["name"], f["category"], cost_price, sale_price,
          f.get("notes"), linked_item_id, can_discount),
     )
@@ -1859,7 +1859,7 @@ def price_list_edit(item_id):
     new_linked_item_id = (f.get("linked_item_id") or None) if "linked_item_id" in f else old["linked_item_id"]
     if new_linked_item_id and new_linked_item_id != old["linked_item_id"]:
         dup = db.execute(
-            "SELECT id, name FROM price_list WHERE linked_item_id=? AND active=1 AND id != ?",
+            "SELECT id, name FROM price_list WHERE linked_item_id=? AND active=true AND id != ?",
             (new_linked_item_id, item_id),
         ).fetchone()
         if dup:
@@ -1869,7 +1869,7 @@ def price_list_edit(item_id):
     new_vals = {"name": f["name"], "category": f["category"], "cost_price": cost_price,
                 "sale_price": sale_price, "notes": f.get("notes"),
                 "linked_item_id": new_linked_item_id,
-                "can_discount": 1 if f.get("can_discount") == "on" else 0}
+                "can_discount": f.get("can_discount") == "on"}
     changes = auth.diff_dict(old, new_vals)
     db.execute("UPDATE price_list SET name=?, category=?, cost_price=?, sale_price=?, notes=?, linked_item_id=?, can_discount=? WHERE id=?",
               (*new_vals.values(), item_id))
@@ -1929,7 +1929,7 @@ def price_list_bulk_edit():
             # this batch) and what this same batch has already claimed (two
             # rows in one bulk save both trying to link the same item).
             dup = db.execute(
-                "SELECT id FROM price_list WHERE linked_item_id=? AND active=1 AND id != ?",
+                "SELECT id FROM price_list WHERE linked_item_id=? AND active=true AND id != ?",
                 (new_linked_item_id, item_id),
             ).fetchone()
             dup_id = dup["id"] if dup else claimed_in_batch.get(new_linked_item_id)
@@ -1940,7 +1940,7 @@ def price_list_bulk_edit():
         new_vals = {"name": fields.get("name", ""), "category": fields.get("category", ""),
                     "cost_price": cost_price, "sale_price": sale_price, "notes": fields.get("notes"),
                     "linked_item_id": new_linked_item_id,
-                    "can_discount": 1 if fields.get("can_discount") == "on" else 0}
+                    "can_discount": fields.get("can_discount") == "on"}
         changes = auth.diff_dict(old, new_vals)
         db.execute(
             "UPDATE price_list SET name=?, category=?, cost_price=?, sale_price=?, notes=?, linked_item_id=?, can_discount=? WHERE id=?",
@@ -1960,7 +1960,7 @@ def price_list_bulk_edit():
 @auth.permission_required("manage_price_list")
 def price_list_delete(item_id):
     db = get_db()
-    db.execute("UPDATE price_list SET active=0 WHERE id=?", (item_id,))
+    db.execute("UPDATE price_list SET active=false WHERE id=?", (item_id,))
     auth.log_change(db, "price_list", item_id, "delete")
     db.commit()
     flash("Item removed from price list.", "success")
@@ -1988,7 +1988,7 @@ def inventory_catalog():
     where = []
     params = []
     if not show_inactive:
-        where.append("i.active=1")
+        where.append("i.active=true")
     if search:
         where.append("i.name ILIKE ?")
         params.append(f"%{search}%")
@@ -2020,8 +2020,8 @@ def inventory_catalog_new():
     iid = dbmod.next_id(db, "INV")
     db.execute(
         "INSERT INTO inventory_list (id,name,category,unit,track_expiry,cost_price,distributor_id,active,notes) "
-        "VALUES (?,?,?,?,?,?,?,1,?)",
-        (iid, f["name"], f.get("category", "Medical"), f.get("unit"), 1 if f.get("track_expiry") == "on" else 0,
+        "VALUES (?,?,?,?,?,?,?,true,?)",
+        (iid, f["name"], f.get("category", "Medical"), f.get("unit"), f.get("track_expiry") == "on",
          cost_price, f.get("distributor_id") or None, f.get("notes")),
     )
     auth.log_change(db, "inventory_list", iid, "create")
@@ -2047,7 +2047,7 @@ def inventory_catalog_edit(item_id):
         return redirect(url_for("inventory_catalog"))
     old = db.execute("SELECT * FROM inventory_list WHERE id=?", (item_id,)).fetchone()
     new_vals = {"name": f["name"], "category": f.get("category", "Medical"), "unit": f.get("unit"),
-                "track_expiry": 1 if f.get("track_expiry") == "on" else 0, "cost_price": cost_price,
+                "track_expiry": f.get("track_expiry") == "on", "cost_price": cost_price,
                 "distributor_id": f.get("distributor_id") or None,
                 "notes": f.get("notes", old["notes"]), "active": old["active"]}
     changes = auth.diff_dict(old, new_vals)
@@ -2089,7 +2089,7 @@ def inventory_catalog_bulk_edit():
             errors[item_id] = "Item not found."
             continue
         new_vals = {"name": fields.get("name", ""), "category": fields.get("category", "Medical"),
-                    "unit": fields.get("unit"), "track_expiry": 1 if fields.get("track_expiry") == "on" else 0,
+                    "unit": fields.get("unit"), "track_expiry": fields.get("track_expiry") == "on",
                     "cost_price": cost_price, "distributor_id": fields.get("distributor_id") or None,
                     "notes": fields.get("notes", old["notes"]), "active": old["active"]}
         changes = auth.diff_dict(old, new_vals)
@@ -2114,7 +2114,7 @@ def inventory_catalog_toggle(item_id):
     if row is None:
         flash("Item not found.", "error")
         return redirect(url_for("inventory_catalog"))
-    new_val = 0 if row["active"] else 1
+    new_val = not row["active"]
     db.execute("UPDATE inventory_list SET active=? WHERE id=?", (new_val, item_id))
     auth.log_change(db, "inventory_list", item_id, "update", {"active": (row["active"], new_val)})
     db.commit()
@@ -2428,11 +2428,11 @@ def consignment_overview():
 def consignment_items():
     db = get_db()
     page = get_page()
-    total = db.execute("SELECT COUNT(*) c FROM inventory_list WHERE category='Retail' AND active=1").fetchone()["c"]
+    total = db.execute("SELECT COUNT(*) c FROM inventory_list WHERE category='Retail' AND active=true").fetchone()["c"]
     rows = db.execute(
         "SELECT i.*, d.name AS distributor_name FROM inventory_list i "
         "LEFT JOIN distributors d ON d.id = i.distributor_id "
-        "WHERE i.category='Retail' AND i.active=1 ORDER BY i.ownership_type DESC, i.name LIMIT ? OFFSET ?",
+        "WHERE i.category='Retail' AND i.active=true ORDER BY i.ownership_type DESC, i.name LIMIT ? OFFSET ?",
         (PER_PAGE, page_offset(page)),
     ).fetchall()
     distributors = db.execute("SELECT * FROM distributors ORDER BY name").fetchall()
@@ -2517,7 +2517,7 @@ def _consignment_item_choices(db):
     return db.execute(
         "SELECT i.id, i.name, i.unit, i.cost_price, i.distributor_id, d.name AS distributor_name "
         "FROM inventory_list i JOIN distributors d ON d.id = i.distributor_id "
-        "WHERE i.ownership_type='Consignment' AND i.active=1 ORDER BY d.name, i.name"
+        "WHERE i.ownership_type='Consignment' AND i.active=true ORDER BY d.name, i.name"
     ).fetchall()
 
 
@@ -2944,7 +2944,7 @@ def audit_session_view(session_id):
     if not sess:
         flash("Audit session not found.", "error")
         return redirect(url_for("audit_history_list"))
-    items = db.execute("SELECT * FROM inventory_list WHERE active=1 ORDER BY category, name").fetchall()
+    items = db.execute("SELECT * FROM inventory_list WHERE active=true ORDER BY category, name").fetchall()
     existing_lines = {r["item_id"]: dict(r) for r in db.execute(
         "SELECT * FROM audit_session_lines WHERE session_id=?", (session_id,)).fetchall()}
     # Effective (carried-forward) values from the last CONFIRMED audit, for placeholder display
@@ -2962,7 +2962,7 @@ def _save_audit_lines(db, session_id):
     audit_session_lines. Shared by Save and Confirm so that clicking Confirm
     directly (without Save first) can never silently discard the numbers
     someone just typed in."""
-    items = db.execute("SELECT id FROM inventory_list WHERE active=1").fetchall()
+    items = db.execute("SELECT id FROM inventory_list WHERE active=true").fetchall()
     for it in items:
         iid = it["id"]
         stock = request.form.get(f"stock_{iid}", "").strip()
@@ -3542,7 +3542,7 @@ def inpatient_detail(case_id):
                           "WHERE case_id=? ORDER BY timestamp DESC", (case_id,)).fetchall()
     billing = logic.inpatient_billing_summary(db, case_id)
     payments = db.execute("SELECT * FROM payments WHERE inpatient_case_id=? ORDER BY date DESC", (case_id,)).fetchall()
-    proc_items = db.execute("SELECT * FROM price_list WHERE category='Service' AND active=1 ORDER BY id").fetchall()
+    proc_items = db.execute("SELECT * FROM price_list WHERE category='Service' AND active=true ORDER BY id").fetchall()
     files = attach_mod.list_attachments(db, "inpatient", case_id)
     cap = auth.discount_cap_for()
 
