@@ -187,7 +187,7 @@ def main():
         n_visits += 1
 
         if visit_type == "Inpatient" and admission_date:
-            dismissed = 1 if (old_case_status in ("Resolved", "Deceased", "Lost to follow-up", "Referred") or discharge_date) else 0
+            dismissed = old_case_status in ("Resolved", "Deceased", "Lost to follow-up", "Referred") or bool(discharge_date)
             cur.execute(
                 """INSERT INTO inpatient_cases
                 (patient_id, visit_id, complaint, exam_findings, admission_date, admitted_items,

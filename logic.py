@@ -820,7 +820,7 @@ def dashboard_snapshot(db):
     active_statuses = {"Ongoing", "Admitted to Inpatient", "Needs Filling"}
     all_visits = db.execute("SELECT case_status FROM visits").fetchall()
     active_cases = sum(1 for v in all_visits if v["case_status"] in active_statuses)
-    admitted_now = db.execute("SELECT COUNT(*) c FROM inpatient_cases WHERE dismissed=0").fetchone()["c"]
+    admitted_now = db.execute("SELECT COUNT(*) c FROM inpatient_cases WHERE dismissed=false").fetchone()["c"]
 
     fu = followups(db, only_pending=True)
     due_today = [f for f in fu if parse_date(f["followup_date"]) == today]
@@ -2154,11 +2154,11 @@ def inpatient_boarding_occupancy(db, months_back=12):
 
     avg_stay = db.execute(
         "SELECT AVG(dismissal_date - admission_date) AS d FROM inpatient_cases "
-        "WHERE dismissed=1 AND dismissal_date IS NOT NULL"
+        "WHERE dismissed=true AND dismissal_date IS NOT NULL"
     ).fetchone()["d"]
     avg_boarding_stay = db.execute(
         "SELECT AVG(dismissal_date - entry_date) AS d FROM boarding_sessions "
-        "WHERE dismissed=1 AND dismissal_date IS NOT NULL"
+        "WHERE dismissed=true AND dismissal_date IS NOT NULL"
     ).fetchone()["d"]
 
     return {

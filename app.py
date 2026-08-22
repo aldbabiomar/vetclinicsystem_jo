@@ -1301,7 +1301,7 @@ def _create_visit(db, patient_id, f):
 
 def _create_inpatient_case(db, patient_id, visit_id, complaint, admission_date, weight_kg=None, bcs=None):
     cur = db.execute(
-        "INSERT INTO inpatient_cases (patient_id, visit_id, complaint, admission_date, weight_kg, bcs, dismissed, created_by) VALUES (?,?,?,?,?,?,0,?) RETURNING id",
+        "INSERT INTO inpatient_cases (patient_id, visit_id, complaint, admission_date, weight_kg, bcs, dismissed, created_by) VALUES (?,?,?,?,?,?,false,?) RETURNING id",
         (patient_id, visit_id, complaint, admission_date or date.today().isoformat(), weight_kg, bcs, session.get("user_id")),
     )
     case_id = cur.fetchone()["id"]
@@ -3048,12 +3048,12 @@ def boarding_page():
     db = get_db()
     show_all = request.args.get("all") == "1"
     page = get_page()
-    count_where = "" if show_all else " WHERE dismissed=0"
+    count_where = "" if show_all else " WHERE dismissed=false"
     total = db.execute(f"SELECT COUNT(*) c FROM boarding_sessions{count_where}").fetchone()["c"]
     q = ("SELECT b.*, p.animal_name, p.species, o.id AS owner_id, o.name AS owner_name, o.phone AS owner_phone "
          "FROM boarding_sessions b JOIN patients p ON p.id=b.patient_id JOIN owners o ON o.id=p.owner_id")
     if not show_all:
-        q += " WHERE b.dismissed=0"
+        q += " WHERE b.dismissed=false"
     q += " ORDER BY b.entry_date DESC LIMIT ? OFFSET ?"
     rows = [dict(r) for r in db.execute(q, (PER_PAGE, page_offset(page))).fetchall()]
     # Batched across the whole page instead of a paid-sum + incident-count
@@ -3106,14 +3106,14 @@ def boarding_new():
     total_is_auto = total is None
     if total_is_auto:
         total = logic.boarding_suggested_total(price_per_day, entry_date, dismissal_date)
-    special_needs = 1 if f.get("special_needs") == "on" else 0
+    special_needs = f.get("special_needs") == "on"
     cur = db.execute(
         "INSERT INTO boarding_sessions (patient_id, entry_date, dismissal_date, admitted_items, special_needs, "
         "special_needs_notes, room, price_per_day, total, total_is_auto, dismissed, created_by) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,0,?) RETURNING id",
+        "VALUES (?,?,?,?,?,?,?,?,?,?,false,?) RETURNING id",
         (patient_id, entry_date, dismissal_date, f.get("admitted_items"), special_needs,
          f.get("special_needs_notes") if special_needs else None, f.get("room"), price_per_day, total,
-         1 if total_is_auto else 0, session.get("user_id")),
+         total_is_auto, session.get("user_id")),
     )
     boarding_id = cur.fetchone()["id"]
     logic.refresh_boarding_total(db, boarding_id)
@@ -3161,11 +3161,11 @@ def boarding_edit(boarding_id):
     if old["dismissed"]:
         entry_date, dismissal_date = old["entry_date"], old["dismissal_date"]
         price_per_day, total, total_is_auto = old["price_per_day"], old["total"], bool(old["total_is_auto"])
-    special_needs = 1 if f.get("special_needs") == "on" else 0
+    special_needs = f.get("special_needs") == "on"
     new_vals = {
         "entry_date": entry_date, "dismissal_date": dismissal_date, "admitted_items": f.get("admitted_items"),
         "special_needs": special_needs, "special_needs_notes": f.get("special_needs_notes") if special_needs else None,
-        "room": f.get("room"), "price_per_day": price_per_day, "total": total, "total_is_auto": 1 if total_is_auto else 0,
+        "room": f.get("room"), "price_per_day": price_per_day, "total": total, "total_is_auto": total_is_auto,
     }
     changes = auth.diff_dict(old, new_vals)
     db.execute(
@@ -3205,7 +3205,7 @@ def boarding_dismiss(boarding_id):
         # `total` needs to hold the real final figure, not whatever
         # (usually 1 night) it was left at when the session was created.
         final_total = logic.boarding_suggested_total(row["price_per_day"], row["entry_date"], dismissal_date)
-    db.execute("UPDATE boarding_sessions SET dismissed=1, dismissal_date=?, total=? WHERE id=?",
+    db.execute("UPDATE boarding_sessions SET dismissed=true, dismissal_date=?, total=? WHERE id=?",
                (dismissal_date, final_total, boarding_id))
     logic.refresh_boarding_total(db, boarding_id)
     # Boarding revenue is attributed to entry_date's month, and that
@@ -3215,7 +3215,7 @@ def boarding_dismiss(boarding_id):
     # here without this would leave that month's cached revenue
     # permanently understated.
     logic.recompute_month_summary(db, logic.month_key(row["entry_date"]))
-    auth.log_change(db, "boarding_sessions", str(boarding_id), "update", {"dismissed": (0, 1)})
+    auth.log_change(db, "boarding_sessions", str(boarding_id), "update", {"dismissed": (False, True)})
     db.commit()
     flash("Marked as picked up.", "success")
     return redirect(url_for("boarding_page"))
@@ -3466,7 +3466,7 @@ def pos_history():
 def inpatient_list():
     db = get_db()
     show_all = request.args.get("all") == "1"
-    # Discharged cases drop off the two views above by design (dismissed=0),
+    # Discharged cases drop off the two views above by design (dismissed=false),
     # so a charge added *after* discharge (a forgotten procedure billed
     # late) has no natural collection point — nothing ever resurfaces that
     # case for staff to notice the balance and follow up. This view exists
@@ -3477,19 +3477,19 @@ def inpatient_list():
     if balance_due:
         paid_join = ("LEFT JOIN (SELECT inpatient_case_id, SUM(amount) AS paid FROM payments "
                      "GROUP BY inpatient_case_id) pay ON pay.inpatient_case_id = c.id")
-        where = " WHERE c.dismissed=1 AND c.total > COALESCE(pay.paid, 0)"
+        where = " WHERE c.dismissed=true AND c.total > COALESCE(pay.paid, 0)"
         total = db.execute(f"SELECT COUNT(*) c FROM inpatient_cases c {paid_join}{where}").fetchone()["c"]
         q = (f"SELECT c.*, p.animal_name, o.name as owner_name, COALESCE(pay.paid, 0) AS paid "
              f"FROM inpatient_cases c JOIN patients p ON p.id=c.patient_id JOIN owners o ON o.id=p.owner_id "
              f"{paid_join}{where} ORDER BY c.admission_date DESC LIMIT ? OFFSET ?")
         cases = db.execute(q, (PER_PAGE, page_offset(page))).fetchall()
     else:
-        count_where = "" if show_all else " WHERE dismissed=0"
+        count_where = "" if show_all else " WHERE dismissed=false"
         total = db.execute(f"SELECT COUNT(*) c FROM inpatient_cases{count_where}").fetchone()["c"]
         q = ("SELECT c.*, p.animal_name, o.name as owner_name FROM inpatient_cases c "
              "JOIN patients p ON p.id=c.patient_id JOIN owners o ON o.id=p.owner_id")
         if not show_all:
-            q += " WHERE c.dismissed=0"
+            q += " WHERE c.dismissed=false"
         q += " ORDER BY c.admission_date DESC LIMIT ? OFFSET ?"
         cases = db.execute(q, (PER_PAGE, page_offset(page))).fetchall()
     return render_template("inpatient_list.html", cases=cases, show_all=show_all, balance_due=balance_due,
@@ -3560,7 +3560,7 @@ def inpatient_edit(case_id):
     if conflict:
         flash(conflict, "error")
         return redirect(url_for("inpatient_detail", case_id=case_id))
-    dismissed = 1 if f.get("dismissed") == "on" else 0
+    dismissed = f.get("dismissed") == "on"
     try:
         edited_dismissal_date = clean_date(f.get("dismissal_date"), field="dismissal_date") if dismissed else None
         edited_weight_kg = parse_money(f.get("weight_kg"))

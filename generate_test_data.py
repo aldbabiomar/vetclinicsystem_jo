@@ -233,7 +233,7 @@ def main():
                round((1 + random()*40)::numeric,1)::float, 1 + floor(random()*9)::int,
                (current_date - (floor(random()*{HISTORY_MONTHS}*30))::int),
                NULL,
-               CASE WHEN random() < 0.85 THEN 1 ELSE 0 END,
+               CASE WHEN random() < 0.85 THEN true ELSE false END,
                NULL,
                vid[1 + floor(random()*array_length(vid,1))::int],
                vid[1 + floor(random()*array_length(vid,1))::int],
@@ -248,7 +248,7 @@ def main():
     run(con, "inpatient_cases dismissal backfill", """
         UPDATE inpatient_cases
         SET dismissal_date = admission_date + (1 + floor(random()*10))::int
-        WHERE dismissed = 1
+        WHERE dismissed = true
     """)
 
     # -------------------------------------------------------- inpatient_updates
@@ -308,10 +308,10 @@ def main():
                pid[1 + floor(random()*array_length(pid,1))::int],
                (current_date - (floor(random()*{HISTORY_MONTHS}*30))::int),
                NULL, NULL,
-               (random()<0.1)::int, NULL,
+               (random()<0.1), NULL,
                'Room ' || (1 + g % 12), 15000,
                15000 * (1 + floor(random()*10)),
-               (random()<0.85)::int,
+               (random()<0.85),
                uid[1 + floor(random()*array_length(uid,1))::int]
         FROM generate_series(1,{n['boarding_sessions']}) g,
              (SELECT array_agg(id) AS pid FROM patients) p,
@@ -320,7 +320,7 @@ def main():
     run(con, "boarding dismissal backfill", """
         UPDATE boarding_sessions
         SET dismissal_date = entry_date + (1 + floor(random()*10))::int
-        WHERE dismissed = 1
+        WHERE dismissed = true
     """)
     run(con, "boarding_incidents", f"""
         INSERT INTO boarding_incidents (boarding_id, timestamp, issue, contacted, contact_method, response, user_id)
