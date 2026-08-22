@@ -1242,7 +1242,7 @@ def _create_visit(db, patient_id, f):
     grooming_services = ",".join(f.getlist("grooming_services")) if grooming_needed == "Y" else None
     try:
         weight_kg = parse_money(f.get("weight_kg"))
-        bcs = parse_money(f.get("bcs"))
+        bcs = parse_int(f.get("bcs"))
     except BadNumber:
         flash("Weight and BCS must be valid numbers.", "error")
         return redirect(request.referrer or url_for("dashboard"))
@@ -1365,7 +1365,7 @@ def visit_edit(visit_id):
             edited_followup_date = clean_date(f.get("followup_date"), field="followup_date")
             edited_wellness_next_dose_date = clean_date(f.get("wellness_next_dose_date"), field="wellness_next_dose_date") if wellness_needed == "Y" else None
             edited_weight_kg = parse_money(f.get("weight_kg"))
-            edited_bcs = parse_money(f.get("bcs"))
+            edited_bcs = parse_int(f.get("bcs"))
         except BadDate as e:
             flash(str(e), "error")
             return redirect(url_for("visit_edit", visit_id=visit_id))
@@ -3333,16 +3333,33 @@ def pos_history():
 def inpatient_list():
     db = get_db()
     show_all = request.args.get("all") == "1"
+    # Discharged cases drop off the two views above by design (dismissed=0),
+    # so a charge added *after* discharge (a forgotten procedure billed
+    # late) has no natural collection point — nothing ever resurfaces that
+    # case for staff to notice the balance and follow up. This view exists
+    # specifically to close that gap: any discharged case still owing
+    # money, regardless of why.
+    balance_due = request.args.get("view") == "balance_due"
     page = get_page()
-    count_where = "" if show_all else " WHERE dismissed=0"
-    total = db.execute(f"SELECT COUNT(*) c FROM inpatient_cases{count_where}").fetchone()["c"]
-    q = ("SELECT c.*, p.animal_name, o.name as owner_name FROM inpatient_cases c "
-         "JOIN patients p ON p.id=c.patient_id JOIN owners o ON o.id=p.owner_id")
-    if not show_all:
-        q += " WHERE c.dismissed=0"
-    q += " ORDER BY c.admission_date DESC LIMIT ? OFFSET ?"
-    cases = db.execute(q, (PER_PAGE, page_offset(page))).fetchall()
-    return render_template("inpatient_list.html", cases=cases, show_all=show_all,
+    if balance_due:
+        paid_join = ("LEFT JOIN (SELECT inpatient_case_id, SUM(amount) AS paid FROM payments "
+                     "GROUP BY inpatient_case_id) pay ON pay.inpatient_case_id = c.id")
+        where = " WHERE c.dismissed=1 AND c.total > COALESCE(pay.paid, 0)"
+        total = db.execute(f"SELECT COUNT(*) c FROM inpatient_cases c {paid_join}{where}").fetchone()["c"]
+        q = (f"SELECT c.*, p.animal_name, o.name as owner_name, COALESCE(pay.paid, 0) AS paid "
+             f"FROM inpatient_cases c JOIN patients p ON p.id=c.patient_id JOIN owners o ON o.id=p.owner_id "
+             f"{paid_join}{where} ORDER BY c.admission_date DESC LIMIT ? OFFSET ?")
+        cases = db.execute(q, (PER_PAGE, page_offset(page))).fetchall()
+    else:
+        count_where = "" if show_all else " WHERE dismissed=0"
+        total = db.execute(f"SELECT COUNT(*) c FROM inpatient_cases{count_where}").fetchone()["c"]
+        q = ("SELECT c.*, p.animal_name, o.name as owner_name FROM inpatient_cases c "
+             "JOIN patients p ON p.id=c.patient_id JOIN owners o ON o.id=p.owner_id")
+        if not show_all:
+            q += " WHERE c.dismissed=0"
+        q += " ORDER BY c.admission_date DESC LIMIT ? OFFSET ?"
+        cases = db.execute(q, (PER_PAGE, page_offset(page))).fetchall()
+    return render_template("inpatient_list.html", cases=cases, show_all=show_all, balance_due=balance_due,
                             page=page, total_pages=page_count(total), total_count=total)
 
 
@@ -3353,7 +3370,7 @@ def inpatient_new():
         f = request.form
         try:
             new_weight_kg = parse_money(f.get("weight_kg"))
-            new_bcs = parse_money(f.get("bcs"))
+            new_bcs = parse_int(f.get("bcs"))
             new_admission_date = clean_date(f.get("admission_date"), field="admission_date")
         except BadNumber:
             flash("Weight and BCS must be valid numbers.", "error")
@@ -3410,7 +3427,7 @@ def inpatient_edit(case_id):
     try:
         edited_dismissal_date = clean_date(f.get("dismissal_date"), field="dismissal_date") if dismissed else None
         edited_weight_kg = parse_money(f.get("weight_kg"))
-        edited_bcs = parse_money(f.get("bcs"))
+        edited_bcs = parse_int(f.get("bcs"))
     except (BadDate, BadNumber) as e:
         flash(str(e) if isinstance(e, BadDate) else "Weight and BCS must be valid numbers.", "error")
         return redirect(url_for("inpatient_detail", case_id=case_id))
