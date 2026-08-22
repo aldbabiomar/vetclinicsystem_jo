@@ -56,7 +56,6 @@ PERMISSIONS = [
 ]
 PERMISSION_KEYS = [k for k, _, _ in PERMISSIONS]
 PERMISSION_KEY_SET = set(PERMISSION_KEYS)
-PERMISSION_CATEGORIES = ["Patients & Visits", "Inpatient", "Inventory", "Sales & Billing", "Admin", "Consignment"]
 
 # The permissions that are (and always have been) Admin-only in this app —
 # everything else was open to any logged-in user. Vet and Reception seed
@@ -69,11 +68,6 @@ ADMIN_ONLY_TODAY = {
     "manage_consignment_settlements",
 }
 VET_RECEPTION_DEFAULT_PERMISSIONS = PERMISSION_KEY_SET - ADMIN_ONLY_TODAY
-
-# Legacy role name list — kept only for places (e.g. old data) that still
-# refer to a role by its seeded name. The live source of truth for "what
-# roles exist" is now the `roles` table.
-ROLES = ["Admin", "Vet", "Reception"]
 
 # Discount caps a brand-new install seeds Admin/Vet/Reception with. After
 # that, each role's actual cap lives in roles.discount_cap and is editable
@@ -153,11 +147,6 @@ def has_permission(perm_key):
     Registered as a Jinja global so templates can do
     {% if has_permission('manage_owners') %}."""
     return perm_key in (session.get("permissions") or [])
-
-
-def is_system_admin():
-    """True if the current session belongs to a locked (is_system) role."""
-    return bool(session.get("is_system_role"))
 
 
 # ---------------------------------------------------------------------------

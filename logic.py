@@ -1,6 +1,6 @@
 """
 VetClinicSystem JO — computation engine (v3).
-Pure computation over SQLite tables; no Flask imports.
+Pure computation over Postgres tables; no Flask imports.
 """
 import calendar
 from datetime import date, datetime, timedelta
@@ -67,10 +67,6 @@ def fmt_money(amount):
 # ---------------------------------------------------------------------------
 # Audit sessions (Save / Confirm) — only Confirmed sessions count as history
 # ---------------------------------------------------------------------------
-def audit_session_status_label(status):
-    return {"Draft": "Saved", "Confirmed": "Confirmed"}.get(status, status)
-
-
 def get_or_create_draft_session(db, audit_date, user_id):
     row = db.execute(
         "SELECT * FROM audit_sessions WHERE audit_date=? AND status='Draft' ORDER BY id DESC LIMIT 1",
@@ -481,10 +477,6 @@ def refresh_visit_billing_total(db, visit_id):
     can read the stored total instead of re-deriving it independently."""
     total = visit_billing_summary(db, visit_id)["total"]
     db.execute("UPDATE billing SET total=? WHERE visit_id=?", (total, visit_id))
-
-
-def visit_total_bill(db, visit_id):
-    return visit_billing_summary(db, visit_id)["total"]
 
 
 # ---------------------------------------------------------------------------
@@ -1252,10 +1244,6 @@ def logins_on_date(db, day_str):
 # ---------------------------------------------------------------------------
 # Point of sale (Retail only)
 # ---------------------------------------------------------------------------
-def sellable_items(db):
-    return db.execute("SELECT id, name, barcode, cost_price, unit FROM inventory_list WHERE active=true AND category='Retail' ORDER BY name").fetchall()
-
-
 def item_sale_price(db, item_id):
     row = db.execute("SELECT sale_price FROM price_list WHERE linked_item_id=? AND active=true LIMIT 1", (item_id,)).fetchone()
     return row["sale_price"] if row else None

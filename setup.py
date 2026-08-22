@@ -133,16 +133,11 @@ def apply_schema():
 # runs automatically every time setup.py does (i.e. every app launch), so
 # that can't happen. Every statement here must stay purely additive and
 # safe to run unlimited times — never a data reset or a one-time transform
-# (those stay as their own separate, manually-run scripts).
-INCREMENTAL_SCHEMA_STATEMENTS = [
-    "ALTER TABLE visits ADD COLUMN IF NOT EXISTS weight_kg DOUBLE PRECISION",
-    "ALTER TABLE visits ADD COLUMN IF NOT EXISTS bcs INTEGER CHECK (bcs BETWEEN 1 AND 9)",
-    "ALTER TABLE inpatient_cases ADD COLUMN IF NOT EXISTS weight_kg DOUBLE PRECISION",
-    "ALTER TABLE inpatient_cases ADD COLUMN IF NOT EXISTS bcs INTEGER CHECK (bcs BETWEEN 1 AND 9)",
-    "ALTER TABLE price_list ADD COLUMN IF NOT EXISTS can_discount BOOLEAN NOT NULL DEFAULT FALSE",
-    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS boarding_id INTEGER",
-    "CREATE INDEX IF NOT EXISTS idx_payments_boarding ON payments(boarding_id)",
-]
+# (those stay as their own separate, manually-run scripts). Empty for now —
+# every column schema_postgres.sql defines today has always been there
+# since this repo's first commit; this fills up the same way IQ's did, the
+# first time a column/index is added to an existing table post-launch.
+INCREMENTAL_SCHEMA_STATEMENTS = []
 
 
 def apply_incremental_migrations(con):

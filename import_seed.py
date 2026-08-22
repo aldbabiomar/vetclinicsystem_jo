@@ -43,8 +43,6 @@ CASE_STATUS_MAP = {
     "Lost to follow-up": "Lost to Follow Up", "Deceased": "Deceased/Euthanized", "Referred": "Referred",
 }
 
-INPATIENT_CASE_STATUSES_CLOSED = {"Resolved", "Deceased/Euthanized", "Lost to Follow Up", "Referred"}
-
 
 def clean_date(v):
     if not v:
