@@ -112,6 +112,12 @@ def apply_schema():
     dbmod.run_script(con, sql_text)
     con.commit()
 
+    # Must run before apply_incremental_migrations(): the users.role ->
+    # users.role_id backfill below matches by role NAME, so Admin/Vet/
+    # Reception need to already exist as real `roles` rows first.
+    import auth
+    auth.seed_default_roles_and_permissions(con)
+
     apply_incremental_migrations(con)
     con.close()
     print("  Schema is up to date.")
@@ -136,6 +142,24 @@ INCREMENTAL_SCHEMA_STATEMENTS = [
     "ALTER TABLE price_list ADD COLUMN IF NOT EXISTS can_discount INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE payments ADD COLUMN IF NOT EXISTS boarding_id INTEGER",
     "CREATE INDEX IF NOT EXISTS idx_payments_boarding ON payments(boarding_id)",
+
+    # --- RBAC migration: users.role (TEXT, hardcoded Admin/Vet/Reception)
+    # -> users.role_id (FK into the new roles table). Safe to run on every
+    # launch: once `role` is dropped below, the whole DO block becomes a
+    # no-op (the IF EXISTS check never touches the dropped column).
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id TEXT REFERENCES roles(id)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_discount_cap INTEGER CHECK (custom_discount_cap BETWEEN 0 AND 100)",
+    """
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='role') THEN
+            UPDATE users u SET role_id = r.id FROM roles r WHERE r.name = u.role AND u.role_id IS NULL;
+            ALTER TABLE users ALTER COLUMN role_id SET NOT NULL;
+            ALTER TABLE users DROP COLUMN role;
+        END IF;
+    END $$;
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id)",
 ]
 
 

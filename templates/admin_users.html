@@ -14,7 +14,7 @@
       <div class="field"><label>Username</label><input required name="username"></div>
       <div class="field"><label>Temporary Password</label><input required type="text" name="password" minlength="6"></div>
       <div class="field"><label>Role</label>
-        <select name="role" required>{% for r in roles %}<option>{{ r }}</option>{% endfor %}</select>
+        <select name="role" required>{% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}</select>
       </div>
     </div>
     <div class="form-actions"><button class="btn" type="submit">Create User</button></div>
@@ -33,7 +33,7 @@
         <form method="post" action="{{ url_for('admin_user_role', user_id=u.id) }}" class="inline-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <select name="role" onchange="this.form.submit()" class="small">
-            {% for r in roles %}<option {{ 'selected' if u.role==r }}>{{ r }}</option>{% endfor %}
+            {% for r in roles %}<option value="{{ r.id }}" {{ 'selected' if u.role_id==r.id }}>{{ r.name }}</option>{% endfor %}
           </select>
         </form>
       </td>

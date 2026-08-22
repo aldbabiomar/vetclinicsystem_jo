@@ -1010,7 +1010,7 @@ def week_dates(anchor_iso):
 
 
 def day_grid(db, day_iso):
-    vets = db.execute("SELECT id, full_name FROM users WHERE role='Vet' AND active=1 ORDER BY full_name").fetchall()
+    vets = db.execute("SELECT id, full_name FROM users WHERE role_id IN (SELECT id FROM roles WHERE is_vet_role=true) AND active=1 ORDER BY full_name").fetchall()
     slots = generate_slots(db)
     appts = db.execute("SELECT * FROM appointments WHERE appt_date=?", (day_iso,)).fetchall()
 

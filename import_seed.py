@@ -72,16 +72,18 @@ def main():
             "If you really want to start over, wipe the Postgres data volume first."
         )
     dbmod.run_script(con, open(SCHEMA_PATH).read())
+    auth.seed_default_roles_and_permissions(con)
     cur = con
 
     data = json.load(open(SEED_PATH))
 
     # ---------------- Users (seed one admin account) ----------------
     admin_id = auth.new_user_id()
+    admin_role_id = cur.execute("SELECT id FROM roles WHERE name='Admin'").fetchone()["id"]
     cur.execute(
-        "INSERT INTO users (id,username,password_hash,full_name,role,active,must_change_password,created_at) "
+        "INSERT INTO users (id,username,password_hash,full_name,role_id,active,must_change_password,created_at) "
         "VALUES (?,?,?,?,?,1,1,?)",
-        (admin_id, "admin", auth.hash_password("admin123"), "Clinic Admin", "Admin",
+        (admin_id, "admin", auth.hash_password("admin123"), "Clinic Admin", admin_role_id,
          datetime.now().isoformat(timespec="seconds")),
     )
     print("Seeded admin account -> username: admin / password: admin123 (must be changed on first login)")

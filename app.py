@@ -238,7 +238,7 @@ def lan_address():
 
 
 def vet_users(db):
-    return db.execute("SELECT id, full_name FROM users WHERE role='Vet' AND active=1 ORDER BY full_name").fetchall()
+    return db.execute("SELECT id, full_name FROM users WHERE role_id IN (SELECT id FROM roles WHERE is_vet_role=true) AND active=1 ORDER BY full_name").fetchall()
 
 
 def cached_dashboard_snapshot(db):
@@ -281,6 +281,7 @@ def pagination_url(page, page_param="page"):
 
 
 app.jinja_env.globals["pagination_url"] = pagination_url
+app.jinja_env.globals["has_permission"] = auth.has_permission
 
 
 # ---------------------------------------------------------------------------
@@ -300,6 +301,7 @@ def require_login():
     if not user:
         session.clear()
         return redirect(url_for("login"))
+    auth.refresh_session_permissions(db, user)
     if user["must_change_password"] and request.endpoint != "change_password":
         return redirect(url_for("change_password"))
 
@@ -507,7 +509,7 @@ def login():
             return render_template("login.html")
         session["user_id"] = row["id"]
         session["username"] = row["full_name"]
-        session["role"] = row["role"]
+        auth.refresh_session_permissions(db, row)
         nxt = request.args.get("next")
         if not is_safe_local_path(nxt):
             nxt = url_for("dashboard")
@@ -549,23 +551,27 @@ def change_password():
 # Admin — user management
 # ---------------------------------------------------------------------------
 @app.route("/admin/users")
-@auth.roles_required("Admin")
+@auth.permission_required("manage_users_roles")
 def admin_users():
     db = get_db()
-    users = db.execute("SELECT * FROM users ORDER BY full_name").fetchall()
-    return render_template("admin_users.html", users=users, roles=auth.ROLES)
+    users = db.execute(
+        "SELECT u.*, r.name AS role_name FROM users u JOIN roles r ON r.id=u.role_id ORDER BY u.full_name"
+    ).fetchall()
+    roles = db.execute("SELECT id, name FROM roles ORDER BY name").fetchall()
+    return render_template("admin_users.html", users=users, roles=roles)
 
 
 @app.route("/admin/users/new", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_users_roles")
 def admin_user_new():
     db = get_db()
     f = request.form
     username = f.get("username", "").strip()
     password = f.get("password", "")
     full_name = f.get("full_name", "").strip()
-    role = f.get("role", "")
-    if not username or not full_name or role not in auth.ROLES:
+    role_id = f.get("role", "")
+    role = db.execute("SELECT id FROM roles WHERE id=?", (role_id,)).fetchone()
+    if not username or not full_name or not role:
         flash("Fill in a username, full name, and role.", "error")
         return redirect(url_for("admin_users"))
     if len(password) < 6:
@@ -576,19 +582,19 @@ def admin_user_new():
         return redirect(url_for("admin_users"))
     uid = auth.new_user_id()
     db.execute(
-        "INSERT INTO users (id,username,password_hash,full_name,role,active,must_change_password,created_at) "
+        "INSERT INTO users (id,username,password_hash,full_name,role_id,active,must_change_password,created_at) "
         "VALUES (?,?,?,?,?,1,1,?)",
-        (uid, username, auth.hash_password(password), full_name, role,
+        (uid, username, auth.hash_password(password), full_name, role_id,
          datetime.now().isoformat(timespec="seconds")),
     )
-    db.commit()
     auth.log_change(db, "users", uid, "create")
+    db.commit()
     flash(f"User {username} created. They'll be asked to set a new password on first login.", "success")
     return redirect(url_for("admin_users"))
 
 
 @app.route("/admin/users/<user_id>/toggle-active", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_users_roles")
 def admin_user_toggle(user_id):
     db = get_db()
     if user_id == session["user_id"]:
@@ -600,30 +606,46 @@ def admin_user_toggle(user_id):
         return redirect(url_for("admin_users"))
     new_val = 0 if row["active"] else 1
     db.execute("UPDATE users SET active=? WHERE id=?", (new_val, user_id))
-    db.commit()
     auth.log_change(db, "users", user_id, "update", {"active": (row["active"], new_val)})
+    db.commit()
     flash("User updated.", "success")
     return redirect(url_for("admin_users"))
 
 
 @app.route("/admin/users/<user_id>/role", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_users_roles")
 def admin_user_role(user_id):
     db = get_db()
-    new_role = request.form.get("role", "")
-    if new_role not in auth.ROLES:
+    new_role_id = request.form.get("role", "")
+    new_role = db.execute("SELECT id, name FROM roles WHERE id=?", (new_role_id,)).fetchone()
+    if not new_role:
         flash("Not a valid role.", "error")
         return redirect(url_for("admin_users"))
-    row = db.execute("SELECT role FROM users WHERE id=?", (user_id,)).fetchone()
-    db.execute("UPDATE users SET role=? WHERE id=?", (new_role, user_id))
+    row = db.execute(
+        "SELECT u.role_id, r.name AS role_name FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=?",
+        (user_id,),
+    ).fetchone()
+    if row and row["role_id"] == new_role["id"]:
+        flash("Role updated.", "success")
+        return redirect(url_for("admin_users"))
+    if user_id == session["user_id"] and row and row["role_name"] == "Admin" and new_role["name"] != "Admin":
+        remaining_admins = db.execute(
+            "SELECT COUNT(*) AS n FROM users u JOIN roles r ON r.id=u.role_id "
+            "WHERE r.name='Admin' AND u.active=1 AND u.id != ?",
+            (user_id,),
+        ).fetchone()["n"]
+        if remaining_admins == 0:
+            flash("You can't remove your own Admin role — there must be at least one active Admin.", "error")
+            return redirect(url_for("admin_users"))
+    db.execute("UPDATE users SET role_id=? WHERE id=?", (new_role["id"], user_id))
+    auth.log_change(db, "users", user_id, "update", {"role": (row["role_name"] if row else None, new_role["name"])})
     db.commit()
-    auth.log_change(db, "users", user_id, "update", {"role": (row["role"], new_role)})
     flash("Role updated.", "success")
     return redirect(url_for("admin_users"))
 
 
 @app.route("/admin/users/<user_id>/reset-password", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_users_roles")
 def admin_user_reset_password(user_id):
     db = get_db()
     new_pw = request.form.get("new_password", "")
@@ -632,8 +654,8 @@ def admin_user_reset_password(user_id):
         return redirect(url_for("admin_users"))
     db.execute("UPDATE users SET password_hash=?, must_change_password=1 WHERE id=?",
                (auth.hash_password(new_pw), user_id))
-    db.commit()
     auth.log_change(db, "users", user_id, "update", {"password": ("(hidden)", "(reset by admin)")})
+    db.commit()
     flash("Password reset. The user will be asked to set a new one on next login.", "success")
     return redirect(url_for("admin_users"))
 
@@ -642,7 +664,7 @@ def admin_user_reset_password(user_id):
 # Logins and Changes (admin-only audit page)
 # ---------------------------------------------------------------------------
 @app.route("/admin/logs")
-@auth.roles_required("Admin")
+@auth.permission_required("view_logins_changes")
 def admin_logs():
     db = get_db()
     day = request.args.get("date", date.today().isoformat())
@@ -658,18 +680,25 @@ def admin_logs():
 def dashboard():
     db = get_db()
     snap = cached_dashboard_snapshot(db)
-    all_missed = logic.missed_items(db) if session.get("role") == "Admin" else []
+    # "Needs Admin Review" is a cross-cutting oversight panel that doesn't map
+    # to one single permission from the checklist — shown to anyone with at
+    # least one of the Admin-group permissions, as the closest match to "some
+    # kind of clinic administrator" (its previous Admin-only gate, made
+    # granular so a custom role with equivalent permissions still sees it).
+    is_overseer = (auth.has_permission("manage_users_roles") or auth.has_permission("manage_settings")
+                   or auth.has_permission("view_logins_changes"))
+    all_missed = logic.missed_items(db) if is_overseer else []
     missed_page = get_page()
     missed_total = len(all_missed)
     missed_offset = page_offset(missed_page)
     missed = all_missed[missed_offset:missed_offset + PER_PAGE]
-    opex_due = logic.opex_reminder_due(db) if session.get("role") == "Admin" else False
+    opex_due = logic.opex_reminder_due(db) if auth.has_permission("view_financial_reports") else False
     backup_alert = None
-    if session.get("role") == "Admin":
+    if auth.has_permission("manage_settings"):
         import backup as backup_mod
         backup_alert = logic.backup_alert_message(backup_mod.last_backup(db))
     return render_template("dashboard.html", snap=snap, lan_address=lan_address(), missed=missed,
-                            opex_due=opex_due, backup_alert=backup_alert,
+                            is_overseer=is_overseer, opex_due=opex_due, backup_alert=backup_alert,
                             missed_page=missed_page, missed_total_pages=page_count(missed_total),
                             missed_total=missed_total)
 
@@ -751,8 +780,8 @@ def owner_new():
         oid = dbmod.next_id(db, "OW")
         db.execute("INSERT INTO owners (id,name,phone,address,notes) VALUES (?,?,?,?,?)",
                   (oid, f["name"], phone, f.get("address"), f.get("notes")))
-        db.commit()
         auth.log_change(db, "owners", oid, "create")
+        db.commit()
         flash(f"Owner {oid} added.", "success")
         return redirect(url_for("owner_detail", owner_id=oid))
     return render_template("owner_form.html", owner=None)
@@ -787,8 +816,8 @@ def owner_edit(owner_id):
         changes = auth.diff_dict(owner, new_vals)
         db.execute("UPDATE owners SET name=?, phone=?, address=?, notes=? WHERE id=?",
                   (new_vals["name"], new_vals["phone"], new_vals["address"], new_vals["notes"], owner_id))
-        db.commit()
         auth.log_change(db, "owners", owner_id, "update", changes)
+        db.commit()
         flash("Owner updated.", "success")
         return redirect(url_for("owner_detail", owner_id=owner_id))
     return render_template("owner_form.html", owner=owner)
@@ -868,8 +897,8 @@ def patient_edit(patient_id):
             "UPDATE patients SET animal_name=?, species=?, sex=?, age_note=?, repro_status=?, housing=?, notes=? WHERE id=?",
             (*new_vals.values(), patient_id),
         )
-        db.commit()
         auth.log_change(db, "patients", patient_id, "update", changes)
+        db.commit()
         flash("Patient updated.", "success")
         return redirect(url_for("patient_detail", patient_id=patient_id))
     return render_template("patient_form_edit.html", patient=patient)
@@ -1091,7 +1120,7 @@ def visit_detail(visit_id):
     price_list = db.execute("SELECT id, name, category, sale_price FROM price_list WHERE active=1 ORDER BY id").fetchall()
     payments = db.execute("SELECT * FROM payments WHERE visit_id=? ORDER BY date DESC", (visit_id,)).fetchall()
     files = attach_mod.list_attachments(db, "visit", visit_id)
-    cap = auth.discount_cap_for(session.get("role"), db)
+    cap = auth.discount_cap_for()
     return render_template("visit_detail.html", visit=visit, billing=billing_row, summary=summary,
                             price_list=price_list, payments=payments, files=files, discount_cap=cap)
 
@@ -1155,8 +1184,8 @@ def visit_edit(visit_id):
                grooming_contacted=?, payment_status=? WHERE id=?""",
             (*new_vals.values(), visit_id),
         )
-        db.commit()
         auth.log_change(db, "visits", visit_id, "update", changes)
+        db.commit()
         flash("Visit updated.", "success")
         return redirect(url_for("visit_detail", visit_id=visit_id))
     return render_template("visit_form_edit.html", visit=visit, case_statuses=CASE_STATUSES,
@@ -1197,8 +1226,8 @@ def visit_billing_save(visit_id):
                    (visit_id, billing_type, codes, manual_amount, date_billed, notes))
     new_month = logic.month_key(date_billed)
     logic.recompute_months_summary(db, [old_month, new_month])
-    db.commit()
     auth.log_change(db, "billing", visit_id, "update" if existing else "create")
+    db.commit()
     flash("Billing saved.", "success")
     return redirect(url_for("visit_detail", visit_id=visit_id))
 
@@ -1211,7 +1240,7 @@ def visit_discount_save(visit_id):
     except BadNumber:
         flash("Discount must be a valid number.", "error")
         return redirect(url_for("visit_detail", visit_id=visit_id))
-    cap = auth.discount_cap_for(session.get("role"), db)
+    cap = auth.discount_cap_for()
     if percent > cap or percent < 0:
         flash(f"Discount must be between 0% and {cap}% for your role.", "error")
         return redirect(url_for("visit_detail", visit_id=visit_id))
@@ -1230,8 +1259,8 @@ def visit_discount_save(visit_id):
                    (visit_id, percent, session["user_id"]))
     if existing and existing["date_billed"]:
         logic.recompute_month_summary(db, logic.month_key(existing["date_billed"]))
-    db.commit()
     auth.log_change(db, "billing", visit_id, "update", {"discount_percent": (existing["discount_percent"] if existing else 0, percent)})
+    db.commit()
     flash(f"{percent:.0f}% discount applied.", "success")
     return redirect(url_for("visit_detail", visit_id=visit_id))
 
@@ -1256,8 +1285,8 @@ def visit_payment_add(visit_id):
     db.execute("INSERT INTO payments (visit_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?)",
               (visit_id, amount, f.get("method"), payment_date,
                session["user_id"], f.get("notes")))
-    db.commit()
     auth.log_change(db, "payments", visit_id, "create")
+    db.commit()
     flash("Payment recorded.", "success")
     return redirect(url_for("visit_detail", visit_id=visit_id))
 
@@ -1310,8 +1339,8 @@ def followup_status_update(visit_id):
     status = request.form.get("status")
     old = db.execute("SELECT followup_status FROM visits WHERE id=?", (visit_id,)).fetchone()
     db.execute("UPDATE visits SET followup_status=? WHERE id=?", (status, visit_id))
-    db.commit()
     auth.log_change(db, "visits", visit_id, "update", {"followup_status": (old["followup_status"], status)})
+    db.commit()
     flash("Follow-up status updated.", "success")
     return redirect(request.referrer or url_for("followups_list"))
 
@@ -1338,8 +1367,8 @@ def wellness_update(visit_id):
     old = db.execute("SELECT wellness_contacted, wellness_contact_method FROM visits WHERE id=?", (visit_id,)).fetchone()
     db.execute("UPDATE visits SET wellness_contacted=?, wellness_contact_method=? WHERE id=?",
               (f.get("wellness_contacted", "N"), f.get("wellness_contact_method") or None, visit_id))
-    db.commit()
     auth.log_change(db, "visits", visit_id, "update", {"wellness_contacted": (old["wellness_contacted"], f.get("wellness_contacted", "N"))})
+    db.commit()
     flash("Wellness reminder updated.", "success")
     return redirect(url_for("wellness_list"))
 
@@ -1367,8 +1396,8 @@ def grooming_update(visit_id):
     old = db.execute("SELECT grooming_status, grooming_contacted FROM visits WHERE id=?", (visit_id,)).fetchone()
     db.execute("UPDATE visits SET grooming_status=?, grooming_contacted=? WHERE id=?",
               (f.get("grooming_status"), f.get("grooming_contacted", "N"), visit_id))
-    db.commit()
     auth.log_change(db, "visits", visit_id, "update", {"grooming_status": (old["grooming_status"], f.get("grooming_status"))})
+    db.commit()
     flash("Grooming entry updated.", "success")
     return redirect(url_for("grooming_list"))
 
@@ -1380,7 +1409,7 @@ PRICE_CATEGORIES = ["Service", "Medicine", "Retail"]
 
 
 @app.route("/price-list")
-@auth.roles_required("Admin")
+@auth.permission_required("manage_price_list")
 def price_list():
     db = get_db()
     cat = request.args.get("category")
@@ -1406,7 +1435,7 @@ def price_list():
 
 
 @app.route("/price-list/new", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_price_list")
 def price_list_new():
     db = get_db()
     f = request.form
@@ -1426,14 +1455,14 @@ def price_list_new():
         (pid, f["name"], f["category"], cost_price, sale_price,
          f.get("notes"), f.get("linked_item_id") or None, can_discount),
     )
-    db.commit()
     auth.log_change(db, "price_list", pid, "create")
+    db.commit()
     flash(f"{pid} added to price list.", "success")
     return redirect(url_for("price_list"))
 
 
 @app.route("/price-list/<item_id>/edit", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_price_list")
 def price_list_edit(item_id):
     db = get_db()
     f = request.form
@@ -1461,14 +1490,14 @@ def price_list_edit(item_id):
         # month that ever billed this code. Full rebuild is the only way
         # to know which months without re-scanning anyway.
         logic.recompute_full_summary(db)
-    db.commit()
     auth.log_change(db, "price_list", item_id, "update", changes)
+    db.commit()
     flash("Price updated.", "success")
     return redirect(url_for("price_list"))
 
 
 @app.route("/price-list/bulk-edit", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_price_list")
 def price_list_bulk_edit():
     """
     Saves many Price List row edits in a single request instead of one
@@ -1520,12 +1549,12 @@ def price_list_bulk_edit():
 
 
 @app.route("/price-list/<item_id>/delete", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_price_list")
 def price_list_delete(item_id):
     db = get_db()
     db.execute("UPDATE price_list SET active=0 WHERE id=?", (item_id,))
-    db.commit()
     auth.log_change(db, "price_list", item_id, "delete")
+    db.commit()
     flash("Item removed from price list.", "success")
     return redirect(url_for("price_list"))
 
@@ -1587,8 +1616,8 @@ def inventory_catalog_new():
         (iid, f["name"], f.get("category", "Medical"), f.get("unit"), 1 if f.get("track_expiry") == "on" else 0,
          cost_price, f.get("distributor_id") or None, f.get("notes")),
     )
-    db.commit()
     auth.log_change(db, "inventory_list", iid, "create")
+    db.commit()
     flash(f"{iid} added to inventory catalog.", "success")
     return redirect(url_for("inventory_catalog"))
 
@@ -1617,8 +1646,8 @@ def inventory_catalog_edit(item_id):
         # not a value frozen at sale time — so this can retroactively change
         # COGS for any past month that ever sold or refunded this item.
         logic.recompute_full_summary(db)
-    db.commit()
     auth.log_change(db, "inventory_list", item_id, "update", changes)
+    db.commit()
     flash("Inventory item updated.", "success")
     return redirect(url_for("inventory_catalog"))
 
@@ -1673,8 +1702,8 @@ def inventory_catalog_toggle(item_id):
         return redirect(url_for("inventory_catalog"))
     new_val = 0 if row["active"] else 1
     db.execute("UPDATE inventory_list SET active=? WHERE id=?", (new_val, item_id))
-    db.commit()
     auth.log_change(db, "inventory_list", item_id, "update", {"active": (row["active"], new_val)})
+    db.commit()
     flash("Item " + ("reactivated." if new_val else "deactivated."), "success")
     return redirect(url_for("inventory_catalog"))
 
@@ -1684,8 +1713,8 @@ def inventory_catalog_create_barcode(item_id):
     db = get_db()
     code = barcode_mod.generate_barcode(db)
     db.execute("UPDATE inventory_list SET barcode=? WHERE id=?", (code, item_id))
-    db.commit()
     auth.log_change(db, "inventory_list", item_id, "update", {"barcode": (None, code)})
+    db.commit()
     flash(f"Barcode {code} created.", "success")
     return redirect(url_for("inventory_barcode_label", item_id=item_id))
 
@@ -1735,8 +1764,8 @@ def distributor_new():
         (did, f["name"], f.get("contact_person"), phone, f.get("email"), f.get("catalog_link"),
          lead_time_days, f.get("payment_terms"), f.get("notes")),
     )
-    db.commit()
     auth.log_change(db, "distributors", did, "create")
+    db.commit()
     flash(f"{did} added.", "success")
     return redirect(url_for("distributors_list"))
 
@@ -1765,8 +1794,8 @@ def distributor_edit(dist_id):
         "UPDATE distributors SET name=?, contact_person=?, phone=?, email=?, catalog_link=?, lead_time_days=?, payment_terms=?, notes=? WHERE id=?",
         (*new_vals.values(), dist_id),
     )
-    db.commit()
     auth.log_change(db, "distributors", dist_id, "update", changes)
+    db.commit()
     flash("Distributor updated.", "success")
     return redirect(url_for("distributors_list"))
 
@@ -1775,8 +1804,8 @@ def distributor_edit(dist_id):
 def distributor_delete(dist_id):
     db = get_db()
     db.execute("DELETE FROM distributors WHERE id=?", (dist_id,))
-    db.commit()
     auth.log_change(db, "distributors", dist_id, "delete")
+    db.commit()
     flash("Distributor deleted.", "success")
     return redirect(url_for("distributors_list"))
 
@@ -1908,8 +1937,8 @@ def audit_session_save(session_id):
     except BadNumber:
         flash("Audit counts must be valid numbers. The draft was not saved — please correct the highlighted value(s).", "error")
         return redirect(url_for("audit_session_view", session_id=session_id))
-    db.commit()
     auth.log_change(db, "audit_sessions", str(session_id), "update")
+    db.commit()
     flash("Audit saved. You can come back and finish it later, or confirm it once it's complete.", "success")
     return redirect(url_for("audit_session_view", session_id=session_id))
 
@@ -1928,8 +1957,8 @@ def audit_session_confirm(session_id):
         return redirect(url_for("audit_session_view", session_id=session_id))
     db.execute("UPDATE audit_sessions SET status='Confirmed', confirmed_at=? WHERE id=?",
               (datetime.now().isoformat(timespec="seconds"), session_id))
-    db.commit()
     auth.log_change(db, "audit_sessions", str(session_id), "update", {"status": ("Draft", "Confirmed")})
+    db.commit()
     flash("Audit confirmed and locked. Inventory Status and Ordering Sheet now reflect these counts.", "success")
     return redirect(url_for("audit_session_view", session_id=session_id))
 
@@ -1991,8 +2020,8 @@ def boarding_new():
     )
     boarding_id = cur.fetchone()["id"]
     logic.recompute_month_summary(db, logic.month_key(entry_date))
-    db.commit()
     auth.log_change(db, "boarding_sessions", str(boarding_id), "create")
+    db.commit()
     flash("Boarding session added.", "success")
     return redirect(url_for("boarding_page"))
 
@@ -2034,8 +2063,8 @@ def boarding_edit(boarding_id):
     old_month = logic.month_key(old["entry_date"])
     new_month = logic.month_key(entry_date)
     logic.recompute_months_summary(db, [old_month, new_month])
-    db.commit()
     auth.log_change(db, "boarding_sessions", str(boarding_id), "update", changes)
+    db.commit()
     flash("Boarding session updated.", "success")
     return redirect(url_for("boarding_page"))
 
@@ -2045,8 +2074,8 @@ def boarding_dismiss(boarding_id):
     db = get_db()
     db.execute("UPDATE boarding_sessions SET dismissed=1, dismissal_date=COALESCE(dismissal_date, ?) WHERE id=?",
                (date.today().isoformat(), boarding_id))
-    db.commit()
     auth.log_change(db, "boarding_sessions", str(boarding_id), "update", {"dismissed": (0, 1)})
+    db.commit()
     flash("Marked as picked up.", "success")
     return redirect(url_for("boarding_page"))
 
@@ -2087,8 +2116,8 @@ def boarding_payment(boarding_id):
         (boarding_id, amount, request.form.get("method"), date.today().isoformat(),
          session.get("user_id"), request.form.get("notes")),
     )
-    db.commit()
     auth.log_change(db, "payments", str(boarding_id), "create")
+    db.commit()
     flash("Payment recorded.", "success")
     return redirect(url_for("boarding_page"))
 
@@ -2106,7 +2135,7 @@ def boarding_export_pdf(boarding_id):
 @app.route("/pos")
 def pos_page():
     db = get_db()
-    cap = auth.discount_cap_for(session.get("role"), db)
+    cap = auth.discount_cap_for()
     return render_template("pos.html", discount_cap=cap)
 
 
@@ -2121,7 +2150,7 @@ def pos_checkout():
     except BadNumber:
         flash("Discount must be a valid number.", "error")
         return redirect(url_for("pos_page"))
-    cap = auth.discount_cap_for(session.get("role"), db)
+    cap = auth.discount_cap_for()
     if discount_percent > cap or discount_percent < 0:
         flash(f"Discount must be between 0% and {cap}% for your role.", "error")
         return redirect(url_for("pos_page"))
@@ -2174,8 +2203,8 @@ def pos_checkout():
         db.execute("INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
                   "VALUES (?,?,?,?,?,?)", (iid, -qty, "sale", str(sale_id), now, session["user_id"]))
     logic.recompute_month_summary(db, now[:7])
-    db.commit()
     auth.log_change(db, "sales", str(sale_id), "create")
+    db.commit()
     flash(f"Sale #{sale_id} completed — total {logic.fmt_money(total)} JOD.", "success")
     return redirect(url_for("pos_receipt", sale_id=sale_id))
 
@@ -2277,7 +2306,7 @@ def inpatient_detail(case_id):
     payments = db.execute("SELECT * FROM payments WHERE inpatient_case_id=? ORDER BY date DESC", (case_id,)).fetchall()
     proc_items = db.execute("SELECT * FROM price_list WHERE category='Service' AND active=1 ORDER BY id").fetchall()
     files = attach_mod.list_attachments(db, "inpatient", case_id)
-    cap = auth.discount_cap_for(session.get("role"), db)
+    cap = auth.discount_cap_for()
 
     return render_template("inpatient_detail.html", case=case, updates=updates, recent_updates=updates[:3],
                             contacts=contacts, recent_contacts=contacts[:3], billing=billing, payments=payments,
@@ -2309,8 +2338,8 @@ def inpatient_edit(case_id):
         "UPDATE inpatient_cases SET complaint=?, exam_findings=?, weight_kg=?, bcs=?, admitted_items=?, dismissed=?, dismissal_date=?, "
         "attending_vet_id=?, supervising_vet_id=? WHERE id=?", (*new_vals.values(), case_id),
     )
-    db.commit()
     auth.log_change(db, "inpatient_cases", str(case_id), "update", changes)
+    db.commit()
     flash("Case updated.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
 
@@ -2322,8 +2351,8 @@ def inpatient_update_add(case_id):
     if note:
         db.execute("INSERT INTO inpatient_updates (case_id, timestamp, note, user_id) VALUES (?,?,?,?)",
                   (case_id, datetime.now().isoformat(timespec="seconds"), note, session["user_id"]))
-        db.commit()
         auth.log_change(db, "inpatient_updates", str(case_id), "create")
+        db.commit()
         flash("Update logged.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
 
@@ -2335,8 +2364,8 @@ def inpatient_update_edit(case_id, update_id):
     old = db.execute("SELECT note FROM inpatient_updates WHERE id=? AND case_id=?", (update_id, case_id)).fetchone()
     if old and note:
         db.execute("UPDATE inpatient_updates SET note=? WHERE id=?", (note, update_id))
-        db.commit()
         auth.log_change(db, "inpatient_updates", str(update_id), "update", {"note": (old["note"], note)})
+        db.commit()
         flash("Update edited.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
 
@@ -2348,8 +2377,8 @@ def inpatient_contact_add(case_id):
     picked_up = 1 if f.get("picked_up") == "yes" else 0
     db.execute("INSERT INTO inpatient_contact_log (case_id, timestamp, picked_up, staff_user_id, notes) VALUES (?,?,?,?,?)",
               (case_id, datetime.now().isoformat(timespec="seconds"), picked_up, session["user_id"], f.get("notes")))
-    db.commit()
     auth.log_change(db, "inpatient_contact_log", str(case_id), "create")
+    db.commit()
     flash("Contact attempt logged.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
 
@@ -2375,11 +2404,11 @@ def inpatient_billing_add(case_id):
         added += 1
     if added:
         logic.recompute_month_summary(db, now[:7])
+        auth.log_change(db, "inpatient_billing", str(case_id), "create")
     db.commit()
     if had_bad_number:
         flash("Some quantities weren't valid numbers and were skipped.", "error")
     if added:
-        auth.log_change(db, "inpatient_billing", str(case_id), "create")
         flash(f"{added} procedure(s) added to the bill.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
 
@@ -2391,8 +2420,8 @@ def inpatient_billing_delete(case_id, line_id):
     db.execute("DELETE FROM inpatient_billing WHERE id=? AND case_id=?", (line_id, case_id))
     if row and row["timestamp"]:
         logic.recompute_month_summary(db, row["timestamp"][:7])
-    db.commit()
     auth.log_change(db, "inpatient_billing", str(line_id), "delete")
+    db.commit()
     flash("Line removed.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
 
@@ -2405,7 +2434,7 @@ def inpatient_discount_save(case_id):
     except BadNumber:
         flash("Discount must be a valid number.", "error")
         return redirect(url_for("inpatient_detail", case_id=case_id))
-    cap = auth.discount_cap_for(session.get("role"), db)
+    cap = auth.discount_cap_for()
     if percent > cap or percent < 0:
         flash(f"Discount must be between 0% and {cap}% for your role.", "error")
         return redirect(url_for("inpatient_detail", case_id=case_id))
@@ -2421,8 +2450,8 @@ def inpatient_discount_save(case_id):
     db.execute("UPDATE inpatient_cases SET discount_percent=?, discount_applied_by=? WHERE id=?",
               (percent, session["user_id"], case_id))
     logic.recompute_months_summary(db, logic.months_touched_by_inpatient_case(db, case_id))
-    db.commit()
     auth.log_change(db, "inpatient_cases", str(case_id), "update", {"discount_percent": (old["discount_percent"], percent)})
+    db.commit()
     flash(f"{percent:.0f}% discount applied.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
 
@@ -2447,8 +2476,8 @@ def inpatient_payment_add(case_id):
     db.execute("INSERT INTO payments (inpatient_case_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?)",
               (case_id, amount, f.get("method"), payment_date,
                session["user_id"], f.get("notes")))
-    db.commit()
     auth.log_change(db, "payments", str(case_id), "create")
+    db.commit()
     flash("Payment recorded.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
 
@@ -2546,7 +2575,7 @@ def appointment_cancel(appt_id):
 # Reports: Monthly & Yearly P&L (Admin only)
 # ---------------------------------------------------------------------------
 @app.route("/reports")
-@auth.roles_required("Admin")
+@auth.permission_required("view_financial_reports")
 def reports():
     db = get_db()
     pl = logic.monthly_pl(db)
@@ -2556,7 +2585,7 @@ def reports():
 
 
 @app.route("/reports/yearly")
-@auth.roles_required("Admin")
+@auth.permission_required("view_financial_reports")
 def reports_yearly():
     db = get_db()
     all_pl = logic.yearly_pl(db)
@@ -2569,7 +2598,7 @@ def reports_yearly():
 
 
 @app.route("/reports/rebuild", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("view_financial_reports")
 def reports_rebuild_summary():
     db = get_db()
     logic.recompute_full_summary(db)
@@ -2582,7 +2611,7 @@ def reports_rebuild_summary():
 # Insights (BI dashboard) & Retention (cohort analysis) — Admin only
 # ---------------------------------------------------------------------------
 @app.route("/insights")
-@auth.roles_required("Admin")
+@auth.permission_required("view_insights_retention")
 def insights():
     months_back = 12
     cutoff = logic.month_list(months_back)[0] + "-01"
@@ -2627,7 +2656,7 @@ def insights():
 
 
 @app.route("/retention")
-@auth.roles_required("Admin")
+@auth.permission_required("view_insights_retention")
 def retention():
     db = get_db()
     full = logic.cohort_retention_grid(db, max_offset=11)
@@ -2643,7 +2672,7 @@ def retention():
 
 
 @app.route("/refunds")
-@auth.roles_required("Admin")
+@auth.permission_required("manage_refunds")
 def refunds_page():
     db = get_db()
     page = get_page()
@@ -2658,7 +2687,7 @@ def refunds_page():
 
 
 @app.route("/refunds/retail", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_refunds")
 def refund_retail_save():
     db = get_db()
     f = request.form
@@ -2719,14 +2748,14 @@ def refund_retail_save():
             )
 
     logic.recompute_month_summary(db, logic.month_key(refund_date))
-    db.commit()
     auth.log_change(db, "refunds", str(refund_id), "create")
+    db.commit()
     flash(f"Refund of {total:,.0f} JOD recorded" + (" and stock restored." if restock else "."), "success")
     return redirect(url_for("refunds_page"))
 
 
 @app.route("/refunds/service", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_refunds")
 def refund_service_save():
     db = get_db()
     f = request.form
@@ -2769,14 +2798,14 @@ def refund_service_save():
     )
     refund_id = cur.fetchone()["id"]
     logic.recompute_month_summary(db, logic.month_key(refund_date))
-    db.commit()
     auth.log_change(db, "refunds", str(refund_id), "create")
+    db.commit()
     flash(f"Service refund of {amount:,.0f} JOD recorded.", "success")
     return redirect(url_for("refunds_page"))
 
 
 @app.route("/reports/opex", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("view_financial_reports")
 def reports_opex_save():
     db = get_db()
     f = request.form
@@ -2799,8 +2828,8 @@ def reports_opex_save():
            utilities=excluded.utilities, marketing=excluded.marketing, other=excluded.other""",
         (month, rent, salaries, utilities, marketing, other),
     )
-    db.commit()
     auth.log_change(db, "monthly_opex", month, "update")
+    db.commit()
     flash(f"Operating costs saved for {month}.", "success")
     return redirect(url_for("reports"))
 
@@ -2809,7 +2838,7 @@ def reports_opex_save():
 # Settings (Admin only)
 # ---------------------------------------------------------------------------
 @app.route("/settings", methods=["GET", "POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_settings")
 def settings_page():
     db = get_db()
     if request.method == "POST":
@@ -2842,8 +2871,7 @@ def settings_page():
             return redirect(url_for("settings_page"))
         for key in ["clinic_name", "clinic_location", "audit_overdue_days", "expiry_soon_days", "opening_date",
                     "appt_start_time", "appt_end_time", "appt_slot_minutes",
-                    "backup_dir", "backup_time", "backup_retention",
-                    "discount_cap_admin", "discount_cap_vet", "discount_cap_reception"]:
+                    "backup_dir", "backup_time", "backup_retention"]:
             val = request.form.get(key)
             if val is not None:
                 old = logic.get_setting(db, key)
@@ -2853,6 +2881,25 @@ def settings_page():
                 )
                 if old != val:
                     auth.log_change(db, "settings", key, "update", {key: (old, val)})
+        # Discount caps live on roles.discount_cap now (not the settings
+        # table) so they participate in the same role_permissions model as
+        # everything else — these three fields just edit the built-in
+        # Admin/Vet/Reception system roles' caps directly, same as before
+        # from the admin's point of view.
+        cap_changed = False
+        for role_name, field in [("Admin", "discount_cap_admin"), ("Vet", "discount_cap_vet"),
+                                  ("Reception", "discount_cap_reception")]:
+            val = request.form.get(field)
+            if val is None:
+                continue
+            role = db.execute("SELECT id, discount_cap FROM roles WHERE name=?", (role_name,)).fetchone()
+            if not role or int(val) == role["discount_cap"]:
+                continue
+            db.execute("UPDATE roles SET discount_cap=? WHERE id=?", (int(val), role["id"]))
+            auth.log_change(db, "roles", role["id"], "update", {"discount_cap": (role["discount_cap"], int(val))})
+            cap_changed = True
+        if cap_changed:
+            auth.bump_permissions_version(db)
         db.commit()
         if request.form.get("backup_time"):
             import scheduler
@@ -2861,9 +2908,10 @@ def settings_page():
         return redirect(url_for("settings_page"))
     rows = db.execute("SELECT * FROM settings").fetchall()
     settings = {r["key"]: r["value"] for r in rows}
-    settings.setdefault("discount_cap_admin", str(auth.DISCOUNT_CAPS["Admin"]))
-    settings.setdefault("discount_cap_vet", str(auth.DISCOUNT_CAPS["Vet"]))
-    settings.setdefault("discount_cap_reception", str(auth.DISCOUNT_CAPS["Reception"]))
+    role_caps = {r["name"]: r["discount_cap"] for r in db.execute("SELECT name, discount_cap FROM roles").fetchall()}
+    settings["discount_cap_admin"] = str(role_caps.get("Admin", auth.DISCOUNT_CAPS["Admin"]))
+    settings["discount_cap_vet"] = str(role_caps.get("Vet", auth.DISCOUNT_CAPS["Vet"]))
+    settings["discount_cap_reception"] = str(role_caps.get("Reception", auth.DISCOUNT_CAPS["Reception"]))
     import backup as backup_mod
     return render_template(
         "settings.html", settings=settings, lan_address=lan_address(),
@@ -2872,7 +2920,7 @@ def settings_page():
 
 
 @app.route("/settings/backup-now", methods=["POST"])
-@auth.roles_required("Admin")
+@auth.permission_required("manage_settings")
 def settings_backup_now():
     db = get_db()
     import backup as backup_mod

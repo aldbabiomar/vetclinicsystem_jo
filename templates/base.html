@@ -68,22 +68,34 @@
       <div class="nav-label">Sales &amp; Billing</div>
       <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('pos_page') }}">Point of Sale</a>
       <a class="nav-link {{ 'active' if request.endpoint=='pos_history' }}" href="{{ url_for('pos_history') }}">Sales History</a>
-      {% if current_role == 'Admin' %}
+      {% if has_permission('manage_price_list') %}
       <a class="nav-link {{ 'active' if request.endpoint=='price_list' }}" href="{{ url_for('price_list') }}">Price List</a>
+      {% endif %}
+      {% if has_permission('manage_refunds') %}
       <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('refunds_page') }}">Refunds</a>
+      {% endif %}
+      {% if has_permission('view_financial_reports') %}
       <a class="nav-link {{ 'active' if request.endpoint=='reports' }}" href="{{ url_for('reports') }}">Monthly P&amp;L</a>
       <a class="nav-link {{ 'active' if request.endpoint=='reports_yearly' }}" href="{{ url_for('reports_yearly') }}">Yearly P&amp;L</a>
+      {% endif %}
+      {% if has_permission('view_insights_retention') %}
       <a class="nav-link {{ 'active' if request.endpoint=='insights' }}" href="{{ url_for('insights') }}">Insights</a>
       <a class="nav-link {{ 'active' if request.endpoint=='retention' }}" href="{{ url_for('retention') }}">Retention</a>
       {% endif %}
     </div>
 
-    {% if current_role == 'Admin' %}
+    {% if has_permission('manage_users_roles') or has_permission('view_logins_changes') or has_permission('manage_settings') %}
     <div class="nav-group">
       <div class="nav-label">Admin</div>
+      {% if has_permission('manage_users_roles') %}
       <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin_users') }}">Users</a>
+      {% endif %}
+      {% if has_permission('view_logins_changes') %}
       <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin_logs') }}">Logins and Changes</a>
+      {% endif %}
+      {% if has_permission('manage_settings') %}
       <a class="nav-link {{ 'active' if request.endpoint=='settings_page' }}" href="{{ url_for('settings_page') }}">Settings</a>
+      {% endif %}
     </div>
     {% endif %}
 

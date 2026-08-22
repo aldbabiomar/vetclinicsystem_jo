@@ -11,13 +11,13 @@
   </div>
 </div>
 
-{% if current_role == 'Admin' and opex_due %}
+{% if opex_due %}
 <div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
   This month's operating costs haven't been entered yet — add them on the Monthly P&amp;L page before the month closes.
 </div>
 {% endif %}
 
-{% if current_role == 'Admin' and backup_alert %}
+{% if backup_alert %}
 <div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
   {{ backup_alert }} <a href="{{ url_for('settings_page') }}">Open Settings →</a>
 </div>
@@ -106,7 +106,7 @@
   </div>
 </div>
 
-{% if current_role == 'Admin' %}
+{% if is_overseer %}
 <div class="section-title">Missed Items — Needs Admin Review <span class="count">{{ missed_total }}</span></div>
 <div class="table-wrap">
 <table>

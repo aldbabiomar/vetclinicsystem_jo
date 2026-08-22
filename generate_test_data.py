@@ -64,14 +64,14 @@ def main():
 
     # ---------------------------------------------------------------- users
     run(con, "users", f"""
-        INSERT INTO users (id, username, password_hash, full_name, role, active, must_change_password, created_at)
+        INSERT INTO users (id, username, password_hash, full_name, role_id, active, must_change_password, created_at)
         SELECT 'U' || lpad(g::text,3,'0'),
                'user' || g,
                '$2b$12$placeholderplaceholderplaceholderplaceholderplaceholde',
                (ARRAY['Ahmed Jassim','Zainab Kareem','Mustafa Hadi','Noor Salim','Hussein Ali',
                       'Rania Fadhil','Yousif Kamal','Sara Adnan','Omar Fawzi','Maha Rasheed',
                       'Layla Sabah'])[g],
-               CASE WHEN g=1 THEN 'Admin' WHEN g<=6 THEN 'Vet' ELSE 'Reception' END,
+               (SELECT id FROM roles WHERE name = CASE WHEN g=1 THEN 'Admin' WHEN g<=6 THEN 'Vet' ELSE 'Reception' END),
                1, 0, now()::text
         FROM generate_series(1,{n['users']}) g
     """)
@@ -167,7 +167,7 @@ def main():
                NULL, uid[1 + floor(random()*array_length(uid,1))::int]
         FROM generate_series(1,{n['visits']}) g,
              (SELECT array_agg(id) AS pid FROM patients) p,
-             (SELECT array_agg(full_name) AS vname FROM users WHERE role='Vet') v,
+             (SELECT array_agg(full_name) AS vname FROM users WHERE role_id=(SELECT id FROM roles WHERE name='Vet')) v,
              (SELECT array_agg(id) AS uid FROM users) u
     """)
     run(con, "visits date index refresh", "ANALYZE visits")
@@ -211,7 +211,7 @@ def main():
                uid[1 + floor(random()*array_length(uid,1))::int]
         FROM generate_series(1,{n['inpatient_cases']}) g,
              (SELECT array_agg(id) AS pid FROM patients) p,
-             (SELECT array_agg(id) AS vid FROM users WHERE role='Vet') v,
+             (SELECT array_agg(id) AS vid FROM users WHERE role_id=(SELECT id FROM roles WHERE name='Vet')) v,
              (SELECT array_agg(id) AS uid FROM users) u
     """)
     # backfill a plausible dismissal_date (admission + 1..10 days) for dismissed cases
@@ -415,7 +415,7 @@ def main():
                CASE WHEN rtype='vet' THEN 'Medical' ELSE 'Grooming' END,
                NULL, uid[1 + floor(random()*array_length(uid,1))::int], now()::text
         FROM generate_series(1,{n['appointments']}) g,
-             (SELECT array_agg(id) AS vid FROM users WHERE role='Vet') v,
+             (SELECT array_agg(id) AS vid FROM users WHERE role_id=(SELECT id FROM roles WHERE name='Vet')) v,
              (SELECT array_agg(id) AS uid FROM users) u,
              LATERAL (SELECT (ARRAY['vet','grooming'])[1 + (random()<0.75)::int] AS rtype) r
     """)
