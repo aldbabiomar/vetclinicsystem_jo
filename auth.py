@@ -77,20 +77,8 @@ ROLES = ["Admin", "Vet", "Reception"]
 
 # Discount caps a brand-new install seeds Admin/Vet/Reception with. After
 # that, each role's actual cap lives in roles.discount_cap and is editable
-# from the Roles & Permissions tab — this dict is only the starting point
-# (seed_default_roles_and_permissions() below prefers a pre-existing
-# discount_cap_admin/vet/reception Settings value over this, for an install
-# upgrading from before this table existed).
+# from Settings.
 DISCOUNT_CAPS = {"Admin": 25, "Vet": 15, "Reception": 10}
-
-# Old Settings-table keys this app used for per-role discount caps before
-# roles.discount_cap existed. Only read once, at the moment each role is
-# first seeded, so an upgrading install keeps whatever it had customized.
-_LEGACY_DISCOUNT_CAP_SETTING_KEYS = {
-    "Admin": "discount_cap_admin",
-    "Vet": "discount_cap_vet",
-    "Reception": "discount_cap_reception",
-}
 
 
 def hash_password(raw):
@@ -187,30 +175,12 @@ def bump_permissions_version(db):
     )
 
 
-def _legacy_discount_cap(db, role_name):
-    """Reads this role's discount cap from the old Settings-table keys, if
-    an upgrading install had customized one there. Returns None if unset or
-    malformed, so the caller falls back to DISCOUNT_CAPS."""
-    key = _LEGACY_DISCOUNT_CAP_SETTING_KEYS.get(role_name)
-    if not key:
-        return None
-    row = db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-    if not row or row["value"] is None:
-        return None
-    try:
-        return int(row["value"])
-    except (TypeError, ValueError):
-        return None
-
-
 def seed_default_roles_and_permissions(db):
     """Idempotent — safe to call on every launch. Keeps the `permissions`
     table (the app's fixed vocabulary) in sync with PERMISSIONS above, and
     creates Admin/Vet/Reception the first time only — never overwrites an
     admin's later edits to Vet or Reception, since those are ordinary
-    custom roles from that point on. On that first creation, prefers a
-    pre-existing discount_cap_admin/vet/reception Settings value (if this
-    install predates the roles table) over the DISCOUNT_CAPS default."""
+    custom roles from that point on."""
     for i, (key, label, category) in enumerate(PERMISSIONS):
         db.execute(
             "INSERT INTO permissions (id, label, category, sort_order) VALUES (?,?,?,?) "
@@ -228,13 +198,10 @@ def seed_default_roles_and_permissions(db):
          False, DISCOUNT_CAPS["Reception"], VET_RECEPTION_DEFAULT_PERMISSIONS, False),
     ]
     changed = False
-    for name, desc, is_system, default_cap, perms, is_vet_role in defaults:
+    for name, desc, is_system, cap, perms, is_vet_role in defaults:
         existing = db.execute("SELECT id FROM roles WHERE name=?", (name,)).fetchone()
         if existing:
             continue
-        cap = _legacy_discount_cap(db, name)
-        if cap is None:
-            cap = default_cap
         role_id = new_role_id()
         db.execute(
             "INSERT INTO roles (id,name,description,is_system,discount_cap,is_vet_role,created_at) "

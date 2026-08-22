@@ -1,6 +1,8 @@
 import os
 import re
+import signal
 import socket
+import sys
 import logging
 import logging.handlers
 import traceback
@@ -78,7 +80,7 @@ if not error_logger.handlers:
 
 def get_db():
     if "db" not in g:
-        g.db = dbmod.connect()
+        g.db = dbmod.getconn()
     return g.db
 
 
@@ -99,11 +101,19 @@ def is_safe_local_path(path):
 def close_db(exc):
     db = g.pop("db", None)
     if db is not None:
-        if exc is None:
-            db.commit()
-        else:
-            db.rollback()
-        db.close()
+        try:
+            if exc is None:
+                db.commit()
+            else:
+                db.rollback()
+        finally:
+            # Always return the connection to the pool, even if the
+            # commit/rollback above raised (e.g. the connection dropped
+            # mid-request) — the pool discards a connection it can't
+            # reuse and opens a replacement, so this can never leak a
+            # connection reference the way an un-guarded db.close() call
+            # that never ran would have.
+            dbmod.putconn(db)
 
 
 class BadNumber(ValueError):
@@ -2618,17 +2628,20 @@ def insights():
 
     # These six queries don't depend on each other, and each is a read-only
     # aggregate over a different slice of the schema — running them on
-    # separate short-lived connections in parallel cuts wall-clock time to
-    # roughly the slowest single query instead of the sum of all of them.
-    # (Postgres itself handles concurrent read connections fine; each
-    # thread here just needs its own psycopg connection since a single
-    # connection can't run more than one query at a time.)
+    # separate connections in parallel cuts wall-clock time to roughly the
+    # slowest single query instead of the sum of all of them. (Postgres
+    # itself handles concurrent read connections fine; each thread here
+    # just needs its own psycopg connection since a single connection
+    # can't run more than one query at a time.) Borrowed from the pool
+    # instead of opening a brand-new raw connection per thread per page
+    # view — bounded by the same DB_POOL_MAX_SIZE as ordinary requests.
     def _run(fn):
-        con = dbmod.connect()
+        con = dbmod.getconn()
         try:
             return fn(con)
         finally:
-            con.close()
+            con.rollback()  # read-only; explicit rollback before returning to the pool
+            dbmod.putconn(con)
 
     jobs = {
         "revenue": lambda c: logic.revenue_by_category(c, months_back=months_back),
@@ -2942,6 +2955,21 @@ if __name__ == "__main__":
 
     import scheduler
     scheduler.start(get_db=dbmod.connect, close_db=lambda c: c.close())
+
+    def _graceful_shutdown(signum, frame):
+        # Closes every pooled connection cleanly rather than letting them
+        # get dropped mid-socket-close when the process exits.
+        dbmod.close_pool()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _graceful_shutdown)
+    signal.signal(signal.SIGINT, _graceful_shutdown)
+    # Windows sends SIGBREAK (not SIGTERM) for Ctrl-Break / console-close —
+    # SIGTERM delivery there is only reliable when running as a proper
+    # Windows service, which this app doesn't. SIGINT (Ctrl-C) already
+    # works the same on both platforms.
+    if hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, _graceful_shutdown)
 
     if os.environ.get("JRC_DEV") == "1":
         # Flask's dev server — convenient for local debugging only; not used
