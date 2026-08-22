@@ -21,6 +21,7 @@
   <div class="card">
     <form method="post" action="{{ url_for('inpatient_edit', case_id=case.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="expected_updated_at" value="{{ case.updated_at or '' }}">
       <div class="form-grid">
         <div class="field"><label>Species / Sex / Age</label><div class="v" style="padding-top:8px;">{{ case.species }}{% if case.sex %} · {{ case.sex }}{% endif %}{% if case.age_note %} · {{ case.age_note }}{% endif %}</div></div>
         <div class="field"><label>Owner</label><div class="v" style="padding-top:8px;">{{ case.owner_name }} · {{ case.owner_phone or "no phone" }}</div></div>

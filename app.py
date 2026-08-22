@@ -1377,6 +1377,10 @@ def visit_edit(visit_id):
         return redirect(url_for("visits_list"))
     if request.method == "POST":
         f = request.form
+        conflict = stale_edit_error(visit["updated_at"], f.get("expected_updated_at"), "visit")
+        if conflict:
+            flash(conflict, "error")
+            return redirect(url_for("visit_edit", visit_id=visit_id))
         wellness_needed = f.get("wellness_needed", "N")
         grooming_needed = f.get("grooming_needed", "N")
         grooming_services = ",".join(f.getlist("grooming_services")) if grooming_needed == "Y" else None
@@ -1396,6 +1400,9 @@ def visit_edit(visit_id):
             return redirect(url_for("visit_edit", visit_id=visit_id))
         except BadNumber:
             flash("Weight and BCS must be valid numbers.", "error")
+            return redirect(url_for("visit_edit", visit_id=visit_id))
+        if has_negative(edited_weight_kg):
+            flash("Weight can't be negative.", "error")
             return redirect(url_for("visit_edit", visit_id=visit_id))
 
         new_vals = {
@@ -1424,8 +1431,8 @@ def visit_edit(visit_id):
                followup_reason=?, followup_date=?, followup_status=?, wellness_needed=?, wellness_type=?,
                wellness_next_dose_date=?, wellness_contacted=?, wellness_contact_method=?, grooming_needed=?,
                grooming_services=?, grooming_notes=?, grooming_admitted_items=?, grooming_status=?,
-               grooming_contacted=?, payment_status=? WHERE id=?""",
-            (*new_vals.values(), visit_id),
+               grooming_contacted=?, payment_status=?, updated_at=? WHERE id=?""",
+            (*new_vals.values(), datetime.now().isoformat(timespec="seconds"), visit_id),
         )
         auth.log_change(db, "visits", visit_id, "update", changes)
         db.commit()
@@ -3538,6 +3545,10 @@ def inpatient_edit(case_id):
     db = get_db()
     f = request.form
     old = db.execute("SELECT * FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
+    conflict = stale_edit_error(old["updated_at"] if old else None, f.get("expected_updated_at"), "inpatient case")
+    if conflict:
+        flash(conflict, "error")
+        return redirect(url_for("inpatient_detail", case_id=case_id))
     dismissed = 1 if f.get("dismissed") == "on" else 0
     try:
         edited_dismissal_date = clean_date(f.get("dismissal_date"), field="dismissal_date") if dismissed else None
@@ -3545,6 +3556,9 @@ def inpatient_edit(case_id):
         edited_bcs = parse_int(f.get("bcs"))
     except (BadDate, BadNumber) as e:
         flash(str(e) if isinstance(e, BadDate) else "Weight and BCS must be valid numbers.", "error")
+        return redirect(url_for("inpatient_detail", case_id=case_id))
+    if has_negative(edited_weight_kg):
+        flash("Weight can't be negative.", "error")
         return redirect(url_for("inpatient_detail", case_id=case_id))
     new_vals = {
         "complaint": f.get("complaint"), "exam_findings": f.get("exam_findings"),
@@ -3556,7 +3570,8 @@ def inpatient_edit(case_id):
     changes = auth.diff_dict(old, new_vals)
     db.execute(
         "UPDATE inpatient_cases SET complaint=?, exam_findings=?, weight_kg=?, bcs=?, admitted_items=?, dismissed=?, dismissal_date=?, "
-        "attending_vet_id=?, supervising_vet_id=? WHERE id=?", (*new_vals.values(), case_id),
+        "attending_vet_id=?, supervising_vet_id=?, updated_at=? WHERE id=?",
+        (*new_vals.values(), datetime.now().isoformat(timespec="seconds"), case_id),
     )
     auth.log_change(db, "inpatient_cases", str(case_id), "update", changes)
     db.commit()

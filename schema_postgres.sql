@@ -387,6 +387,9 @@ CREATE TABLE IF NOT EXISTS visits (
 
     payment_status TEXT,               -- derived/display cache; real status computed from payments
     created_by TEXT,
+    -- Set on every visit_edit() save — lets the edit form detect (and
+    -- refuse to silently overwrite) a concurrent edit by someone else.
+    updated_at TEXT,
     FOREIGN KEY (patient_id) REFERENCES patients(id)
 );
 CREATE INDEX IF NOT EXISTS idx_visits_patient ON visits(patient_id);
@@ -505,6 +508,9 @@ CREATE TABLE IF NOT EXISTS inpatient_cases (
     -- actually charges), kept in sync by logic.refresh_inpatient_total()
     -- every time procedures/discount change.
     total DOUBLE PRECISION NOT NULL DEFAULT 0,
+    -- Set on every inpatient_edit() save — lets the edit form detect (and
+    -- refuse to silently overwrite) a concurrent edit by someone else.
+    updated_at TEXT,
     FOREIGN KEY (patient_id) REFERENCES patients(id),
     FOREIGN KEY (visit_id) REFERENCES visits(id),
     FOREIGN KEY (attending_vet_id) REFERENCES users(id),
