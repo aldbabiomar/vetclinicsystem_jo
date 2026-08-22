@@ -48,14 +48,38 @@ Confirmed by direct schema/code diff, not changelog description alone.
    Medium item this used to block). Verified live: pool serves real
    requests including the Insights/Retention pages under the
    ThreadPoolExecutor pattern.
-3. **Visit billing line-item snapshotting** (`visit_billing_lines` table) —
-   Jordan still stores `billing.codes` as a comma-separated string, re-priced
-   live from Price List on every read (confirmed: no `visit_billing_lines` in
-   Jordan's schema). VetClinicSystem_IQ replaced this with a real line-items
-   table snapshotted at save time (`logic.price_codes_or_none()`,
-   `_revenue_and_cogs_by_month()` reading snapshots). Needed before the
-   Billing Redesign UI (item C-1.x) and the revenue/COGS-by-month report fix
-   (item B-6) can be ported meaningfully.
+3. **Visit billing line-item snapshotting** ✅ DONE — `billing.codes` (comma
+   string, live-repriced) replaced with `visit_billing_lines` (price_id/
+   name/category/quantity/unit_price/unit_cost, snapshotted at Save time),
+   plus a cached `billing.total` / `inpatient_cases.total` kept in sync by
+   `refresh_visit_billing_total()`/`refresh_inpatient_total()`. Also added
+   `inpatient_billing.unit_price/unit_cost` and `sale_items.unit_cost`
+   snapshots (previously live-joined from Price List/Inventory Catalog,
+   the same retroactive-price-edit gap VetClinicSystem_IQ's High #12/13
+   fixed) — `_revenue_and_cogs_by_month()`, `revenue_by_category()`, and
+   `vet_performance()` all rewired to read the snapshots. `visit_detail.html`
+   got the search+add-to-cart billing UI (reusing `pos.html`'s pattern);
+   `inpatient_detail.html`'s existing checkbox-list UI was left as-is since
+   it already posts the same price_id/qty shape the backend expects — a
+   matching search+cart upgrade there is a cosmetic follow-up, not a
+   correctness gap. `visit_discount_save()`/`visit_billing_save()` also
+   picked up the race-safe UPSERT VetClinicSystem_IQ's 1.4.5 fix uses
+   (pulled forward, same as B-1 in Phase A.1).
+   No currency-rounding porting needed here — Jordan's `compute_bill_totals`
+   correctly stayed plain `round(x, 2)`; VetClinicSystem_IQ's own
+   `IQD CURRENCY ROUNDING PLAN.md` confirms the 250-denomination rounding is
+   isolated to `money.py` and never belonged in this shared billing logic.
+   Verified end-to-end against a real Postgres: manual cart→save→snapshot→
+   total-cache round trip, discount application, payments, inpatient
+   billing add/delete/discount, POS checkout's new `sale_items.unit_cost`,
+   and Insights/Reports against a full 1.7M-row synthetic dataset
+   (`generate_test_data.py`, itself updated for the new columns). That
+   stress test caught and fixed two real bugs before they shipped: a
+   missing index on `visit_billing_lines.visit_id` (a correlated-subquery
+   backfill was taking 20+ minutes without it — same index also speeds up
+   every live visit-detail page load) and a `pdf_export.py` display bug
+   where a multi-quantity Automatic billing line would have shown as its
+   unit price instead of its line total on the exported PDF.
 4. **Distributor Ledger** — new feature, self-contained (`distributor_bills`,
    `distributor_bill_payments`, `distributor_ledger()`, 6 new routes, PDF
    export). No currency-model dependency; port as designed.
@@ -88,7 +112,7 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | B-5 | High #16 + Medium — missing FKs (`payments.*`, `attachments.*`, `inpatient_cases.visit_id`, `price_list.linked_item_id`) + `audit_session_lines` unique constraint | **PORT** | Jordan has no data yet in most installs — can add these FKs inline in `CREATE TABLE`, no migration/backfill scaffolding needed (same simplification VetClinicSystem_IQ itself did once it confirmed no prod data). |
 | B-6 | Medium — Python-side pagination → SQL pagination (Follow-ups, Wellness, Grooming, Audit History) | **PORT [unverified]** | Jordan has `followups_list.html`/`grooming_list.html` — confirm current implementation is Python-side before porting the `..._page()` split pattern. |
 | B-7 | High #7 + Medium — `0.0.0.0` bind hardening, session cookie policy, per-IP login rate limit | **PORT** | Generic Flask/Waitress hardening, opt-in via env vars, zero currency dependency. Safe to port as-is. |
-| B-8 | High #12/#13 — billing snapshot + invalid-code rejection | **BLOCKED** on A.3 | Same underlying table. |
+| B-8 | High #12/#13 — billing snapshot + invalid-code rejection | ✅ **DONE** (billing-snapshot half) via Phase A.3 | The "invalid-code rejection" half is moot in Jordan: the search+cart UI only ever adds a real Price List match, so there's no free-typed code to reject in the first place. |
 | B-9 | High #8 — float→Decimal/NUMERIC | **SKIP (for now)** | VetClinicSystem_IQ itself deliberately never did this ("largest and riskiest item... not implemented this session"). Don't chase parity on a fix the source app also skipped. |
 
 ---

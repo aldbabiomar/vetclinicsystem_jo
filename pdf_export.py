@@ -154,7 +154,9 @@ def export_patient_billing(db, patient_id):
         story.append(Paragraph(f"<b>{v['date'] or ''}</b> \u2014 {v['id']}", ss["H2"]))
         data = [["Service", "Price (JOD)"]]
         for l in summary["lines"]:
-            data.append([l["name"], f"{l['price']:.2f}"])
+            amount = l.get("line_total", l["price"])
+            label = l["name"] if not l.get("quantity") or l["quantity"] == 1 else f"{l['name']} × {l['quantity']:g}"
+            data.append([label, f"{amount:.2f}"])
         data.append(["Subtotal", f"{summary['subtotal']:.2f}"])
         if summary["discount_percent"]:
             data.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:.2f}"])
@@ -295,7 +297,9 @@ def export_visit_pdf(db, visit_id):
     if summary["lines"]:
         data = [["Item", "Price (JOD)"]]
         for l in summary["lines"]:
-            data.append([l["name"], f"{l['price']:,.0f}"])
+            amount = l.get("line_total", l["price"])
+            label = l["name"] if not l.get("quantity") or l["quantity"] == 1 else f"{l['name']} × {l['quantity']:g}"
+            data.append([label, f"{amount:,.0f}"])
         story.append(_section_table(data, [120 * mm, 45 * mm]))
         story.append(Spacer(1, 6))
     bill_rows = [["Subtotal", f"{summary['subtotal']:,.0f} JOD"]]

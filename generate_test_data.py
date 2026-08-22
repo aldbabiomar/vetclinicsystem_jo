@@ -175,20 +175,50 @@ def main():
     # ---------------------------------------------------------------- billing
     # billing.visit_id is the PK, so pick a distinct subset of visit ids.
     run(con, "billing", f"""
-        INSERT INTO billing (visit_id, billing_type, codes, manual_amount, date_billed,
+        INSERT INTO billing (visit_id, billing_type, manual_amount, date_billed,
                               discount_percent, discount_applied_by, notes)
         SELECT v.id,
                CASE WHEN random() < 0.85 THEN 'Automatic' ELSE 'Manual' END,
-               (SELECT string_agg(pl.id, ',') FROM (
-                   SELECT plid[1 + floor(random()*array_length(plid,1))::int] AS id
-                   FROM generate_series(1, 1 + floor(random()*3)::int),
-                        (SELECT array_agg(id) AS plid FROM price_list) x
-               ) pl),
                round((10000 + random()*150000)::numeric, 0)::float,
                v.date,
                CASE WHEN random() < 0.2 THEN round((random()*20)::numeric,0)::float ELSE 0 END,
                NULL, NULL
         FROM (SELECT id, date FROM visits ORDER BY random() LIMIT {n['billing']}) v
+    """)
+
+    # Automatic bills get 1-3 line items each, snapshotted from a random
+    # Price List row at "billing time" — mirrors what visit_billing_save()
+    # actually writes via logic.save_visit_billing_lines().
+    run(con, "visit_billing_lines", """
+        INSERT INTO visit_billing_lines (visit_id, price_id, name, category, quantity, unit_price, unit_cost, created_at)
+        SELECT x.visit_id, pl.id, pl.name, pl.category, x.quantity, pl.sale_price, pl.cost_price, now()::text
+        FROM (
+            SELECT b.visit_id, plid[1 + floor(random()*array_length(plid,1))::int] AS price_id,
+                   1 + floor(random()*3)::int AS quantity
+            FROM billing b, generate_series(1, 1 + floor(random()*3)::int),
+                 (SELECT array_agg(id) AS plid FROM price_list) p
+            WHERE b.billing_type = 'Automatic'
+        ) x
+        JOIN price_list pl ON pl.id = x.price_id
+    """)
+
+    # billing.total is normally kept in sync by logic.refresh_visit_billing_total()
+    # every time a real save happens — backfilled here in one pass since this
+    # script writes rows directly, bypassing the app. Two separate set-based
+    # UPDATEs (not one UPDATE with a per-row correlated subquery) — at
+    # 100K+ billing rows, a correlated subquery re-scans visit_billing_lines
+    # once per row and can take many minutes; joining a single pre-aggregated
+    # subtotal-per-visit CTE is a single pass over each table.
+    run(con, "billing total backfill (manual)", """
+        UPDATE billing b
+        SET total = round((COALESCE(b.manual_amount, 0) * (1 - COALESCE(b.discount_percent, 0) / 100.0))::numeric, 2)
+        WHERE b.billing_type = 'Manual'
+    """)
+    run(con, "billing total backfill (automatic)", """
+        UPDATE billing b
+        SET total = round((vbl_sum.subtotal * (1 - COALESCE(b.discount_percent, 0) / 100.0))::numeric, 2)
+        FROM (SELECT visit_id, SUM(unit_price * quantity) AS subtotal FROM visit_billing_lines GROUP BY visit_id) vbl_sum
+        WHERE b.billing_type != 'Manual' AND vbl_sum.visit_id = b.visit_id
     """)
 
     # ------------------------------------------------------------ inpatient_cases
@@ -243,16 +273,30 @@ def main():
 
     # --------------------------------------------------------- inpatient_billing
     run(con, "inpatient_billing", f"""
-        INSERT INTO inpatient_billing (case_id, price_id, quantity, logged_by, timestamp)
-        SELECT cid[1 + floor(random()*array_length(cid,1))::int],
-               plid[1 + floor(random()*array_length(plid,1))::int],
-               1 + floor(random()*3)::int,
-               uid[1 + floor(random()*array_length(uid,1))::int],
-               (current_date - (floor(random()*{HISTORY_MONTHS}*30))::int)::text
-        FROM generate_series(1,{n['inpatient_billing']}) g,
-             (SELECT array_agg(id) AS cid FROM inpatient_cases) c,
-             (SELECT array_agg(id) AS plid FROM price_list) pl,
-             (SELECT array_agg(id) AS uid FROM users) u
+        INSERT INTO inpatient_billing (case_id, price_id, quantity, unit_price, unit_cost, logged_by, timestamp)
+        SELECT x.case_id, x.price_id, x.quantity, pl.sale_price, pl.cost_price, x.logged_by, x.timestamp
+        FROM (
+            SELECT cid[1 + floor(random()*array_length(cid,1))::int] AS case_id,
+                   plid[1 + floor(random()*array_length(plid,1))::int] AS price_id,
+                   1 + floor(random()*3)::int AS quantity,
+                   uid[1 + floor(random()*array_length(uid,1))::int] AS logged_by,
+                   (current_date - (floor(random()*{HISTORY_MONTHS}*30))::int)::text AS timestamp
+            FROM generate_series(1,{n['inpatient_billing']}) g,
+                 (SELECT array_agg(id) AS cid FROM inpatient_cases) c,
+                 (SELECT array_agg(id) AS plid FROM price_list) pl,
+                 (SELECT array_agg(id) AS uid FROM users) u
+        ) x
+        JOIN price_list pl ON pl.id = x.price_id
+    """)
+
+    # inpatient_cases.total is normally kept in sync by
+    # logic.refresh_inpatient_total() every time a real save happens —
+    # backfilled here in one pass since this script writes rows directly.
+    run(con, "inpatient_cases total backfill", """
+        UPDATE inpatient_cases ic
+        SET total = round((ib_sum.subtotal * (1 - COALESCE(ic.discount_percent, 0) / 100.0))::numeric, 2)
+        FROM (SELECT case_id, SUM(unit_price * quantity) AS subtotal FROM inpatient_billing GROUP BY case_id) ib_sum
+        WHERE ib_sum.case_id = ic.id
     """)
 
     # -------------------------------------------------------------- boarding
@@ -300,14 +344,18 @@ def main():
              (SELECT array_agg(id) AS uid FROM users) u
     """)
     run(con, "sale_items", f"""
-        INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total)
-        SELECT sid[1 + floor(random()*array_length(sid,1))::int],
-               iid[1 + floor(random()*array_length(iid,1))::int],
-               qty, price, qty*price
-        FROM generate_series(1,{n['sale_items']}) g,
-             (SELECT array_agg(id) AS sid FROM sales) s,
-             (SELECT array_agg(id) AS iid FROM inventory_list) i,
-             LATERAL (SELECT (1+floor(random()*3))::float AS qty, round((5000+random()*30000)::numeric,0)::float AS price) x
+        INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost)
+        SELECT x.sale_id, x.item_id, x.qty, x.price, x.qty*x.price, il.cost_price
+        FROM (
+            SELECT sid[1 + floor(random()*array_length(sid,1))::int] AS sale_id,
+                   iid[1 + floor(random()*array_length(iid,1))::int] AS item_id,
+                   (1+floor(random()*3))::float AS qty,
+                   round((5000+random()*30000)::numeric,0)::float AS price
+            FROM generate_series(1,{n['sale_items']}) g,
+                 (SELECT array_agg(id) AS sid FROM sales) s,
+                 (SELECT array_agg(id) AS iid FROM inventory_list) i
+        ) x
+        JOIN inventory_list il ON il.id = x.item_id
     """)
     run(con, "sales totals backfill", """
         UPDATE sales s SET subtotal = t.sub, total = round((t.sub * (1 - s.discount_percent/100.0))::numeric, 0)::float

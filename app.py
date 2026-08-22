@@ -753,6 +753,26 @@ def api_inventory_lookup():
     return jsonify([])
 
 
+@app.route("/api/price-list/lookup")
+def api_price_list_lookup():
+    db = get_db()
+    q = request.args.get("q", "").strip()
+    # Repeatable — e.g. ?category=Service&category=Medicine. Both callers
+    # (visit billing, inpatient billing) always pass at least one; Retail
+    # is never a valid value here — Retail is sold exclusively through POS
+    # (its own dedicated search against inventory_list, untouched by this).
+    categories = [c for c in request.args.getlist("category") if c]
+    if len(q) < 2 or not categories:
+        return jsonify([])
+    placeholders = ",".join("?" * len(categories))
+    sql = (f"SELECT id, name, category, sale_price FROM price_list "
+           f"WHERE active=1 AND sale_price IS NOT NULL AND category IN ({placeholders}) "
+           f"AND (id ILIKE ? OR name ILIKE ?) ORDER BY name LIMIT 15")
+    params = [*categories, f"%{q}%", f"%{q}%"]
+    rows = db.execute(sql, params).fetchall()
+    return jsonify([{"id": r["id"], "name": r["name"], "category": r["category"], "price": r["sale_price"]} for r in rows])
+
+
 # ---------------------------------------------------------------------------
 # Owners
 # ---------------------------------------------------------------------------
@@ -1127,12 +1147,11 @@ def visit_detail(visit_id):
         return redirect(url_for("visits_list"))
     billing_row = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit_id,)).fetchone()
     summary = logic.visit_billing_summary(db, visit_id)
-    price_list = db.execute("SELECT id, name, category, sale_price FROM price_list WHERE active=1 ORDER BY id").fetchall()
     payments = db.execute("SELECT * FROM payments WHERE visit_id=? ORDER BY date DESC", (visit_id,)).fetchall()
     files = attach_mod.list_attachments(db, "visit", visit_id)
     cap = auth.discount_cap_for()
     return render_template("visit_detail.html", visit=visit, billing=billing_row, summary=summary,
-                            price_list=price_list, payments=payments, files=files, discount_cap=cap)
+                            payments=payments, files=files, discount_cap=cap)
 
 
 @app.route("/visits/<visit_id>/edit", methods=["GET", "POST"])
@@ -1211,7 +1230,51 @@ def visit_billing_save(visit_id):
     if billing_type not in BILLING_TYPES:
         flash("Billing type must be one of: " + ", ".join(BILLING_TYPES) + ".", "error")
         return redirect(url_for("visit_detail", visit_id=visit_id))
-    codes = f.get("codes", "").strip() if billing_type == "Automatic" else None
+    priced_lines = []
+    had_bad_number = had_bad_price = False
+    if billing_type == "Automatic":
+        # Same pattern as inpatient_billing_add(): each cart row is a
+        # validated search-result pick (price_id + qty_{id}), not typed
+        # free text, so an invalid price_id here only happens on a
+        # tampered request — skipped with a flash rather than a raw
+        # database error.
+        for pid in f.getlist("price_id"):
+            try:
+                qty = parse_money(f.get(f"qty_{pid}", "").strip())
+            except BadNumber:
+                had_bad_number = True
+                continue
+            if not qty or qty <= 0:
+                continue
+            price_row = db.execute(
+                "SELECT name, category, sale_price, cost_price FROM price_list WHERE id=?", (pid,)
+            ).fetchone()
+            if not price_row:
+                had_bad_price = True
+                continue
+            priced_lines.append({
+                "price_id": pid, "name": price_row["name"], "category": price_row["category"],
+                "quantity": qty, "unit_price": price_row["sale_price"], "unit_cost": price_row["cost_price"],
+            })
+        if not priced_lines:
+            flash("Add at least one billed item.", "error")
+            return redirect(url_for("visit_detail", visit_id=visit_id))
+        # visit_discount_save() only checks non-discountable items against
+        # whatever's on the bill *at the moment a discount is applied* — it
+        # has no way to know the bill will change later. Re-checking here
+        # too closes the gap where a discount already applied earlier would
+        # otherwise silently carry forward onto items added afterward that
+        # were never supposed to be discountable at all.
+        existing_discount = db.execute(
+            "SELECT discount_percent FROM billing WHERE visit_id=?", (visit_id,)
+        ).fetchone()
+        if existing_discount and (existing_discount["discount_percent"] or 0) > 0:
+            blocked = logic.non_discountable_line_names(db, [l["price_id"] for l in priced_lines])
+            if blocked:
+                flash(f"Can't save — this bill has a {existing_discount['discount_percent']:.0f}% discount applied, "
+                      f"but includes item(s) marked as not discountable: {', '.join(blocked)}. "
+                      "Remove the discount first, or leave these items off this bill.", "error")
+                return redirect(url_for("visit_detail", visit_id=visit_id))
     try:
         manual_amount = parse_money(f.get("manual_amount")) if billing_type == "Manual" else None
     except BadNumber:
@@ -1228,16 +1291,37 @@ def visit_billing_save(visit_id):
     notes = f.get("notes")
     existing = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit_id,)).fetchone()
     old_month = logic.month_key(existing["date_billed"]) if existing else None
-    if existing:
-        db.execute("UPDATE billing SET billing_type=?, codes=?, manual_amount=?, date_billed=?, notes=? WHERE visit_id=?",
-                   (billing_type, codes, manual_amount, date_billed, notes, visit_id))
+    # UPSERT rather than a SELECT-then-branch INSERT/UPDATE — visit_id is
+    # billing's primary key, so two near-simultaneous saves (double-click,
+    # a retried request) racing this as a plain branch could both read no
+    # existing row and both attempt an INSERT, the second raising an
+    # unhandled UniqueViolation. ON CONFLICT makes the second one an
+    # atomic update instead of a crash.
+    db.execute(
+        "INSERT INTO billing (visit_id, billing_type, manual_amount, date_billed, notes) VALUES (?,?,?,?,?) "
+        "ON CONFLICT (visit_id) DO UPDATE SET billing_type=excluded.billing_type, "
+        "manual_amount=excluded.manual_amount, date_billed=excluded.date_billed, notes=excluded.notes",
+        (visit_id, billing_type, manual_amount, date_billed, notes),
+    )
+    if billing_type == "Automatic":
+        # Snapshot the current Price List values for every item in the
+        # cart right now, at Save time — this is what stops a price edit
+        # next month from silently changing what this visit's bill (and
+        # the revenue/COGS report for the month it was billed) says today.
+        logic.save_visit_billing_lines(db, visit_id, priced_lines)
     else:
-        db.execute("INSERT INTO billing (visit_id, billing_type, codes, manual_amount, date_billed, notes) VALUES (?,?,?,?,?,?)",
-                   (visit_id, billing_type, codes, manual_amount, date_billed, notes))
+        # Switched to (or re-saved as) Manual — any prior Automatic
+        # snapshot for this visit no longer applies.
+        db.execute("DELETE FROM visit_billing_lines WHERE visit_id=?", (visit_id,))
+    logic.refresh_visit_billing_total(db, visit_id)
     new_month = logic.month_key(date_billed)
     logic.recompute_months_summary(db, [old_month, new_month])
     auth.log_change(db, "billing", visit_id, "update" if existing else "create")
     db.commit()
+    if had_bad_number:
+        flash("Some quantities weren't valid numbers and were skipped.", "error")
+    if had_bad_price:
+        flash("Some selected items no longer exist in the Price List and were skipped.", "error")
     flash("Billing saved.", "success")
     return redirect(url_for("visit_detail", visit_id=visit_id))
 
@@ -1261,12 +1345,15 @@ def visit_discount_save(visit_id):
             flash(f"Can't apply a discount — this bill includes item(s) marked as not discountable: {', '.join(blocked)}.", "error")
             return redirect(url_for("visit_detail", visit_id=visit_id))
     existing = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit_id,)).fetchone()
-    if existing:
-        db.execute("UPDATE billing SET discount_percent=?, discount_applied_by=? WHERE visit_id=?",
-                   (percent, session["user_id"], visit_id))
-    else:
-        db.execute("INSERT INTO billing (visit_id, discount_percent, discount_applied_by) VALUES (?,?,?)",
-                   (visit_id, percent, session["user_id"]))
+    # Same UPSERT reasoning as visit_billing_save() — visit_id is billing's
+    # primary key, so a plain SELECT-then-branch here is racy the same way.
+    db.execute(
+        "INSERT INTO billing (visit_id, discount_percent, discount_applied_by) VALUES (?,?,?) "
+        "ON CONFLICT (visit_id) DO UPDATE SET discount_percent=excluded.discount_percent, "
+        "discount_applied_by=excluded.discount_applied_by",
+        (visit_id, percent, session["user_id"]),
+    )
+    logic.refresh_visit_billing_total(db, visit_id)
     if existing and existing["date_billed"]:
         logic.recompute_month_summary(db, logic.month_key(existing["date_billed"]))
     auth.log_change(db, "billing", visit_id, "update", {"discount_percent": (existing["discount_percent"] if existing else 0, percent)})
@@ -2173,6 +2260,15 @@ def pos_checkout():
             flash(f"Can't apply a discount — the cart includes item(s) marked as not discountable: {', '.join(blocked)}.", "error")
             return redirect(url_for("pos_page"))
 
+    # Cost basis snapshotted alongside price at checkout time, so COGS
+    # reporting reflects what this item actually cost when it was sold —
+    # not whatever inventory_list.cost_price says whenever the report is
+    # later run (see sale_items.unit_cost's own column comment).
+    cost_by_item = {r["id"]: r["cost_price"] for r in db.execute(
+        "SELECT id, cost_price FROM inventory_list WHERE id IN (" + ",".join("?" * len(item_ids)) + ")",
+        item_ids,
+    ).fetchall()} if item_ids else {}
+
     subtotal, lines = 0, []
     for iid, qty in zip(item_ids, quantities):
         try:
@@ -2192,7 +2288,7 @@ def pos_checkout():
             return redirect(url_for("pos_page"))
         line_total = price * qty
         subtotal += line_total
-        lines.append((iid, qty, price, line_total))
+        lines.append((iid, qty, price, line_total, cost_by_item.get(iid)))
 
     if not lines:
         flash("Nothing to sell.", "error")
@@ -2207,9 +2303,9 @@ def pos_checkout():
          session["user_id"] if discount_percent else None, total, f.get("payment_method")),
     )
     sale_id = cur.fetchone()["id"]
-    for iid, qty, price, line_total in lines:
-        db.execute("INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total) VALUES (?,?,?,?,?)",
-                  (sale_id, iid, qty, price, round(line_total, 2)))
+    for iid, qty, price, line_total, unit_cost in lines:
+        db.execute("INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost) VALUES (?,?,?,?,?,?)",
+                  (sale_id, iid, qty, price, round(line_total, 2), unit_cost))
         db.execute("INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
                   "VALUES (?,?,?,?,?,?)", (iid, -qty, "sale", str(sale_id), now, session["user_id"]))
     logic.recompute_month_summary(db, now[:7])
@@ -2400,6 +2496,7 @@ def inpatient_billing_add(case_id):
     now = datetime.now().isoformat(timespec="seconds")
     added = 0
     had_bad_number = False
+    had_bad_price = False
     for pid in price_ids:
         raw_qty = request.form.get(f"qty_{pid}", "").strip()
         try:
@@ -2409,15 +2506,29 @@ def inpatient_billing_add(case_id):
             continue
         if not qty or qty <= 0:
             continue
-        db.execute("INSERT INTO inpatient_billing (case_id, price_id, quantity, logged_by, timestamp) VALUES (?,?,?,?,?)",
-                  (case_id, pid, qty, session["user_id"], now))
+        # Snapshot the current Price List sale price/cost right now, at
+        # the moment this procedure is added to the bill — so a price
+        # edit made next month can't reach back and change what this
+        # stay's bill (or that month's revenue/COGS report) says today.
+        price_row = db.execute("SELECT sale_price, cost_price FROM price_list WHERE id=?", (pid,)).fetchone()
+        if not price_row:
+            had_bad_price = True
+            continue
+        db.execute(
+            "INSERT INTO inpatient_billing (case_id, price_id, quantity, unit_price, unit_cost, logged_by, timestamp) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (case_id, pid, qty, price_row["sale_price"], price_row["cost_price"], session["user_id"], now),
+        )
         added += 1
     if added:
+        logic.refresh_inpatient_total(db, case_id)
         logic.recompute_month_summary(db, now[:7])
         auth.log_change(db, "inpatient_billing", str(case_id), "create")
     db.commit()
     if had_bad_number:
         flash("Some quantities weren't valid numbers and were skipped.", "error")
+    if had_bad_price:
+        flash("Some selected items no longer exist in the Price List and were skipped.", "error")
     if added:
         flash(f"{added} procedure(s) added to the bill.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
@@ -2427,8 +2538,12 @@ def inpatient_billing_add(case_id):
 def inpatient_billing_delete(case_id, line_id):
     db = get_db()
     row = db.execute("SELECT timestamp FROM inpatient_billing WHERE id=? AND case_id=?", (line_id, case_id)).fetchone()
+    if not row:
+        flash("That billing line was already removed.", "error")
+        return redirect(url_for("inpatient_detail", case_id=case_id))
     db.execute("DELETE FROM inpatient_billing WHERE id=? AND case_id=?", (line_id, case_id))
-    if row and row["timestamp"]:
+    logic.refresh_inpatient_total(db, case_id)
+    if row["timestamp"]:
         logic.recompute_month_summary(db, row["timestamp"][:7])
     auth.log_change(db, "inpatient_billing", str(line_id), "delete")
     db.commit()
@@ -2459,6 +2574,7 @@ def inpatient_discount_save(case_id):
     old = db.execute("SELECT discount_percent FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
     db.execute("UPDATE inpatient_cases SET discount_percent=?, discount_applied_by=? WHERE id=?",
               (percent, session["user_id"], case_id))
+    logic.refresh_inpatient_total(db, case_id)
     logic.recompute_months_summary(db, logic.months_touched_by_inpatient_case(db, case_id))
     auth.log_change(db, "inpatient_cases", str(case_id), "update", {"discount_percent": (old["discount_percent"], percent)})
     db.commit()

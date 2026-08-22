@@ -298,10 +298,6 @@ def ordering_sheet(db):
 # ---------------------------------------------------------------------------
 # Billing (Automatic line-items OR Manual lump sum) + discount + payment status
 # ---------------------------------------------------------------------------
-def price_lookup(db):
-    return {r["id"]: dict(r) for r in db.execute("SELECT * FROM price_list").fetchall()}
-
-
 def retail_consistency_flags(db):
     """
     Cross-checks the Retail category between Inventory Catalog and Price
@@ -356,21 +352,24 @@ def non_discountable_line_names_for_items(db, inventory_item_ids):
     return [r["name"] for r in rows]
 
 
-def billing_lines(db, codes_str):
-    if not codes_str or not codes_str.strip():
-        return [], 0, None
-    codes = [c.strip() for c in codes_str.split(",") if c.strip()]
-    prices = price_lookup(db)
-    lines, subtotal, missing = [], 0, []
-    for c in codes:
-        p = prices.get(c)
-        if p and p.get("sale_price") is not None:
-            lines.append({"id": c, "name": p["name"], "category": p["category"], "price": p["sale_price"]})
-            subtotal += p["sale_price"]
-        else:
-            missing.append(c)
-    msg = f"\u26a0 Code(s) not found: {', '.join(missing)}" if missing else "OK - all codes matched"
-    return lines, subtotal, msg
+def save_visit_billing_lines(db, visit_id, lines):
+    """
+    Replaces every visit_billing_lines row for this visit with a fresh
+    snapshot of what's in the cart at Save time \u2014 price_id/name/category/
+    quantity/unit_price/unit_cost per line, from the search-and-add
+    billing UI (visit_billing_save() in app.py builds this list). Does
+    not commit (caller's job, same convention as every other write in
+    this module).
+    """
+    db.execute("DELETE FROM visit_billing_lines WHERE visit_id=?", (visit_id,))
+    now_str = datetime.now().isoformat(timespec="seconds")
+    for l in lines:
+        db.execute(
+            "INSERT INTO visit_billing_lines (visit_id, price_id, name, category, quantity, unit_price, unit_cost, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (visit_id, l["price_id"], l["name"], l["category"], l["quantity"],
+             l["unit_price"], l["unit_cost"], now_str),
+        )
 
 
 def compute_bill_totals(subtotal, discount_percent, paid):
@@ -398,22 +397,42 @@ def visit_billing_summary(db, visit_id):
     b = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit_id,)).fetchone()
     if not b:
         return {"billing_type": "Automatic", "lines": [], "subtotal": 0, "discount_percent": 0,
-                "total": 0, "paid": 0, "balance": 0, "status": "N/A", "code_check": None}
+                "total": 0, "paid": 0, "balance": 0, "status": "N/A"}
 
     if b["billing_type"] == "Manual":
         lines = [{"id": None, "name": "Veterinary Services", "category": "Service",
                   "price": b["manual_amount"] or 0}] if b["manual_amount"] else []
         subtotal = b["manual_amount"] or 0
-        code_check = None
     else:
-        lines, subtotal, code_check = billing_lines(db, b["codes"])
+        snapshot_rows = db.execute(
+            "SELECT price_id, name, category, quantity, unit_price FROM visit_billing_lines WHERE visit_id=? ORDER BY id",
+            (visit_id,),
+        ).fetchall()
+        # Priced from the snapshot taken when this bill was saved (via the
+        # search-and-add billing UI) — doesn't change if someone edits the
+        # Price List afterward. Mirrors inpatient_billing_summary()'s shape
+        # exactly (quantity + line_total per line).
+        lines = [{"id": r["price_id"], "name": r["name"], "category": r["category"],
+                  "price": r["unit_price"], "quantity": r["quantity"],
+                  "line_total": round(r["unit_price"] * r["quantity"], 2)}
+                 for r in snapshot_rows]
+        subtotal = sum(l["line_total"] for l in lines)
 
     discount_percent = b["discount_percent"] or 0
     paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE visit_id=?", (visit_id,)).fetchone()
     total, paid, balance, status = compute_bill_totals(subtotal, discount_percent, paid_row["s"])
     return {"billing_type": b["billing_type"], "lines": lines, "subtotal": round(subtotal, 2),
             "discount_percent": discount_percent, "total": total, "paid": paid, "balance": balance,
-            "status": status, "code_check": code_check}
+            "status": status}
+
+
+def refresh_visit_billing_total(db, visit_id):
+    """Recomputes and persists billing.total after any change to this
+    bill's lines, discount, or manual amount. Call this in the same
+    transaction right after such a change, before commit — so reports
+    can read the stored total instead of re-deriving it independently."""
+    total = visit_billing_summary(db, visit_id)["total"]
+    db.execute("UPDATE billing SET total=? WHERE visit_id=?", (total, visit_id))
 
 
 def visit_total_bill(db, visit_id):
@@ -431,16 +450,31 @@ def inpatient_billing_summary(db, case_id):
     ).fetchall()
     lines, subtotal = [], 0
     for r in rows:
-        line_total = (r["sale_price"] or 0) * r["quantity"]
+        # Prefer the snapshot taken when this line was added (unit_price)
+        # — falls back to the live Price List join (p.sale_price) only if
+        # that specific line's snapshot is NULL (e.g. added before this
+        # column existed, or the price_list item had no sale_price set at
+        # the moment it was billed).
+        unit_price = r["unit_price"] if r["unit_price"] is not None else (r["sale_price"] or 0)
+        line_total = unit_price * r["quantity"]
         subtotal += line_total
         lines.append({"id": r["id"], "name": r["name"], "quantity": r["quantity"],
-                       "unit_price": r["sale_price"], "line_total": round(line_total, 2)})
+                       "unit_price": unit_price, "line_total": round(line_total, 2)})
     case = db.execute("SELECT discount_percent FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
     discount_percent = case["discount_percent"] if case else 0
     paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE inpatient_case_id=?", (case_id,)).fetchone()
     total, paid, balance, status = compute_bill_totals(subtotal, discount_percent, paid_row["s"])
     return {"lines": lines, "subtotal": round(subtotal, 2), "discount_percent": discount_percent,
             "total": total, "paid": paid, "balance": balance, "status": status}
+
+
+def refresh_inpatient_total(db, case_id):
+    """Recomputes and persists inpatient_cases.total after any change to
+    this case's procedures or discount. Call this in the same transaction
+    right after such a change, before commit — see
+    refresh_visit_billing_total()."""
+    total = inpatient_billing_summary(db, case_id)["total"]
+    db.execute("UPDATE inpatient_cases SET total=? WHERE id=?", (total, case_id))
 
 
 # ---------------------------------------------------------------------------
@@ -644,51 +678,60 @@ def _revenue_and_cogs_by_month(db, month=None):
     consistent with a full scan.
     """
     revenue_by_month = defaultdict(float)
-    cost_by_price_id = {r["id"]: r["cost_price"] or 0 for r in db.execute("SELECT id, cost_price FROM price_list").fetchall()}
+    cost_by_item = {r["id"]: r["cost_price"] or 0 for r in db.execute("SELECT id, cost_price FROM inventory_list").fetchall()}
     cogs_by_month = defaultdict(float)
     month_like = (month + "%") if month else None
 
+    # Automatic visit billing: cost basis comes from the snapshot taken at
+    # Save time (visit_billing_lines) — this is what stops editing today's
+    # prices from retroactively changing a past month's COGS. Revenue reads
+    # the stored billing.total (kept in sync by
+    # logic.refresh_visit_billing_total()) instead of re-deriving it, so
+    # reports always agree with what the bill actually shows.
     billing_where = " WHERE date_billed::text LIKE ?" if month else ""
     billing_params = [month_like] if month else []
     for r in db.execute(
-        "SELECT visit_id, billing_type, codes, manual_amount, date_billed, discount_percent FROM billing" + billing_where,
+        "SELECT visit_id, billing_type, date_billed, total FROM billing" + billing_where,
         billing_params,
     ).fetchall():
         if not r["date_billed"]:
             continue
         mth = month_key(r["date_billed"])
-        if r["billing_type"] == "Manual":
-            subtotal = r["manual_amount"] or 0
-            cogs_by_month[mth] += 0  # no line-level cost basis on a lump manual entry
-        else:
-            lines, subtotal, _ = billing_lines(db, r["codes"])
-            for l in lines:
-                cogs_by_month[mth] += cost_by_price_id.get(l["id"], 0)
-        revenue_by_month[mth] += subtotal * (1 - (r["discount_percent"] or 0) / 100)
+        if r["billing_type"] != "Manual":
+            for l in db.execute(
+                "SELECT quantity, unit_cost FROM visit_billing_lines WHERE visit_id=?", (r["visit_id"],)
+            ).fetchall():
+                cogs_by_month[mth] += (l["unit_cost"] or 0) * l["quantity"]
+        revenue_by_month[mth] += r["total"] or 0
 
     sales_where = " WHERE sale_date LIKE ?" if month else ""
     sales_params = [month_like] if month else []
-    for r in db.execute("SELECT sale_date, subtotal, discount_percent FROM sales" + sales_where, sales_params).fetchall():
+    for r in db.execute("SELECT sale_date, total FROM sales" + sales_where, sales_params).fetchall():
         mth = r["sale_date"][:7]
-        revenue_by_month[mth] += r["subtotal"] * (1 - (r["discount_percent"] or 0) / 100)
+        revenue_by_month[mth] += r["total"] or 0
 
     # Inpatient billing (procedures checked off during a stay). Each line has
     # its own timestamp, so revenue is attributed to the month each
     # procedure was actually logged, with the case's overall discount
-    # applied proportionally to every line.
+    # applied proportionally to every line. Prefers the unit_price/unit_cost
+    # snapshotted when the line was added; a NULL snapshot (added before
+    # these columns existed, or the price_list item had no sale_price/
+    # cost_price set at billing time) falls back to the live Price List join.
     case_discounts = {r["id"]: r["discount_percent"] or 0 for r in db.execute(
         "SELECT id, discount_percent FROM inpatient_cases").fetchall()}
     ib_where = " WHERE ib.timestamp LIKE ?" if month else ""
     ib_params = [month_like] if month else []
     for r in db.execute(
-        "SELECT ib.case_id, ib.price_id, ib.quantity, ib.timestamp, p.sale_price FROM inpatient_billing ib "
+        "SELECT ib.case_id, ib.price_id, ib.quantity, ib.timestamp, ib.unit_price, ib.unit_cost, "
+        "p.sale_price, p.cost_price FROM inpatient_billing ib "
         "JOIN price_list p ON p.id = ib.price_id" + ib_where, ib_params
     ).fetchall():
         mth = r["timestamp"][:7]
-        line_amount = (r["sale_price"] or 0) * r["quantity"]
+        unit_price = r["unit_price"] if r["unit_price"] is not None else (r["sale_price"] or 0)
+        unit_cost = r["unit_cost"] if r["unit_cost"] is not None else (r["cost_price"] or 0)
         discount = case_discounts.get(r["case_id"], 0)
-        revenue_by_month[mth] += line_amount * (1 - discount / 100)
-        cogs_by_month[mth] += cost_by_price_id.get(r["price_id"], 0) * r["quantity"]
+        revenue_by_month[mth] += (unit_price * r["quantity"]) * (1 - discount / 100)
+        cogs_by_month[mth] += unit_cost * r["quantity"]
 
     # Boarding revenue is attributed to the month the stay started (entry_date).
     # No COGS — boarding is a service, same treatment as a Service price_list item.
@@ -699,13 +742,17 @@ def _revenue_and_cogs_by_month(db, month=None):
     ).fetchall():
         revenue_by_month[month_key(r["entry_date"])] += r["total"]
 
-    cost_by_item = {r["id"]: r["cost_price"] or 0 for r in db.execute("SELECT id, cost_price FROM inventory_list").fetchall()}
+    # Retail COGS: cost basis comes from the snapshot taken at sale time
+    # (sale_items.unit_cost) — falls back to the live Inventory Catalog
+    # join only for a sale that predates this column.
     si_where = " WHERE s.sale_date LIKE ?" if month else ""
     si_params = [month_like] if month else []
     for r in db.execute(
-        "SELECT si.item_id, si.quantity, s.sale_date FROM sale_items si JOIN sales s ON s.id=si.sale_id" + si_where, si_params
+        "SELECT si.item_id, si.quantity, si.unit_cost, s.sale_date FROM sale_items si "
+        "JOIN sales s ON s.id=si.sale_id" + si_where, si_params
     ).fetchall():
-        cogs_by_month[r["sale_date"][:7]] += r["quantity"] * cost_by_item.get(r["item_id"], 0)
+        unit_cost = r["unit_cost"] if r["unit_cost"] is not None else cost_by_item.get(r["item_id"], 0)
+        cogs_by_month[r["sale_date"][:7]] += r["quantity"] * unit_cost
 
     # Refunds reduce revenue in the month the refund itself was processed
     # (not the original sale/visit's month) — standard accounting practice,
@@ -1082,12 +1129,11 @@ def revenue_by_category(db, months_back=12):
     rows = db.execute(
         """
         WITH auto_lines AS (
-          SELECT to_char(b.date_billed, 'YYYY-MM') AS month, pl.category AS category,
-                 pl.sale_price * (1 - COALESCE(b.discount_percent,0)/100.0) AS amount
+          SELECT to_char(b.date_billed, 'YYYY-MM') AS month, vbl.category AS category,
+                 vbl.unit_price * vbl.quantity * (1 - COALESCE(b.discount_percent,0)/100.0) AS amount
           FROM billing b
-          CROSS JOIN LATERAL unnest(string_to_array(b.codes, ',')) AS code_raw
-          JOIN price_list pl ON pl.id = trim(code_raw)
-          WHERE b.billing_type = 'Automatic' AND b.date_billed IS NOT NULL AND b.codes IS NOT NULL
+          JOIN visit_billing_lines vbl ON vbl.visit_id = b.visit_id
+          WHERE b.billing_type = 'Automatic' AND b.date_billed IS NOT NULL
             AND b.date_billed >= ?
         ),
         manual_lines AS (
@@ -1104,7 +1150,7 @@ def revenue_by_category(db, months_back=12):
         ),
         inpatient_lines AS (
           SELECT substr(ib.timestamp,1,7) AS month, pl.category AS category,
-                 pl.sale_price * ib.quantity * (1 - COALESCE(ic.discount_percent,0)/100.0) AS amount
+                 COALESCE(ib.unit_price, pl.sale_price) * ib.quantity * (1 - COALESCE(ic.discount_percent,0)/100.0) AS amount
           FROM inpatient_billing ib
           JOIN price_list pl ON pl.id = ib.price_id
           JOIN inpatient_cases ic ON ic.id = ib.case_id
@@ -1156,10 +1202,9 @@ def vet_performance(db, months_back=12):
         """
         WITH visit_totals AS (
           SELECT b.visit_id, b.billing_type, b.manual_amount, b.discount_percent,
-                 COALESCE(SUM(pl.sale_price),0) AS auto_subtotal
+                 COALESCE(SUM(vbl.unit_price * vbl.quantity), 0) AS auto_subtotal
           FROM billing b
-          LEFT JOIN LATERAL unnest(string_to_array(b.codes, ',')) AS code(c) ON b.billing_type='Automatic'
-          LEFT JOIN price_list pl ON pl.id = trim(code.c)
+          LEFT JOIN visit_billing_lines vbl ON vbl.visit_id = b.visit_id AND b.billing_type='Automatic'
           GROUP BY b.visit_id, b.billing_type, b.manual_amount, b.discount_percent
         )
         SELECT v.doctor, COUNT(DISTINCT v.id) AS visit_count,
