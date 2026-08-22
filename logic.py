@@ -108,7 +108,7 @@ def confirmed_audit_rows_by_item(db, item_id=None):
     daily rate, and carried-forward threshold/critical/target values.
     """
     q = """
-    SELECT l.*, s.audit_date as audit_date
+    SELECT l.*, s.audit_date as audit_date, s.confirmed_at as confirmed_at
     FROM audit_session_lines l JOIN audit_sessions s ON s.id = l.session_id
     WHERE s.status='Confirmed' AND l.stock_counted IS NOT NULL
     """
@@ -116,7 +116,11 @@ def confirmed_audit_rows_by_item(db, item_id=None):
     if item_id:
         q += " AND l.item_id=?"
         params.append(item_id)
-    q += " ORDER BY l.item_id, s.audit_date, l.id"
+    # confirmed_at (a full timestamp) orders same-day confirmations
+    # correctly; audit_date alone (date-only) can't tell two same-day
+    # audits apart. See inventory_status()'s use of confirmed_at as the
+    # transaction cutoff for why this distinction matters.
+    q += " ORDER BY l.item_id, COALESCE(s.confirmed_at, s.audit_date::text), l.id"
     rows = [dict(r) for r in db.execute(q, params).fetchall()]
 
     by_item = defaultdict(list)
@@ -157,12 +161,25 @@ def confirmed_audit_rows_by_item(db, item_id=None):
     return out
 
 
-def _txn_qty_since(db, item_id, since_date):
-    row = db.execute(
-        "SELECT COALESCE(SUM(change_qty),0) s FROM inventory_transactions WHERE item_id=? AND timestamp > ?",
-        (item_id, since_date),
-    ).fetchone()
-    return row["s"] or 0
+def _txn_qty_since_batch(db, cutoffs):
+    """For every item at once — cutoffs is {item_id: cutoff_timestamp},
+    each item compared against its *own* cutoff (they're not all the
+    same, since each item's latest confirmed audit happened at a
+    different time) in a single query instead of one round-trip per
+    item. Returns {item_id: net_change_since_cutoff}, omitting items
+    with no net change."""
+    if not cutoffs:
+        return {}
+    items = list(cutoffs.items())
+    values_sql = ",".join("(?,?)" for _ in items)
+    params = [v for pair in items for v in pair]
+    rows = db.execute(
+        f"SELECT t.item_id, COALESCE(SUM(t.change_qty), 0) AS net FROM inventory_transactions t "
+        f"JOIN (VALUES {values_sql}) AS cutoffs(item_id, cutoff) ON cutoffs.item_id = t.item_id "
+        f"WHERE t.timestamp > cutoffs.cutoff GROUP BY t.item_id",
+        params,
+    ).fetchall()
+    return {r["item_id"]: r["net"] or 0 for r in rows}
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +196,22 @@ def inventory_status(db):
     for r in all_confirmed:
         by_item[r["item_id"]].append(r)
 
+    # Cutoff is confirmed_at (a full timestamp), never audit_date alone
+    # (date-only) — a same-day sale/refund/shrinkage that happened
+    # *before* the physical count was taken (completely normal: the
+    # clinic sells all morning, then does the shelf walk in the
+    # afternoon) would otherwise still be "after" a date-only cutoff and
+    # get double-counted on top of a stock_counted figure that already
+    # reflects it. Falls back to audit_date only for a pre-existing
+    # confirmed session that somehow has no confirmed_at.
+    cutoffs = {}
+    for it in items:
+        rows = by_item.get(it["id"], [])
+        if rows:
+            latest = rows[-1]
+            cutoffs[it["id"]] = latest["confirmed_at"] or str(latest["audit_date"])
+    txn_since = _txn_qty_since_batch(db, cutoffs)
+
     status = []
     for it in items:
         rows = by_item.get(it["id"], [])
@@ -194,7 +227,7 @@ def inventory_status(db):
 
         current_stock = base_stock
         if base_stock is not None:
-            current_stock = round(base_stock + _txn_qty_since(db, it["id"], str(latest["audit_date"])), 3)
+            current_stock = round(base_stock + txn_since.get(it["id"], 0), 3)
 
         days_since_audit = (today - latest_audit_date).days if latest_audit_date else None
         days_to_expiry = (nearest_expiry - today).days if nearest_expiry else None
