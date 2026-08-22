@@ -1094,6 +1094,43 @@ def yearly_pl(db):
 # ---------------------------------------------------------------------------
 # Refunds (Admin only)
 # ---------------------------------------------------------------------------
+def refundable_sale_items(db, sale_id):
+    """Returns (sale_row_or_None, [line dicts]) for a POS sale — each line's
+    unit_price is what was actually PAID per unit (sale_items.unit_price,
+    the pre-discount snapshot taken at checkout, with the sale's
+    discount_percent applied) — not today's Price List price. pos_checkout()
+    only applies discount_percent once, to the sale's aggregate total, so
+    sale_items.unit_price alone overstates what was paid on any discounted
+    sale; the same percentage applies uniformly to every line (there's no
+    per-line discount) so it's applied the same way here.
+    `remaining` = quantity minus whatever's already been refunded against
+    that exact sale_items row across every prior refund. This is what
+    refund_retail_save() uses both to render the refund pick list and,
+    server-side, to enforce a refund can never exceed what was actually
+    sold — see refunds.sale_id / refund_items.sale_item_id."""
+    sale = db.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
+    if not sale:
+        return None, []
+    discount_percent = sale["discount_percent"] or 0
+    rows = db.execute(
+        "SELECT si.id AS sale_item_id, si.item_id, il.name, si.quantity, si.unit_price, "
+        "COALESCE((SELECT SUM(ri.quantity) FROM refund_items ri WHERE ri.sale_item_id = si.id), 0) AS already_refunded "
+        "FROM sale_items si JOIN inventory_list il ON il.id = si.item_id "
+        "WHERE si.sale_id=? ORDER BY si.id",
+        (sale_id,),
+    ).fetchall()
+    lines = []
+    for r in rows:
+        remaining = round(r["quantity"] - r["already_refunded"], 6)
+        unit_price = round(r["unit_price"] * (1 - discount_percent / 100), 2)
+        lines.append({
+            "sale_item_id": r["sale_item_id"], "item_id": r["item_id"], "name": r["name"],
+            "unit_price": unit_price, "quantity": r["quantity"],
+            "already_refunded": r["already_refunded"], "remaining": max(remaining, 0),
+        })
+    return sale, lines
+
+
 def recent_refunds(db, limit=100, offset=0, date_filter=None):
     where = ""
     params = []

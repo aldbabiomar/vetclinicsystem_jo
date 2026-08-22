@@ -882,6 +882,29 @@ def api_price_list_lookup():
     return jsonify([{"id": r["id"], "name": r["name"], "category": r["category"], "price": r["sale_price"]} for r in rows])
 
 
+@app.route("/api/sales/<int:sale_id>/refundable-items")
+@auth.permission_required("manage_refunds")
+def api_sale_refundable_items(sale_id):
+    sale, lines = logic.refundable_sale_items(get_db(), sale_id)
+    if not sale:
+        return jsonify({"error": "No sale with that ID."}), 404
+    return jsonify({
+        "sale_id": sale["id"],
+        "sale_date": sale["sale_date"],
+        "lines": [
+            {
+                "sale_item_id": l["sale_item_id"],
+                "item_id": l["item_id"],
+                "name": l["name"],
+                "unit_price": l["unit_price"],
+                "quantity": l["quantity"],
+                "remaining": l["remaining"],
+            }
+            for l in lines
+        ],
+    })
+
+
 # ---------------------------------------------------------------------------
 # Owners
 # ---------------------------------------------------------------------------
@@ -3645,7 +3668,12 @@ def refunds_page():
 def refund_retail_save():
     db = get_db()
     f = request.form
-    item_ids = f.getlist("item_id")
+    try:
+        sale_id = int(f.get("sale_id", ""))
+    except (TypeError, ValueError):
+        flash("Look up a sale first — a retail refund must be linked to the sale it's refunding.", "error")
+        return redirect(url_for("refunds_page"))
+    sale_item_ids_raw = f.getlist("sale_item_id")
     quantities = f.getlist("quantity")
     restock = f.get("restock") == "on"
     reason = (f.get("reason") or "").strip()
@@ -3655,27 +3683,53 @@ def refund_retail_save():
         flash(str(e), "error")
         return redirect(url_for("refunds_page"))
 
-    if not item_ids:
-        flash("No items scanned — nothing to refund.", "error")
+    if not sale_item_ids_raw:
+        flash("No items selected — nothing to refund.", "error")
+        return redirect(url_for("refunds_page"))
+    try:
+        sale_item_ids = [int(sid) for sid in sale_item_ids_raw]
+    except ValueError:
+        flash("Invalid item selection.", "error")
         return redirect(url_for("refunds_page"))
 
+    # Lock every sale_items row being refunded, in a fixed order, before
+    # computing how much of each is still refundable — same reasoning as
+    # pos_checkout()'s stock-row locking: without this, two concurrent
+    # refunds against the same sale could each read "2 remaining" and both
+    # submit, over-refunding a sale that only had 2 to give back.
+    for sid in sorted(set(sale_item_ids)):
+        db.execute("SELECT id FROM sale_items WHERE id=? AND sale_id=? FOR UPDATE", (sid, sale_id))
+
+    sale, refundable = logic.refundable_sale_items(db, sale_id)
+    if not sale:
+        flash("Sale not found.", "error")
+        return redirect(url_for("refunds_page"))
+    remaining_by_id = {l["sale_item_id"]: l for l in refundable}
+
     lines, total = [], 0
-    for iid, qty in zip(item_ids, quantities):
+    for sid, qty_raw in zip(sale_item_ids, quantities):
         try:
-            qty = parse_money(qty, required=True)
+            qty = parse_money(qty_raw, required=True)
         except BadNumber:
             flash("Refund quantities must be valid numbers.", "error")
             return redirect(url_for("refunds_page"))
         if qty <= 0:
             continue
-        price = logic.item_sale_price(db, iid)
-        if price is None:
-            item_row = db.execute("SELECT name FROM inventory_list WHERE id=?", (iid,)).fetchone()
-            flash(f"{item_row['name'] if item_row else iid} has no sale price set in the Price List — skipped.", "error")
-            continue
+        # Priced from what this sale actually charged per unit
+        # (refundable_sale_items()'s discount-adjusted unit_price) — never
+        # re-looked-up against today's Price List, which may have changed
+        # since the sale.
+        line = remaining_by_id.get(sid)
+        if not line:
+            flash("One of the selected items isn't part of that sale.", "error")
+            return redirect(url_for("refunds_page"))
+        if qty > line["remaining"] + 1e-9:
+            flash(f"Can't refund {qty:g} {line['name']} — only {line['remaining']:g} left refundable from this sale.", "error")
+            return redirect(url_for("refunds_page"))
+        price = line["unit_price"]
         line_total = round(price * qty, 2)
         total += line_total
-        lines.append((iid, qty, price, line_total))
+        lines.append((line["item_id"], sid, qty, price, line_total))
 
     if not lines:
         flash("Nothing to refund.", "error")
@@ -3683,16 +3737,17 @@ def refund_retail_save():
 
     now = datetime.now().isoformat(timespec="seconds")
     cur = db.execute(
-        "INSERT INTO refunds (refund_type, refund_date, amount, restocked, reason, refund_method, processed_by, created_at) "
-        "VALUES ('retail',?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(total, 2), 1 if restock else 0, reason, f.get("refund_method"), session["user_id"], now),
+        "INSERT INTO refunds (refund_type, refund_date, amount, restocked, sale_id, reason, refund_method, processed_by, created_at) "
+        "VALUES ('retail',?,?,?,?,?,?,?,?) RETURNING id",
+        (refund_date, round(total, 2), 1 if restock else 0, sale_id, reason, f.get("refund_method"), session["user_id"], now),
     )
     refund_id = cur.fetchone()["id"]
 
-    for iid, qty, price, line_total in lines:
+    for iid, sid, qty, price, line_total in lines:
         db.execute(
-            "INSERT INTO refund_items (refund_id, item_id, quantity, unit_price, line_total) VALUES (?,?,?,?,?)",
-            (refund_id, iid, qty, price, line_total),
+            "INSERT INTO refund_items (refund_id, item_id, quantity, unit_price, line_total, sale_item_id) "
+            "VALUES (?,?,?,?,?,?)",
+            (refund_id, iid, qty, price, line_total, sid),
         )
         if restock:
             db.execute(
