@@ -29,7 +29,7 @@
       <div id="cashFields">
         <div class="field" style="margin:10px 0;">
           <label>Cash Received (JOD)</label>
-          <input type="number" id="cashReceivedInput" step="0.01" min="0" oninput="renderCart()">
+          <input type="number" id="cashReceivedInput" step="0.001" min="0" oninput="renderCart()">
         </div>
         <div class="detail-item"><div class="k">Change Due</div><div class="v" style="font-size:18px; font-weight:700;" id="changeDue">—</div></div>
         <div class="meta small" id="changeNote" style="margin-top:2px;"></div>
@@ -126,9 +126,9 @@ function renderCart() {
   }
   const subtotal = cart.reduce((s,c) => s + c.price * c.qty, 0);
   const discount = parseFloat(document.getElementById('discountInput').value) || 0;
-  const total = Math.round(subtotal * (1 - discount/100));
-  document.getElementById('cartSubtotal').textContent = subtotal.toLocaleString() + ' JOD';
-  document.getElementById('cartTotal').textContent = total.toLocaleString() + ' JOD';
+  const total = subtotal * (1 - discount/100);
+  document.getElementById('cartSubtotal').textContent = subtotal.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' JOD';
+  document.getElementById('cartTotal').textContent = total.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' JOD';
   renderChange(total);
 }
 function toggleCashFields() {
@@ -147,9 +147,9 @@ function renderChange(total) {
     return;
   }
   const change = Math.max(cashReceived - total, 0);
-  changeDueEl.textContent = change.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' JOD';
+  changeDueEl.textContent = change.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' JOD';
   noteEl.textContent = cashReceived < total
-    ? `Cash received is ${(total - cashReceived).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} JOD short of the total.`
+    ? `Cash received is ${(total - cashReceived).toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})} JOD short of the total.`
     : '';
 }
 function prepareSubmit() {

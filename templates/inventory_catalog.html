@@ -37,7 +37,7 @@
       <div class="field"><label>Item Name</label><input required name="name"></div>
       <div class="field"><label>Category</label><select name="category">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select></div>
       <div class="field"><label>Unit</label><input name="unit" placeholder="Bottle, Box, Piece…"></div>
-      <div class="field"><label>Cost Price (IQD)</label><input type="number" step="1" name="cost_price"></div>
+      <div class="field"><label>Cost Price (JOD)</label><input type="number" step="0.001" name="cost_price"></div>
       <div class="field"><label>Preferred Distributor</label>
         <select name="distributor_id"><option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select>
       </div>
@@ -64,7 +64,7 @@
   <col style="width:11%;">
   <col style="width:14%;">
 </colgroup>
-  <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Unit</th><th>Barcode</th><th style="white-space:normal;">Track Expiry</th><th class="num-col">Cost (IQD)</th><th>Distributor</th><th></th></tr></thead>
+  <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Unit</th><th>Barcode</th><th style="white-space:normal;">Track Expiry</th><th class="num-col">Cost (JOD)</th><th>Distributor</th><th></th></tr></thead>
   <tbody>
     {% for i in items %}
     <form id="edit-{{ i.id }}" method="post" action="{{ url_for('inventory_catalog_edit', item_id=i.id) }}">
@@ -80,7 +80,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn small secondary" type="submit">Create Barcode</button></form>{% endif %}
       </td>
       <td><input form="edit-{{ i.id }}" type="checkbox" name="track_expiry" {{ 'checked' if i.track_expiry }}></td>
-      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="1" name="cost_price" value="{{ i.cost_price if i.cost_price is not none else '' }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
+      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="cost_price" value="{{ i.cost_price if i.cost_price is not none else '' }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
       <td class="dist-cell">
         <span class="dist-label" id="distLabel-{{ i.id }}" onclick="toggleDistEdit('{{ i.id }}')" title="Click to change distributor">{{ i.distributor_name or "—" }}</span>
         <select form="edit-{{ i.id }}" name="distributor_id" id="distSelect-{{ i.id }}" class="dist-select"

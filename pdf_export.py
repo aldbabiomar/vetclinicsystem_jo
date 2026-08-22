@@ -174,12 +174,12 @@ def export_patient_billing(db, patient_id):
         for l in summary["lines"]:
             amount = l.get("line_total", l["price"])
             label = l["name"] if not l.get("quantity") or l["quantity"] == 1 else f"{l['name']} × {l['quantity']:g}"
-            data.append([label, f"{amount:.2f}"])
-        data.append(["Subtotal", f"{summary['subtotal']:.2f}"])
+            data.append([label, f"{amount:.3f}"])
+        data.append(["Subtotal", f"{summary['subtotal']:.3f}"])
         if summary["discount_percent"]:
-            data.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:.2f}"])
-        data.append(["Total", f"{summary['total']:.2f}"])
-        data.append(["Paid", f"{summary['paid']:.2f}"])
+            data.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:.3f}"])
+        data.append(["Total", f"{summary['total']:.3f}"])
+        data.append(["Paid", f"{summary['paid']:.3f}"])
         data.append(["Status", summary["status"]])
 
         t = Table(data, colWidths=[110 * mm, 40 * mm])
@@ -195,7 +195,7 @@ def export_patient_billing(db, patient_id):
         story.append(Spacer(1, 12))
         grand_total += summary["total"]
 
-    story.append(Paragraph(f"<b>Grand total across all visits: {grand_total:.2f} JOD</b>", ss["Body"]))
+    story.append(Paragraph(f"<b>Grand total across all visits: {grand_total:.3f} JOD</b>", ss["Body"]))
     doc.build(story)
     buf.seek(0)
     return buf
@@ -224,15 +224,15 @@ def export_sale_receipt(db, sale_id):
 
     data = [["Item", "Unit Price (JOD)", "Qty", "Line Total (JOD)"]]
     for l in lines:
-        data.append([l["name"], f"{l['unit_price']:,.0f}", f"{l['quantity']:g}", f"{l['line_total']:,.0f}"])
+        data.append([l["name"], f"{l['unit_price']:,.3f}", f"{l['quantity']:g}", f"{l['line_total']:,.3f}"])
     t = _section_table(data, [70 * mm, 35 * mm, 20 * mm, 40 * mm])
     story.append(t)
     story.append(Spacer(1, 14))
 
-    summary_rows = [["Subtotal", f"{sale['subtotal']:,.0f} JOD"]]
+    summary_rows = [["Subtotal", f"{sale['subtotal']:,.3f} JOD"]]
     if sale["discount_percent"]:
-        summary_rows.append([f"Discount ({sale['discount_percent']:.0f}%)", f"-{sale['subtotal'] - sale['total']:,.0f} JOD"])
-    summary_rows.append(["Total", f"{sale['total']:,.0f} JOD"])
+        summary_rows.append([f"Discount ({sale['discount_percent']:.0f}%)", f"-{sale['subtotal'] - sale['total']:,.3f} JOD"])
+    summary_rows.append(["Total", f"{sale['total']:,.3f} JOD"])
     summary_rows.append(["Payment Method", sale["payment_method"] or "\u2014"])
     st = Table(summary_rows, colWidths=[110 * mm, 55 * mm])
     st.setStyle(TableStyle([
@@ -317,14 +317,14 @@ def export_visit_pdf(db, visit_id):
         for l in summary["lines"]:
             amount = l.get("line_total", l["price"])
             label = l["name"] if not l.get("quantity") or l["quantity"] == 1 else f"{l['name']} × {l['quantity']:g}"
-            data.append([label, f"{amount:,.0f}"])
+            data.append([label, f"{amount:,.3f}"])
         story.append(_section_table(data, [120 * mm, 45 * mm]))
         story.append(Spacer(1, 6))
-    bill_rows = [["Subtotal", f"{summary['subtotal']:,.0f} JOD"]]
+    bill_rows = [["Subtotal", f"{summary['subtotal']:,.3f} JOD"]]
     if summary["discount_percent"]:
-        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:,.0f} JOD"])
-    bill_rows.append(["Total", f"{summary['total']:,.0f} JOD"])
-    bill_rows.append(["Paid", f"{summary['paid']:,.0f} JOD"])
+        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:,.3f} JOD"])
+    bill_rows.append(["Total", f"{summary['total']:,.3f} JOD"])
+    bill_rows.append(["Paid", f"{summary['paid']:,.3f} JOD"])
     bill_rows.append(["Status", summary["status"]])
     bt = Table(bill_rows, colWidths=[120 * mm, 45 * mm])
     bt.setStyle(TableStyle([
@@ -399,14 +399,14 @@ def export_inpatient_pdf(db, case_id):
     if summary["lines"]:
         data = [["Procedure", "Qty", "Unit Price (JOD)", "Line Total (JOD)"]]
         for l in summary["lines"]:
-            data.append([l["name"], f"{l['quantity']:g}", f"{l['unit_price']:,.0f}", f"{l['line_total']:,.0f}"])
+            data.append([l["name"], f"{l['quantity']:g}", f"{l['unit_price']:,.3f}", f"{l['line_total']:,.3f}"])
         story.append(_section_table(data, [70 * mm, 20 * mm, 35 * mm, 40 * mm]))
         story.append(Spacer(1, 6))
-    bill_rows = [["Subtotal", f"{summary['subtotal']:,.0f} JOD"]]
+    bill_rows = [["Subtotal", f"{summary['subtotal']:,.3f} JOD"]]
     if summary["discount_percent"]:
-        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:,.0f} JOD"])
-    bill_rows.append(["Total", f"{summary['total']:,.0f} JOD"])
-    bill_rows.append(["Paid", f"{summary['paid']:,.0f} JOD"])
+        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:,.3f} JOD"])
+    bill_rows.append(["Total", f"{summary['total']:,.3f} JOD"])
+    bill_rows.append(["Paid", f"{summary['paid']:,.3f} JOD"])
     bill_rows.append(["Status", summary["status"]])
     bt = Table(bill_rows, colWidths=[125 * mm, 40 * mm])
     bt.setStyle(TableStyle([
@@ -473,9 +473,9 @@ def export_boarding_pdf(db, boarding_id):
 
     story.append(Paragraph("Billing", ss["H2"]))
     bill_rows = [
-        ["Price per Day", f"{b['price_per_day']:,.0f} JOD" if b["price_per_day"] is not None else "\u2014"],
-        ["Total", f"{summary['total']:,.0f} JOD"],
-        ["Paid", f"{summary['paid']:,.0f} JOD"],
+        ["Price per Day", f"{b['price_per_day']:,.3f} JOD" if b["price_per_day"] is not None else "\u2014"],
+        ["Total", f"{summary['total']:,.3f} JOD"],
+        ["Paid", f"{summary['paid']:,.3f} JOD"],
         ["Status", summary["status"]],
     ]
     bt2 = Table(bill_rows, colWidths=[125 * mm, 40 * mm])
@@ -518,12 +518,12 @@ def export_consignment_settlement_pdf(db, settlement_id):
     ]
 
     rows = [
-        ["Amount Owed", f"{s['amount_owed']:,.0f} JOD"],
-        ["Amount Paid", f"{s['amount_paid']:,.0f} JOD"],
+        ["Amount Owed", f"{s['amount_owed']:,.3f} JOD"],
+        ["Amount Paid", f"{s['amount_paid']:,.3f} JOD"],
         ["Payment Method", s["payment_method"] or "—"],
     ]
     if residual > 0:
-        rows.append(["Carried Forward to Next Settlement", f"{residual:,.0f} JOD"])
+        rows.append(["Carried Forward to Next Settlement", f"{residual:,.3f} JOD"])
     t = Table(rows, colWidths=[110 * mm, 55 * mm])
     t.setStyle(TableStyle([
         ("FONTSIZE", (0, 0), (-1, -1), 10),
@@ -558,9 +558,9 @@ def export_distributor_ledger(db, distributor_id):
         Paragraph(f"{X(distributor_id)} · {X(dist['phone'] or '—')}", ss["Small"]),
         Spacer(1, 10),
         Paragraph(
-            f"<b>Total Billed:</b> {ledger['total_billed']:,.0f} JOD &nbsp;&nbsp; "
-            f"<b>Total Paid:</b> {ledger['total_paid']:,.0f} JOD &nbsp;&nbsp; "
-            f"<b>Outstanding:</b> {ledger['total_outstanding']:,.0f} JOD",
+            f"<b>Total Billed:</b> {ledger['total_billed']:,.3f} JOD &nbsp;&nbsp; "
+            f"<b>Total Paid:</b> {ledger['total_paid']:,.3f} JOD &nbsp;&nbsp; "
+            f"<b>Outstanding:</b> {ledger['total_outstanding']:,.3f} JOD",
             ss["Body"],
         ),
         Spacer(1, 14),
@@ -575,11 +575,11 @@ def export_distributor_ledger(db, distributor_id):
 
         data = [["Payment Date", "Amount (JOD)", "Method", "Notes"]]
         for p in bill["payments"]:
-            data.append([p["payment_date"], f"{p['amount']:,.0f}", p["method"] or "—", p["notes"] or ""])
+            data.append([p["payment_date"], f"{p['amount']:,.3f}", p["method"] or "—", p["notes"] or ""])
         data.append(["", "", "", ""])
-        data.append(["Bill Total", f"{bill['total_amount']:,.0f}", "", ""])
-        data.append(["Paid", f"{bill['paid']:,.0f}", "", ""])
-        data.append(["Balance", f"{bill['balance']:,.0f}", "", ""])
+        data.append(["Bill Total", f"{bill['total_amount']:,.3f}", "", ""])
+        data.append(["Paid", f"{bill['paid']:,.3f}", "", ""])
+        data.append(["Balance", f"{bill['balance']:,.3f}", "", ""])
 
         t = _section_table(data, [35 * mm, 30 * mm, 35 * mm, 65 * mm])
         story.append(t)

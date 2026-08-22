@@ -44,11 +44,11 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
       <div class="field"><label>Month</label><input required type="month" name="month" id="opexMonth" value="{{ today[:7] }}" onchange="loadOpexForMonth()"></div>
-      <div class="field"><label>Rent (JOD)</label><input type="number" step="1" name="rent" id="opexRent" value="0"></div>
-      <div class="field"><label>Salaries / Payroll (JOD)</label><input type="number" step="1" name="salaries" id="opexSalaries" value="0"></div>
-      <div class="field"><label>Utilities (JOD)</label><input type="number" step="1" name="utilities" id="opexUtilities" value="0"></div>
-      <div class="field"><label>Marketing (JOD)</label><input type="number" step="1" name="marketing" id="opexMarketing" value="0"></div>
-      <div class="field"><label>Other OpEx (JOD)</label><input type="number" step="1" name="other" id="opexOther" value="0"></div>
+      <div class="field"><label>Rent (JOD)</label><input type="number" step="0.001" name="rent" id="opexRent" value="0"></div>
+      <div class="field"><label>Salaries / Payroll (JOD)</label><input type="number" step="0.001" name="salaries" id="opexSalaries" value="0"></div>
+      <div class="field"><label>Utilities (JOD)</label><input type="number" step="0.001" name="utilities" id="opexUtilities" value="0"></div>
+      <div class="field"><label>Marketing (JOD)</label><input type="number" step="0.001" name="marketing" id="opexMarketing" value="0"></div>
+      <div class="field"><label>Other OpEx (JOD)</label><input type="number" step="0.001" name="other" id="opexOther" value="0"></div>
     </div>
     <p class="small muted" id="opexHint" style="margin:6px 0 0;"></p>
     <div class="form-actions"><button class="btn" type="submit">Save Operating Costs</button></div>

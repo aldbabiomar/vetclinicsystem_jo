@@ -22,7 +22,7 @@
   {% if has_permission('manage_consignment_settlements') %}
   <form method="post" action="{{ url_for('consignment_settlement_new', distributor_id=distributor.id) }}" class="form-grid" style="margin-top:16px;" onsubmit="return confirm('Record this settlement? The amount owed will be recalculated at the moment you submit.');">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="field"><label>Amount Paid (JOD)</label><input type="number" step="1" name="amount_paid" value="{{ balance.amount_owed|round|int }}" required></div>
+    <div class="field"><label>Amount Paid (JOD)</label><input type="number" step="0.001" name="amount_paid" value="{{ balance.amount_owed }}" required></div>
     <div class="field"><label>Payment Method</label>
       <select name="payment_method">
         <option value="">—</option>

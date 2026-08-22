@@ -170,7 +170,7 @@
 
     <form method="post" action="{{ url_for('inpatient_payment_add', case_id=case.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="1" name="amount" required></div>
+      <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="0.001" name="amount" required></div>
       <div class="field"><label>Method</label><select name="method"><option>Cash</option><option>Card</option><option>Transfer</option></select></div>
       <button class="btn small secondary" type="submit">Add</button>
     </form>
