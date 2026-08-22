@@ -1,4 +1,5 @@
 import ipaddress
+import json
 import math
 import os
 import re
@@ -1999,9 +2000,12 @@ def inventory_catalog():
     rows = db.execute(q, params + [PER_PAGE, page_offset(page)]).fetchall()
     distributors = db.execute("SELECT * FROM distributors ORDER BY name").fetchall()
     _, flagged_inventory = logic.retail_consistency_flags(db)
+    has_barcodes = db.execute(
+        "SELECT EXISTS(SELECT 1 FROM inventory_list WHERE barcode IS NOT NULL AND active=true) AS e"
+    ).fetchone()["e"]
     return render_template("inventory_catalog.html", items=rows, distributors=distributors,
                             show_inactive=show_inactive, categories=INVENTORY_CATEGORIES, search=search,
-                            flagged_inventory=flagged_inventory,
+                            flagged_inventory=flagged_inventory, has_barcodes=has_barcodes,
                             page=page, total_pages=page_count(total), total_count=total)
 
 
@@ -2158,6 +2162,55 @@ def inventory_barcode_label(item_id):
         flash("This item doesn't have a barcode yet.", "error")
         return redirect(url_for("inventory_catalog"))
     return render_template("barcode_label.html", item=item)
+
+
+@app.route("/inventory-catalog/barcodes/generated")
+def inventory_catalog_barcodes_generated():
+    """Every active item that has a barcode, across the whole catalog
+    regardless of which page of Inventory Catalog is showing — feeds the
+    Bulk Barcode Print picker. Unlike VetClinicSystem_IQ, Jordan has no
+    barcode_source column distinguishing 'generated' from a manually
+    entered code — there's no manual-barcode-entry feature here at all,
+    every barcode is created via inventory_catalog_create_barcode — so any
+    item with a non-null barcode is eligible."""
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, name, barcode FROM inventory_list "
+        "WHERE barcode IS NOT NULL AND active=true ORDER BY name"
+    ).fetchall()
+    return jsonify([{"id": r["id"], "name": r["name"], "barcode": r["barcode"]} for r in rows])
+
+
+@app.route("/inventory-catalog/barcodes/bulk-print", methods=["POST"])
+def inventory_catalog_barcodes_bulk_print():
+    db = get_db()
+    try:
+        requested = json.loads(request.form.get("items") or "[]")
+    except (ValueError, TypeError):
+        requested = []
+    labels = []
+    for entry in requested if isinstance(requested, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        item_id = str(entry.get("id", ""))
+        try:
+            qty = int(entry.get("qty", 1))
+        except (TypeError, ValueError):
+            qty = 1
+        qty = max(1, min(qty, 500))
+        # Re-checked server-side, same as everywhere else a client-supplied
+        # id gets acted on — only an item that currently has a barcode can
+        # end up on the printed sheet, no matter what the client sent.
+        item = db.execute(
+            "SELECT id, name, barcode FROM inventory_list WHERE id=? AND barcode IS NOT NULL",
+            (item_id,),
+        ).fetchone()
+        if item and item["barcode"]:
+            labels.append({"id": item["id"], "name": item["name"], "barcode": item["barcode"], "qty": qty})
+    if not labels:
+        flash("No barcodes selected to print.", "error")
+        return redirect(url_for("inventory_catalog"))
+    return render_template("barcode_bulk_print.html", labels=labels)
 
 
 # ---------------------------------------------------------------------------

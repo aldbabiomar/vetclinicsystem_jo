@@ -328,6 +328,8 @@ textarea { resize: vertical; min-height: 72px; }
 
 /* ---------------- Barcode label ---------------- */
 .barcode-label-box { border: 1px dashed var(--line); border-radius: var(--radius); padding: 20px 22px; width: 260px; text-align: center; background: var(--paper); }
+.barcode-sheet { display: flex; flex-wrap: wrap; gap: 14px; }
+.barcode-sheet .barcode-label-box { break-inside: avoid; page-break-inside: avoid; }
 @media print { .sidebar, .page-head, .no-print { display: none !important; } .main { padding: 0; } }
 
 /* ---------------- POS ---------------- */

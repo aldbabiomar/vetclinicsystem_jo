@@ -5,6 +5,9 @@
 <div class="page-head">
   <div><h1>Inventory Catalog</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items shown.{% endif %} Audit history tracks actual counts.</p></div>
   <div style="display:flex; gap:10px;">
+    {% if has_barcodes %}
+    <button class="btn secondary" type="button" onclick="document.getElementById('bulkBarcodeModal').style.display='flex'; loadBulkBarcodeList();">Bulk Barcode Print</button>
+    {% endif %}
     <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory_catalog_bulk_edit') }}">Save Changes</button>
     <button class="btn secondary" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
   </div>
@@ -98,12 +101,129 @@
 </table>
 </div>
 {% include "_pagination.html" %}
+
+<div id="bulkBarcodeModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:560px;">
+    <h2 style="margin-top:0;">Bulk Barcode Print</h2>
+    <p class="small muted" style="margin-top:-6px;">
+      Every item with a barcode. Set how many labels each one needs, remove any
+      you don't want on this run, then print them all together.
+    </p>
+    <p id="bulkBarcodeLoading" class="small muted">Loading…</p>
+    <p id="bulkBarcodeEmpty" class="small muted" style="display:none;">Nothing left to print.</p>
+    <div id="bulkBarcodeList" style="max-height:360px; overflow-y:auto;"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+      <button class="btn secondary" type="button" onclick="document.getElementById('bulkBarcodeModal').style.display='none';">Cancel</button>
+      <button class="btn" type="button" id="bulkBarcodePrintBtn" onclick="bulkBarcodePrint()" disabled>Print</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function toggleDistEdit(id) {
   document.getElementById('distLabel-' + id).style.display = 'none';
   var sel = document.getElementById('distSelect-' + id);
   sel.style.display = 'inline-block';
   sel.focus();
+}
+
+async function loadBulkBarcodeList() {
+  var list = document.getElementById('bulkBarcodeList');
+  var loading = document.getElementById('bulkBarcodeLoading');
+  var empty = document.getElementById('bulkBarcodeEmpty');
+  var printBtn = document.getElementById('bulkBarcodePrintBtn');
+  list.innerHTML = '';
+  empty.style.display = 'none';
+  loading.style.display = 'block';
+  printBtn.disabled = true;
+  try {
+    var res = await fetch('{{ url_for("inventory_catalog_barcodes_generated") }}');
+    var items = await res.json();
+    loading.style.display = 'none';
+    if (!res.ok) {
+      alert('Could not load barcodes.');
+      return;
+    }
+    if (!items.length) {
+      empty.style.display = 'block';
+      return;
+    }
+    items.forEach(function (item) {
+      var row = document.createElement('div');
+      row.className = 'bulk-barcode-row';
+      row.dataset.itemId = item.id;
+      row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--line-soft);';
+
+      var info = document.createElement('div');
+      info.style.cssText = 'flex:1; min-width:0;';
+      var nameLine = document.createElement('div');
+      nameLine.style.overflowWrap = 'anywhere';
+      nameLine.textContent = item.name;
+      var codeLine = document.createElement('div');
+      codeLine.className = 'small muted';
+      codeLine.style.fontFamily = 'monospace';
+      codeLine.textContent = item.barcode;
+      info.appendChild(nameLine);
+      info.appendChild(codeLine);
+
+      var qtyInput = document.createElement('input');
+      qtyInput.type = 'number';
+      qtyInput.min = '1';
+      qtyInput.value = '1';
+      qtyInput.className = 'bulk-barcode-qty';
+      qtyInput.style.cssText = 'width:64px; text-align:right;';
+
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn small danger';
+      removeBtn.textContent = 'Remove';
+      removeBtn.onclick = function () {
+        row.remove();
+        if (!list.children.length) {
+          empty.style.display = 'block';
+          printBtn.disabled = true;
+        }
+      };
+
+      row.appendChild(info);
+      row.appendChild(qtyInput);
+      row.appendChild(removeBtn);
+      list.appendChild(row);
+    });
+    printBtn.disabled = false;
+  } catch (e) {
+    loading.style.display = 'none';
+    alert('Could not reach the server.');
+  }
+}
+
+function bulkBarcodePrint() {
+  var rows = document.querySelectorAll('#bulkBarcodeList .bulk-barcode-row');
+  var items = Array.from(rows).map(function (row) {
+    var qtyInput = row.querySelector('.bulk-barcode-qty');
+    var qty = parseInt(qtyInput.value, 10);
+    if (!qty || qty < 1) qty = 1;
+    return { id: row.dataset.itemId, qty: qty };
+  });
+  if (!items.length) return;
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '{{ url_for("inventory_catalog_barcodes_bulk_print") }}';
+  // Same tab, not target="_blank" — a POST form opened into a new tab isn't
+  // reliable across browsers. The print page has its own Back button, same
+  // as the single-item barcode label page.
+  var csrfInput = document.createElement('input');
+  csrfInput.type = 'hidden';
+  csrfInput.name = 'csrf_token';
+  csrfInput.value = document.querySelector('meta[name="csrf-token"]').content;
+  form.appendChild(csrfInput);
+  var itemsInput = document.createElement('input');
+  itemsInput.type = 'hidden';
+  itemsInput.name = 'items';
+  itemsInput.value = JSON.stringify(items);
+  form.appendChild(itemsInput);
+  document.body.appendChild(form);
+  form.submit();
 }
 </script>
 <script src="{{ url_for('static', filename='unsaved-changes.js') }}"></script>

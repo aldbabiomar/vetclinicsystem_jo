@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Bulk Barcode Print — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head no-print">
+  <div><h1>Bulk Barcode Print</h1><p class="page-sub">{{ labels|sum(attribute='qty') }} label(s) across {{ labels|length }} item(s).</p></div>
+  <div style="display:flex; gap:10px;">
+    <button class="btn secondary" id="printBtn" onclick="window.print()" disabled>Print</button>
+    <a class="btn secondary" href="{{ url_for('inventory_catalog') }}">Back</a>
+  </div>
+</div>
+<p class="small muted no-print" id="bulkPrintError" style="display:none; color:var(--danger);">
+  One or more barcodes could not be rendered — check the flagged item(s) below before printing.
+</p>
+<div class="barcode-sheet">
+  {% for label in labels %}
+    {% for n in range(label.qty) %}
+    <div class="barcode-label-box">
+      <div style="font-weight:700; font-size:13px; margin-bottom:6px;">{{ label.name }}</div>
+      <svg id="barcodeSvg_{{ loop.index0 }}_{{ label.id }}_{{ n }}" data-code="{{ label.barcode }}"></svg>
+      <div style="font-size:11px; color:var(--ink-soft);">{{ clinic_name }}</div>
+      <p class="small muted no-print barcode-render-error" style="display:none; color:var(--danger);">
+        Could not render this barcode.
+      </p>
+    </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+<script>
+function renderAllBarcodes() {
+  var svgs = document.querySelectorAll('.barcode-sheet svg');
+  var anyError = false;
+  svgs.forEach(function (svg) {
+    try {
+      JsBarcode(svg, svg.dataset.code, {format: 'EAN13', width: 2, height: 60, fontSize: 14});
+    } catch (e) {
+      anyError = true;
+      var box = svg.closest('.barcode-label-box');
+      var err = box ? box.querySelector('.barcode-render-error') : null;
+      if (err) err.style.display = 'block';
+    }
+  });
+  if (anyError) document.getElementById('bulkPrintError').style.display = 'block';
+  document.getElementById('printBtn').disabled = false;
+}
+</script>
+<script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"
+        onload="renderAllBarcodes();"
+        onerror="document.getElementById('bulkPrintError').style.display = 'block';"></script>
+{% endblock %}
