@@ -161,7 +161,7 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | B-4 | High #9 — attachment upload/delete file↔DB ordering | **PORT [unverified]** | Jordan's `attachments.py` is ~3KB vs a meaningfully larger file upstream; check current ordering before porting. |
 | B-5 | High #16 + Medium — missing FKs (`payments.*`, `attachments.*`, `inpatient_cases.visit_id`, `price_list.linked_item_id`) + `audit_session_lines` unique constraint | **PORT** | Jordan has no data yet in most installs — can add these FKs inline in `CREATE TABLE`, no migration/backfill scaffolding needed (same simplification VetClinicSystem_IQ itself did once it confirmed no prod data). |
 | B-6 | Medium — Python-side pagination → SQL pagination (Follow-ups, Wellness, Grooming, Audit History) | **PORT [unverified]** | Jordan has `followups_list.html`/`grooming_list.html` — confirm current implementation is Python-side before porting the `..._page()` split pattern. |
-| B-7 | High #7 + Medium — `0.0.0.0` bind hardening, session cookie policy, per-IP login rate limit | **PORT** | Generic Flask/Waitress hardening, opt-in via env vars, zero currency dependency. Safe to port as-is. |
+| B-7 | High #7 + Medium — `0.0.0.0` bind hardening, session cookie policy, per-IP login rate limit | ✅ **DONE** | Jordan already had security headers + MAX_CONTENT_LENGTH from an earlier shared baseline — only `BEHIND_TLS_PROXY`/ProxyFix, explicit cookie policy, `PERMANENT_SESSION_LIFETIME`, the network allowlist, and per-IP login rate limiting were actually missing. Also made bind host/port configurable (`JRC_HOST`/`JRC_PORT`, previously hardcoded), which surfaced a real bug: two templates displayed a hardcoded `:5050` for the LAN address — fixed via a `bind_port` Jinja global. Verified live: session cookie now carries `HttpOnly`/`SameSite=Lax`/a 12h `Expires`, 22 rapid login attempts trip the per-IP rate limit on schedule, and `JRC_ALLOWED_NETWORKS` correctly 403s a non-matching request. |
 | B-8 | High #12/#13 — billing snapshot + invalid-code rejection | ✅ **DONE** (billing-snapshot half) via Phase A.3 | The "invalid-code rejection" half is moot in Jordan: the search+cart UI only ever adds a real Price List match, so there's no free-typed code to reject in the first place. |
 | B-9 | High #8 — float→Decimal/NUMERIC | **SKIP (for now)** | VetClinicSystem_IQ itself deliberately never did this ("largest and riskiest item... not implemented this session"). Don't chase parity on a fix the source app also skipped. |
 
@@ -234,7 +234,7 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | 1.4.6 | Boarding negative price/total guard | **PORT [unverified]** | |
 | 1.4.6 | Boarding payment cap + lock + no delete/correct path | **PORT [unverified]** | |
 | 1.4.6 | Barcode duplicate-race handling (2 more routes) | **PORT [unverified]** | Depends on whether B-2's `FOR UPDATE` pattern was already established elsewhere in Jordan to extend from. |
-| 1.4.6 | Login timing side-channel (constant-time regardless of username existing) | **PORT — security priority** | Straightforward, no dependencies. |
+| 1.4.6 | Login timing side-channel (constant-time regardless of username existing) | ✅ **DONE** via B-7 | Pulled forward while touching `login()` for the rate limiter anyway — `verify_password()` now runs unconditionally against a dummy hash when the username doesn't exist. |
 
 ---
 

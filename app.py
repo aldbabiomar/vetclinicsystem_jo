@@ -1,8 +1,10 @@
+import ipaddress
 import os
 import re
 import signal
 import socket
 import sys
+import time
 import logging
 import logging.handlers
 import traceback
@@ -37,6 +39,98 @@ if not app.secret_key:
         "for you) before starting the app."
     )
 csrf = CSRFProtect(app)
+
+# ---------------------------------------------------------------------------
+# Network/session hardening — this app binds to every interface on the LAN
+# by default (see serve() at the bottom of this file), which is fine for a
+# single-clinic deployment as long as it's paired with real compensating
+# controls. None of this changes default behavior for an operator who
+# doesn't configure anything: every knob below is opt-in via environment
+# variable, same as .env.example already does for SECRET_KEY etc.
+# ---------------------------------------------------------------------------
+
+# If a reverse proxy (nginx/Caddy/etc) is terminating TLS in front of this
+# app, set BEHIND_TLS_PROXY=1 so Flask (a) trusts the proxy's
+# X-Forwarded-For/X-Forwarded-Proto/X-Forwarded-Host headers for the real
+# client IP and scheme instead of the proxy's own, and (b) marks the
+# session cookie Secure (browsers refuse to send Secure cookies over plain
+# HTTP, so this must stay off for a plain-HTTP LAN deployment — Waitress
+# itself doesn't terminate TLS, by its own design, so TLS here always means
+# "there's a reverse proxy in front", never "pass Waitress a certificate").
+BIND_PORT = int(os.environ.get("JRC_PORT", "5050"))
+BEHIND_TLS_PROXY = os.environ.get("BEHIND_TLS_PROXY") == "1"
+if BEHIND_TLS_PROXY:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+# Explicit session cookie policy (previously unset, relying entirely on
+# Flask's framework defaults with no visibility into what those were).
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = BEHIND_TLS_PROXY
+# Previously unset entirely: a login session had no server-enforced
+# expiry at all — only "until the browser drops the cookie", which
+# doesn't happen on a front-desk machine where the browser is routinely
+# left open for an entire shift or longer. session.permanent is set at
+# successful login (see login() below) so this actually takes effect.
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
+    hours=float(os.environ.get("SESSION_LIFETIME_HOURS", "12"))
+)
+
+# Optional network allowlist: comma-separated CIDR blocks (e.g.
+# "192.168.1.0/24,10.0.0.5/32"). Unset by default — no behavior change
+# for a normal single-router clinic LAN. Lets an operator whose network
+# is bigger/flatter than that (e.g. one shared VLAN with other, unrelated
+# devices) restrict which source addresses can reach the app at all,
+# independent of and in addition to login/permissions.
+_ALLOWED_NETWORKS = []
+for _cidr in os.environ.get("JRC_ALLOWED_NETWORKS", "").split(","):
+    _cidr = _cidr.strip()
+    if _cidr:
+        _ALLOWED_NETWORKS.append(ipaddress.ip_network(_cidr, strict=False))
+
+
+@app.before_request
+def _enforce_network_allowlist():
+    if not _ALLOWED_NETWORKS:
+        return None
+    try:
+        client_ip = ipaddress.ip_address(request.remote_addr)
+    except (ValueError, TypeError):
+        return ("Forbidden", 403)
+    if not any(client_ip in net for net in _ALLOWED_NETWORKS):
+        return ("Forbidden", 403)
+    return None
+
+
+# Simple in-memory per-IP rate limit on login attempts — independent of
+# (and in addition to) auth.py's existing per-USERNAME lockout, which
+# doesn't slow down someone trying many different usernames from one
+# source. No new dependency: a small sliding window keyed by client IP,
+# reset lazily. This is intentionally generous (20 requests / 5 minutes)
+# since a busy front desk can generate real login traffic from behind a
+# single router's IP; it's meant to blunt automated spraying, not to
+# police normal multi-person use of one shared network address.
+_LOGIN_ATTEMPTS_BY_IP = {}
+_LOGIN_RATE_LIMIT_WINDOW_SECONDS = 300
+_LOGIN_RATE_LIMIT_MAX = 20
+
+
+def _login_rate_limit_check(ip):
+    now = time.monotonic()
+    window_start = now - _LOGIN_RATE_LIMIT_WINDOW_SECONDS
+    attempts = [t for t in _LOGIN_ATTEMPTS_BY_IP.get(ip, []) if t > window_start]
+    attempts.append(now)
+    _LOGIN_ATTEMPTS_BY_IP[ip] = attempts
+    # Opportunistic cleanup so this dict doesn't grow unbounded over a
+    # long-running process — cheap, and only runs on the (low-traffic)
+    # login route.
+    if len(_LOGIN_ATTEMPTS_BY_IP) > 1000:
+        for k in list(_LOGIN_ATTEMPTS_BY_IP.keys()):
+            if not [t for t in _LOGIN_ATTEMPTS_BY_IP[k] if t > window_start]:
+                del _LOGIN_ATTEMPTS_BY_IP[k]
+    return len(attempts) <= _LOGIN_RATE_LIMIT_MAX
+
 
 # Max size for any incoming request body (mainly file uploads — X-rays,
 # bloodwork PDFs, etc). 100 MB gives generous headroom for a large scan
@@ -292,6 +386,7 @@ def pagination_url(page, page_param="page"):
 
 app.jinja_env.globals["pagination_url"] = pagination_url
 app.jinja_env.globals["has_permission"] = auth.has_permission
+app.jinja_env.globals["bind_port"] = BIND_PORT
 
 
 # ---------------------------------------------------------------------------
@@ -503,6 +598,9 @@ def login():
     if session.get("user_id"):
         return redirect(url_for("dashboard"))
     if request.method == "POST":
+        if not _login_rate_limit_check(request.remote_addr):
+            flash("Too many login attempts from this network. Please wait a few minutes and try again.", "error")
+            return render_template("login.html")
         db = get_db()
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
@@ -512,13 +610,24 @@ def login():
                   f"(around {unlock_at.strftime('%H:%M')}).", "error")
             return render_template("login.html", lockout_unlock_at=unlock_at.isoformat(timespec="seconds"))
         row = db.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
-        ok = row and row["active"] and auth.verify_password(row["password_hash"], password)
+        # verify_password() runs unconditionally, even for a username that
+        # doesn't exist — against a dummy hash in that case (see
+        # auth._DUMMY_PASSWORD_HASH's own comment) — so a nonexistent/
+        # disabled username doesn't respond measurably faster than a real
+        # one and leak which usernames exist via response timing.
+        password_ok = auth.verify_password(row["password_hash"] if row else auth._DUMMY_PASSWORD_HASH, password)
+        ok = row and row["active"] and password_ok
         auth.log_login(db, row["id"] if row else None, username, bool(ok))
         if not ok:
             flash("Incorrect username or password, or account is disabled.", "error")
             return render_template("login.html")
         session["user_id"] = row["id"]
         session["username"] = row["full_name"]
+        # Gives the session an actual server-enforced expiry (see
+        # PERMANENT_SESSION_LIFETIME above) instead of relying solely on
+        # the browser dropping the cookie on close — which doesn't happen
+        # on a front-desk machine left open for a whole shift.
+        session.permanent = True
         auth.refresh_session_permissions(db, row)
         nxt = request.args.get("next")
         if not is_safe_local_path(nxt):
@@ -3778,12 +3887,19 @@ if __name__ == "__main__":
     if hasattr(signal, "SIGBREAK"):
         signal.signal(signal.SIGBREAK, _graceful_shutdown)
 
+    # Bind address/port configurable instead of hardcoded — default
+    # unchanged (0.0.0.0:5050). BEHIND_TLS_PROXY above is how this app
+    # supports HTTPS: via a reverse proxy in front, not by binding
+    # Waitress directly to a different scheme.
+    bind_host = os.environ.get("JRC_HOST", "0.0.0.0")
+    scheme = "https" if BEHIND_TLS_PROXY else "http"
+
     if os.environ.get("JRC_DEV") == "1":
         # Flask's dev server — convenient for local debugging only; not used
         # for normal clinic operation.
-        app.run(debug=True, host="0.0.0.0", port=5050)
+        app.run(debug=True, host=bind_host, port=BIND_PORT)
     else:
         from waitress import serve
         print("Jordan Referral Center is running — reachable on the clinic network at "
-              f"http://{lan_address()}:5050")
-        serve(app, host="0.0.0.0", port=5050, threads=8)
+              f"{scheme}://{lan_address()}:{BIND_PORT}")
+        serve(app, host=bind_host, port=BIND_PORT, threads=8)

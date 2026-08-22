@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1>Dashboard</h1>
-    <p class="page-sub">Snapshot as of today, {{ today }}.{% if current_role == 'Admin' %} Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:5050</strong>.{% endif %}</p>
+    <p class="page-sub">Snapshot as of today, {{ today }}.{% if current_role == 'Admin' %} Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.{% endif %}</p>
   </div>
   <div style="display:flex; gap:10px;">
     <a class="btn secondary" href="{{ url_for('visit_new_start') }}">+ Log a Visit</a>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Settings — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Settings</h1><p class="page-sub">Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:5050</strong>.</p></div></div>
+<div class="page-head"><div><h1>Settings</h1><p class="page-sub">Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.</p></div></div>
 
 <div class="card">
 <form method="post" data-track-unsaved>
