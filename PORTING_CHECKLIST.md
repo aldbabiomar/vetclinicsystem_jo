@@ -124,11 +124,25 @@ Confirmed by direct schema/code diff, not changelog description alone.
    POS sale exactly, the item-lock guard held even against a raw POST
    bypassing the UI, and shrinkage/returns were correctly rejected for an
    item that's never been through a confirmed audit.
-6. **Cash Register** — new feature unifying POS/visit/inpatient/boarding
-   payments + refunds into one end-of-day reconciliation page. Depends on
-   Phase A.1 (new `manage_cash_register` permission) and requires Refunds to
-   record payment method (check whether Jordan's `refunds` table already has
-   a method column — if not, that's part of this port too).
+6. **Cash Register** ✅ DONE — new feature unifying POS sales, Visit/
+   Inpatient/Boarding payments, and refunds (netted negative) into one
+   end-of-day reconciliation page. `cash_register_payouts`/
+   `cash_register_audits` tables, `refunds.refund_method` (confirmed
+   Jordan's `refunds` table had no method column — added it, and wired a
+   Method dropdown + column into both refund forms and the refunds
+   list), `logic.cash_register_ledger/totals/payouts_for_day/
+   latest_audit/last_30_days()`, 3 routes (page, payout, audit), a Cash
+   Register nav link, and a "Cash Register Health" section on Insights
+   (last 30 days' audit status, added as one more entry in the existing
+   pooled-connection `jobs` dict from Phase A.2 rather than adopting
+   VetIQ's separate `_render_with_progress`/`as_completed` job-runner,
+   which Jordan has no other use for).
+   Verified end-to-end against a real Postgres: a POS sale and a payout
+   both correctly netted into the day's Cash total, a Perfect-status
+   audit recorded and reflected on both the Cash Register page and
+   Insights' health table, and a retail refund with a Cash method
+   correctly subtracted from the same day's Cash total (50 sale − 10
+   payout − 25 refund = 15, matching exactly).
 7. **In-app updater** — Jordan has no `autostart.py`, `reconcile_attachments.py`,
    `VERSION` file, or versioned-release layout. This is a separate product
    decision (does Jordan even want GitHub-release-based auto-update?), not a
@@ -182,13 +196,13 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | 1.3.0 | Refund routes: 250-rounded amount saved but un-rounded shown | **SKIP** | Iraq-only rounding bug. |
 | 1.3.0 | Payment-audit logged against parent id not payment id | **PORT [unverified]** | |
 | 1.3.0 | 7 audit-logging gaps closed (attachments, password change, audit-session start, boarding incidents, appointment book/cancel) | **PORT** | Straightforward — sweep Jordan's equivalent routes for the same missing `log_change()` calls. |
-| 1.4.0 | Cash Register feature | **BLOCKED** on A.6 | |
+| 1.4.0 | Cash Register feature | ✅ **DONE** via A.6 | |
 | 1.4.0 | "Bank Transfer"/"Transfer" label unification | **PORT [unverified]** | Check Jordan's payment-method values first. |
 | 1.4.0 | 4 delete routes logging "delete" even when nothing deleted | **PORT [unverified]** | |
 | 1.4.1 | Sticky table headers | **PORT** | Pure CSS. |
 | 1.4.1 | Payment-method dropdown instead of free text (distributor/consignment payments) | ✅ **DONE** (both halves, via A.4 + A.5) | Ported directly with the dropdown already in place on both — the free-text version this changelog entry replaced was never built in Jordan. |
-| 1.4.1 | Grooming badge wrap fix, Cash Register note margin fix | **PORT (Grooming part only)** | Cash Register part blocked on A.6. |
-| 1.4.2 | Malformed date-filter crash guard (Visits/Refunds/Cash Register) | **PORT [unverified]** | Cash Register part blocked on A.6; Visits/Refunds part portable now. |
+| 1.4.1 | Grooming badge wrap fix, Cash Register note margin fix | **PORT (Grooming part only)** | Cash Register was built clean directly via A.6 — the margin bug this fixed never existed in what shipped to Jordan. |
+| 1.4.2 | Malformed date-filter crash guard (Visits/Refunds/Cash Register) | ✅ **DONE** (Cash Register part, via A.6) / **[unverified]** (Visits/Refunds part) | `cash_register_page()` ported with the guard already in place. Visits/Refunds still need checking. |
 | 1.4.2 | 6 PDF export crash-on-missing-record fixes + billing PDF number formatting | **PORT [unverified]** | Check Jordan's `pdf_export.py` for the same unguarded lookups. |
 | 1.4.2 | Boarding stay locked after pickup (dates/price/total) | **PORT [unverified]** | |
 | 1.4.2 | Restore re-applies schema sync | **PORT [unverified]** | Related to B-3; do together. |

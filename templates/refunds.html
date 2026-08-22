@@ -27,6 +27,9 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="{{ today }}"></div>
+          <div class="field"><label>Method</label>
+            <select name="refund_method"><option value="">—</option><option>Cash</option><option>Card</option><option>Transfer</option></select>
+          </div>
           <div class="field"><label>Reason (optional)</label><input type="text" name="reason" placeholder="e.g. wrong item, customer changed mind"></div>
         </div>
         <input type="hidden" name="restock" id="restockHidden">
@@ -46,6 +49,9 @@
       <div class="form-grid">
         <div class="field"><label>Refund Amount (JOD)</label><input type="number" name="amount" min="1" step="1" required></div>
         <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="{{ today }}"></div>
+        <div class="field"><label>Method</label>
+          <select name="refund_method"><option value="">—</option><option>Cash</option><option>Card</option><option>Transfer</option></select>
+        </div>
         <div class="field"><label>Visit ID (optional)</label><input type="text" name="visit_id" placeholder="e.g. V001"></div>
         <div class="field"><label>Inpatient Case ID (optional)</label><input type="text" name="inpatient_case_id" placeholder="e.g. 12"></div>
         <div class="field" style="grid-column:1/-1;"><label>Reason (optional)</label><input type="text" name="reason" placeholder="e.g. service not completed"></div>
@@ -69,7 +75,7 @@
 {% else %}
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Date</th><th>Type</th><th>Details</th><th>Amount</th><th>Reason</th><th>Processed By</th></tr></thead>
+  <thead><tr><th>Date</th><th>Type</th><th>Details</th><th>Amount</th><th>Method</th><th>Reason</th><th>Processed By</th></tr></thead>
   <tbody>
     {% for r in refunds %}
     <tr>
@@ -92,6 +98,7 @@
         {% endif %}
       </td>
       <td class="num-col">{{ r.amount|money }} JOD</td>
+      <td class="small">{{ r.refund_method or "—" }}</td>
       <td class="small muted">{{ r.reason or "—" }}</td>
       <td class="small">{{ r.processed_by_name or "—" }}</td>
     </tr>

@@ -140,6 +140,34 @@
 </table>
 </div>
 
+{% if has_permission('manage_cash_register') %}
+<div class="section-title">Cash Register Health</div>
+<p class="small muted" style="margin-top:-10px; margin-bottom:10px;">
+  Last 30 days' Cash Register audit status. "Not Audited" means nobody closed out that day at all — on its own that's
+  a documentation gap, not proof of a problem, but a pattern of skipped audits (or repeated Deficits) is worth
+  looking into.
+</p>
+<div class="table-wrap" style="margin-bottom:24px; max-height:420px; overflow-y:auto;">
+<table>
+  <thead><tr><th>Date</th><th>Status</th><th class="num-col">Difference (JOD)</th></tr></thead>
+  <tbody>
+    {% for d in cash_register_health %}
+    <tr>
+      <td class="small"><a href="{{ url_for('cash_register_page', date=d.date) }}">{{ d.date }}</a></td>
+      <td>
+        {% if d.status == 'Perfect' %}<span class="badge ok">Perfect</span>
+        {% elif d.status == 'Deficit' %}<span class="badge danger">Deficit</span>
+        {% elif d.status == 'Surplus' %}<span class="badge warn">Surplus</span>
+        {% else %}<span class="badge muted">Not Audited</span>{% endif %}
+      </td>
+      <td class="num-col">{% if d.difference is not none %}{{ d.difference|money }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
 <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 <script>
 const REVENUE = {{ revenue|tojson }};

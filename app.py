@@ -2447,6 +2447,115 @@ def consignment_settlement_export(settlement_id):
 
 
 # ---------------------------------------------------------------------------
+# Cash Register — a unified daily view of every place money actually
+# changed hands (POS sales, Visit/Inpatient/Boarding payments, refunds),
+# built for end-of-day cash-up: compare what the system says came in
+# against what's physically in the till. "Pay From Cash Register" logs
+# manual cash leaving the drawer for a reason that isn't a refund (petty
+# cash, paying a supplier directly out of the till). "Perform Audit"
+# records what staff actually counted against the system's Cash total for
+# that day and immutably logs the outcome (Deficit/Surplus/Perfect) — see
+# logic.cash_register_* for the actual math.
+# ---------------------------------------------------------------------------
+@app.route("/cash-register")
+@auth.permission_required("manage_cash_register")
+def cash_register_page():
+    db = get_db()
+    day = request.args.get("date", "").strip() or date.today().isoformat()
+    try:
+        logic.parse_date(day)
+    except ValueError:
+        flash("That date wasn't valid — showing today instead.", "error")
+        day = date.today().isoformat()
+    ledger = logic.cash_register_ledger(db, day)
+    totals = logic.cash_register_totals(db, day)
+    payouts = logic.cash_register_payouts_for_day(db, day)
+    latest_audit = logic.cash_register_latest_audit(db, day)
+    return render_template("cash_register.html", day=day, ledger=ledger, totals=totals,
+                            payouts=payouts, latest_audit=latest_audit)
+
+
+@app.route("/cash-register/payout", methods=["POST"])
+@auth.permission_required("manage_cash_register")
+def cash_register_payout_new():
+    db = get_db()
+    f = request.form
+    try:
+        day = clean_date(f.get("day"), field="day") or date.today().isoformat()
+    except BadDate as e:
+        flash(str(e), "error")
+        return redirect(url_for("cash_register_page"))
+    try:
+        amount = parse_money(f.get("amount"), required=True)
+    except BadNumber:
+        flash("Amount must be a valid number.", "error")
+        return redirect(url_for("cash_register_page", date=day))
+    if amount <= 0:
+        flash("Amount must be greater than 0.", "error")
+        return redirect(url_for("cash_register_page", date=day))
+    reason = (f.get("reason") or "").strip()
+    if not reason:
+        flash("Enter a reason for this payout.", "error")
+        return redirect(url_for("cash_register_page", date=day))
+    cur = db.execute(
+        "INSERT INTO cash_register_payouts (payout_date, amount, reason, logged_by, created_at) "
+        "VALUES (?,?,?,?,?) RETURNING id",
+        (day, amount, reason, session["user_id"], datetime.now().isoformat(timespec="seconds")),
+    )
+    payout_id = cur.fetchone()["id"]
+    auth.log_change(db, "cash_register_payouts", str(payout_id), "create")
+    db.commit()
+    flash(f"{logic.fmt_money(amount)} JOD logged out of the register.", "success")
+    return redirect(url_for("cash_register_page", date=day))
+
+
+@app.route("/cash-register/audit", methods=["POST"])
+@auth.permission_required("manage_cash_register")
+def cash_register_audit_new():
+    db = get_db()
+    f = request.form
+    try:
+        day = clean_date(f.get("day"), field="day") or date.today().isoformat()
+    except BadDate as e:
+        flash(str(e), "error")
+        return redirect(url_for("cash_register_page"))
+    try:
+        counted_cash = parse_money(f.get("counted_cash"), required=True)
+    except BadNumber:
+        flash("Counted cash must be a valid number.", "error")
+        return redirect(url_for("cash_register_page", date=day))
+    if counted_cash < 0:
+        flash("Counted cash can't be negative.", "error")
+        return redirect(url_for("cash_register_page", date=day))
+    # Recomputed fresh here, never trusted from the form — same reasoning
+    # as consignment_settlement_new(): this is the figure the audit result
+    # gets permanently compared against, so it has to be the real live
+    # number, not whatever the page happened to show when it was loaded.
+    totals = logic.cash_register_totals(db, day)
+    difference = round(counted_cash - totals["Cash"], 2)
+    if abs(difference) < 1:
+        status = "Perfect"
+    elif difference < 0:
+        status = "Deficit"
+    else:
+        status = "Surplus"
+    cur = db.execute(
+        "INSERT INTO cash_register_audits (audit_date, system_cash, system_card, system_transfer, "
+        "counted_cash, difference, status, notes, performed_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
+        (day, totals["Cash"], totals["Card"], totals["Transfer"], counted_cash, difference, status,
+         (f.get("notes") or "").strip() or None, session["user_id"], datetime.now().isoformat(timespec="seconds")),
+    )
+    audit_id = cur.fetchone()["id"]
+    auth.log_change(db, "cash_register_audits", str(audit_id), "create")
+    db.commit()
+    if status == "Perfect":
+        flash(f"Audit recorded for {day}: Perfect — counted cash matches the system exactly.", "success")
+    else:
+        flash(f"Audit recorded for {day}: {status} of {logic.fmt_money(abs(difference))} JOD.", "error")
+    return redirect(url_for("cash_register_page", date=day))
+
+
+# ---------------------------------------------------------------------------
 # Inventory Status / Ordering Sheet
 # ---------------------------------------------------------------------------
 @app.route("/inventory-status")
@@ -3309,6 +3418,7 @@ def insights():
             "WHERE date >= ? GROUP BY method ORDER BY total DESC",
             (cutoff,),
         ).fetchall()],
+        "cash_register_health": lambda c: logic.cash_register_last_30_days(c),
     }
     with ThreadPoolExecutor(max_workers=len(jobs)) as ex:
         futures = {name: ex.submit(_run, fn) for name, fn in jobs.items()}
@@ -3319,7 +3429,8 @@ def insights():
         "insights.html", revenue=results["revenue"], vets=results["vets"],
         top_clients=top_clients, avg_spend=avg_spend, active_client_count=active_client_count,
         weekday_load=results["weekday_load"], occupancy=results["occupancy"],
-        payment_mix=results["payment_mix"], months_back=months_back,
+        payment_mix=results["payment_mix"], cash_register_health=results["cash_register_health"],
+        months_back=months_back,
     )
 
 
@@ -3397,9 +3508,9 @@ def refund_retail_save():
 
     now = datetime.now().isoformat(timespec="seconds")
     cur = db.execute(
-        "INSERT INTO refunds (refund_type, refund_date, amount, restocked, reason, processed_by, created_at) "
-        "VALUES ('retail',?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(total, 2), 1 if restock else 0, reason, session["user_id"], now),
+        "INSERT INTO refunds (refund_type, refund_date, amount, restocked, reason, refund_method, processed_by, created_at) "
+        "VALUES ('retail',?,?,?,?,?,?,?) RETURNING id",
+        (refund_date, round(total, 2), 1 if restock else 0, reason, f.get("refund_method"), session["user_id"], now),
     )
     refund_id = cur.fetchone()["id"]
 
@@ -3460,9 +3571,9 @@ def refund_service_save():
 
     now = datetime.now().isoformat(timespec="seconds")
     cur = db.execute(
-        "INSERT INTO refunds (refund_type, refund_date, amount, visit_id, inpatient_case_id, reason, processed_by, created_at) "
-        "VALUES ('service',?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(amount, 2), visit_id, case_id, reason, session["user_id"], now),
+        "INSERT INTO refunds (refund_type, refund_date, amount, visit_id, inpatient_case_id, reason, refund_method, processed_by, created_at) "
+        "VALUES ('service',?,?,?,?,?,?,?,?) RETURNING id",
+        (refund_date, round(amount, 2), visit_id, case_id, reason, f.get("refund_method"), session["user_id"], now),
     )
     refund_id = cur.fetchone()["id"]
     logic.recompute_month_summary(db, logic.month_key(refund_date))

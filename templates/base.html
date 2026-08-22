@@ -92,6 +92,9 @@
       {% if has_permission('manage_refunds') %}
       <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('refunds_page') }}">Refunds</a>
       {% endif %}
+      {% if has_permission('manage_cash_register') %}
+      <a class="nav-link {{ 'active' if request.endpoint=='cash_register_page' }}" href="{{ url_for('cash_register_page') }}">Cash Register</a>
+      {% endif %}
       {% if has_permission('view_financial_reports') %}
       <a class="nav-link {{ 'active' if request.endpoint=='reports' }}" href="{{ url_for('reports') }}">Monthly P&amp;L</a>
       <a class="nav-link {{ 'active' if request.endpoint=='reports_yearly' }}" href="{{ url_for('reports_yearly') }}">Yearly P&amp;L</a>
