@@ -50,6 +50,13 @@ def _run_pg_dump(out_path):
     if shutil.which("pg_dump"):
         cmd = ["pg_dump", "-h", host, "-p", port, "-U", user, "-F", "c", "-f", out_path, dbname]
         subprocess.run(cmd, check=True, env=env, capture_output=True, text=True)
+        # The dump contains full patient/owner PHI (names, phones,
+        # addresses, medical history) and the configured backup folder is
+        # explicitly documented as sometimes being a synced folder like
+        # Google Drive/OneDrive — leaving this at the process's default
+        # umask could make it group/world-readable on a shared machine.
+        # Owner-only, same as any other secret this app writes to disk.
+        os.chmod(out_path, 0o600)
         return
 
     container = os.environ.get("VETCLINICSYSTEMJO_PG_CONTAINER", "vetclinicsystemjo_postgres")
@@ -57,6 +64,7 @@ def _run_pg_dump(out_path):
         cmd = ["docker", "exec", container, "pg_dump", "-U", user, "-F", "c", dbname]
         with open(out_path, "wb") as f:
             subprocess.run(cmd, check=True, stdout=f, stderr=subprocess.PIPE)
+        os.chmod(out_path, 0o600)
         return
 
     raise RuntimeError(

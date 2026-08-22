@@ -26,11 +26,14 @@ IntegrityError = psycopg.IntegrityError
 # of a generic 500.
 PoolTimeout = PoolTimeout
 
-# Matches a bare '?' placeholder, but not '?' inside a quoted string literal.
-# The app never puts literal '?' characters inside string literals in its
-# SQL (verified), so a plain replace is safe and fast; this regex is kept
-# only as a defensive extra so a stray '?' inside a quoted literal (e.g. a
-# future LIKE pattern) is not mistranslated.
+# Matches every bare '?' unconditionally — this is NOT quote-aware (a
+# previous version of this comment claimed it was; it isn't). Safe today
+# only because the app never puts a literal '?' character inside a SQL
+# string literal (verified) — if a future LIKE pattern or similar ever
+# needs one (e.g. "...LIKE '100%?'"), it would be silently mistranslated
+# and desync the bound parameters. Make this quote-aware first if that
+# ever comes up, rather than relying on this comment as documentation of
+# safety it doesn't actually provide.
 _PLACEHOLDER_RE = re.compile(r"\?")
 
 

@@ -274,25 +274,71 @@ def log_login(db, user_id, username, success):
 # Login rate limiting — locks a username out temporarily after repeated
 # failed attempts, so a brute-force password guesser can't hammer an
 # account indefinitely.
+#
+# Escalating (not sliding): the old version computed unlock_at as
+# MAX(recent failure timestamp) + LOCKOUT_BASE_MINUTES, which sounds like a
+# fixed-length lockout but wasn't one in practice — since a locked account
+# never reaches verify_password()/log_login() (see login() in app.py), an
+# attacker can't extend an *active* lock by guessing more, but they CAN
+# trivially re-arm a new one the instant the old one expires: fire a fresh
+# burst of exactly LOCKOUT_THRESHOLD wrong guesses right at unlock_at (which
+# the login page tells them exactly), and the account is locked for another
+# full window. That's a permanent-DoS knob costing only ~5 requests every
+# 15 minutes, indefinitely, against any known username (admin's is in the
+# README). Fixed by escalating: each fresh lockout episode within
+# LOCKOUT_LOOKBACK_HOURS doubles the previous one's duration (capped), so
+# repeatedly re-arming gets exponentially more expensive to maintain rather
+# than staying flat-rate forever. A successful login clears the slate —
+# only failures *after* the most recent success (within the lookback) count
+# toward escalation, so a legitimate user who eventually gets back in isn't
+# penalized for guesses that happened before that.
 # ---------------------------------------------------------------------------
 LOCKOUT_THRESHOLD = 5
-LOCKOUT_WINDOW_MINUTES = 15
+LOCKOUT_BASE_MINUTES = 15
+LOCKOUT_MAX_MINUTES = 240  # 4 hours — escalation cap
+LOCKOUT_LOOKBACK_HOURS = 24
 
 
 def login_lock_status(db, username):
     """Returns (locked: bool, minutes_remaining: int|None, unlock_at: datetime|None)."""
     if not username:
         return False, None, None
-    cutoff = (datetime.now() - timedelta(minutes=LOCKOUT_WINDOW_MINUTES)).isoformat(timespec="seconds")
-    row = db.execute(
-        "SELECT COUNT(*) AS n, MAX(timestamp) AS last_at FROM login_log "
-        "WHERE username=? AND success=0 AND timestamp >= ?",
-        (username, cutoff),
-    ).fetchone()
-    if not row or row["n"] < LOCKOUT_THRESHOLD:
+    lookback_cutoff = (datetime.now() - timedelta(hours=LOCKOUT_LOOKBACK_HOURS)).isoformat(timespec="seconds")
+    last_success = db.execute(
+        "SELECT MAX(timestamp) AS t FROM login_log WHERE username=? AND success=1 AND timestamp >= ?",
+        (username, lookback_cutoff),
+    ).fetchone()["t"]
+    since = last_success or lookback_cutoff
+    rows = db.execute(
+        "SELECT timestamp FROM login_log WHERE username=? AND success=0 AND timestamp > ? ORDER BY timestamp",
+        (username, since),
+    ).fetchall()
+    if not rows:
         return False, None, None
-    last_at = datetime.fromisoformat(row["last_at"])
-    unlock_at = last_at + timedelta(minutes=LOCKOUT_WINDOW_MINUTES)
+    timestamps = [datetime.fromisoformat(r["timestamp"]) for r in rows]
+
+    # Group into bursts — a new burst starts whenever the gap since the
+    # previous failure exceeds LOCKOUT_BASE_MINUTES. Only bursts that
+    # actually reached the threshold count as a real lockout episode; a
+    # handful of stray wrong guesses that never crossed the line don't.
+    bursts = [[timestamps[0]]]
+    for t in timestamps[1:]:
+        if (t - bursts[-1][-1]) > timedelta(minutes=LOCKOUT_BASE_MINUTES):
+            bursts.append([t])
+        else:
+            bursts[-1].append(t)
+    triggered = [b for b in bursts if len(b) >= LOCKOUT_THRESHOLD]
+    if not triggered:
+        return False, None, None
+
+    prior_episodes = len(triggered) - 1
+    duration_minutes = min(LOCKOUT_BASE_MINUTES * (2 ** prior_episodes), LOCKOUT_MAX_MINUTES)
+    # Anchored to the failure that actually crossed the threshold within
+    # the latest burst (its Nth one), not the burst's most recent failure —
+    # continuing to guess after the threshold is already reached can't push
+    # the unlock time out further within the same burst.
+    trigger_at = triggered[-1][LOCKOUT_THRESHOLD - 1]
+    unlock_at = trigger_at + timedelta(minutes=duration_minutes)
     remaining = unlock_at - datetime.now()
     if remaining.total_seconds() <= 0:
         return False, None, None

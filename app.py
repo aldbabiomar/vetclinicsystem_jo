@@ -141,6 +141,22 @@ def _enforce_network_allowlist():
     return None
 
 
+@app.before_request
+def _reject_null_bytes():
+    """A literal null byte in a path segment (e.g. /owners/OW001%00) or a
+    query value reaches psycopg as a bound parameter and Postgres rejects
+    it outright — surfacing as a raw, unhandled exception rather than a
+    clean 400, since nothing upstream of the database layer ever checked
+    for it. Every text/varchar column this app queries is affected the
+    same way, so this is checked once, globally, rather than patched at
+    each individual route."""
+    if ("\x00" in request.path
+            or any("\x00" in v for v in request.args.values())
+            or any("\x00" in v for v in request.form.values())):
+        return ("Bad Request", 400)
+    return None
+
+
 # Simple in-memory per-IP rate limit on login attempts — independent of
 # (and in addition to) auth.py's existing per-USERNAME lockout, which
 # doesn't slow down someone trying many different usernames from one
@@ -187,6 +203,21 @@ def add_security_headers(resp):
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "same-origin"
+    # Baseline CSP — every template is inline-script-heavy (inline <script>
+    # blocks and onclick= handlers throughout), so this deliberately allows
+    # 'unsafe-inline' rather than pretending otherwise; it doesn't stop an
+    # injected inline script from running (Jinja autoescaping + the
+    # shared escapeHtml() helper are what actually prevent that — see
+    # FULL_SWEEP_FINDINGS.md 4.1 for the fuller nonce-based alternative and
+    # why it wasn't chosen here). What this does block: the page loading
+    # any script/style/image/frame/connection from anywhere other than its
+    # own origin — closes off exfiltration via an injected external
+    # <script src>, a malicious iframe, or a compromised dependency
+    # reaching out somewhere else, without touching any existing template.
+    resp.headers["Content-Security-Policy"] = (
+        "default-src 'self'; img-src 'self' data:; "
+        "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+    )
     return resp
 
 
@@ -344,6 +375,26 @@ def clean_date(v, field="date"):
     return v
 
 
+def clean_date_filter(v):
+    """For a read-side ?date= filter that's about to be compared against a
+    real DATE column (or used as a LIKE prefix against a text timestamp) —
+    clean()'s intent ("a bad filter should degrade to no hard error") isn't
+    actually met by clean() alone, since a malformed-but-non-empty string
+    still reaches the query. A DATE column then raises a raw Postgres cast
+    error instead of degrading to anything. Returns the value only if it's
+    a real YYYY-MM-DD date; a malformed one is silently dropped (treated
+    the same as no filter at all) rather than either crashing or being
+    passed through as a broken filter."""
+    v = clean(v)
+    if v is None:
+        return None
+    try:
+        datetime.strptime(v, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return v
+
+
 def has_negative(*values):
     """True if any of the given already-parsed numbers (None is fine —
     skipped, since an absent value isn't a negative one) is below zero.
@@ -470,12 +521,15 @@ def cached_dashboard_snapshot(db):
 PER_PAGE = 50
 
 
+MAX_PAGE = 100_000  # generous for any realistic list size; keeps page_offset() well inside Postgres's integer range
+
+
 def get_page():
     try:
         p = int(request.args.get("page", 1))
     except (TypeError, ValueError):
         p = 1
-    return max(1, p)
+    return min(max(1, p), MAX_PAGE)
 
 
 def page_count(total, per_page=PER_PAGE):
@@ -502,7 +556,7 @@ app.jinja_env.globals["bind_port"] = BIND_PORT
 # ---------------------------------------------------------------------------
 # Auth gate
 # ---------------------------------------------------------------------------
-OPEN_ENDPOINTS = {"login", "static", "health"}
+OPEN_ENDPOINTS = {"login", "static", "health", "logout"}
 
 
 @app.before_request
@@ -515,6 +569,18 @@ def require_login():
     user = auth.current_user(db)
     if not user:
         session.clear()
+        return redirect(url_for("login"))
+    # A password change/reset stamps users.password_changed_at with a new
+    # value (see change_password()/admin_user_reset_password()) — a
+    # session whose login predates that no longer matches what's stored
+    # here, so a stolen cookie stops working the moment the password it
+    # was issued under is replaced, instead of staying valid for the rest
+    # of PERMANENT_SESSION_LIFETIME. An empty stored value (pre-migration
+    # row, or an old session from before this check existed) is treated as
+    # "nothing to compare against yet" rather than an automatic mismatch.
+    if user["password_changed_at"] and session.get("password_changed_at") != user["password_changed_at"]:
+        session.clear()
+        flash("Your password was changed — please log in again.", "error")
         return redirect(url_for("login"))
     auth.refresh_session_permissions(db, user)
     if user["must_change_password"] and request.endpoint != "change_password":
@@ -731,8 +797,13 @@ def login():
         if not ok:
             flash("Incorrect username or password, or account is disabled.", "error")
             return render_template("login.html")
+        # Clears any pre-auth session state (e.g. a CSRF token issued to
+        # the anonymous login page) rather than letting it survive into
+        # the authenticated session — a fresh login starts a fresh session.
+        session.clear()
         session["user_id"] = row["id"]
         session["username"] = row["full_name"]
+        session["password_changed_at"] = row["password_changed_at"]
         # Gives the session an actual server-enforced expiry (see
         # PERMANENT_SESSION_LIFETIME above) instead of relying solely on
         # the browser dropping the cookie on close — which doesn't happen
@@ -768,10 +839,15 @@ def change_password():
         elif new != confirm:
             flash("New password and confirmation don't match.", "error")
         else:
-            db.execute("UPDATE users SET password_hash=?, must_change_password=false WHERE id=?",
-                       (auth.hash_password(new), user["id"]))
+            changed_at = datetime.now().isoformat(timespec="seconds")
+            db.execute("UPDATE users SET password_hash=?, must_change_password=false, password_changed_at=? WHERE id=?",
+                       (auth.hash_password(new), changed_at, user["id"]))
             auth.log_change(db, "users", user["id"], "update", {"password": ("(hidden)", "(self-service change)")})
             db.commit()
+            # Keeps this session logged in through its own change — only
+            # OTHER sessions for this user (e.g. a stolen cookie elsewhere)
+            # get invalidated by require_login()'s mismatch check.
+            session["password_changed_at"] = changed_at
             flash("Password updated.", "success")
             return redirect(url_for("dashboard"))
     return render_template("change_password.html", forced=forced)
@@ -891,8 +967,13 @@ def admin_user_reset_password(user_id):
     if len(new_pw) < 8:
         flash("Password must be at least 8 characters.", "error")
         return redirect(url_for("admin_users"))
-    db.execute("UPDATE users SET password_hash=?, must_change_password=true WHERE id=?",
-               (auth.hash_password(new_pw), user_id))
+    # Also stamps password_changed_at so this reset immediately invalidates
+    # any of this user's existing sessions elsewhere (see require_login())
+    # — the whole point of an admin resetting a password (e.g. a suspected
+    # compromised account) is that it takes effect now, not up to 12 hours
+    # from now once that session's cookie happens to expire on its own.
+    db.execute("UPDATE users SET password_hash=?, must_change_password=true, password_changed_at=? WHERE id=?",
+               (auth.hash_password(new_pw), datetime.now().isoformat(timespec="seconds"), user_id))
     auth.log_change(db, "users", user_id, "update", {"password": ("(hidden)", "(reset by admin)")})
     db.commit()
     flash("Password reset. The user will be asked to set a new one on next login.", "success")
@@ -1369,7 +1450,7 @@ def _create_inpatient_case(db, patient_id, visit_id, complaint, admission_date, 
 def visits_list():
     db = get_db()
     sort = request.args.get("sort", "date")
-    day_filter = request.args.get("date")
+    day_filter = clean_date_filter(request.args.get("date"))
     search = request.args.get("q", "").strip()
     page = get_page()
 
@@ -3593,7 +3674,7 @@ def pos_receipt(sale_id):
 def pos_history():
     db = get_db()
     page = get_page()
-    date_filter = request.args.get("date", "").strip() or None
+    date_filter = clean_date_filter(request.args.get("date"))
     where = " WHERE s.sale_date LIKE ?" if date_filter else ""
     params = [date_filter + "%"] if date_filter else []
     total = db.execute(f"SELECT COUNT(*) c FROM sales s{where}", params).fetchone()["c"]
@@ -4179,7 +4260,7 @@ def retention():
 def refunds_page():
     db = get_db()
     page = get_page()
-    date_filter = request.args.get("date", "").strip() or None
+    date_filter = clean_date_filter(request.args.get("date"))
     count_where = " WHERE refund_date = ?" if date_filter else ""
     count_params = [date_filter] if date_filter else []
     total = db.execute(f"SELECT COUNT(*) c FROM refunds{count_where}", count_params).fetchone()["c"]

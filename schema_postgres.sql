@@ -87,6 +87,13 @@ CREATE TABLE IF NOT EXISTS users (
     custom_discount_cap INTEGER CHECK (custom_discount_cap BETWEEN 0 AND 100),
     active BOOLEAN NOT NULL DEFAULT TRUE,
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Bumped every time this user's password_hash changes (self-service or
+    -- admin reset). Stashed in the session at login and compared on every
+    -- request (see require_login() in app.py) — a session logged in before
+    -- the most recent change is invalidated, so a stolen cookie stops
+    -- working the moment the password it was issued under is replaced,
+    -- instead of staying valid for the rest of its normal lifetime.
+    password_changed_at TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id);
