@@ -24,17 +24,30 @@ gap.
 
 Confirmed by direct schema/code diff, not changelog description alone.
 
-1. **RBAC migration** — Jordan: `users.role TEXT CHECK (...'Admin','Vet','Reception')`,
-   `auth.roles_required(*allowed_roles)` checking literal role names.
-   VetClinicSystem_IQ: `roles`/`permissions`/`role_permissions` tables,
-   `users.role_id` FK, per-role `discount_cap` + per-user `custom_discount_cap`
-   override, `is_vet_role` flag (replaces hardcoded "Vet" name checks in vet
-   pickers). **This blocks nearly every permission-gated fix/feature below** —
-   do it first, even though it's the most invasive single change.
-2. **Connection pooling** (`db.py`, `app.py`) — Jordan has no pool; every
-   request opens a raw `psycopg.Connection`. VetClinicSystem_IQ added
-   `psycopg_pool.ConnectionPool` (High #6). Needed before the Insights
-   parallel-connection fix (item 9 below) makes sense to port.
+1. **RBAC migration** ✅ DONE (`ce073e5`, simplified in `8fc1824`) — replaced
+   `users.role TEXT CHECK (...'Admin','Vet','Reception')` /
+   `auth.roles_required(*allowed_roles)` with VetClinicSystem_IQ's
+   `roles`/`permissions`/`role_permissions` model: `users.role_id` FK,
+   per-role `discount_cap` + per-user `custom_discount_cap` override,
+   `is_vet_role` flag. All 22 admin-only routes now use
+   `permission_required(...)`. Also fixed two bugs surfaced while doing
+   this: `log_change()` no longer self-commits (all 49 call sites
+   reordered — same fix as Phase B-1 below, pulled forward), and the
+   Dashboard/nav's literal `role == 'Admin'` checks became real permission
+   checks (same fix as the 1.4.6 item in Phase C below, pulled forward).
+   No migration scripts were needed or added — this is a predeployment
+   codebase, so the new columns are just declared directly in
+   `schema_postgres.sql`. Verified end-to-end against a real local
+   Postgres (fresh install, admin login, forced password change, Vet-role
+   login with correctly restricted nav + a live 403 on an admin route,
+   Settings discount-cap edit round-trip, audit log entries landing).
+2. **Connection pooling** ✅ DONE (`8fc1824`) — `db.py`/`app.py` now use a
+   bounded `psycopg_pool.ConnectionPool` instead of one raw connection per
+   request (High #6). Insights' 6 parallel report queries also switched
+   from opening raw connections to borrowing/returning pooled ones (the
+   Medium item this used to block). Verified live: pool serves real
+   requests including the Insights/Retention pages under the
+   ThreadPoolExecutor pattern.
 3. **Visit billing line-item snapshotting** (`visit_billing_lines` table) —
    Jordan still stores `billing.codes` as a comma-separated string, re-priced
    live from Price List on every read (confirmed: no `visit_billing_lines` in
@@ -68,7 +81,7 @@ Confirmed by direct schema/code diff, not changelog description alone.
 
 | # | Fix (from `CHANGELOG_SECURITY_FIXES.md`) | Verdict | Note |
 |---|---|---|---|
-| B-1 | High #17 — audit log atomic with its mutation (`log_change` no longer self-commits; reordered 56 call sites) | **PORT** | Confirmed Jordan's `auth.log_change()` still calls `db.commit()` itself (`auth.py:198`) — same architectural gap exists. Every route calling it needs the same reorder. |
+| B-1 | High #17 — audit log atomic with its mutation (`log_change` no longer self-commits; reordered 56 call sites) | ✅ **DONE** (`ce073e5`) | Pulled forward during Phase A.1 since it required touching auth.py anyway. All 49 call sites in `app.py` reordered; one (`inpatient_billing_add`) was a genuine atomicity gap (logged strictly after its commit), not just out of order. |
 | B-2 | Critical #1 — POS checkout oversell race (`SELECT ... FOR UPDATE`, sorted lock order) | **PORT** | Confirmed: `grep -n "FOR UPDATE"` on Jordan's `app.py`/`logic.py` returns nothing. Race is live in Jordan's POS today. |
 | B-3 | Critical #3 — restore endpoint path validation | **PORT [unverified]** | Jordan's `backup.py` is 143 lines vs VetClinicSystem_IQ's 467 — check whether `resolve_restorable_backup()`-equivalent exists before assuming the hole is open, but the size gap strongly suggests it isn't there yet. |
 | B-4 | High #9 — attachment upload/delete file↔DB ordering | **PORT [unverified]** | Jordan's `attachments.py` is ~3KB vs a meaningfully larger file upstream; check current ordering before porting. |
@@ -141,7 +154,7 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | 1.4.5 | Backup/restore/update mutual exclusion | **PORT [unverified]**, restore/backup part only — update part depends on A.7 | |
 | 1.4.5 | 5 routes crash on nonexistent record id | **PORT [unverified]** | |
 | 1.4.5 | Operating Costs month not validated server-side | **PORT [unverified]** | |
-| 1.4.6 | Dashboard panels gated on literal role name instead of permission | **BLOCKED** on A.1 | This bug *is* the RBAC gap — will be moot once A.1 lands, since Jordan doesn't have permissions to check yet. |
+| 1.4.6 | Dashboard panels gated on literal role name instead of permission | ✅ **DONE** (`ce073e5`) | Pulled forward during Phase A.1. Dashboard's Missed Items/opex/backup-alert panels and the sidebar's Sales & Billing/Admin nav groups now check real permissions (`is_overseer`, `has_permission(...)`) instead of `current_role == 'Admin'`. |
 | 1.4.6 | Full History omits boarding stays | **PORT [unverified]** | |
 | 1.4.6 | Grooming booking doesn't blank resource ID (double-booking bug); vet/time-slot validation | **PORT — security/correctness priority** | |
 | 1.4.6 | Boarding negative price/total guard | **PORT [unverified]** | |
