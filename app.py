@@ -1531,10 +1531,12 @@ def visit_payment_add(visit_id):
     except BadDate as e:
         flash(str(e), "error")
         return redirect(url_for("visit_detail", visit_id=visit_id))
-    db.execute("INSERT INTO payments (visit_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?)",
-              (visit_id, amount, f.get("method"), payment_date,
-               session["user_id"], f.get("notes")))
-    auth.log_change(db, "payments", visit_id, "create")
+    cur = db.execute(
+        "INSERT INTO payments (visit_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?) RETURNING id",
+        (visit_id, amount, f.get("method"), payment_date, session["user_id"], f.get("notes")),
+    )
+    payment_id = cur.fetchone()["id"]
+    auth.log_change(db, "payments", str(payment_id), "create")
     db.commit()
     flash("Payment recorded.", "success")
     return redirect(url_for("visit_detail", visit_id=visit_id))
@@ -3025,6 +3027,14 @@ def boarding_incident(boarding_id):
 @app.route("/boarding/<int:boarding_id>/payment", methods=["POST"])
 def boarding_payment(boarding_id):
     db = get_db()
+    # Locked before computing the balance, same reasoning as
+    # distributor_payment_new()/consignment_settlement_new() — there's no
+    # delete/edit route for a payment once recorded, so an overpayment here
+    # can never be undone, only journaled around.
+    session_row = db.execute("SELECT id FROM boarding_sessions WHERE id=? FOR UPDATE", (boarding_id,)).fetchone()
+    if not session_row:
+        flash("Boarding session not found.", "error")
+        return redirect(url_for("boarding_page"))
     try:
         amount = parse_money(request.form.get("amount")) or 0
     except BadNumber:
@@ -3033,12 +3043,17 @@ def boarding_payment(boarding_id):
     if amount <= 0:
         flash("Payment amount must be greater than 0.", "error")
         return redirect(url_for("boarding_page"))
-    db.execute(
-        "INSERT INTO payments (boarding_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?)",
+    balance = logic.boarding_billing_summary(db, boarding_id)["balance"]
+    if amount > balance + 1e-9:
+        flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this stay.", "error")
+        return redirect(url_for("boarding_page"))
+    cur = db.execute(
+        "INSERT INTO payments (boarding_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?) RETURNING id",
         (boarding_id, amount, request.form.get("method"), date.today().isoformat(),
          session.get("user_id"), request.form.get("notes")),
     )
-    auth.log_change(db, "payments", str(boarding_id), "create")
+    payment_id = cur.fetchone()["id"]
+    auth.log_change(db, "payments", str(payment_id), "create")
     db.commit()
     flash("Payment recorded.", "success")
     return redirect(url_for("boarding_page"))
@@ -3465,10 +3480,12 @@ def inpatient_payment_add(case_id):
     except BadDate as e:
         flash(str(e), "error")
         return redirect(url_for("inpatient_detail", case_id=case_id))
-    db.execute("INSERT INTO payments (inpatient_case_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?)",
-              (case_id, amount, f.get("method"), payment_date,
-               session["user_id"], f.get("notes")))
-    auth.log_change(db, "payments", str(case_id), "create")
+    cur = db.execute(
+        "INSERT INTO payments (inpatient_case_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?) RETURNING id",
+        (case_id, amount, f.get("method"), payment_date, session["user_id"], f.get("notes")),
+    )
+    payment_id = cur.fetchone()["id"]
+    auth.log_change(db, "payments", str(payment_id), "create")
     db.commit()
     flash("Payment recorded.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
