@@ -1,6 +1,5 @@
 import ipaddress
 import json
-import math
 import os
 import re
 import signal
@@ -12,6 +11,7 @@ import logging.handlers
 import traceback
 import uuid
 from datetime import date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
@@ -21,6 +21,7 @@ from flask import (
     Flask, render_template, request, redirect, url_for, flash, g, jsonify,
     session, send_from_directory, send_file, abort
 )
+from flask.json.provider import DefaultJSONProvider
 from flask_wtf import CSRFProtect
 from werkzeug.exceptions import HTTPException
 
@@ -33,7 +34,23 @@ import pdf_export
 
 BASE_DIR = os.path.dirname(__file__)
 
+class _DecimalJSONProvider(DefaultJSONProvider):
+    """Flask's default JSON provider has no idea what a Decimal is (it only
+    special-cases datetime/UUID/dataclass/Markup) and raises TypeError the
+    moment jsonify() sees one — every money value read back from the
+    database is now a Decimal (see parse_money() for why). Converted to
+    float here, once, at the JSON boundary only: JSON/JS have no exact
+    decimal type anyway, and this is a one-way trip out to the browser for
+    display, not a value that gets computed with server-side afterward."""
+    @staticmethod
+    def default(o):
+        if isinstance(o, Decimal):
+            return float(o)
+        return DefaultJSONProvider.default(o)
+
+
 app = Flask(__name__)
+app.json = _DecimalJSONProvider(app)
 app.secret_key = os.environ.get("SECRET_KEY")
 if not app.secret_key:
     raise SystemExit(
@@ -220,21 +237,36 @@ class BadNumber(ValueError):
 
 
 def parse_money(raw, required=False):
+    """
+    Returns a Decimal, not a float — the JOD is a 3-decimal currency
+    (ISO 4217 gives it, like KWD/BHD, a fils subunit actually in everyday
+    use), unlike the IQD this app was originally forked from, where every
+    real amount is a whole number and float64 loses nothing. float64
+    can't exactly represent most 3-decimal fractions (0.1 + 0.2 != 0.3 in
+    binary floating point), so every money column/value in this app is
+    Decimal from parse through storage. Mixing Decimal and float in the
+    same arithmetic expression raises TypeError immediately at that line
+    — deliberate, since a silent implicit float coercion here would
+    reintroduce exactly the precision loss this exists to prevent. Plain
+    int literals (0, 100, a quantity from parse_int()) mix with Decimal
+    fine; only float does not.
+    """
     if raw is None or str(raw).strip() == "":
         if required:
             raise BadNumber("required")
         return None
     try:
-        val = float(raw)
-    except ValueError:
+        val = Decimal(str(raw).strip())
+    except InvalidOperation:
         raise BadNumber(raw)
-    # float() happily parses "nan"/"inf"/"-inf" without raising — and every
-    # bound check elsewhere in the app (`x > cap`, `x < 0`, etc.) silently
-    # evaluates to False against NaN, so an unchecked NaN doesn't just slip
-    # past validation, it appears to *pass* every check downstream. Reject
-    # both here, once, so every one of this function's call sites inherits
-    # the fix instead of needing its own guard.
-    if not math.isfinite(val):
+    # Decimal("nan")/Decimal("inf") parse without raising, the same trap
+    # float() had — and every bound check elsewhere in the app (`x > cap`,
+    # `x < 0`, etc.) silently evaluates to False against NaN, so an
+    # unchecked NaN doesn't just slip past validation, it appears to
+    # *pass* every check downstream. Reject both here, once, so every
+    # one of this function's call sites inherits the fix instead of
+    # needing its own guard.
+    if not val.is_finite():
         raise BadNumber(raw)
     return val
 
@@ -2410,7 +2442,7 @@ def distributor_payment_new(dist_id, bill_id):
     # what's actually left owed, which would flip the bill to a "Paid"
     # badge next to a negative balance with nothing indicating an
     # overpayment/credit happened.
-    if amount > balance + 1e-9:
+    if amount > balance:
         flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this bill.", "error")
         return redirect(url_for("distributor_detail", dist_id=dist_id))
     try:
@@ -2801,7 +2833,7 @@ def consignment_settlement_new(distributor_id):
     if amount_paid < 0:
         flash("Amount Paid can't be negative.", "error")
         return redirect(url_for("consignment_settlements_page", distributor_id=distributor_id))
-    amount_paid = round(amount_paid, 2)
+    amount_paid = round(amount_paid, 3)
     cur = db.execute(
         "INSERT INTO consignment_settlements (distributor_id, period_start, period_end, amount_owed, amount_paid, "
         "payment_method, notes, settled_by, created_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
@@ -2812,7 +2844,7 @@ def consignment_settlement_new(distributor_id):
     settlement_id = cur.fetchone()["id"]
     auth.log_change(db, "consignment_settlements", str(settlement_id), "create")
     db.commit()
-    residual = round(balance["amount_owed"] - amount_paid, 2)
+    residual = round(balance["amount_owed"] - amount_paid, 3)
     if residual > 0:
         flash(f"Settlement recorded: {logic.fmt_money(amount_paid)} JOD paid of "
               f"{logic.fmt_money(balance['amount_owed'])} JOD owed — {logic.fmt_money(residual)} JOD carries forward.", "success")
@@ -2919,7 +2951,7 @@ def cash_register_audit_new():
     # gets permanently compared against, so it has to be the real live
     # number, not whatever the page happened to show when it was loaded.
     totals = logic.cash_register_totals(db, day)
-    difference = round(counted_cash - totals["Cash"], 2)
+    difference = round(counted_cash - totals["Cash"], 3)
     if abs(difference) < 1:
         status = "Perfect"
     elif difference < 0:
@@ -3319,7 +3351,7 @@ def boarding_payment(boarding_id):
         flash("Payment amount must be greater than 0.", "error")
         return redirect(url_for("boarding_page"))
     balance = logic.boarding_billing_summary(db, boarding_id)["balance"]
-    if amount > balance + 1e-9:
+    if amount > balance:
         flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this stay.", "error")
         return redirect(url_for("boarding_page"))
     cur = db.execute(
@@ -3452,7 +3484,7 @@ def pos_checkout():
         flash("Nothing to sell.", "error")
         return redirect(url_for("pos_page"))
 
-    total = round(subtotal * (1 - discount_percent / 100), 2)
+    total = round(subtotal * (1 - discount_percent / Decimal(100)), 3)
     payment_method = f.get("payment_method")
     cash_received = change_given = None
     if payment_method == "Cash":
@@ -3462,18 +3494,18 @@ def pos_checkout():
             flash("Cash Received must be a valid number.", "error")
             return redirect(url_for("pos_page"))
         if cash_received is not None:
-            change_given = max(round(cash_received - total, 2), 0)
+            change_given = max(round(cash_received - total, 3), 0)
     now = datetime.now().isoformat(timespec="seconds")
     cur = db.execute(
         "INSERT INTO sales (sale_date, cashier_id, subtotal, discount_percent, discount_applied_by, total, "
         "payment_method, cash_received, change_given) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
-        (now, session["user_id"], round(subtotal, 2), discount_percent,
+        (now, session["user_id"], round(subtotal, 3), discount_percent,
          session["user_id"] if discount_percent else None, total, payment_method, cash_received, change_given),
     )
     sale_id = cur.fetchone()["id"]
     for iid, qty, price, line_total, unit_cost in lines:
         db.execute("INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost) VALUES (?,?,?,?,?,?)",
-                  (sale_id, iid, qty, price, round(line_total, 2), unit_cost))
+                  (sale_id, iid, qty, price, round(line_total, 3), unit_cost))
         db.execute("INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
                   "VALUES (?,?,?,?,?,?)", (iid, -qty, "sale", str(sale_id), now, session["user_id"]))
     logic.recompute_month_summary(db, now[:7])
@@ -4108,11 +4140,11 @@ def refund_retail_save():
         if not line:
             flash("One of the selected items isn't part of that sale.", "error")
             return redirect(url_for("refunds_page"))
-        if qty > line["remaining"] + 1e-9:
+        if qty > line["remaining"]:
             flash(f"Can't refund {qty:g} {line['name']} — only {line['remaining']:g} left refundable from this sale.", "error")
             return redirect(url_for("refunds_page"))
         price = line["unit_price"]
-        line_total = round(price * qty, 2)
+        line_total = round(price * qty, 3)
         total += line_total
         lines.append((line["item_id"], sid, qty, price, line_total))
 
@@ -4124,7 +4156,7 @@ def refund_retail_save():
     cur = db.execute(
         "INSERT INTO refunds (refund_type, refund_date, amount, restocked, sale_id, reason, refund_method, processed_by, created_at) "
         "VALUES ('retail',?,?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(total, 2), restock, sale_id, reason, f.get("refund_method"), session["user_id"], now),
+        (refund_date, round(total, 3), restock, sale_id, reason, f.get("refund_method"), session["user_id"], now),
     )
     refund_id = cur.fetchone()["id"]
 
@@ -4144,7 +4176,7 @@ def refund_retail_save():
     logic.recompute_month_summary(db, logic.month_key(refund_date))
     auth.log_change(db, "refunds", str(refund_id), "create")
     db.commit()
-    flash(f"Refund of {total:,.0f} JOD recorded" + (" and stock restored." if restock else "."), "success")
+    flash(f"Refund of {total:,.3f} JOD recorded" + (" and stock restored." if restock else "."), "success")
     return redirect(url_for("refunds_page"))
 
 
@@ -4188,13 +4220,13 @@ def refund_service_save():
     cur = db.execute(
         "INSERT INTO refunds (refund_type, refund_date, amount, visit_id, inpatient_case_id, reason, refund_method, processed_by, created_at) "
         "VALUES ('service',?,?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(amount, 2), visit_id, case_id, reason, f.get("refund_method"), session["user_id"], now),
+        (refund_date, round(amount, 3), visit_id, case_id, reason, f.get("refund_method"), session["user_id"], now),
     )
     refund_id = cur.fetchone()["id"]
     logic.recompute_month_summary(db, logic.month_key(refund_date))
     auth.log_change(db, "refunds", str(refund_id), "create")
     db.commit()
-    flash(f"Service refund of {amount:,.0f} JOD recorded.", "success")
+    flash(f"Service refund of {amount:,.3f} JOD recorded.", "success")
     return redirect(url_for("refunds_page"))
 
 

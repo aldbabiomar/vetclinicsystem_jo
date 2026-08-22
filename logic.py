@@ -4,6 +4,7 @@ Pure computation over SQLite tables; no Flask imports.
 """
 import calendar
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from collections import defaultdict
 
 import auth as authmod
@@ -54,10 +55,13 @@ def backup_alert_message(last_backup_row):
 
 
 def fmt_money(amount):
-    """JOD has no practical decimal subdivision in everyday use — whole numbers, comma-separated."""
+    """The JOD's fils subunit (3 decimal places, per ISO 4217 — same as
+    KWD/BHD) is in everyday real use, unlike IQD's, which is practically
+    obsolete — so unlike the fork this app started from, amounts are
+    never rounded to whole numbers for display."""
     if amount is None:
         return "\u2014"
-    return f"{round(amount):,}"
+    return f"{amount:,.3f}"
 
 
 # ---------------------------------------------------------------------------
@@ -423,9 +427,9 @@ def compute_bill_totals(subtotal, discount_percent, paid):
     of being duplicated per billing type.
     """
     discount_percent = discount_percent or 0
-    total = round(subtotal * (1 - discount_percent / 100), 2)
-    paid = round(paid or 0, 2)
-    balance = round(total - paid, 2)
+    total = round(subtotal * (1 - discount_percent / Decimal(100)), 3)
+    paid = round(paid or 0, 3)
+    balance = round(total - paid, 3)
     if total <= 0:
         status = "N/A"
     elif paid <= 0:
@@ -458,14 +462,14 @@ def visit_billing_summary(db, visit_id):
         # exactly (quantity + line_total per line).
         lines = [{"id": r["price_id"], "name": r["name"], "category": r["category"],
                   "price": r["unit_price"], "quantity": r["quantity"],
-                  "line_total": round(r["unit_price"] * r["quantity"], 2)}
+                  "line_total": round(r["unit_price"] * r["quantity"], 3)}
                  for r in snapshot_rows]
         subtotal = sum(l["line_total"] for l in lines)
 
     discount_percent = b["discount_percent"] or 0
     paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE visit_id=?", (visit_id,)).fetchone()
     total, paid, balance, status = compute_bill_totals(subtotal, discount_percent, paid_row["s"])
-    return {"billing_type": b["billing_type"], "lines": lines, "subtotal": round(subtotal, 2),
+    return {"billing_type": b["billing_type"], "lines": lines, "subtotal": round(subtotal, 3),
             "discount_percent": discount_percent, "total": total, "paid": paid, "balance": balance,
             "status": status}
 
@@ -503,12 +507,12 @@ def inpatient_billing_summary(db, case_id):
         line_total = unit_price * r["quantity"]
         subtotal += line_total
         lines.append({"id": r["id"], "name": r["name"], "quantity": r["quantity"],
-                       "unit_price": unit_price, "line_total": round(line_total, 2)})
+                       "unit_price": unit_price, "line_total": round(line_total, 3)})
     case = db.execute("SELECT discount_percent FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
     discount_percent = case["discount_percent"] if case else 0
     paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE inpatient_case_id=?", (case_id,)).fetchone()
     total, paid, balance, status = compute_bill_totals(subtotal, discount_percent, paid_row["s"])
-    return {"lines": lines, "subtotal": round(subtotal, 2), "discount_percent": discount_percent,
+    return {"lines": lines, "subtotal": round(subtotal, 3), "discount_percent": discount_percent,
             "total": total, "paid": paid, "balance": balance, "status": status}
 
 
@@ -536,7 +540,7 @@ def boarding_nights(entry_date, dismissal_date):
 def boarding_suggested_total(price_per_day, entry_date, dismissal_date):
     if not price_per_day:
         return None
-    return round(price_per_day * boarding_nights(entry_date, dismissal_date), 2)
+    return round(price_per_day * boarding_nights(entry_date, dismissal_date), 3)
 
 
 def boarding_billing_summary_from_fields(b, paid):
@@ -869,9 +873,13 @@ def _revenue_and_cogs_by_month(db, month=None):
     possible: same formulas, just filtered, so results are guaranteed
     consistent with a full scan.
     """
-    revenue_by_month = defaultdict(float)
+    # Decimal, not float — every value accumulated into these below is now
+    # Decimal (billing.total, sales.total, unit_cost/unit_price/quantity,
+    # ...), and a defaultdict(float) seed of 0.0 would raise TypeError the
+    # first time += touches a key that doesn't exist yet.
+    revenue_by_month = defaultdict(Decimal)
     cost_by_item = {r["id"]: r["cost_price"] or 0 for r in db.execute("SELECT id, cost_price FROM inventory_list").fetchall()}
-    cogs_by_month = defaultdict(float)
+    cogs_by_month = defaultdict(Decimal)
     month_like = (month + "%") if month else None
 
     # Automatic visit billing: cost basis comes from the snapshot taken at
@@ -922,7 +930,7 @@ def _revenue_and_cogs_by_month(db, month=None):
         unit_price = r["unit_price"] if r["unit_price"] is not None else (r["sale_price"] or 0)
         unit_cost = r["unit_cost"] if r["unit_cost"] is not None else (r["cost_price"] or 0)
         discount = case_discounts.get(r["case_id"], 0)
-        revenue_by_month[mth] += (unit_price * r["quantity"]) * (1 - discount / 100)
+        revenue_by_month[mth] += (unit_price * r["quantity"]) * (1 - discount / Decimal(100))
         cogs_by_month[mth] += unit_cost * r["quantity"]
 
     # Boarding revenue is attributed to the month the stay started (entry_date).
@@ -978,8 +986,8 @@ def recompute_month_summary(db, month):
     if not month:
         return
     revenue_by_month, cogs_by_month = _revenue_and_cogs_by_month(db, month=month)
-    revenue = round(revenue_by_month.get(month, 0), 2)
-    cogs = round(cogs_by_month.get(month, 0), 2)
+    revenue = round(revenue_by_month.get(month, 0), 3)
+    cogs = round(cogs_by_month.get(month, 0), 3)
     now_str = datetime.now().isoformat(timespec="seconds")
     db.execute(
         "INSERT INTO monthly_financial_summary (month, revenue, cogs, updated_at) VALUES (?,?,?,?) "
@@ -1012,8 +1020,8 @@ def recompute_full_summary(db):
     now_str = datetime.now().isoformat(timespec="seconds")
     db.execute("DELETE FROM monthly_financial_summary")
     for month in months:
-        revenue = round(revenue_by_month.get(month, 0), 2)
-        cogs = round(cogs_by_month.get(month, 0), 2)
+        revenue = round(revenue_by_month.get(month, 0), 3)
+        cogs = round(cogs_by_month.get(month, 0), 3)
         db.execute(
             "INSERT INTO monthly_financial_summary (month, revenue, cogs, updated_at) VALUES (?,?,?,?)",
             (month, revenue, cogs, now_str),
@@ -1072,12 +1080,12 @@ def monthly_pl(db, months_back=12):
     prior_net = None
     for month in months:
         row = summary_rows.get(month)
-        revenue = round(row["revenue"], 2) if row else 0
-        cogs = round(row["cogs"], 2) if row else 0
-        gross_profit = round(revenue - cogs, 2)
+        revenue = round(row["revenue"], 3) if row else 0
+        cogs = round(row["cogs"], 3) if row else 0
+        gross_profit = round(revenue - cogs, 3)
         opex = opex_rows.get(month, {"rent": 0, "salaries": 0, "utilities": 0, "marketing": 0, "other": 0})
-        total_opex = round(sum(opex.get(k, 0) or 0 for k in ("rent", "salaries", "utilities", "marketing", "other")), 2)
-        net_profit = round(gross_profit - total_opex, 2)
+        total_opex = round(sum(opex.get(k, 0) or 0 for k in ("rent", "salaries", "utilities", "marketing", "other")), 3)
+        net_profit = round(gross_profit - total_opex, 3)
         net_margin = round(net_profit / revenue, 4) if revenue else None
 
         mom_change = None
@@ -1115,15 +1123,15 @@ def yearly_pl(db):
     prior_net = None
     for y in sorted(by_year.keys()):
         d = by_year[y]
-        gross_profit = round(d["revenue"] - d["cogs"], 2)
-        net_profit = round(gross_profit - d["total_opex"], 2)
+        gross_profit = round(d["revenue"] - d["cogs"], 3)
+        net_profit = round(gross_profit - d["total_opex"], 3)
         net_margin = round(net_profit / d["revenue"], 4) if d["revenue"] else None
         yoy_change = None
         if prior_net not in (None, 0):
             yoy_change = round((net_profit - prior_net) / abs(prior_net) * 100, 1)
         prior_net = net_profit
-        out.append({"year": y, "revenue": round(d["revenue"], 2), "cogs": round(d["cogs"], 2),
-                    "gross_profit": gross_profit, "total_opex": round(d["total_opex"], 2),
+        out.append({"year": y, "revenue": round(d["revenue"], 3), "cogs": round(d["cogs"], 3),
+                    "gross_profit": gross_profit, "total_opex": round(d["total_opex"], 3),
                     "net_profit": net_profit, "net_margin": net_margin, "yoy_change": yoy_change})
     return out
 
@@ -1159,7 +1167,7 @@ def refundable_sale_items(db, sale_id):
     lines = []
     for r in rows:
         remaining = round(r["quantity"] - r["already_refunded"], 6)
-        unit_price = round(r["unit_price"] * (1 - discount_percent / 100), 2)
+        unit_price = round(r["unit_price"] * (1 - discount_percent / Decimal(100)), 3)
         lines.append({
             "sale_item_id": r["sale_item_id"], "item_id": r["item_id"], "name": r["name"],
             "unit_price": unit_price, "quantity": r["quantity"],
@@ -1512,7 +1520,7 @@ def consignment_balance(db, distributor_id):
         (distributor_id,),
     ).fetchone()
     if last:
-        residual = round((last["amount_owed"] or 0) - (last["amount_paid"] or 0), 2)
+        residual = round((last["amount_owed"] or 0) - (last["amount_paid"] or 0), 3)
         period_start = last["period_end"]
         last_settlement_date = last["created_at"]
     else:
@@ -1576,8 +1584,8 @@ def consignment_balance(db, distributor_id):
     ).fetchone()
     shrinkage_cost = shrink_row["cost"] or 0
 
-    new_activity = round(sold_cost - restocked_cost + shrinkage_cost, 2)
-    amount_owed = round(residual + new_activity, 2)
+    new_activity = round(sold_cost - restocked_cost + shrinkage_cost, 3)
+    amount_owed = round(residual + new_activity, 3)
 
     return {
         "residual": residual, "period_start": period_start, "period_end": period_end,
@@ -1619,7 +1627,12 @@ def consignment_distributors_overview(db):
             status = status_by_item.get(it["id"])
             stock = (status["current_stock"] if status else 0) or 0
             shelf_units += stock
-            shelf_value += stock * (it["cost_price"] or 0)
+            # stock is a plain float (physical unit count, never itself a
+            # currency amount — see the schema comment on why it stays
+            # DOUBLE PRECISION), but cost_price is now Decimal, so it has
+            # to be converted at this one crossover into money math or the
+            # multiplication raises TypeError.
+            shelf_value += Decimal(str(stock)) * (it["cost_price"] or 0)
         month_units = db.execute(
             "SELECT COALESCE(SUM(si.quantity), 0) AS u FROM sale_items si "
             "JOIN sales s ON s.id=si.sale_id JOIN inventory_list i ON i.id=si.item_id "
@@ -1629,7 +1642,7 @@ def consignment_distributors_overview(db):
         balance = consignment_balance(db, d["id"])
         out.append({
             "distributor_id": d["id"], "distributor_name": d["name"],
-            "shelf_units": shelf_units, "shelf_value": round(shelf_value, 2),
+            "shelf_units": shelf_units, "shelf_value": round(shelf_value, 3),
             "amount_owed": balance["amount_owed"], "last_settlement_date": balance["last_settlement_date"],
             "units_sold_this_month": month_units,
         })
@@ -1758,17 +1771,20 @@ def cash_register_totals(db, day):
     method outside Cash/Card/Transfer (blank, legacy, unexpected) lands in
     'other' rather than being silently dropped from the day's total."""
     ledger = cash_register_ledger(db, day)
-    totals = {"Cash": 0.0, "Card": 0.0, "Transfer": 0.0, "other": 0.0}
+    # Plain int 0, not 0.0 — row["total"] comes back as Decimal (every
+    # branch of the ledger UNION is now a NUMERIC column), and Decimal
+    # mixes fine with int but raises TypeError against a float.
+    totals = {"Cash": 0, "Card": 0, "Transfer": 0, "other": 0}
     for row in ledger:
         bucket = row["payment_method"] if row["payment_method"] in CASH_REGISTER_METHODS else "other"
         totals[bucket] += row["total"] or 0
     payouts_total = db.execute(
         "SELECT COALESCE(SUM(amount), 0) AS s FROM cash_register_payouts WHERE payout_date=?", (day,)
     ).fetchone()["s"]
-    totals["Cash"] = round(totals["Cash"] - payouts_total, 2)
+    totals["Cash"] = round(totals["Cash"] - payouts_total, 3)
     for k in ("Card", "Transfer", "other"):
-        totals[k] = round(totals[k], 2)
-    totals["all"] = round(totals["Cash"] + totals["Card"] + totals["Transfer"] + totals["other"], 2)
+        totals[k] = round(totals[k], 3)
+    totals["all"] = round(totals["Cash"] + totals["Card"] + totals["Transfer"] + totals["other"], 3)
     return totals
 
 
@@ -2004,13 +2020,13 @@ def revenue_by_category(db, months_back=12):
         (cutoff,) * 6,
     ).fetchall()
 
-    grid = {(r["month"], r["category"]): round(r["revenue"] or 0, 2) for r in rows}
+    grid = {(r["month"], r["category"]): round(r["revenue"] or 0, 3) for r in rows}
     return {
         "months": months,
         "categories": REVENUE_CATEGORIES,
         "grid": {m: {c: grid.get((m, c), 0) for c in REVENUE_CATEGORIES} for m in months},
-        "totals_by_category": {c: round(sum(grid.get((m, c), 0) for m in months), 2) for c in REVENUE_CATEGORIES},
-        "totals_by_month": {m: round(sum(grid.get((m, c), 0) for c in REVENUE_CATEGORIES), 2) for m in months},
+        "totals_by_category": {c: round(sum(grid.get((m, c), 0) for m in months), 3) for c in REVENUE_CATEGORIES},
+        "totals_by_month": {m: round(sum(grid.get((m, c), 0) for c in REVENUE_CATEGORIES), 3) for m in months},
     }
 
 
@@ -2045,11 +2061,11 @@ def vet_performance(db, months_back=12):
     ).fetchall()
     out = []
     for r in rows:
-        revenue = round(r["revenue"] or 0, 2)
+        revenue = round(r["revenue"] or 0, 3)
         visits = r["visit_count"] or 0
         out.append({
             "doctor": r["doctor"], "visit_count": visits, "revenue": revenue,
-            "avg_revenue_per_visit": round(revenue / visits, 2) if visits else 0,
+            "avg_revenue_per_visit": round(revenue / visits, 3) if visits else 0,
         })
     return out
 
@@ -2084,8 +2100,8 @@ def client_value(db, limit=20):
         """
     ).fetchall()
     active = [{"id": r["id"], "name": r["name"], "payment_count": r["payment_count"],
-               "total_paid": round(r["total_paid"] or 0, 2)} for r in rows]
-    avg_spend = round(sum(r["total_paid"] for r in active) / len(active), 2) if active else 0
+               "total_paid": round(r["total_paid"] or 0, 3)} for r in rows]
+    avg_spend = round(sum(r["total_paid"] for r in active) / len(active), 3) if active else 0
     return active[:limit], avg_spend, len(active)
 
 

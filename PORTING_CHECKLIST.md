@@ -11,12 +11,107 @@ Legend: **PORT** = apply as-is · **ADAPT** = apply, but rewrite for Jordan's
 money model or missing infra first · **SKIP** = Iraq-only or branding-only ·
 **BLOCKED** = depends on a Phase A item landing first.
 
-Currency-model correction vs. earlier assumption: neither app uses `Decimal`.
-Both use plain `float` (VetClinicSystem_IQ's own security changelog flagged
-float→Decimal as "deliberately not done"). The only real currency-only
-divergence is the 250-IQD note-rounding logic in `money.py` and its price
-warnings — everything else below is a normal feature/fix gap, not a currency
-gap.
+Currency-model note (superseded — see the float→Decimal entry immediately
+below): VetClinicSystem_IQ uses plain `float` throughout (its own security
+changelog flagged float→Decimal as "deliberately not done", citing pure
+migration risk/effort, not a claim that float is safe for IQD's math). It
+happens to be fine for Iraq regardless — IQD's fils subunit is practically
+obsolete, so every real amount is a whole number, and float64 represents
+every integer up to ~9 quadrillion exactly. Jordan diverged from that: JOD
+is genuinely a 3-decimal currency in everyday use, so it's now on `Decimal`/
+`NUMERIC` instead. Everything else below is a normal feature/fix gap, not a
+currency-model one.
+
+---
+
+## Jordan-specific: float → Decimal/NUMERIC (JOD is a real 3-decimal currency, unlike IQD)
+
+✅ **DONE.** Unlike VetClinicSystem_IQ, JOD is one of three currencies
+worldwide (with KWD/BHD) ISO 4217 assigns 3 decimal places to (the fils
+subunit) — it's in everyday real use here, unlike IQD's, which is
+practically obsolete (smallest real note: 250 IQD, so every IQD amount is a
+whole number and float64 loses nothing). float64 cannot exactly represent
+most 3-decimal fractions (`0.1 * 3 == 0.30000000000000004` in binary
+floating point), so every currency column, and every quantity/percentage
+column that multiplies directly against one, is now `NUMERIC` in
+`schema_postgres.sql` — `NUMERIC(12,3)` for money, `NUMERIC(10,3)` for those
+quantities, `NUMERIC(5,2)` for `discount_percent`. `parse_money()` now
+returns `Decimal` (with an equivalent NaN/Infinity guard via
+`Decimal.is_finite()`), and a custom Flask JSON provider converts `Decimal`
+→ `float` at the `jsonify()` boundary only (Flask's default provider has no
+idea what a `Decimal` is and raises `TypeError` the moment one reaches it).
+
+Sweep also caught two bugs that predate this conversion, carried over
+verbatim from the Iraq fork it was never adapted for:
+- `logic.fmt_money()` rounded every displayed amount to a whole number
+  (`"JOD has no practical decimal subdivision in everyday use"` — the IQD
+  assumption, never corrected for JOD) while `compute_bill_totals()` computed
+  internally at 2 decimals and the DB stored a third — three different,
+  mutually inconsistent precisions in the same pipeline. Now 3 decimals,
+  consistently, end to end.
+- Every price input across the whole app used `step="1"` (whole JOD only) —
+  fixed to `step="0.001"` on every genuine money field (left BCS, day-counts,
+  and `discount_percent` — all legitimately whole-number — at `step="1"`).
+  Two places also pre-filled/capped a payment field by truncating the real
+  balance to a whole int (`{{ bill.balance|round|int }}`) — fixed to use the
+  exact figure. `templates/inventory_catalog.html`/`price_list.html` also
+  still labeled Cost/Sale Price **"(IQD)"** — fixed to "(JOD)".
+
+The conversion surfaced several genuine float/Decimal-mixing bugs along the
+way (Python raises `TypeError` immediately at the exact line float and
+Decimal meet in the same expression — never silently, which is what made
+this sweep reliable rather than a guess):
+- `cash_register_totals()`'s bucket dict seeded with `0.0` (float) — every
+  `+=` against it would have crashed the moment a bucket accumulated a real
+  (now-Decimal) row total.
+- `_revenue_and_cogs_by_month()`'s two accumulator dicts were
+  `defaultdict(float)` — the single most central function in the whole P&L/
+  Insights system, and the same float-seed problem as the cash register.
+- `discount_percent / 100` (4 call sites: `compute_bill_totals()`,
+  `_revenue_and_cogs_by_month()`, `refundable_sale_items()`, and
+  `pos_checkout()`) — the falsy-zero trap: `discount_percent or 0` silently
+  collapses a genuine `Decimal('0.00')` down to a plain Python `int` `0`
+  (Decimal zero is falsy), and Python's `/` on two plain ints always returns
+  `float` even when the dividend started life as `int` only because of that
+  collapse — so a *zero* discount, the single most common case, was exactly
+  what triggered the crash. Fixed by dividing by `Decimal(100)` instead of
+  the bare literal, which is safe regardless of which type the numerator
+  ended up as.
+- `consignment_payables_summary()`'s `shelf_value` — physical stock count
+  (deliberately still `float`, see below) multiplied directly against
+  `cost_price` (now `Decimal`) with no conversion.
+- Client-side JS previews (POS cart total, boarding's suggested Total field)
+  rounded to a whole number — harmless for correctness (the server
+  recomputes exactly and is authoritative) but a jarring, inconsistent
+  preview once the receipt/bill started showing real fils. Now shown to 3
+  decimals, matching the server.
+
+Deliberately NOT converted: physical measurements (`weight_kg`), and
+inventory-count-only fields never multiplied against a price
+(`stock_counted`, `received_since_prior`, `reorder_threshold`,
+`target_coverage_days`, `change_qty`, `bcs`) — none of these are currency,
+and forcing them onto `Decimal` would have meant hunting down every place a
+`float` inventory quantity is compared or subtracted for no correctness
+benefit. The one place a float stock quantity *does* cross into money math
+(the `shelf_value` calc above) is fixed at that single crossover instead.
+
+Live-verified end-to-end against a real local Postgres 16, using
+deliberately fractional (3-decimal) seed prices throughout specifically to
+catch drift: visit billing (multi-line + 15% discount: `29.416 → 25.004`,
+exact), a payment, POS checkout (10% discount + cash/change: subtotal
+`22.500`, total `20.250`, change `4.750`, all exact), a discount-adjusted
+retail refund, inpatient billing + 20% discount + payment (`37.749 →
+30.199`, exact), boarding's live nights×price total (`7 × 10.750 = 75.250`)
+plus its overpayment guard on the exact remaining balance, a distributor
+bill + payment + overpayment guard (`123.456 - 100.456 = 23.000`, exact), a
+consignment receipt + shelf-value calc (`68 × 3.375 = 229.500`, exact) +
+settlement, a cash register audit aggregating sales/payments/refunds
+(deficit computed to the exact fils), Operating Costs with fractional
+line items, all 7 PDF export types (patient file, patient billing, sale
+receipt, visit, inpatient, boarding, distributor ledger, consignment
+settlement — all valid PDFs, no crashes), Reports/Insights/Retention pages,
+and the Price List bulk-edit JSON endpoint. Zero server errors across the
+entire pass.
 
 ---
 
