@@ -1837,7 +1837,10 @@ def distributors_list():
         rows = db.execute("SELECT * FROM distributors WHERE name ILIKE ? ORDER BY name", (f"%{search}%",)).fetchall()
     else:
         rows = db.execute("SELECT * FROM distributors ORDER BY name").fetchall()
-    return render_template("distributors.html", distributors=rows, search=search)
+    outstanding = logic.distributor_outstanding_totals(db)
+    payables = logic.distributor_payables_summary(db)
+    return render_template("distributors.html", distributors=rows, search=search,
+                            outstanding=outstanding, payables=payables)
 
 
 @app.route("/distributors/new", methods=["POST"])
@@ -1900,11 +1903,174 @@ def distributor_edit(dist_id):
 @app.route("/distributors/<dist_id>/delete", methods=["POST"])
 def distributor_delete(dist_id):
     db = get_db()
+    if not db.execute("SELECT 1 FROM distributors WHERE id=?", (dist_id,)).fetchone():
+        flash("Distributor not found.", "error")
+        return redirect(url_for("distributors_list"))
+    # A distributor can be referenced from inventory items and manual
+    # ledger bills — a bare DELETE would just crash with a raw
+    # ForeignKeyViolation the moment either has a row. Check first and
+    # name what's still linked, rather than let Postgres reject it as an
+    # unhandled 500.
+    still_linked = []
+    for label, table in [("inventory item(s)", "inventory_list"), ("distributor bill(s)", "distributor_bills")]:
+        if db.execute(f"SELECT 1 FROM {table} WHERE distributor_id=? LIMIT 1", (dist_id,)).fetchone():
+            still_linked.append(label)
+    if still_linked:
+        flash("Can't delete this distributor — it still has " + ", ".join(still_linked) +
+              " linked to it. Remove or reassign those first.", "error")
+        return redirect(url_for("distributors_list"))
     db.execute("DELETE FROM distributors WHERE id=?", (dist_id,))
     auth.log_change(db, "distributors", dist_id, "delete")
     db.commit()
     flash("Distributor deleted.", "success")
     return redirect(url_for("distributors_list"))
+
+
+# ---------------------------------------------------------------------------
+# Distributor Ledger — manual bookkeeping for what a distributor has billed
+# you and what you've paid them. Lump-sum bills only, no link to inventory,
+# POS, or any report; balance/status are always computed (never stored).
+# ---------------------------------------------------------------------------
+@app.route("/distributors/<dist_id>")
+def distributor_detail(dist_id):
+    db = get_db()
+    dist = db.execute("SELECT * FROM distributors WHERE id=?", (dist_id,)).fetchone()
+    if not dist:
+        flash("Distributor not found.", "error")
+        return redirect(url_for("distributors_list"))
+    ledger = logic.distributor_ledger(db, dist_id)
+    return render_template("distributor_detail.html", distributor=dist, **ledger)
+
+
+@app.route("/distributors/<dist_id>/bills/new", methods=["POST"])
+def distributor_bill_new(dist_id):
+    db = get_db()
+    f = request.form
+    try:
+        total_amount = parse_money(f.get("total_amount"), required=True)
+    except BadNumber:
+        flash("Total amount must be a valid number.", "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    if total_amount <= 0:
+        flash("Total amount must be greater than zero.", "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    try:
+        bill_date = clean_date(f.get("bill_date"), field="bill_date") or date.today().isoformat()
+    except BadDate as e:
+        flash(str(e), "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    bid = dbmod.next_id(db, "DB")
+    db.execute(
+        "INSERT INTO distributor_bills (id,distributor_id,bill_date,bill_reference,total_amount,notes,created_at,created_by) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        (bid, dist_id, bill_date, f.get("bill_reference"), total_amount, f.get("notes"),
+         datetime.now().isoformat(timespec="seconds"), session.get("user_id")),
+    )
+    auth.log_change(db, "distributor_bills", bid, "create")
+    db.commit()
+    flash(f"Bill {bid} logged.", "success")
+    return redirect(url_for("distributor_detail", dist_id=dist_id))
+
+
+@app.route("/distributors/<dist_id>/bills/<bill_id>/delete", methods=["POST"])
+def distributor_bill_delete(dist_id, bill_id):
+    db = get_db()
+    if not db.execute("SELECT 1 FROM distributor_bills WHERE id=? AND distributor_id=?", (bill_id, dist_id)).fetchone():
+        flash("Bill not found.", "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    has_payments = db.execute(
+        "SELECT 1 FROM distributor_bill_payments WHERE bill_id=? LIMIT 1", (bill_id,)
+    ).fetchone()
+    if has_payments:
+        flash("Delete the payments on this bill first.", "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    db.execute("DELETE FROM distributor_bills WHERE id=? AND distributor_id=?", (bill_id, dist_id))
+    auth.log_change(db, "distributor_bills", bill_id, "delete")
+    db.commit()
+    flash("Bill deleted.", "success")
+    return redirect(url_for("distributor_detail", dist_id=dist_id))
+
+
+@app.route("/distributors/<dist_id>/bills/<bill_id>/payments/new", methods=["POST"])
+def distributor_payment_new(dist_id, bill_id):
+    db = get_db()
+    f = request.form
+    # Locked before computing the balance, same reasoning as
+    # pos_checkout()'s cart-item locking: without this, two payments each
+    # individually within the balance shown at page-load could both pass
+    # the check below and both insert, together overpaying the bill.
+    bill = db.execute(
+        "SELECT * FROM distributor_bills WHERE id=? AND distributor_id=? FOR UPDATE", (bill_id, dist_id)
+    ).fetchone()
+    if not bill:
+        flash("Bill not found.", "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    try:
+        amount = parse_money(f.get("amount"), required=True)
+    except BadNumber:
+        flash("Payment amount must be a valid number.", "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    if amount <= 0:
+        flash("Payment amount must be greater than zero.", "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    paid_so_far = db.execute(
+        "SELECT COALESCE(SUM(amount),0) s FROM distributor_bill_payments WHERE bill_id=?", (bill_id,)
+    ).fetchone()["s"]
+    balance = bill["total_amount"] - paid_so_far
+    # The HTML max= on the amount field already stops this in the normal
+    # UI, but that's client-side only — a crafted request or a stale page
+    # (someone else already paid part of it) can still submit more than
+    # what's actually left owed, which would flip the bill to a "Paid"
+    # badge next to a negative balance with nothing indicating an
+    # overpayment/credit happened.
+    if amount > balance + 1e-9:
+        flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this bill.", "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    try:
+        payment_date = clean_date(f.get("payment_date"), field="payment_date") or date.today().isoformat()
+    except BadDate as e:
+        flash(str(e), "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    cur = db.execute(
+        "INSERT INTO distributor_bill_payments (bill_id,amount,payment_date,method,notes,created_at,created_by) "
+        "VALUES (?,?,?,?,?,?,?) RETURNING id",
+        (bill_id, amount, payment_date, f.get("method"), f.get("notes"),
+         datetime.now().isoformat(timespec="seconds"), session.get("user_id")),
+    )
+    pid = cur.fetchone()["id"]
+    auth.log_change(db, "distributor_bill_payments", str(pid), "create")
+    db.commit()
+    flash("Payment recorded.", "success")
+    return redirect(url_for("distributor_detail", dist_id=dist_id))
+
+
+@app.route("/distributors/<dist_id>/payments/<int:payment_id>/delete", methods=["POST"])
+def distributor_payment_delete(dist_id, payment_id):
+    db = get_db()
+    owned = db.execute(
+        "SELECT 1 FROM distributor_bill_payments p JOIN distributor_bills b ON b.id = p.bill_id "
+        "WHERE p.id=? AND b.distributor_id=?",
+        (payment_id, dist_id),
+    ).fetchone()
+    if not owned:
+        flash("Payment not found.", "error")
+        return redirect(url_for("distributor_detail", dist_id=dist_id))
+    db.execute("DELETE FROM distributor_bill_payments WHERE id=?", (payment_id,))
+    auth.log_change(db, "distributor_bill_payments", str(payment_id), "delete")
+    db.commit()
+    flash("Payment deleted.", "success")
+    return redirect(url_for("distributor_detail", dist_id=dist_id))
+
+
+@app.route("/distributors/<dist_id>/export.pdf")
+def distributor_export_pdf(dist_id):
+    db = get_db()
+    dist = db.execute("SELECT id FROM distributors WHERE id=?", (dist_id,)).fetchone()
+    if not dist:
+        flash("Distributor not found.", "error")
+        return redirect(url_for("distributors_list"))
+    buf = pdf_export.export_distributor_ledger(db, dist_id)
+    return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=f"{dist_id}_ledger.pdf")
 
 
 # ---------------------------------------------------------------------------

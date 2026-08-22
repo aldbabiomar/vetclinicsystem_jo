@@ -80,9 +80,24 @@ Confirmed by direct schema/code diff, not changelog description alone.
    every live visit-detail page load) and a `pdf_export.py` display bug
    where a multi-quantity Automatic billing line would have shown as its
    unit price instead of its line total on the exported PDF.
-4. **Distributor Ledger** — new feature, self-contained (`distributor_bills`,
-   `distributor_bill_payments`, `distributor_ledger()`, 6 new routes, PDF
-   export). No currency-model dependency; port as designed.
+4. **Distributor Ledger** ✅ DONE — `distributor_bills`/`distributor_bill_payments`
+   tables, `distributor_ledger()`/`distributor_outstanding_totals()`/
+   `distributor_payables_summary()` in logic.py, 6 new routes (detail, bill
+   new/delete, payment new/delete, PDF export), `distributor_detail.html`,
+   and `distributors.html` gained the Outstanding column + Ledger link +
+   payables summary block. Also fixed `distributor_delete()` while touching
+   it: it used to unconditionally `DELETE FROM distributors`, which would
+   crash with a raw FK violation the moment any inventory item OR bill was
+   linked (the inventory-item case was already a live pre-existing bug,
+   not something this phase introduced) — now checks both and gives a
+   clean error naming what's still linked, matching the 1.0.0 changelog
+   item for this same function.
+   Verified end-to-end against a real Postgres: create distributor → log
+   bill → record payment → overpayment correctly rejected → outstanding
+   total correct on both the distributor row and the "Who You Owe Most"
+   table → PDF export produces a valid PDF → delete guards correctly block
+   while dependents exist and correctly allow once cleared, in order
+   (payment → bill → distributor).
 5. **Consignment** — new feature (4 new tables, 16 routes, 7 templates). The
    original build explicitly used plain `float` + `round(x, 2)`, "no
    dependency on Decimal/NUMERIC migration" — directly portable to Jordan
@@ -150,7 +165,7 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | 1.4.0 | "Bank Transfer"/"Transfer" label unification | **PORT [unverified]** | Check Jordan's payment-method values first. |
 | 1.4.0 | 4 delete routes logging "delete" even when nothing deleted | **PORT [unverified]** | |
 | 1.4.1 | Sticky table headers | **PORT** | Pure CSS. |
-| 1.4.1 | Payment-method dropdown instead of free text (distributor/consignment payments) | **BLOCKED** on A.4 (distributor ledger doesn't exist yet in Jordan) |
+| 1.4.1 | Payment-method dropdown instead of free text (distributor/consignment payments) | ✅ **DONE** (distributor half, via A.4) | Ported directly with the dropdown already in place — the free-text version this changelog entry replaced was never built in Jordan. Consignment half still blocked on A.5. |
 | 1.4.1 | Grooming badge wrap fix, Cash Register note margin fix | **PORT (Grooming part only)** | Cash Register part blocked on A.6. |
 | 1.4.2 | Malformed date-filter crash guard (Visits/Refunds/Cash Register) | **PORT [unverified]** | Cash Register part blocked on A.6; Visits/Refunds part portable now. |
 | 1.4.2 | 6 PDF export crash-on-missing-record fixes + billing PDF number formatting | **PORT [unverified]** | Check Jordan's `pdf_export.py` for the same unguarded lookups. |
@@ -167,7 +182,7 @@ Confirmed by direct schema/code diff, not changelog description alone.
 | 1.4.4 | Inventory Status double-counting same-day sales (audit-timestamp vs audit-date bug) | **PORT — high priority** | This one is described as "silently wrong since the feature shipped" with cascading effects (false LOW STOCK, wrong Ordering Sheet, false shortfall warnings). Check Jordan's audit-confirmation logic for the same date-vs-timestamp comparison bug regardless of consignment status. |
 | 1.4.4 | Boarding pickup not updating monthly P&L cache | **PORT [unverified]** | |
 | 1.4.4 | Audit-confirm re-running inventory status per item instead of once | **PORT [unverified]** | Performance fix, portable regardless of consignment. |
-| 1.4.4 | Distributor bill payment overpay + double-submit race | **BLOCKED** on A.4 | |
+| 1.4.4 | Distributor bill payment overpay + double-submit race | ✅ **DONE** via A.4 | Ported directly with `SELECT ... FOR UPDATE` locking + the balance check already in place — verified live that an overpayment attempt is rejected. |
 | 1.4.4 | Consignment settlement double-submit race | **BLOCKED** on A.5 | |
 | 1.4.4 | Price List row linked to already-linked inventory item | **PORT [unverified]** | |
 | 1.4.4 | Phone number validation (short input, mis-normalized foreign number) | **PORT [unverified]** | Check Jordan's phone validator — this one may already differ since Jordan phone formats (Jordan +962) vs Iraq (+964) aren't interchangeable; port the *validation logic pattern*, not the literal country code. |

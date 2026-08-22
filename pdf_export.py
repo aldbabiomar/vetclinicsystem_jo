@@ -4,6 +4,7 @@ receipts, visit exports, and inpatient exports.
 Built with reportlab (pure Python, no external binary dependency).
 """
 import io
+from xml.sax.saxutils import escape as _xml_escape
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -19,6 +20,23 @@ PRIMARY = colors.black
 LINE = colors.HexColor("#BFBFBF")
 ACCENT_TINT = colors.HexColor("#F2F2F2")
 MUTED_TEXT = colors.HexColor("#595959")
+
+
+def X(v):
+    """
+    Escapes a value for safe interpolation into a reportlab Paragraph.
+    Paragraph text is parsed as a small XML/HTML-like markup language, so
+    any free-text field from the database (clinical notes, names,
+    addresses, ...) that happens to contain '<', '>', or '&' would
+    otherwise break the parser and crash the whole export. Every place
+    that interpolates a database/user-supplied value into a Paragraph
+    string should route it through this first. Static markup written by
+    this file itself (e.g. "<b>...</b>") is intentionally NOT passed
+    through this — only the variable content.
+    """
+    if v is None:
+        return ""
+    return _xml_escape(str(v))
 
 
 def _styles():
@@ -467,6 +485,55 @@ def export_boarding_pdf(db, boarding_id):
         ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
     story.append(bt2)
+
+    doc.build(story)
+    buf.seek(0)
+    return buf
+
+
+def export_distributor_ledger(db, distributor_id):
+    """One distributor — every bill, its payments, and running totals."""
+    ss = _styles()
+    dist = db.execute("SELECT * FROM distributors WHERE id=?", (distributor_id,)).fetchone()
+    ledger = logic.distributor_ledger(db, distributor_id)
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
+                             leftMargin=18 * mm, rightMargin=18 * mm)
+    story = [
+        Paragraph(f"Distributor ledger — {X(dist['name'])}", ss["H1"]),
+        Paragraph(f"{X(distributor_id)} · {X(dist['phone'] or '—')}", ss["Small"]),
+        Spacer(1, 10),
+        Paragraph(
+            f"<b>Total Billed:</b> {ledger['total_billed']:,.0f} JOD &nbsp;&nbsp; "
+            f"<b>Total Paid:</b> {ledger['total_paid']:,.0f} JOD &nbsp;&nbsp; "
+            f"<b>Outstanding:</b> {ledger['total_outstanding']:,.0f} JOD",
+            ss["Body"],
+        ),
+        Spacer(1, 14),
+    ]
+
+    for bill in ledger["bills"]:
+        header = f"<b>{X(bill['id'])}</b>"
+        if bill["bill_reference"]:
+            header += f" · {X(bill['bill_reference'])}"
+        header += f" · {X(bill['bill_date'])} · {X(bill['status'])}"
+        story.append(Paragraph(header, ss["H2"]))
+
+        data = [["Payment Date", "Amount (JOD)", "Method", "Notes"]]
+        for p in bill["payments"]:
+            data.append([p["payment_date"], f"{p['amount']:,.0f}", p["method"] or "—", p["notes"] or ""])
+        data.append(["", "", "", ""])
+        data.append(["Bill Total", f"{bill['total_amount']:,.0f}", "", ""])
+        data.append(["Paid", f"{bill['paid']:,.0f}", "", ""])
+        data.append(["Balance", f"{bill['balance']:,.0f}", "", ""])
+
+        t = _section_table(data, [35 * mm, 30 * mm, 35 * mm, 65 * mm])
+        story.append(t)
+        story.append(Spacer(1, 12))
+
+    if not ledger["bills"]:
+        story.append(Paragraph("No bills logged for this distributor.", ss["Body"]))
 
     doc.build(story)
     buf.seek(0)

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ distributor.name }} — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ distributor.name }}</h1>
+    <p class="page-sub">{{ distributor.id }} · {{ distributor.phone or "no phone on file" }}</p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('distributor_export_pdf', dist_id=distributor.id) }}">Export PDF</a>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="detail-grid">
+    <div class="detail-item"><div class="k">Total Billed</div><div class="v">{{ total_billed|money }} JOD</div></div>
+    <div class="detail-item"><div class="k">Total Paid</div><div class="v">{{ total_paid|money }} JOD</div></div>
+    <div class="detail-item"><div class="k">Outstanding</div><div class="v">{{ total_outstanding|money }} JOD</div></div>
+  </div>
+</div>
+
+<div class="page-head">
+  <div class="section-title">Order Bills</div>
+  <button class="btn" id="newBillBtn" onclick="document.getElementById('newBillForm').style.display='block'; this.style.display='none';">+ Log Bill</button>
+</div>
+
+<div class="card" id="newBillForm" style="display:none; margin-bottom:20px;">
+  <form method="post" action="{{ url_for('distributor_bill_new', dist_id=distributor.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="field"><label>Bill Date</label><input required type="date" name="bill_date" value="{{ today }}"></div>
+      <div class="field"><label>Bill / Invoice #</label><input name="bill_reference" placeholder="Distributor's own reference, optional"></div>
+      <div class="field"><label>Total Amount (JOD)</label><input required type="number" step="1" min="1" name="total_amount"></div>
+      <div class="field full"><label>Notes</label><input name="notes"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save Bill</button>
+      <button class="btn secondary" type="button" onclick="document.getElementById('newBillForm').style.display='none'; document.getElementById('newBillBtn').style.display='inline-flex';">Cancel</button>
+    </div>
+  </form>
+</div>
+
+{% for bill in bills %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="page-head">
+    <div>
+      <strong>{{ bill.id }}</strong>{% if bill.bill_reference %} · {{ bill.bill_reference }}{% endif %}
+      · {{ bill.bill_date }}
+      <span class="badge {{ 'ok' if bill.status=='Paid' else ('warn' if bill.status=='Partial' else 'danger') }}">{{ bill.status }}</span>
+    </div>
+    <div>
+      Total {{ bill.total_amount|money }} · Paid {{ bill.paid|money }} · Balance {{ bill.balance|money }} JOD
+    </div>
+  </div>
+  {% if bill.notes %}<p class="muted">{{ bill.notes }}</p>{% endif %}
+
+  <table>
+    <thead><tr><th>Date</th><th>Amount (JOD)</th><th>Method</th><th>Notes</th><th></th></tr></thead>
+    <tbody>
+      {% for p in bill.payments %}
+      <tr>
+        <td>{{ p.payment_date }}</td><td>{{ p.amount|money }}</td>
+        <td>{{ p.method or "—" }}</td><td>{{ p.notes or "—" }}</td>
+        <td>
+          <form method="post" action="{{ url_for('distributor_payment_delete', dist_id=distributor.id, payment_id=p.id) }}" style="display:inline;" onsubmit="return confirm('Delete this payment?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn small danger" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="5" class="empty-note">No payments recorded yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% if bill.balance > 0 %}
+  <form method="post" action="{{ url_for('distributor_payment_new', dist_id=distributor.id, bill_id=bill.id) }}" class="form-grid" style="margin-top:12px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field"><label>Payment Date</label><input required type="date" name="payment_date" value="{{ today }}"></div>
+    <div class="field"><label>Amount (JOD)</label><input required type="number" step="1" min="1" max="{{ bill.balance|round|int }}" name="amount"></div>
+    <div class="field"><label>Method</label>
+      <select name="method">
+        <option value="">—</option>
+        <option>Cash</option><option>Card</option><option>Transfer</option>
+      </select>
+    </div>
+    <div class="field full"><label>Notes</label><input name="notes"></div>
+    <div class="form-actions"><button class="btn secondary" type="submit">Record Payment</button></div>
+  </form>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('distributor_bill_delete', dist_id=distributor.id, bill_id=bill.id) }}" style="margin-top:8px;" onsubmit="return confirm('Delete bill {{ bill.id }}?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn small danger" type="submit">Delete Bill</button>
+  </form>
+</div>
+{% else %}
+<p class="empty-note">No bills logged yet for this distributor.</p>
+{% endfor %}
+{% endblock %}
