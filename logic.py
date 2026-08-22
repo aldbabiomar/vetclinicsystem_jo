@@ -1843,7 +1843,7 @@ def slot_conflict(db, appt_date, slot_label, resource_type, resource_id):
 # ---------------------------------------------------------------------------
 REVENUE_CATEGORIES = ["Service", "Medicine", "Retail", "Boarding"]
 
-# Baghdad's work week is Sunday-Thursday (Friday/Saturday is the weekend).
+# Jordan's work week is Sunday-Thursday (Friday/Saturday is the weekend).
 # Postgres EXTRACT(DOW) already returns 0=Sunday..6=Saturday, i.e. this order.
 WEEKDAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 WEEKDAY_IS_WEEKEND = [False, False, False, False, False, True, True]
@@ -2013,7 +2013,7 @@ def client_value(db, limit=20):
 
 def appointment_weekday_load(db, months_back=12):
     """
-    Scheduling demand by day of week (Baghdad work week: Sun-Thu, with
+    Scheduling demand by day of week (Jordan work week: Sun-Thu, with
     Fri/Sat flagged as the weekend), plus a same-day visit count as a rough
     fulfillment signal. NOTE: appointments aren't linked to visits by ID in
     this schema (no visit_id on the appointments table), so "visits that

@@ -442,7 +442,7 @@ def inject_globals():
     try:
         db = get_db()
         clinic_name = logic.get_setting(db, "clinic_name", "Jordan Referral Center")
-        clinic_location = logic.get_setting(db, "clinic_location", "Baghdad, Iraq")
+        clinic_location = logic.get_setting(db, "clinic_location", "Amman, Jordan")
         ctx = dict(clinic_name=clinic_name, clinic_location=clinic_location, today=date.today().isoformat(),
                    current_role=session.get("role"), current_username=session.get("username"))
         if session.get("user_id"):
