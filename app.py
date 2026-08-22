@@ -1566,11 +1566,8 @@ def attachment_delete(attachment_id):
 def followups_list():
     db = get_db()
     show_all = request.args.get("all") == "1"
-    all_rows = logic.followups(db, only_pending=not show_all)
     page = get_page()
-    total = len(all_rows)
-    offset = page_offset(page)
-    rows = all_rows[offset:offset + PER_PAGE]
+    rows, total = logic.followups_page(db, only_pending=not show_all, limit=PER_PAGE, offset=page_offset(page))
     return render_template("followups_list.html", followups=rows, show_all=show_all,
                             page=page, total_pages=page_count(total), total_count=total)
 
@@ -1593,11 +1590,8 @@ def followup_status_update(visit_id):
 @app.route("/wellness")
 def wellness_list():
     db = get_db()
-    all_rows = logic.wellness_reminders(db)
     page = get_page()
-    total = len(all_rows)
-    offset = page_offset(page)
-    rows = all_rows[offset:offset + PER_PAGE]
+    rows, total = logic.wellness_reminders_page(db, limit=PER_PAGE, offset=page_offset(page))
     return render_template("wellness_list.html", rows=rows,
                             page=page, total_pages=page_count(total), total_count=total)
 
@@ -1622,11 +1616,8 @@ def wellness_update(visit_id):
 def grooming_list():
     db = get_db()
     include_finished = request.args.get("all") == "1"
-    all_rows = logic.grooming_queue(db, include_finished=include_finished)
     page = get_page()
-    total = len(all_rows)
-    offset = page_offset(page)
-    rows = all_rows[offset:offset + PER_PAGE]
+    rows, total = logic.grooming_queue_page(db, include_finished=include_finished, limit=PER_PAGE, offset=page_offset(page))
     return render_template("grooming_list.html", rows=rows, include_finished=include_finished,
                             page=page, total_pages=page_count(total), total_count=total)
 
@@ -2734,11 +2725,8 @@ def ordering_sheet_page():
 @app.route("/audit-history")
 def audit_history_list():
     db = get_db()
-    all_sessions = logic.list_audit_sessions(db)
     page = get_page()
-    total = len(all_sessions)
-    offset = page_offset(page)
-    sessions = all_sessions[offset:offset + PER_PAGE]
+    sessions, total = logic.list_audit_sessions(db, limit=PER_PAGE, offset=page_offset(page))
     return render_template("audit_sessions_list.html", sessions=sessions,
                             page=page, total_pages=page_count(total), total_count=total)
 

@@ -83,13 +83,22 @@ def get_or_create_draft_session(db, audit_date, user_id):
     return new_id
 
 
-def list_audit_sessions(db):
-    rows = db.execute(
+def list_audit_sessions(db, limit=None, offset=0):
+    """Paginated at the database level when limit is given (its only
+    caller, audit_history_list(), always paginates — no unpaginated
+    caller needs every row the way followups()/wellness_reminders()/
+    grooming_queue() do for the dashboard). Returns (rows, total_count)
+    when limit is given, else the plain row list."""
+    q = (
         "SELECT s.*, u.full_name as performed_by_name, "
         "(SELECT COUNT(*) FROM audit_session_lines l WHERE l.session_id=s.id AND l.stock_counted IS NOT NULL) as lines_filled "
         "FROM audit_sessions s LEFT JOIN users u ON u.id=s.performed_by ORDER BY s.audit_date DESC, s.id DESC"
-    ).fetchall()
-    return rows
+    )
+    if limit is None:
+        return db.execute(q).fetchall()
+    total = db.execute("SELECT COUNT(*) c FROM audit_sessions").fetchone()["c"]
+    rows = db.execute(q + " LIMIT ? OFFSET ?", [limit, offset]).fetchall()
+    return rows, total
 
 
 def confirmed_audit_rows_by_item(db, item_id=None):
@@ -513,6 +522,25 @@ def boarding_sessions_for_patient(db, patient_id):
 # ---------------------------------------------------------------------------
 # Follow-ups (method, not type)
 # ---------------------------------------------------------------------------
+def _annotate_followup(r, today):
+    """Computes the two per-row display fields (reminder_call_date,
+    missed) shared by followups() and followups_page() — factored out so
+    both the full (unpaginated, used by the dashboard's missed-items
+    summary) and paginated (used by the Follow-ups list page) code paths
+    compute them identically, from the same function, rather than two
+    copies that could quietly drift apart."""
+    reminder_call_date = None
+    if r["followup_method"] == "Physical Visit" and r["followup_date"]:
+        reminder_call_date = fmt_date(parse_date(r["followup_date"]) - timedelta(days=1))
+    r["reminder_call_date"] = reminder_call_date
+    r["missed"] = False
+    if r["followup_status"] == "Pending" and r["followup_date"]:
+        fdate = parse_date(r["followup_date"])
+        if fdate and (today - fdate).days >= MISSED_WINDOW_DAYS:
+            r["missed"] = True
+    return r
+
+
 def followups(db, only_pending=False):
     q = """
     SELECT v.id as visit_id, v.followup_method, v.followup_reason, v.followup_date,
@@ -521,29 +549,66 @@ def followups(db, only_pending=False):
     FROM visits v JOIN patients p ON p.id = v.patient_id JOIN owners o ON o.id = p.owner_id
     WHERE v.followup_needed = 'Y'
     """
+    if only_pending:
+        q += " AND v.followup_status = 'Pending'"
     rows = [dict(r) for r in db.execute(q).fetchall()]
     today = date.today()
-    out = []
-    for r in rows:
-        if only_pending and r["followup_status"] != "Pending":
-            continue
-        reminder_call_date = None
-        if r["followup_method"] == "Physical Visit" and r["followup_date"]:
-            reminder_call_date = fmt_date(parse_date(r["followup_date"]) - timedelta(days=1))
-        r["reminder_call_date"] = reminder_call_date
-        r["missed"] = False
-        if r["followup_status"] == "Pending" and r["followup_date"]:
-            fdate = parse_date(r["followup_date"])
-            if fdate and (today - fdate).days >= MISSED_WINDOW_DAYS:
-                r["missed"] = True
-        out.append(r)
+    out = [_annotate_followup(r, today) for r in rows]
     out.sort(key=lambda r: (r["followup_date"] or date.max))
     return out
+
+
+def followups_page(db, only_pending=False, limit=20, offset=0):
+    """
+    Same rows and same per-row fields as followups(), but paginated at
+    the database level (ORDER BY + LIMIT/OFFSET) instead of fetching
+    every matching visit and slicing the list in Python — used by the
+    Follow-ups list page. Returns (rows, total_count).
+
+    Deliberately a separate function rather than adding limit/offset to
+    followups() itself: followups() is also called unpaginated by the
+    dashboard's missed-items summary (logic.missed_items()), which needs
+    every matching row to scan for "missed", not just one page of them.
+    "missed" is a per-row display flag here, not something rows are
+    filtered or ordered by, so paginating first and annotating only the
+    resulting page is exactly equivalent to the old fetch-everything-
+    then-slice approach for what this page actually shows.
+    """
+    where = "v.followup_needed = 'Y'"
+    if only_pending:
+        where += " AND v.followup_status = 'Pending'"
+    total = db.execute(f"SELECT COUNT(*) c FROM visits v WHERE {where}").fetchone()["c"]
+    q = f"""
+    SELECT v.id as visit_id, v.followup_method, v.followup_reason, v.followup_date,
+           v.followup_status, v.doctor, v.created_by, v.date as visit_date,
+           p.animal_name, o.id as owner_id, o.name as owner_name, o.phone
+    FROM visits v JOIN patients p ON p.id = v.patient_id JOIN owners o ON o.id = p.owner_id
+    WHERE {where}
+    ORDER BY COALESCE(v.followup_date, '0001-01-01') DESC, v.id DESC
+    LIMIT ? OFFSET ?
+    """
+    rows = [dict(r) for r in db.execute(q, [limit, offset]).fetchall()]
+    today = date.today()
+    rows = [_annotate_followup(r, today) for r in rows]
+    return rows, total
 
 
 # ---------------------------------------------------------------------------
 # Wellness reminders
 # ---------------------------------------------------------------------------
+def _annotate_wellness(r, today):
+    """Shared by wellness_reminders() and wellness_reminders_page() — see
+    _annotate_followup() above for why this is factored out."""
+    next_dose = parse_date(r["wellness_next_dose_date"])
+    remind_from = next_dose - timedelta(days=WELLNESS_LEAD_DAYS) if next_dose else None
+    due = bool(remind_from and today >= remind_from and r["wellness_contacted"] != "Y")
+    missed = bool(next_dose and (today - next_dose).days >= MISSED_WINDOW_DAYS and r["wellness_contacted"] != "Y")
+    r["remind_from_date"] = fmt_date(remind_from)
+    r["due"] = due
+    r["missed"] = missed
+    return r
+
+
 def wellness_reminders(db, only_due=False):
     q = """
     SELECT v.id as visit_id, v.wellness_type, v.wellness_next_dose_date, v.wellness_contacted,
@@ -556,18 +621,48 @@ def wellness_reminders(db, only_due=False):
     today = date.today()
     out = []
     for r in rows:
-        next_dose = parse_date(r["wellness_next_dose_date"])
-        remind_from = next_dose - timedelta(days=WELLNESS_LEAD_DAYS) if next_dose else None
-        due = bool(remind_from and today >= remind_from and r["wellness_contacted"] != "Y")
-        missed = bool(next_dose and (today - next_dose).days >= MISSED_WINDOW_DAYS and r["wellness_contacted"] != "Y")
-        if only_due and not due:
+        r = _annotate_wellness(r, today)
+        # only_due depends on "due", which is computed from today's date
+        # at request time — not a stored column — so unlike followups()'s
+        # only_pending this can't move into the WHERE clause; kept as a
+        # post-fetch filter exactly as before.
+        if only_due and not r["due"]:
             continue
-        r["remind_from_date"] = fmt_date(remind_from)
-        r["due"] = due
-        r["missed"] = missed
         out.append(r)
     out.sort(key=lambda r: (r["wellness_next_dose_date"] or date.max))
     return out
+
+
+def wellness_reminders_page(db, limit=20, offset=0):
+    """
+    Same rows and fields as wellness_reminders(only_due=False) — the only
+    mode the Wellness list page actually uses — paginated at the database
+    level. Returns (rows, total_count).
+
+    Deliberately doesn't support only_due=True: "due" depends on today's
+    date at request time, not a stored column, so filtering by it can't
+    move into SQL the way only_pending could for followups — and the one
+    only_due=True caller (logic.dashboard_counts()) wants every matching
+    row for its count, not one page, so it keeps calling
+    wellness_reminders() directly, unpaginated, exactly as before.
+    """
+    total = db.execute(
+        "SELECT COUNT(*) c FROM visits v "
+        "WHERE v.wellness_needed = 'Y' AND v.wellness_next_dose_date IS NOT NULL"
+    ).fetchone()["c"]
+    q = """
+    SELECT v.id as visit_id, v.wellness_type, v.wellness_next_dose_date, v.wellness_contacted,
+           v.wellness_contact_method, v.doctor, v.created_by,
+           p.animal_name, o.id as owner_id, o.name as owner_name, o.phone
+    FROM visits v JOIN patients p ON p.id = v.patient_id JOIN owners o ON o.id = p.owner_id
+    WHERE v.wellness_needed = 'Y' AND v.wellness_next_dose_date IS NOT NULL
+    ORDER BY COALESCE(v.wellness_next_dose_date, '0001-01-01') DESC, v.id DESC
+    LIMIT ? OFFSET ?
+    """
+    rows = [dict(r) for r in db.execute(q, [limit, offset]).fetchall()]
+    today = date.today()
+    rows = [_annotate_wellness(r, today) for r in rows]
+    return rows, total
 
 
 # ---------------------------------------------------------------------------
@@ -589,6 +684,32 @@ def grooming_queue(db, include_finished=False):
         q += " AND (v.grooming_status IS NULL OR v.grooming_status != 'Finished')"
     q += " ORDER BY v.date DESC"
     return [dict(r) for r in db.execute(q).fetchall()]
+
+
+def grooming_queue_page(db, include_finished=False, limit=20, offset=0):
+    """
+    Same rows as grooming_queue(), paginated at the database level.
+    Returns (rows, total_count). A separate function rather than adding
+    limit/offset to grooming_queue() itself, matching the same reasoning
+    as followups_page()/wellness_reminders_page() above: grooming_queue()
+    is also called unpaginated by logic.dashboard_counts() for its queue
+    count, which needs every matching row.
+    """
+    where = "v.grooming_needed='Y'"
+    if not include_finished:
+        where += " AND (v.grooming_status IS NULL OR v.grooming_status != 'Finished')"
+    total = db.execute(f"SELECT COUNT(*) c FROM visits v WHERE {where}").fetchone()["c"]
+    q = f"""
+    SELECT v.id as visit_id, v.date, v.grooming_services, v.grooming_notes, v.grooming_admitted_items,
+           v.grooming_status, v.grooming_contacted, p.id as patient_id, p.animal_name,
+           o.name as owner_name, o.phone
+    FROM visits v JOIN patients p ON p.id = v.patient_id JOIN owners o ON o.id = p.owner_id
+    WHERE {where}
+    ORDER BY v.date DESC, v.id DESC
+    LIMIT ? OFFSET ?
+    """
+    rows = [dict(r) for r in db.execute(q, [limit, offset]).fetchall()]
+    return rows, total
 
 
 # ---------------------------------------------------------------------------
