@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Audit History — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Audit History</h1><p class="page-sub">One session per shelf-walk. Only Confirmed audits count toward Inventory Status and the Ordering Sheet. {{ total_count }} shown.</p></div>
+  <form method="post" action="{{ url_for('audit_session_start') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">+ Start / Resume Today's Audit</button></form>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Date</th><th>Performed By</th><th>Status</th><th class="num-col">Items Filled</th><th></th></tr></thead>
+  <tbody>
+    {% for s in sessions %}
+    <tr>
+      <td>{{ s.audit_date }}</td>
+      <td>{{ s.performed_by_name or "—" }}</td>
+      <td><span class="badge {{ 'ok' if s.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if s.status=='Confirmed' else 'Saved' }}</span></td>
+      <td class="num-col">{{ s.lines_filled }}</td>
+      <td><a class="btn small secondary" href="{{ url_for('audit_session_view', session_id=s.id) }}">View</a></td>
+    </tr>
+    {% else %}<tr><td colspan="5" class="empty-note">No audits logged yet — start one above.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

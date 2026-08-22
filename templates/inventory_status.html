@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Inventory Status — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Inventory Status</h1>
+    <p class="page-sub">Auto-calculated from audit history. Read-only — log a new count in Audit history.</p>
+  </div>
+  <form method="post" action="{{ url_for('audit_session_start') }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">+ Start / Resume Today's Audit</button></form>
+</div>
+
+<div class="filter-chips">
+  <a class="chip {{ 'active' if not filter_ }}" href="{{ url_for('inventory_status_page') }}">All</a>
+  <a class="chip {{ 'active' if filter_=='low_stock' }}" href="{{ url_for('inventory_status_page', filter='low_stock') }}">Low Stock</a>
+  <a class="chip {{ 'active' if filter_=='overdue' }}" href="{{ url_for('inventory_status_page', filter='overdue') }}">Audit Overdue</a>
+  <a class="chip {{ 'active' if filter_=='expiring' }}" href="{{ url_for('inventory_status_page', filter='expiring') }}">Expiring / Expired</a>
+</div>
+
+<form class="search-bar" method="get">
+  {% if filter_ %}<input type="hidden" name="filter" value="{{ filter_ }}">{% endif %}
+  <input type="text" name="q" value="{{ search }}" placeholder="Search by Item Name…">
+  <button class="btn secondary" type="submit">Search</button>
+  {% if search %}<a class="btn secondary" href="{{ url_for('inventory_status_page', filter=filter_) }}">Clear</a>{% endif %}
+</form>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Item</th><th>Unit</th><th class="num-col">Stock</th><th class="num-col">Threshold</th>
+    <th>Latest Audit</th><th>Nearest Expiry</th><th>Stock Status</th><th>Expiry Status</th><th>Audit Status</th>
+  </tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td><strong>{{ r.name }}</strong>{% if r.critical_item %} <span class="badge danger" style="margin-left:4px;">critical</span>{% endif %}</td>
+      <td class="muted">{{ r.unit or "—" }}</td>
+      <td class="num-col">{{ r.current_stock if r.current_stock is not none else "—" }}</td>
+      <td class="num-col">{{ r.reorder_threshold if r.reorder_threshold is not none else "—" }}</td>
+      <td>{{ r.latest_audit_date or "—" }}</td>
+      <td>{{ r.nearest_expiry_date or "—" }}</td>
+      <td><span class="badge {{ 'danger' if r.stock_status=='LOW STOCK' else ('muted' if r.stock_status=='No audits yet' else 'ok') }}">{{ r.stock_status }}</span></td>
+      <td>{% if r.expiry_status %}<span class="badge {{ 'danger' if r.expiry_status=='EXPIRED' else ('warn' if r.expiry_status=='EXPIRING SOON' else 'ok') }}">{{ r.expiry_status }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td><span class="badge {{ 'danger' if r.audit_status in ['OVERDUE','Never audited'] else 'ok' }}">{{ r.audit_status }}</span></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" class="empty-note">No items match this filter.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

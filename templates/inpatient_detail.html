@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}{{ case.animal_name }} — Inpatient — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ case.animal_name }} <span class="muted" style="font-weight:400;font-size:16px;">— {{ case.owner_name }}</span></h1>
+    <p class="page-sub">Admitted {{ case.admission_date }} · <span class="badge {{ 'ok' if case.dismissed else 'warn' }}">{{ 'Discharged' if case.dismissed else 'Admitted' }}</span></p>
+  </div>
+  <a class="btn secondary" href="{{ url_for('inpatient_export_pdf', case_id=case.id) }}">Export Inpatient (PDF)</a>
+</div>
+
+<div class="tabs">
+  <a href="#" class="tab-link active" data-tab="info" onclick="showTab('info');return false;">Info</a>
+  <a href="#" class="tab-link" data-tab="updates" onclick="showTab('updates');return false;">Daily Updates</a>
+  <a href="#" class="tab-link" data-tab="contact" onclick="showTab('contact');return false;">Contact Log</a>
+  <a href="#" class="tab-link" data-tab="billing" onclick="showTab('billing');return false;">Billing</a>
+  <a href="#" class="tab-link" data-tab="files" onclick="showTab('files');return false;">Attachments</a>
+</div>
+
+<div class="tab-pane" id="tab-info">
+  <div class="card">
+    <form method="post" action="{{ url_for('inpatient_edit', case_id=case.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid">
+        <div class="field"><label>Species / Sex / Age</label><div class="v" style="padding-top:8px;">{{ case.species }}{% if case.sex %} · {{ case.sex }}{% endif %}{% if case.age_note %} · {{ case.age_note }}{% endif %}</div></div>
+        <div class="field"><label>Owner</label><div class="v" style="padding-top:8px;">{{ case.owner_name }} · {{ case.owner_phone or "no phone" }}</div></div>
+        <div class="field"><label>Weight (KG)</label><input type="number" step="0.1" min="0" name="weight_kg" value="{{ case.weight_kg if case.weight_kg is not none else '' }}"></div>
+        <div class="field"><label>BCS (1–9)</label><input type="number" step="1" min="1" max="9" name="bcs" value="{{ case.bcs if case.bcs is not none else '' }}"></div>
+        <div class="field full"><label>Presenting Complaint</label><input name="complaint" value="{{ case.complaint or '' }}"></div>
+        <div class="field full"><label>Physical Exam Findings &amp; Diagnostics</label><textarea name="exam_findings">{{ case.exam_findings or '' }}</textarea></div>
+        <div class="field full"><label>Admitted Items</label><input name="admitted_items" value="{{ case.admitted_items or '' }}"></div>
+        <div class="field"><label>Attending Veterinarian</label>
+          <select name="attending_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}" {{ 'selected' if case.attending_vet_id==v.id }}>{{ v.full_name }}</option>{% endfor %}</select>
+        </div>
+        <div class="field"><label>Supervising Veterinarian</label>
+          <select name="supervising_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}" {{ 'selected' if case.supervising_vet_id==v.id }}>{{ v.full_name }}</option>{% endfor %}</select>
+        </div>
+        <div class="field checkbox-row" style="margin-top:22px;">
+          <input type="checkbox" name="dismissed" id="dismissedBox" {{ 'checked' if case.dismissed }} onchange="toggleDismissal()">
+          <label for="dismissedBox" style="text-transform:none; font-weight:500;">Dismissed</label>
+        </div>
+        <div class="field dismissal-only"><label>Dismissal Date</label><input type="date" name="dismissal_date" id="dismissalDate" value="{{ case.dismissal_date or '' }}"></div>
+      </div>
+      <div class="form-actions"><button class="btn" type="submit">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="tab-pane" id="tab-updates" style="display:none;">
+  <div class="card" style="margin-bottom:16px;">
+    <form method="post" action="{{ url_for('inpatient_update_add', case_id=case.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field full"><label>Add a Daily Update — Condition of the Patient</label><textarea name="note" required></textarea></div>
+      <div class="form-actions"><button class="btn small" type="submit">Log Update</button></div>
+    </form>
+  </div>
+  <div class="section-title">Last 3 Days</div>
+  {% for u in recent_updates %}
+  <div class="card" style="margin-bottom:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+      <div style="flex:1;">
+        <div class="small muted">{{ u.timestamp[:16] }} · {{ u.full_name or "—" }}</div>
+        <div class="update-note-text">{{ u.note }}</div>
+      </div>
+      <button class="btn small secondary" type="button" onclick="const c=this.closest('.card'); c.querySelector('.update-note-text').style.display='none'; c.querySelector('.update-edit-form').style.display='block'; this.style.display='none';">Edit</button>
+    </div>
+    <form method="post" action="{{ url_for('inpatient_update_edit', case_id=case.id, update_id=u.id) }}" class="update-edit-form" style="display:none; margin-top:10px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <textarea name="note" required>{{ u.note }}</textarea>
+      <div class="form-actions"><button class="btn small" type="submit">Save</button></div>
+    </form>
+  </div>
+  {% else %}<div class="empty-note">No updates logged yet.</div>{% endfor %}
+  {% if updates|length > 3 %}
+  <div style="margin-top:14px;">
+    <button class="btn secondary" type="button" id="fullLogBtn"
+            onclick="document.getElementById('fullDailyLog').style.display='block'; this.style.display='none';">
+      View Full Daily Log History ({{ updates|length }} entries)
+    </button>
+    <div id="fullDailyLog" style="display:none; margin-top:14px;">
+      <div class="section-title">Earlier Entries</div>
+      {% for u in updates[3:] %}
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+          <div style="flex:1;">
+            <div class="small muted">{{ u.timestamp[:16] }} · {{ u.full_name or "—" }}</div>
+            <div class="update-note-text">{{ u.note }}</div>
+          </div>
+          <button class="btn small secondary" type="button" onclick="const c=this.closest('.card'); c.querySelector('.update-note-text').style.display='none'; c.querySelector('.update-edit-form').style.display='block'; this.style.display='none';">Edit</button>
+        </div>
+        <form method="post" action="{{ url_for('inpatient_update_edit', case_id=case.id, update_id=u.id) }}" class="update-edit-form" style="display:none; margin-top:10px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <textarea name="note" required>{{ u.note }}</textarea>
+          <div class="form-actions"><button class="btn small" type="submit">Save</button></div>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="tab-pane" id="tab-contact" style="display:none;">
+  <div class="card" style="margin-bottom:16px;">
+    <form method="post" action="{{ url_for('inpatient_contact_add', case_id=case.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid">
+        <div class="field"><label>Did the Owner Pick Up?</label>
+          <select name="picked_up"><option value="yes">Yes</option><option value="no">No</option></select>
+        </div>
+        <div class="field full"><label>Notes</label><input name="notes"></div>
+      </div>
+      <div class="form-actions"><button class="btn small" type="submit">Log Contact Attempt</button></div>
+    </form>
+  </div>
+  <div class="section-title">Last 3 Days</div>
+  {% for c in recent_contacts %}
+  <div class="list-line"><div><span class="badge {{ 'ok' if c.picked_up else 'danger' }}">{{ 'Picked Up' if c.picked_up else 'No Answer' }}</span> <span class="meta">{{ c.timestamp[:16] }} · {{ c.full_name or "—" }}</span></div><div class="meta">{{ c.notes or '' }}</div></div>
+  {% else %}<div class="empty-note">No contact attempts logged yet.</div>{% endfor %}
+  {% if contacts|length > 3 %}
+  <details style="margin-top:10px;"><summary class="small muted" style="cursor:pointer;">View all {{ contacts|length }} contact attempts</summary>
+    {% for c in contacts %}<div class="list-line"><div><span class="badge {{ 'ok' if c.picked_up else 'danger' }}">{{ 'Picked Up' if c.picked_up else 'No Answer' }}</span> <span class="meta">{{ c.timestamp[:16] }} · {{ c.full_name or "—" }}</span></div><div class="meta">{{ c.notes or '' }}</div></div>{% endfor %}
+  </details>
+  {% endif %}
+</div>
+
+<div class="tab-pane" id="tab-billing" style="display:none;">
+  <div class="card" style="margin-bottom:16px;">
+    <form method="post" action="{{ url_for('inpatient_billing_add', case_id=case.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <p class="small muted">Check any procedure used and enter how many times it was given.</p>
+      <input type="text" id="procSearch" placeholder="Search by code or service name…"
+             oninput="filterProcList()" style="width:100%; margin-bottom:10px;">
+      <div id="procList" style="display:flex; flex-direction:column; gap:8px; margin:10px 0;">
+        {% for p in proc_items %}
+        <label class="checkbox-row small" data-search="{{ (p.id ~ ' ' ~ p.name)|lower }}" style="text-transform:none; font-weight:500; gap:10px;">
+          <input type="checkbox" name="price_id" value="{{ p.id }}" onchange="document.getElementById('qty_{{ p.id }}').style.display = this.checked ? 'inline-block' : 'none';">
+          <span class="muted small">{{ p.id }}</span> {{ p.name }} <span class="muted">({{ p.sale_price|money }} JOD)</span>
+          <input type="number" id="qty_{{ p.id }}" name="qty_{{ p.id }}" min="1" value="1" style="display:none; width:60px;">
+        </label>
+        {% endfor %}
+        <p id="procEmpty" class="small muted" style="display:none;">No matching items.</p>
+      </div>
+      <div class="form-actions"><button class="btn small" type="submit">Add to Bill</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Bill so Far</div>
+    {% for l in billing.lines %}
+    <div class="pos-cart-line">
+      <div>{{ l.name }} × {{ l.quantity }}</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        {{ l.line_total|money }} JOD
+        <form method="post" action="{{ url_for('inpatient_billing_delete', case_id=case.id, line_id=l.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn small danger" type="submit">×</button></form>
+      </div>
+    </div>
+    {% else %}<div class="empty-note">No procedures billed yet.</div>{% endfor %}
+
+    <div class="detail-item" style="margin-top:12px;"><div class="k">Subtotal</div><div class="v">{{ billing.subtotal|money }} JOD</div></div>
+    <form method="post" action="{{ url_for('inpatient_discount_save', case_id=case.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field" style="flex:1;"><label>Discount % (Max {{ discount_cap }}%)</label><input type="number" name="discount_percent" max="{{ discount_cap }}" min="0" value="{{ billing.discount_percent }}"></div>
+      <button class="btn small secondary" type="submit">Apply</button>
+    </form>
+    <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ billing.total|money }} JOD</div></div>
+    <span class="badge {{ 'ok' if billing.status=='Fully Paid' else ('danger' if billing.status=='Unpaid' else 'muted') }}">{{ billing.status }}</span>
+
+    <form method="post" action="{{ url_for('inpatient_payment_add', case_id=case.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="1" name="amount" required></div>
+      <div class="field"><label>Method</label><select name="method"><option>Cash</option><option>Card</option><option>Transfer</option></select></div>
+      <button class="btn small secondary" type="submit">Add</button>
+    </form>
+    {% for p in payments %}<div class="list-line small"><div>{{ p.date }} — {{ p.method }}</div><div>{{ p.amount|money }} JOD</div></div>{% endfor %}
+  </div>
+</div>
+
+<div class="tab-pane" id="tab-files" style="display:none;">
+  <div class="card">
+    {% for file in files %}
+    <div class="list-line"><a href="{{ url_for('serve_attachment', relpath=file.relative_path) }}" target="_blank">{{ file.original_name }}</a><span class="meta">{{ file.uploaded_at[:10] }}</span></div>
+    {% else %}<div class="empty-note">No files uploaded yet.</div>{% endfor %}
+    <form method="post" action="{{ url_for('inpatient_attachment_upload', case_id=case.id) }}" enctype="multipart/form-data" style="margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="file" name="file" accept=".pdf,.jpg,.jpeg" required>
+      <button class="btn small" type="submit">Upload</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+  document.getElementById('tab-' + name).style.display = 'block';
+  document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+  document.querySelector(`.tab-link[data-tab="${name}"]`).classList.add('active');
+}
+function toggleDismissal() {
+  // Toggling visibility alone isn't enough: a `required` input inside a
+  // display:none container is skipped by HTML5 validation in most
+  // browsers, so the constraint has to be toggled along with it — and a
+  // hidden field's stale value should be cleared, not silently resubmitted.
+  const shown = document.getElementById('dismissedBox').checked;
+  document.querySelector('.dismissal-only').style.display = shown ? 'flex' : 'none';
+  const dismissalDate = document.getElementById('dismissalDate');
+  dismissalDate.required = shown;
+  if (!shown) dismissalDate.value = '';
+}
+toggleDismissal();
+
+function filterProcList() {
+  const q = document.getElementById('procSearch').value.trim().toLowerCase();
+  const rows = document.querySelectorAll('#procList label[data-search]');
+  let visible = 0;
+  rows.forEach(row => {
+    const match = row.dataset.search.includes(q);
+    row.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('procEmpty').style.display = visible ? 'none' : '';
+}
+</script>
+{% endblock %}

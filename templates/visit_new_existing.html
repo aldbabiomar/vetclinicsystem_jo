@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Log Visit — Existing Patient — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Log Visit — Existing Patient</h1></div></div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="field">
+    <label>Search Patient (Name, Patient ID, Owner Name, or Owner Phone)</label>
+    <input type="text" id="patientSearch" autocomplete="off" placeholder="Start Typing…">
+  </div>
+  <div id="searchResults" style="margin-top:10px;"></div>
+</div>
+
+<div class="card" id="visitFormCard" style="display:none;">
+  <p class="small muted" style="margin-bottom:14px;">Selected patient: <strong id="selectedPatientLabel"></strong></p>
+  <form method="post" id="visitForm" data-track-unsaved>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="patient_id" id="patientIdField">
+    <div class="field full"><label>Presenting Complaint / Reason for Visit</label><input name="complaint"></div>
+    {% include "_visit_fields.html" %}
+    <div class="form-actions">
+      <button class="btn" type="submit">Log Visit</button>
+      <a class="btn secondary" href="{{ url_for('visits_list') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+const searchInput = document.getElementById('patientSearch');
+const resultsDiv = document.getElementById('searchResults');
+let debounceTimer;
+searchInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  const q = searchInput.value.trim();
+  if (q.length === 0) { resultsDiv.innerHTML = ''; return; }
+  if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">Type at least 2 characters.</div>'; return; }
+  debounceTimer = setTimeout(() => {
+    fetch(`/api/patients/search?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
+        window.__searchResults = data;
+        resultsDiv.innerHTML = data.map((p, idx) =>
+          `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" onclick="selectPatient(window.__searchResults[this.dataset.idx])">
+             <div><div class="who">${escapeHtml(p.animal_name)} <span class="meta">(${escapeHtml(p.species || '')})</span></div>
+             <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || 'no phone')} · ${escapeHtml(p.id)}</div></div>
+           </div>`
+        ).join('');
+      })
+      .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">Could not search patients; check server connection.</div>'; });
+  }, 200);
+});
+function selectPatient(p) {
+  document.getElementById('patientIdField').value = p.id;
+  document.getElementById('selectedPatientLabel').textContent = `${p.animal_name} — ${p.owner_name} (${p.id})`;
+  document.getElementById('visitFormCard').style.display = 'block';
+  resultsDiv.innerHTML = '';
+  searchInput.value = '';
+}
+</script>
+<script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
+{% endblock %}

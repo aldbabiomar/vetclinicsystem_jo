@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Inventory Catalog — {{ clinic_name }}{% endblock %}
+{% block main_class %}main-wide{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Inventory Catalog</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items shown.{% endif %} Audit history tracks actual counts.</p></div>
+  <div style="display:flex; gap:10px;">
+    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory_catalog_bulk_edit') }}">Save Changes</button>
+    <button class="btn secondary" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
+  </div>
+</div>
+
+<div class="filter-chips">
+  <a class="chip {{ 'active' if not show_inactive }}" href="{{ url_for('inventory_catalog') }}">Active</a>
+  <a class="chip {{ 'active' if show_inactive }}" href="{{ url_for('inventory_catalog', inactive=1) }}">Include Inactive</a>
+</div>
+
+{% if flagged_inventory %}
+<p class="small muted" style="margin:-4px 0 12px;"><span style="display:inline-block; width:10px; height:10px; background:var(--warn-tint); border-left:3px solid var(--warn); vertical-align:middle;"></span>
+  Highlighted rows: this Retail item has no matching entry in the Price List — check Price List's Linked Inventory Item.</p>
+{% endif %}
+
+<form class="search-bar" method="get">
+  {% if show_inactive %}<input type="hidden" name="inactive" value="1">{% endif %}
+  <input type="text" name="q" value="{{ search }}" placeholder="Search by Product Name…">
+  <button class="btn secondary" type="submit">Search</button>
+  {% if search %}<a class="btn secondary" href="{{ url_for('inventory_catalog', inactive=1 if show_inactive else None) }}">Clear</a>{% endif %}
+</form>
+
+<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+  <form method="post" action="{{ url_for('inventory_catalog_new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="field"><label>Item Name</label><input required name="name"></div>
+      <div class="field"><label>Category</label><select name="category">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Unit</label><input name="unit" placeholder="Bottle, Box, Piece…"></div>
+      <div class="field"><label>Cost Price (IQD)</label><input type="number" step="1" name="cost_price"></div>
+      <div class="field"><label>Preferred Distributor</label>
+        <select name="distributor_id"><option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select>
+      </div>
+      <div class="field checkbox-row" style="margin-top:22px;"><input type="checkbox" name="track_expiry" checked id="te"><label for="te" style="text-transform:none; font-weight:500;">Track Expiry Date</label></div>
+      <div class="field full"><label>Notes</label><input name="notes"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Add Item</button>
+      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<div class="table-wrap">
+<table class="inv-table" style="table-layout:fixed; width:100%;">
+<colgroup>
+  <col style="width:5%;">
+  <col style="width:24%;">
+  <col style="width:11%;">
+  <col style="width:7%;">
+  <col style="width:13%;">
+  <col style="width:6%;">
+  <col style="width:9%;">
+  <col style="width:11%;">
+  <col style="width:14%;">
+</colgroup>
+  <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Unit</th><th>Barcode</th><th style="white-space:normal;">Track Expiry</th><th class="num-col">Cost (IQD)</th><th>Distributor</th><th></th></tr></thead>
+  <tbody>
+    {% for i in items %}
+    <form id="edit-{{ i.id }}" method="post" action="{{ url_for('inventory_catalog_edit', item_id=i.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
+    <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_inventory }}" {% if i.id in flagged_inventory %}title="Retail data inconsistency: no active Retail Price List item is linked to this inventory item."{% endif %}>
+      <td class="muted">{{ i.id }}</td>
+      <td><input form="edit-{{ i.id }}" name="name" value="{{ i.name }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td><select form="edit-{{ i.id }}" name="category" style="border:none; background:transparent;">{% for c in categories %}<option {{ 'selected' if i.category==c }}>{{ c }}</option>{% endfor %}</select></td>
+      <td><input form="edit-{{ i.id }}" name="unit" value="{{ i.unit or '' }}" style="border:none; background:transparent; padding:2px; width:70px;"></td>
+      <td class="small muted">
+        {% if i.barcode %}{{ i.barcode }} <a href="{{ url_for('inventory_barcode_label', item_id=i.id) }}">print</a>
+        {% else %}<form method="post" action="{{ url_for('inventory_catalog_create_barcode', item_id=i.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn small secondary" type="submit">Create Barcode</button></form>{% endif %}
+      </td>
+      <td><input form="edit-{{ i.id }}" type="checkbox" name="track_expiry" {{ 'checked' if i.track_expiry }}></td>
+      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="1" name="cost_price" value="{{ i.cost_price if i.cost_price is not none else '' }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
+      <td class="dist-cell">
+        <span class="dist-label" id="distLabel-{{ i.id }}" onclick="toggleDistEdit('{{ i.id }}')" title="Click to change distributor">{{ i.distributor_name or "—" }}</span>
+        <select form="edit-{{ i.id }}" name="distributor_id" id="distSelect-{{ i.id }}" class="dist-select"
+          onchange="document.getElementById('distLabel-{{ i.id }}').textContent = this.options[this.selectedIndex].text; this.style.display='none'; document.getElementById('distLabel-{{ i.id }}').style.display='inline';"
+          onblur="this.style.display='none'; document.getElementById('distLabel-{{ i.id }}').style.display='inline';">
+          <option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if i.distributor_id==d.id }}>{{ d.name }}</option>{% endfor %}
+        </select>
+      </td>
+      <td style="white-space:nowrap;">
+        <form method="post" action="{{ url_for('inventory_catalog_toggle', item_id=i.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn small {{ 'danger' if i.active else 'secondary' }}" type="submit">{{ 'Deactivate' if i.active else 'Reactivate' }}</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="9" class="empty-note">No inventory items yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+<script>
+function toggleDistEdit(id) {
+  document.getElementById('distLabel-' + id).style.display = 'none';
+  var sel = document.getElementById('distSelect-' + id);
+  sel.style.display = 'inline-block';
+  sel.focus();
+}
+</script>
+<script src="{{ url_for('static', filename='unsaved-changes.js') }}"></script>
+{% endblock %}

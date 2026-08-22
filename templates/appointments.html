@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Appointments — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Appointments</h1><p class="page-sub">Slot length and hours are set in Settings.</p></div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn secondary" href="{{ url_for('appointments_page', week=today_iso, day=today_iso) }}">This Week</a>
+  </div>
+</div>
+
+<div class="tabs">
+  {% for d in days %}
+  <a class="{{ 'active' if d.isoformat()==selected_day }}" href="{{ url_for('appointments_page', week=week_anchor, day=d.isoformat()) }}">
+    {{ d.strftime('%a %d %b') }}
+  </a>
+  {% endfor %}
+</div>
+
+<div style="display:flex; gap:10px; margin-bottom:14px;">
+  <a class="btn small secondary" href="{{ url_for('appointments_page', week=prev_week, day=prev_week) }}">← Prior Week</a>
+  <a class="btn small secondary" href="{{ url_for('appointments_page', week=next_week, day=next_week) }}">Next Week →</a>
+</div>
+
+<div class="appt-grid" style="grid-template-columns: 70px repeat({{ columns|length }}, minmax(140px, 1fr));">
+  <div class="appt-head-cell">Slot</div>
+  {% for col in columns %}
+  <div class="appt-head-cell">
+    {{ col.label }}
+  </div>
+  {% endfor %}
+
+  {% for row in grid %}
+  <div class="appt-slot-label">{{ row.slot.start }}<br><span style="font-weight:400;">{{ row.slot.end }}</span></div>
+  {% for cell in row.cells %}
+  <div class="appt-cell">
+    {% for a in cell.appointments %}
+    <div class="appt-chip {{ 'grooming' if a.resource_type=='grooming' }}" title="{{ a.reason or '' }}" data-appt-id="{{ a.id }}" data-pet-name="{{ a.pet_name }}" onclick="cancelAppt(this)">
+      {{ a.pet_name }} — {{ a.owner_name }}
+    </div>
+    {% endfor %}
+    <button class="appt-add-btn" data-date="{{ selected_day }}" data-slot="{{ row.slot.label }}" data-resource-type="{{ cell.column.resource_type }}" data-resource-id="{{ cell.column.resource_id or '' }}" data-label="{{ cell.column.label }}" onclick="openAdd(this)">+</button>
+  </div>
+  {% endfor %}
+  {% endfor %}
+</div>
+
+<div id="addModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h2 style="margin-top:0;">New Appointment</h2>
+    <form method="post" action="{{ url_for('appointment_new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="appt_date" id="addDate">
+      <input type="hidden" name="slot_label" id="addSlot">
+      <input type="hidden" name="resource_type" id="addResourceType">
+      <input type="hidden" name="resource_id" id="addResourceId">
+      <p class="small muted" id="addSlotLabel"></p>
+      <div class="field" style="margin-bottom:10px;"><label>Pet Name</label><input required name="pet_name"></div>
+      <div class="field" style="margin-bottom:10px;"><label>Owner Name</label><input required name="owner_name"></div>
+      <div class="field" style="margin-bottom:10px;"><label>Type</label>
+        <select name="appointment_type"><option>Medical</option><option>Grooming</option></select>
+      </div>
+      <div class="field" style="margin-bottom:14px;"><label>Reason</label><input name="reason"></div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn secondary" type="button" onclick="document.getElementById('addModal').style.display='none';">Cancel</button>
+        <button class="btn" type="submit">Book</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<form id="cancelForm" method="post" style="display:none;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
+
+<script>
+function openAdd(btn) {
+  const { date, slot, resourceType, resourceId, label } = btn.dataset;
+  document.getElementById('addDate').value = date;
+  document.getElementById('addSlot').value = slot;
+  document.getElementById('addResourceType').value = resourceType;
+  document.getElementById('addResourceId').value = resourceId;
+  document.getElementById('addSlotLabel').textContent = `${date} · ${slot} · ${label}`;
+  document.getElementById('addModal').style.display = 'flex';
+}
+function cancelAppt(el) {
+  const id = el.dataset.apptId;
+  const name = el.dataset.petName;
+  if (!confirm(`Cancel ${name}'s appointment?`)) return;
+  const f = document.getElementById('cancelForm');
+  f.action = `/appointments/${id}/cancel`;
+  document.body.appendChild(f);
+  f.submit();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Point of Sale — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Point of Sale</h1><p class="page-sub">Scan or search a Retail item to add it to the sale.</p></div></div>
+
+<div class="pos-grid">
+  <div class="card">
+    <div class="field" style="margin-bottom:14px;">
+      <label>Scan Barcode or Search Item Name</label>
+      <input type="text" id="posSearch" autocomplete="off" placeholder="Scan Barcode or Type Item Name…" autofocus>
+    </div>
+    <div id="posResults"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Current Sale</div>
+    <div id="cartLines"><div class="empty-note" id="emptyCart">Cart is empty.</div></div>
+    <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
+      <div class="detail-item"><div class="k">Subtotal</div><div class="v" id="cartSubtotal">0 JOD</div></div>
+      <div class="field" style="margin:10px 0;">
+        <label>Discount % (Max {{ discount_cap }}%)</label>
+        <input type="number" id="discountInput" min="0" max="{{ discount_cap }}" value="0" oninput="renderCart()">
+      </div>
+      <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 JOD</div></div>
+      <div class="field" style="margin:10px 0;">
+        <label>Payment Method</label>
+        <select id="paymentMethod"><option>Cash</option><option>Card</option><option>Transfer</option></select>
+      </div>
+      <form method="post" action="{{ url_for('pos_checkout') }}" id="checkoutForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="discount_percent" id="discountHidden">
+        <input type="hidden" name="payment_method" id="paymentHidden">
+        <div id="cartFieldsHidden"></div>
+        <button class="btn" type="submit" style="width:100%; justify-content:center;" onclick="return prepareSubmit()">Complete Sale</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+let cart = []; // {id, name, price, qty, stock}
+
+const searchInput = document.getElementById('posSearch');
+const resultsDiv = document.getElementById('posResults');
+let debounceTimer;
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  const q = searchInput.value.trim();
+  if (!q) { resultsDiv.innerHTML = ''; return; }
+  debounceTimer = setTimeout(() => {
+    fetch(`/api/inventory/lookup?barcode=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.id) { addToCart(data); searchInput.value = ''; resultsDiv.innerHTML=''; return; }
+        fetch(`/api/inventory/lookup?q=${encodeURIComponent(q)}`)
+          .then(r => r.json())
+          .then(list => {
+            if (!list.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
+            window.__posSearchResults = list;
+            resultsDiv.innerHTML = list.map((i, idx) =>
+              `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" onclick="addToCart(window.__posSearchResults[this.dataset.idx])">
+                 <div class="who">${escapeHtml(i.name)}</div><div class="meta">${i.price != null ? i.price + ' JOD' : 'no price set'} · stock: ${i.stock ?? '—'}</div>
+               </div>`
+            ).join('');
+          })
+          .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">Could not search inventory; check server connection.</div>'; });
+      })
+      .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">Could not search inventory; check server connection.</div>'; });
+  }, 200);
+});
+
+function addToCart(item) {
+  if (item.price == null) { alert(item.name + ' has no sale price set in the Price List.'); return; }
+  const existing = cart.find(c => c.id === item.id);
+  if (existing) {
+    if (item.stock != null && existing.qty + 1 > item.stock) { alert(`Only ${item.stock} in stock.`); return; }
+    existing.qty += 1;
+  } else {
+    cart.push({id: item.id, name: item.name, price: item.price, qty: 1, stock: item.stock});
+  }
+  renderCart();
+}
+function changeQty(id, delta) {
+  const line = cart.find(c => c.id === id);
+  const next = line.qty + delta;
+  if (delta > 0 && line.stock != null && next > line.stock) { alert(`Only ${line.stock} in stock.`); return; }
+  line.qty = Math.max(1, next);
+  renderCart();
+}
+function setQty(id, value) {
+  const line = cart.find(c => c.id === id);
+  let qty = parseInt(value, 10);
+  if (!Number.isFinite(qty) || qty < 1) qty = 1;
+  if (line.stock != null && qty > line.stock) { alert(`Only ${line.stock} in stock.`); qty = line.stock; }
+  line.qty = qty;
+  renderCart();
+}
+function removeLine(id) {
+  cart = cart.filter(c => c.id !== id);
+  renderCart();
+}
+function renderCart() {
+  const linesDiv = document.getElementById('cartLines');
+  if (!cart.length) { linesDiv.innerHTML = '<div class="empty-note">Cart is empty.</div>'; }
+  else {
+    linesDiv.innerHTML = cart.map(c => `
+      <div class="pos-cart-line">
+        <div>${escapeHtml(c.name)}<div class="meta small">${c.price} JOD each</div></div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="btn small secondary" type="button" onclick="changeQty('${c.id}',-1)">-</button>
+          <input type="number" min="1" ${c.stock != null ? `max="${c.stock}"` : ''} value="${c.qty}" style="width:56px; text-align:center;" onchange="setQty('${c.id}', this.value)">
+          <button class="btn small secondary" type="button" onclick="changeQty('${c.id}',1)">+</button>
+          <button class="btn small danger" type="button" onclick="removeLine('${c.id}')">×</button>
+        </div>
+      </div>`).join('');
+  }
+  const subtotal = cart.reduce((s,c) => s + c.price * c.qty, 0);
+  const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+  const total = Math.round(subtotal * (1 - discount/100));
+  document.getElementById('cartSubtotal').textContent = subtotal.toLocaleString() + ' JOD';
+  document.getElementById('cartTotal').textContent = total.toLocaleString() + ' JOD';
+}
+function prepareSubmit() {
+  if (!cart.length) { alert('Cart is empty.'); return false; }
+  document.getElementById('discountHidden').value = document.getElementById('discountInput').value;
+  document.getElementById('paymentHidden').value = document.getElementById('paymentMethod').value;
+  const container = document.getElementById('cartFieldsHidden');
+  container.innerHTML = '';
+  cart.forEach(c => {
+    container.innerHTML += `<input type="hidden" name="item_id" value="${c.id}"><input type="hidden" name="quantity" value="${c.qty}">`;
+  });
+  return true;
+}
+</script>
+{% endblock %}

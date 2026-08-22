@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Follow-Ups — {{ clinic_name }}{% endblock %}
+{% block main_class %}main-wide{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Follow-Ups</h1><p class="page-sub">Auto-generated from visits marked "follow-up needed". {{ total_count }} shown.</p></div></div>
+
+<div class="filter-chips">
+  <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('followups_list') }}">Pending Only</a>
+  <a class="chip {{ 'active' if show_all }}" href="{{ url_for('followups_list', all=1) }}">All Follow-Ups</a>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Follow-Up Date</th><th>Reminder Call</th><th>Animal</th><th>Owner</th><th>Phone</th><th>Method</th><th>Reason</th><th>Status</th><th></th><th></th></tr></thead>
+  <tbody>
+    {% for f in followups %}
+    <tr>
+      <td>{{ f.followup_date or "—" }} {% if f.missed %}<span class="badge danger">MISSED</span>{% endif %}</td>
+      <td>{{ f.reminder_call_date or "—" }}</td>
+      <td><a href="{{ url_for('visit_detail', visit_id=f.visit_id) }}"><strong>{{ f.animal_name }}</strong></a></td>
+      <td>{{ f.owner_name }}</td><td>{{ f.phone or "—" }}</td>
+      <td>{{ f.followup_method or "—" }}</td><td>{{ f.followup_reason or "—" }}</td>
+      <td><span class="badge {{ 'warn' if f.followup_status=='Pending' else ('ok' if f.followup_status=='Completed' else 'muted') }}">{{ f.followup_status }}</span></td>
+      <td>
+        <form method="post" class="inline-form" action="{{ url_for('followup_status_update', visit_id=f.visit_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <select name="status" onchange="this.form.submit()" class="small">
+            {% for s in ['Pending','Completed','Cancelled'] %}<option value="{{ s }}" {{ 'selected' if f.followup_status==s }}>{{ s }}</option>{% endfor %}
+          </select>
+        </form>
+      </td>
+      <td>
+        {% if f.phone %}
+        <a class="btn small ok" target="_blank" rel="noopener"
+           href="https://wa.me/{{ f.phone|replace('+','') }}?text={{ ('Hi ' ~ f.owner_name ~ ', this is a reminder that ' ~ f.animal_name ~ ' is due for their ' ~ (f.followup_reason or 'follow-up') ~ ' on ' ~ (f.followup_date or 'a date we will confirm') ~ '. Please contact us to schedule. - ' ~ clinic_name)|urlencode }}">Send WhatsApp Message</a>
+        {% else %}
+        <a class="btn small secondary" href="{{ url_for('owner_edit', owner_id=f.owner_id) }}">Add phone</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="10" class="empty-note">No follow-ups to show.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

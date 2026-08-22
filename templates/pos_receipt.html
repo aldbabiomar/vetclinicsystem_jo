@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sale #{{ sale.id }} — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Sale #{{ sale.id }}</h1><p class="page-sub">{{ sale.sale_date }}</p></div>
+  <a class="btn secondary" href="{{ url_for('pos_page') }}">New Sale</a>
+</div>
+<div class="card" style="max-width:420px;">
+  {% for i in items %}
+  <div class="pos-cart-line"><div>{{ i.name }} × {{ i.quantity }}</div><div>{{ i.line_total|money }} JOD</div></div>
+  {% endfor %}
+  <div class="detail-item" style="margin-top:12px;"><div class="k">Subtotal</div><div class="v">{{ sale.subtotal|money }} JOD</div></div>
+  {% if sale.discount_percent %}<div class="detail-item"><div class="k">Discount</div><div class="v">{{ sale.discount_percent }}%</div></div>{% endif %}
+  <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ sale.total|money }} JOD</div></div>
+  <div class="detail-item"><div class="k">Payment Method</div><div class="v">{{ sale.payment_method or "—" }}</div></div>
+</div>
+{% endblock %}

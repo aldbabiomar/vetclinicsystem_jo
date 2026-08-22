@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Insights — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Insights</h1><p class="page-sub">Management-level view over the last {{ months_back }} months. Admin only.</p></div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn secondary" href="{{ url_for('retention') }}">Retention →</a>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card ok"><div class="num">{{ revenue.totals_by_month.values()|sum|money }}</div><div class="label">Revenue, Last {{ months_back }} Months (JOD)</div></div>
+  <div class="stat-card"><div class="num">{{ active_client_count }}</div><div class="label">Clients With Paid Visits (Lifetime)</div></div>
+  <div class="stat-card"><div class="num">{{ avg_spend|money }}</div><div class="label">Avg. Lifetime Spend / Client (JOD)</div></div>
+  <div class="stat-card"><div class="num">{{ vets|length }}</div><div class="label">Vets Billing This Window</div></div>
+</div>
+
+<div class="panel-grid">
+  <div class="card panel">
+    <h2>Revenue by Service Category</h2>
+    <p class="small muted" style="margin-top:-6px;">Net of refunds, per month, in JOD.</p>
+    <canvas id="revenueChart" height="220"></canvas>
+  </div>
+  <div class="card panel">
+    <h2>Payment Method Mix</h2>
+    <p class="small muted" style="margin-top:-6px;">Cash vs. card, last {{ months_back }} months — a useful trust/adoption signal for a new clinic.</p>
+    <canvas id="paymentChart" height="220"></canvas>
+  </div>
+</div>
+
+<div class="section-title">Revenue by Category — Monthly Breakdown (JOD)</div>
+<div class="table-wrap" style="margin-bottom:24px;">
+<table>
+  <thead><tr>
+    <th>Month</th>
+    {% for c in revenue.categories %}<th class="num-col">{{ c }}</th>{% endfor %}
+    <th class="num-col">Total</th>
+  </tr></thead>
+  <tbody>
+    {% for m in revenue.months %}
+    <tr>
+      <td><strong>{{ m }}</strong></td>
+      {% for c in revenue.categories %}<td class="num-col">{{ revenue.grid[m][c]|money }}</td>{% endfor %}
+      <td class="num-col" style="font-weight:700;">{{ revenue.totals_by_month[m]|money }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td>Total</td>
+      {% for c in revenue.categories %}<td class="num-col">{{ revenue.totals_by_category[c]|money }}</td>{% endfor %}
+      <td class="num-col">{{ revenue.totals_by_month.values()|sum|money }}</td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+
+<div class="panel-grid">
+  <div class="card panel">
+    <h2>Vet Performance</h2>
+    <p class="small muted" style="margin-top:-6px;">Visit count &amp; billings generated, last {{ months_back }} months.</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Vet</th><th class="num-col">Visits</th><th class="num-col">Revenue (JOD)</th><th class="num-col">Avg / Visit</th></tr></thead>
+      <tbody>
+        {% for v in vets %}
+        <tr>
+          <td>{{ v.doctor }}</td>
+          <td class="num-col">{{ v.visit_count }}</td>
+          <td class="num-col">{{ v.revenue|money }}</td>
+          <td class="num-col">{{ v.avg_revenue_per_visit|money }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="small muted">No billed visits with a recorded vet in this window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card panel">
+    <h2>Top Clients by Lifetime Spend</h2>
+    <p class="small muted" style="margin-top:-6px;">From visit, inpatient &amp; boarding payments (walk-in POS retail sales aren't linked to a client in this system).</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Owner</th><th class="num-col">Payments</th><th class="num-col">Total Paid (JOD)</th></tr></thead>
+      <tbody>
+        {% for c in top_clients %}
+        <tr>
+          <td><a href="{{ url_for('owner_detail', owner_id=c.id) }}">{{ c.name }}</a></td>
+          <td class="num-col">{{ c.payment_count }}</td>
+          <td class="num-col">{{ c.total_paid|money }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="small muted">No payments on file yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Appointment Demand by Day of Week</div>
+<p class="small muted" style="margin-top:-10px; margin-bottom:10px;">
+  Amman work week (Sunday–Thursday) shown first; Friday/Saturday is the weekend. "Fulfillment" compares appointments booked that weekday against visits logged on the same weekday system-wide — an approximation, since appointments aren't linked to a specific visit record in this system.
+</p>
+<div class="table-wrap" style="margin-bottom:24px;">
+<table>
+  <thead><tr><th>Day</th><th class="num-col">Appointments Booked</th><th class="num-col">Visits Logged (Same Weekday)</th><th class="num-col">Approx. Fulfillment</th></tr></thead>
+  <tbody>
+    {% for d in weekday_load %}
+    <tr style="{{ 'background:var(--muted-tint);' if d.is_weekend }}">
+      <td><strong>{{ d.day }}</strong>{% if d.is_weekend %} <span class="badge muted">Weekend</span>{% endif %}</td>
+      <td class="num-col">{{ d.appointments }}</td>
+      <td class="num-col">{{ d.visits_same_weekday }}</td>
+      <td class="num-col">{% if d.fulfillment_ratio is not none %}{{ (d.fulfillment_ratio*100)|round(0)|int }}%{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="section-title">Inpatient &amp; Boarding Load</div>
+<div class="panel-grid" style="margin-bottom:10px;">
+  <div class="stat-card"><div class="num">{{ occupancy.avg_inpatient_stay_days if occupancy.avg_inpatient_stay_days is not none else "—" }}</div><div class="label">Avg. Inpatient Stay (Days)</div></div>
+  <div class="stat-card"><div class="num">{{ occupancy.avg_boarding_stay_days if occupancy.avg_boarding_stay_days is not none else "—" }}</div><div class="label">Avg. Boarding Stay (Days)</div></div>
+</div>
+<div class="table-wrap" style="margin-bottom:24px;">
+<table>
+  <thead><tr><th>Month</th><th class="num-col">Active Inpatient Cases</th><th class="num-col">Active Boarding Stays</th></tr></thead>
+  <tbody>
+    {% for r in occupancy.by_month %}
+    <tr>
+      <td><strong>{{ r.month }}</strong></td>
+      <td class="num-col">{{ r.active_inpatient }}</td>
+      <td class="num-col">{{ r.active_boarding }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script>
+const REVENUE = {{ revenue|tojson }};
+const PAYMENT_MIX = {{ payment_mix|tojson }};
+const COLORS = {
+  Service: '#B21C43', Medicine: '#051335', Retail: '#B5791F', Boarding: '#4B8F6B',
+};
+
+new Chart(document.getElementById('revenueChart'), {
+  type: 'bar',
+  data: {
+    labels: REVENUE.months,
+    datasets: REVENUE.categories.map(cat => ({
+      label: cat,
+      data: REVENUE.months.map(m => REVENUE.grid[m][cat]),
+      backgroundColor: COLORS[cat] || '#A79AA0',
+    })),
+  },
+  options: {
+    responsive: true,
+    scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => v.toLocaleString() } } },
+    plugins: { legend: { position: 'bottom' } },
+  },
+});
+
+new Chart(document.getElementById('paymentChart'), {
+  type: 'doughnut',
+  data: {
+    labels: PAYMENT_MIX.map(r => r.method || 'Unspecified'),
+    datasets: [{
+      data: PAYMENT_MIX.map(r => r.total),
+      backgroundColor: ['#B21C43', '#051335', '#B5791F', '#B8452E', '#A79AA0'],
+    }],
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom' } } },
+});
+</script>
+{% endblock %}

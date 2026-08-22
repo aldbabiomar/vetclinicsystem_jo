@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Audit — {{ sess.audit_date }} — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Audit — {{ sess.audit_date }}</h1>
+    <p class="page-sub">Performed by {{ sess.performed_by_name or "—" }} · <span class="badge {{ 'ok' if sess.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if sess.status=='Confirmed' else 'Saved' }}</span></p>
+  </div>
+  {% if not readonly %}
+  <div style="display:flex; gap:10px;">
+    <button class="btn secondary" type="submit" form="auditForm" formaction="{{ url_for('audit_session_save', session_id=sess.id) }}">Save</button>
+    <button class="btn" type="button" onclick="confirmAudit()">Confirm</button>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <p class="small muted" style="margin:0;">
+    <strong>Stock Counted</strong> — what you physically counted on the shelf today.
+    <strong>Received Since Prior Audit</strong> — new stock that arrived since the last confirmed audit (0 if none).
+    <strong>Reorder Threshold</strong> — stock level at or below which this item is flagged LOW STOCK; leave blank to keep the last value set for this item.
+    <strong>Critical Item?</strong> — Y/N; leave blank to keep the last value set.
+    <strong>Target Coverage (Days)</strong> — how many days of stock you want on hand when reordering; leave blank to keep the last value set (defaults to 30 if never set).
+    <strong>Nearest Expiry Date</strong> — the soonest expiry date among current stock of this item.
+  </p>
+</div>
+
+<form method="post" id="auditForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="table-wrap sticky-scroll">
+<table>
+  <thead class="sticky-header"><tr>
+    <th>Item</th><th class="num-col">Stock Counted</th><th class="num-col">Received</th>
+    <th class="num-col">Reorder Threshold</th><th>Critical?</th><th class="num-col">Target Coverage (Days)</th>
+    <th>Nearest Expiry</th><th>Notes</th>
+  </tr></thead>
+  <tbody>
+    {% for it in items %}
+    {% set line = existing_lines.get(it.id) %}
+    {% set eff = latest_confirmed.get(it.id) %}
+    <tr>
+      <td><strong>{{ it.name }}</strong><div class="small muted">{{ it.unit or '' }}</div></td>
+      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="stock_{{ it.id }}" value="{{ line.stock_counted if line and line.stock_counted is not none else '' }}" style="width:80px; text-align:right;"></td>
+      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="received_{{ it.id }}" value="{{ line.received_since_prior if line else 0 }}" style="width:70px; text-align:right;"></td>
+      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="threshold_{{ it.id }}" value="{{ line.reorder_threshold if line and line.reorder_threshold is not none else '' }}" placeholder="{{ eff.effective_reorder_threshold if eff else '' }}" style="width:70px; text-align:right;"></td>
+      <td>
+        <select {{ 'disabled' if readonly }} name="critical_{{ it.id }}" style="width:80px;">
+          <option value="">{% if eff and eff.effective_critical_item %}(Y){% elif eff %}(N){% else %}—{% endif %}</option>
+          <option value="Y" {{ 'selected' if line and line.critical_item==1 }}>Y</option>
+          <option value="N" {{ 'selected' if line and line.critical_item==0 }}>N</option>
+        </select>
+      </td>
+      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="target_{{ it.id }}" value="{{ line.target_coverage_days if line and line.target_coverage_days is not none else '' }}" placeholder="{{ eff.effective_target_coverage_days if eff else 30 }}" style="width:70px; text-align:right;"></td>
+      <td><input {{ 'disabled' if readonly }} type="date" name="expiry_{{ it.id }}" value="{{ line.nearest_expiry_date if line else '' }}"></td>
+      <td><input {{ 'disabled' if readonly }} name="notes_{{ it.id }}" value="{{ line.notes if line else '' }}" style="width:100px;"></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</form>
+
+{% if not readonly %}
+<div id="confirmModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h2 style="margin-top:0;">Confirm This Audit?</h2>
+    <p class="small">Continuing will confirm the audit and it can't be edited after. If you intend to save it for later, click Cancel and use Save instead.</p>
+    <div id="confirmSummary" class="small" style="margin:10px 0; padding:10px; border-radius:8px; background:var(--paper-alt, #f5f5f5);"></div>
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+      <button class="btn secondary" type="button" onclick="document.getElementById('confirmModal').style.display='none';">Cancel</button>
+      <form method="post" action="{{ url_for('audit_session_confirm', session_id=sess.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">Yes, Confirm Permanently</button></form>
+    </div>
+  </div>
+</div>
+<script>
+function confirmAudit() {
+  document.getElementById('auditForm').setAttribute('action', "{{ url_for('audit_session_save', session_id=sess.id) }}");
+  const totalItems = {{ items|length }};
+  let counted = 0, negative = 0, suspiciousZero = 0;
+  document.querySelectorAll('input[name^="stock_"]').forEach(function(input) {
+    const raw = input.value.trim();
+    if (raw === '') return;
+    counted += 1;
+    const n = parseFloat(raw);
+    if (!isNaN(n) && n < 0) negative += 1;
+    else if (n === 0) suspiciousZero += 1;
+  });
+  const missing = totalItems - counted;
+  let lines = [];
+  lines.push(`${counted} of ${totalItems} items have a Stock Counted value entered.`);
+  if (missing > 0) lines.push(`${missing} item(s) have no Stock Counted value and will be skipped (kept unchanged).`);
+  if (negative > 0) lines.push(`⚠ ${negative} item(s) have a negative Stock Counted value — please check before confirming.`);
+  if (suspiciousZero > 0) lines.push(`${suspiciousZero} item(s) are counted as 0 in stock — please double-check these.`);
+  document.getElementById('confirmSummary').innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+  document.getElementById('confirmModal').style.display = 'flex';
+}
+</script>
+{% endif %}
+{% endblock %}

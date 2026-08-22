@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Log a Visit — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Log a Visit</h1><p class="page-sub">Is this for a patient already on file, or a new one?</p></div></div>
+<div class="panel-grid">
+  <a class="card panel" style="text-decoration:none; color:inherit; display:block;" href="{{ url_for('visit_new_existing') }}">
+    <h2 style="margin-bottom:8px;">Existing Patient</h2>
+    <p class="small muted">Search by patient name, patient ID, owner name, or owner phone number.</p>
+  </a>
+  <a class="card panel" style="text-decoration:none; color:inherit; display:block;" href="{{ url_for('visit_new_patient') }}">
+    <h2 style="margin-bottom:8px;">New Patient</h2>
+    <p class="small muted">Fill in owner details and patient details, then log the visit.</p>
+  </a>
+</div>
+{% endblock %}

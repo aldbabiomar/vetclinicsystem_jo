@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Log In — {{ clinic_name }}{% endblock %}
+{% block auth_content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand" style="border:none; padding:0 0 18px; margin-bottom:6px; justify-content:center;">
+      <span class="mark" style="color:var(--primary);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11.5L12 4l9 7.5"/>
+          <path d="M4.5 10.5V21h15V10.5"/>
+          <path d="M12 6.5v3M10.5 8h3"/>
+        </svg>
+      </span>
+      <span class="brand-name" style="color:var(--ink);">{{ clinic_name }}</span>
+    </div>
+    <p class="page-sub" style="text-align:center; margin-bottom:22px;">{{ clinic_location }}</p>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field" style="margin-bottom:14px;">
+        <label>Username</label>
+        <input name="username" required autofocus>
+      </div>
+      <div class="field" style="margin-bottom:18px;">
+        <label>Password</label>
+        <input type="password" name="password" required>
+      </div>
+      <button class="btn" type="submit" style="width:100%; justify-content:center;">Log In</button>
+    </form>
+    {% if lockout_unlock_at %}
+    <p class="small muted" id="lockoutCountdown" style="text-align:center; margin-top:14px;"></p>
+    <script>
+      (function() {
+        var unlockAt = new Date("{{ lockout_unlock_at }}");
+        var el = document.getElementById('lockoutCountdown');
+        function tick() {
+          var msLeft = unlockAt - new Date();
+          if (msLeft <= 0) { el.textContent = 'You can try logging in again now.'; return; }
+          var totalSec = Math.ceil(msLeft / 1000);
+          var m = Math.floor(totalSec / 60);
+          var s = totalSec % 60;
+          el.textContent = 'Account locked — try again in ' + m + 'm ' + (s < 10 ? '0' : '') + s + 's.';
+          setTimeout(tick, 1000);
+        }
+        tick();
+      })();
+    </script>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Log Visit — New Patient — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Log Visit — New Patient</h1></div></div>
+<div class="card">
+<form method="post" data-track-unsaved>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="section-title" style="margin-top:0;">Owner Details</div>
+  <div class="form-grid">
+    <div class="field"><label>Owner Name</label><input required name="owner_name"></div>
+    <div class="field"><label>Owner Phone</label><input name="owner_phone"></div>
+    <div class="field full"><label>Owner Address</label><input name="owner_address"></div>
+  </div>
+
+  <div class="section-title">Patient Details</div>
+  <div class="form-grid">
+    <div class="field"><label>Animal Name</label><input required name="animal_name"></div>
+    <div class="field"><label>Species</label>
+      <select name="species">{% for sp in ['Dog','Cat','Bird','Rabbit','Other'] %}<option>{{ sp }}</option>{% endfor %}</select>
+    </div>
+    <div class="field"><label>Sex</label><select name="sex"><option value="">—</option><option>M</option><option>F</option></select></div>
+    <div class="field"><label>Reproductive Status</label>
+      <select name="repro_status"><option value="">—</option><option>Intact</option><option>Neutered</option><option>Spayed</option></select>
+    </div>
+    <div class="field"><label>Age / DOB Note</label><input name="age_note"></div>
+    <div class="field"><label>Housing</label><select name="housing"><option value="">—</option><option>Indoor</option><option>Outdoor</option><option>Stray</option></select></div>
+  </div>
+
+  <div class="field full" style="margin-top:14px;"><label>Presenting Complaint / Reason for Visit</label><input name="complaint"></div>
+  {% include "_visit_fields.html" %}
+
+  <div class="form-actions">
+    <button class="btn" type="submit">Log Visit</button>
+    <a class="btn secondary" href="{{ url_for('visits_list') }}">Cancel</a>
+  </div>
+</form>
+</div>
+<script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
+{% endblock %}

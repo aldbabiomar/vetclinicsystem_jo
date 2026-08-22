@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Patients — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Patients</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} on file.{% endif %} New patients are created from Log a Visit.</p></div>
+  <a class="btn" href="{{ url_for('visit_new_start') }}">+ Log a Visit</a>
+</div>
+
+<form class="search-bar" method="get">
+  <input type="text" name="q" placeholder="Search ID, Animal, Owner, or Phone…" value="{{ search }}">
+  <button class="btn secondary" type="submit">Search</button>
+  {% if search %}<a class="btn secondary" href="{{ url_for('patients_list') }}">Clear</a>{% endif %}
+</form>
+
+<div class="filter-chips">
+  {% for key, label in [('id','Patient ID'), ('animal_name','Animal Name'), ('species','Species'), ('owner','Owner')] %}
+  <a class="chip {{ 'active' if sort==key }}" href="{{ url_for('patients_list', q=search, sort=key, dir='asc' if sort!=key or direction=='desc' else 'desc') }}">
+    Sort: {{ label }} {% if sort==key %}{{ '↓' if direction=='desc' else '↑' }}{% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>ID</th><th>Animal</th><th>Species</th><th>Sex</th><th>Owner</th><th>Phone</th></tr></thead>
+  <tbody>
+    {% for p in patients %}
+    <tr onclick="window.location='{{ url_for('patient_detail', patient_id=p.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('patient_detail', patient_id=p.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
+      <td class="muted">{{ p.id }}</td><td><strong>{{ p.animal_name }}</strong></td><td>{{ p.species }}</td>
+      <td>{{ p.sex or "—" }}</td><td>{{ p.owner_name }}</td><td>{{ p.owner_phone or "—" }}</td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="empty-note">No patients match.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

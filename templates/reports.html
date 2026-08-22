@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Monthly P&amp;L — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Monthly P&amp;L</h1><p class="page-sub">Revenue from billing &amp; retail sales, COGS from measured usage. Admin only.</p></div>
+  <div style="display:flex; gap:10px;">
+    <form method="post" action="{{ url_for('reports_rebuild_summary') }}" onsubmit="return confirm('Rebuild all report data from scratch? This re-checks every month against current billing, sales, and cost data. It can take a few seconds on a large database.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="return_to" value="{{ url_for('reports') }}">
+      <button class="btn secondary" type="submit" title="Force a full recalculation of every month, in case anything ever looks out of sync">Rebuild Report Data</button>
+    </form>
+    <a class="btn secondary" href="{{ url_for('reports_yearly') }}">Yearly P&amp;L →</a>
+  </div>
+</div>
+
+<div class="table-wrap" style="margin-bottom:24px;">
+<table>
+  <thead><tr>
+    <th>Month</th><th class="num-col">Revenue</th><th class="num-col">COGS</th><th class="num-col">Gross Profit</th>
+    <th class="num-col">OpEx</th><th class="num-col">Net Profit</th><th class="num-col">Net Margin</th><th class="num-col">MoM Change</th>
+  </tr></thead>
+  <tbody>
+    {% for r in pl %}
+    <tr>
+      <td><strong>{{ r.month }}</strong></td>
+      <td class="num-col">{{ r.revenue|money }}</td>
+      <td class="num-col">{{ r.cogs|money }}</td>
+      <td class="num-col">{{ r.gross_profit|money }}</td>
+      <td class="num-col">{{ r.total_opex|money }}</td>
+      <td class="num-col" style="font-weight:700; color: {{ 'var(--ok)' if r.net_profit >= 0 else 'var(--danger)' }};">{{ r.net_profit|money }}</td>
+      <td class="num-col">{{ (r.net_margin*100)|round(0)|int if r.net_margin is not none else "—" }}{% if r.net_margin is not none %}%{% endif %}</td>
+      <td class="num-col" style="color: {{ 'var(--ok)' if r.mom_change and r.mom_change >= 0 else ('var(--danger)' if r.mom_change and r.mom_change < 0 else 'var(--ink-soft)') }};">
+        {% if r.mom_change is not none %}{{ '+' if r.mom_change >= 0 }}{{ r.mom_change }}%{% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="section-title">Enter Operating Costs for a Month</div>
+<div class="card">
+  <form method="post" action="{{ url_for('reports_opex_save') }}" id="opexForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="field"><label>Month</label><input required type="month" name="month" id="opexMonth" value="{{ today[:7] }}" onchange="loadOpexForMonth()"></div>
+      <div class="field"><label>Rent (JOD)</label><input type="number" step="1" name="rent" id="opexRent" value="0"></div>
+      <div class="field"><label>Salaries / Payroll (JOD)</label><input type="number" step="1" name="salaries" id="opexSalaries" value="0"></div>
+      <div class="field"><label>Utilities (JOD)</label><input type="number" step="1" name="utilities" id="opexUtilities" value="0"></div>
+      <div class="field"><label>Marketing (JOD)</label><input type="number" step="1" name="marketing" id="opexMarketing" value="0"></div>
+      <div class="field"><label>Other OpEx (JOD)</label><input type="number" step="1" name="other" id="opexOther" value="0"></div>
+    </div>
+    <p class="small muted" id="opexHint" style="margin:6px 0 0;"></p>
+    <div class="form-actions"><button class="btn" type="submit">Save Operating Costs</button></div>
+  </form>
+</div>
+<script>
+const OPEX_BY_MONTH = {{ opex_by_month|tojson }};
+function loadOpexForMonth() {
+  const month = document.getElementById('opexMonth').value;
+  const existing = OPEX_BY_MONTH[month];
+  const hint = document.getElementById('opexHint');
+  document.getElementById('opexRent').value = existing ? existing.rent : 0;
+  document.getElementById('opexSalaries').value = existing ? existing.salaries : 0;
+  document.getElementById('opexUtilities').value = existing ? existing.utilities : 0;
+  document.getElementById('opexMarketing').value = existing ? existing.marketing : 0;
+  document.getElementById('opexOther').value = existing ? existing.other : 0;
+  hint.textContent = existing ? `Showing saved values for ${month}. Saving will overwrite them.` : `No operating costs saved yet for ${month}.`;
+}
+loadOpexForMonth();
+</script>
+{% endblock %}

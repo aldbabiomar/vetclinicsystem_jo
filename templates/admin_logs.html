@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Logins and Changes — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Logins and Changes</h1><p class="page-sub">Pick a date to review who logged in and what was changed.</p></div>
+  <form method="get" style="display:flex; gap:10px; align-items:center;">
+    <input type="date" name="date" value="{{ day }}" onchange="this.form.submit()">
+    {% if day != today %}<a class="btn secondary" href="{{ url_for('admin_logs') }}">Clear</a>{% endif %}
+  </form>
+</div>
+
+<div class="section-title">Changes On {{ day }}</div>
+<div class="table-wrap" style="margin-bottom:24px;">
+<table>
+  <thead><tr><th>Time</th><th>Who</th><th>Action</th><th>Table</th><th>Record</th><th>Field</th><th>Old → New</th></tr></thead>
+  <tbody>
+    {% for c in changes %}
+    <tr>
+      <td class="muted">{{ c.timestamp[11:19] }}</td>
+      <td>{{ c.username or "—" }}</td>
+      <td><span class="badge {{ 'ok' if c.action=='create' else ('danger' if c.action=='delete' else 'warn') }}">{{ c.action }}</span></td>
+      <td>{{ c.table_name }}</td>
+      <td class="muted">{{ c.record_id }}</td>
+      <td>{{ c.field or "—" }}</td>
+      <td class="small">{% if c.field %}{{ c.old_value or "—" }} → {{ c.new_value or "—" }}{% else %}whole record{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="empty-note">No changes logged on this date.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="section-title">Logins On {{ day }}</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Time</th><th>Username</th><th>Result</th><th>IP</th><th>Device</th></tr></thead>
+  <tbody>
+    {% for l in logins %}
+    <tr>
+      <td class="muted">{{ l.timestamp[11:19] }}</td>
+      <td>{{ l.username }}</td>
+      <td><span class="badge {{ 'ok' if l.success else 'danger' }}">{{ 'Success' if l.success else 'Failed' }}</span></td>
+      <td class="muted">{{ l.ip }}</td>
+      <td class="small">{{ l.device }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="empty-note">No login activity on this date.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

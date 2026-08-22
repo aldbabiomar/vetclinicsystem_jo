@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Ordering Sheet — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Ordering Sheet</h1>
+    <p class="page-sub">Sorted by priority — use this to place your monthly order.</p>
+  </div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>#</th><th>Item</th><th class="num-col">Stock</th><th class="num-col">Days Left</th><th>Priority</th>
+    <th class="num-col">Suggested Order Qty</th><th>Trend</th><th>Distributor</th><th class="num-col">Lead Time</th><th>Note</th>
+  </tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td class="muted">{{ r.priority_rank }}</td>
+      <td><strong>{{ r.name }}</strong></td>
+      <td class="num-col">{{ r.current_stock if r.current_stock is not none else "—" }} {{ r.unit or '' }}</td>
+      <td class="num-col">{{ r.days_of_stock_left if r.days_of_stock_left is not none else "—" }}</td>
+      <td>
+        <span class="badge {{ 'danger' if r.priority=='CRITICAL' else ('warn' if r.priority in ['URGENT','SOON'] else ('muted' if r.priority=='No data' else 'ok')) }}">{{ r.priority }}</span>
+      </td>
+      <td class="num-col">{{ r.suggested_order_qty if r.suggested_order_qty is not none else "—" }}</td>
+      <td class="small muted" title="{{ r.trend_recommendation }}">{{ r.usage_trend }}</td>
+      <td>{{ r.distributor_name or "—" }}</td>
+      <td class="num-col">{{ r.lead_time_days if r.lead_time_days is not none else "—" }}</td>
+      <td class="small muted">
+        {% if r.expiry_status in ['EXPIRING SOON','EXPIRED'] %}⚠ {{ r.expiry_status|lower }}{% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="10" class="empty-note">No inventory items yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

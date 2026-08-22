@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Barcode — {{ item.name }} — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head no-print">
+  <div><h1>Barcode Label</h1><p class="page-sub">{{ item.name }}</p></div>
+  <div style="display:flex; gap:10px;">
+    <button class="btn secondary" id="printBtn" onclick="window.print()" disabled>Print</button>
+    <a class="btn secondary" href="{{ url_for('inventory_catalog') }}">Back</a>
+  </div>
+</div>
+<div class="barcode-label-box">
+  <div style="font-weight:700; font-size:13px; margin-bottom:6px;">{{ item.name }}</div>
+  <svg id="barcodeSvg"></svg>
+  <div style="font-size:11px; color:var(--ink-soft);">{{ clinic_name }}</div>
+  <p class="small muted no-print" id="barcodeError" style="display:none; color:var(--danger);">
+    Could not render the barcode. Try refreshing the page.
+  </p>
+</div>
+<script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"
+        onload="try { JsBarcode('#barcodeSvg', '{{ item.barcode }}', {format: 'EAN13', width: 2, height: 60, fontSize: 14}); document.getElementById('printBtn').disabled = false; } catch (e) { document.getElementById('barcodeError').style.display = 'block'; }"
+        onerror="document.getElementById('barcodeError').style.display = 'block';"></script>
+{% endblock %}

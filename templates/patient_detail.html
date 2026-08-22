@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ patient.animal_name }} — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ patient.animal_name }} <span class="muted" style="font-weight:400;font-size:16px;">— <a href="{{ url_for('owner_detail', owner_id=patient.owner_id) }}">{{ patient.owner_name }}</a></span></h1>
+    <p class="page-sub">{{ patient.id }} · {{ patient.species }}{% if patient.sex %} · {{ patient.sex }}{% endif %}{% if patient.repro_status %} · {{ patient.repro_status }}{% endif %}</p>
+  </div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn secondary" href="{{ url_for('patient_edit', patient_id=patient.id) }}">Edit Patient Details</a>
+    <a class="btn secondary" href="{{ url_for('patient_history', patient_id=patient.id) }}">Full History</a>
+    <a class="btn secondary" href="{{ url_for('patient_export_file', patient_id=patient.id) }}">Export Patient File (PDF)</a>
+    <a class="btn secondary" href="{{ url_for('patient_export_billing', patient_id=patient.id) }}">Export Billing (PDF)</a>
+    <a class="btn" href="{{ url_for('visit_new_existing') }}">+ Log Visit</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="detail-grid">
+    <div class="detail-item"><div class="k">Owner Phone</div><div class="v">{{ patient.owner_phone or "—" }}</div></div>
+    <div class="detail-item"><div class="k">Housing</div><div class="v">{{ patient.housing or "—" }}</div></div>
+    <div class="detail-item"><div class="k">Age / DOB Note</div><div class="v">{{ patient.age_note or "—" }}</div></div>
+    <div class="detail-item"><div class="k">Notes</div><div class="v">{{ patient.notes or "—" }}</div></div>
+  </div>
+</div>
+
+{% if cases %}
+<div class="section-title">Inpatient Stays ({{ cases|length }})</div>
+<div class="table-wrap" style="margin-bottom:24px;">
+<table>
+  <thead><tr><th>Admitted</th><th>Discharged</th><th>Complaint</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for c in cases %}
+    <tr onclick="window.location='{{ url_for('inpatient_detail', case_id=c.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('inpatient_detail', case_id=c.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
+      <td>{{ c.admission_date }}</td><td>{{ c.dismissal_date or "—" }}</td><td>{{ c.complaint or "—" }}</td>
+      <td><span class="badge {{ 'ok' if c.dismissed else 'warn' }}">{{ 'Discharged' if c.dismissed else 'Admitted' }}</span></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% if boarding_sessions %}
+<div class="section-title">Boarding Sessions ({{ boarding_sessions|length }})</div>
+<div class="table-wrap" style="margin-bottom:24px;">
+<table>
+  <thead><tr><th>Entry</th><th>Dismissal</th><th>Room</th><th class="num-col">Total (JOD)</th></tr></thead>
+  <tbody>
+    {% for b in boarding_sessions %}
+    <tr onclick="window.location='{{ url_for('boarding_page') }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('boarding_page') }}'}" tabindex="0" role="link" style="cursor:pointer;">
+      <td>{{ b.entry_date }}</td>
+      <td>{{ b.dismissal_date or ("Picked up" if b.dismissed else "—") }}</td>
+      <td>{{ b.room or "—" }}</td>
+      <td class="num-col">{{ b.total|money if b.total is not none else "—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% if grooming_sessions %}
+<div class="section-title">Grooming Sessions ({{ grooming_sessions|length }})</div>
+<div class="table-wrap" style="margin-bottom:24px;">
+<table>
+  <thead><tr><th>Date</th><th>Services</th><th>Status</th><th>Notes</th></tr></thead>
+  <tbody>
+    {% for g in grooming_sessions %}
+    <tr onclick="window.location='{{ url_for('visit_detail', visit_id=g.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('visit_detail', visit_id=g.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
+      <td>{{ g.date or "—" }}</td><td>{{ g.grooming_services or "—" }}</td>
+      <td><span class="badge {{ 'ok' if g.grooming_status=='Finished' else 'warn' }}">{{ g.grooming_status or "—" }}</span></td>
+      <td>{{ g.grooming_notes or "—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<div class="section-title">Visit History ({{ visits|length }})</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Date</th><th>Type</th><th>Doctor</th><th>Complaint</th><th>Status</th><th>Follow-Up</th><th class="num-col">Bill (JOD)</th></tr></thead>
+  <tbody>
+    {% for v in visits %}
+    <tr onclick="window.location='{{ url_for('visit_detail', visit_id=v.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('visit_detail', visit_id=v.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
+      <td>{{ v.date or "—" }}</td><td>{{ v.visit_type }}</td><td>{{ v.doctor or "—" }}</td><td>{{ v.complaint or "—" }}</td>
+      <td><span class="badge {{ 'ok' if v.case_status=='Resolved' else ('danger' if v.case_status=='Deceased/Euthanized' else 'warn') }}">{{ v.case_status }}</span></td>
+      <td>{% if v.followup_needed=='Y' %}<span class="badge {{ 'warn' if v.followup_status=='Pending' else 'ok' }}">{{ v.followup_status }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="num-col">{{ v.billing.total|money }}</td>
+    </tr>
+    {% else %}<tr><td colspan="7" class="empty-note">No visits logged yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

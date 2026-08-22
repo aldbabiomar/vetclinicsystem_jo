@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Price List — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Price List</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items.{% endif %} Admin-only page — visible to Vet/Reception only as a read-only picker while billing.</p></div>
+  <div style="display:flex; gap:10px;">
+    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('price_list_bulk_edit') }}">Save Changes</button>
+    <button class="btn secondary" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
+  </div>
+</div>
+
+<div class="filter-chips">
+  <a class="chip {{ 'active' if not active_cat }}" href="{{ url_for('price_list') }}">All</a>
+  {% for c in categories %}<a class="chip {{ 'active' if active_cat==c }}" href="{{ url_for('price_list', category=c) }}">{{ c }}</a>{% endfor %}
+</div>
+
+{% if flagged_price %}
+<p class="small muted" style="margin:-4px 0 12px;"><span style="display:inline-block; width:10px; height:10px; background:var(--warn-tint); border-left:3px solid var(--warn); vertical-align:middle;"></span>
+  Highlighted rows: Retail item doesn't match an active Retail item in Inventory Catalog — check the linked item.</p>
+{% endif %}
+
+<form class="search-bar" method="get">
+  {% if active_cat %}<input type="hidden" name="category" value="{{ active_cat }}">{% endif %}
+  <input type="text" name="q" value="{{ search }}" placeholder="Search by Product Name…">
+  <button class="btn secondary" type="submit">Search</button>
+  {% if search %}<a class="btn secondary" href="{{ url_for('price_list', category=active_cat) }}">Clear</a>{% endif %}
+</form>
+
+<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+  <form method="post" action="{{ url_for('price_list_new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="field"><label>Name</label><input required name="name" id="newItemName"></div>
+      <div class="field"><label>Category</label>
+        <select name="category" required onchange="toggleLink(this)">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Cost Price (IQD)</label><input type="number" step="1" name="cost_price" id="newItemCost"></div>
+      <div class="field"><label>Sale Price (IQD)</label><input type="number" step="1" name="sale_price"></div>
+      <div class="field link-field"><label>Linked Inventory Item (Retail Only — for POS)</label>
+        <select name="linked_item_id" onchange="fillFromLinkedItem(this)"><option value="">—</option>{% for i in inv_items %}<option value="{{ i.id }}" data-name="{{ i.name }}" data-cost="{{ i.cost_price if i.cost_price is not none else '' }}">{{ i.name }}</option>{% endfor %}</select>
+      </div>
+      <div class="field full"><label>Notes</label><input name="notes"></div>
+      <div class="field full">
+        <label class="checkbox-row small" style="text-transform:none; font-weight:500;"><input type="checkbox" name="can_discount" id="canDiscountNew" checked> Can Be Discounted?</label>
+        <p class="small muted" style="margin:2px 0 0;">Checked = a discount can be applied to a bill that includes this item. Unchecked = it blocks any discount on that bill.</p>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Add Item</button>
+      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>ID</th><th>Name</th><th>Category</th><th class="num-col">Cost (IQD)</th><th class="num-col">Sale (IQD)</th><th>Notes</th><th title="Checked = a discount can be applied to a bill including this item.">Can Be Discounted?</th><th></th></tr></thead>
+  <tbody>
+    {% for i in items %}
+    <form id="edit-{{ i.id }}" method="post" action="{{ url_for('price_list_edit', item_id=i.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
+    <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_price }}" {% if i.id in flagged_price %}title="Retail data inconsistency: this item's Linked Inventory Item doesn't match an active Retail item in Inventory Catalog."{% endif %}>
+      <td class="muted">{{ i.id }}</td>
+      <td><input form="edit-{{ i.id }}" name="name" value="{{ i.name }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td>
+        <select form="edit-{{ i.id }}" name="category" style="border:none; background:transparent;">
+          {% for c in categories %}<option {{ 'selected' if i.category==c }}>{{ c }}</option>{% endfor %}
+        </select>
+      </td>
+      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="1" name="cost_price" value="{{ i.cost_price if i.cost_price is not none else '' }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
+      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="1" name="sale_price" value="{{ i.sale_price if i.sale_price is not none else '' }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
+      <td><input form="edit-{{ i.id }}" name="notes" value="{{ i.notes or '' }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td style="text-align:center;"><input form="edit-{{ i.id }}" type="checkbox" name="can_discount" {{ 'checked' if i.can_discount }}></td>
+      <td style="white-space:nowrap;">
+        <form method="post" action="{{ url_for('price_list_delete', item_id=i.id) }}" style="display:inline;" onsubmit="return confirm('Remove {{ i.name }}?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn small danger" type="submit">Remove</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="8" class="empty-note">No priced items yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+<script>
+function toggleLink(sel) {
+  document.querySelector('.link-field').style.display = sel.value === 'Retail' ? 'flex' : 'none';
+  const cb = document.getElementById('canDiscountNew');
+  if (cb) cb.checked = !(sel.value === 'Retail' || sel.value === 'Medicine');
+}
+function fillFromLinkedItem(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  const nameField = document.getElementById('newItemName');
+  const costField = document.getElementById('newItemCost');
+  if (nameField) nameField.value = opt.dataset.name || '';
+  if (costField) costField.value = opt.dataset.cost || '';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.querySelector('#newForm select[name=category]');
+  if (sel) toggleLink(sel);
+});
+</script>
+<script src="{{ url_for('static', filename='unsaved-changes.js') }}"></script>
+{% endblock %}

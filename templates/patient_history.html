@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ patient.animal_name }} History — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ patient.animal_name }} — Full History</h1><p class="page-sub">{{ patient.id }} · Owner: {{ patient.owner_name }}</p></div>
+  <a class="btn secondary" href="{{ url_for('patient_detail', patient_id=patient.id) }}">Back to Patient</a>
+</div>
+
+{% for e in events %}
+<div class="card" style="margin-bottom:14px;">
+  <div style="display:flex; justify-content:space-between; align-items:baseline;">
+    <div><span class="badge {{ 'primary' if e.kind=='Visit' else 'warn' }}">{{ e.kind }}</span> <strong style="margin-left:8px;">{{ e.date or "—" }}</strong></div>
+    {% if e.kind == 'Visit' %}<a href="{{ url_for('visit_detail', visit_id=e.record.id) }}">Open visit →</a>
+    {% else %}<a href="{{ url_for('inpatient_detail', case_id=e.record.id) }}">Open case →</a>{% endif %}
+  </div>
+  <p class="small muted" style="margin:8px 0 0;">{{ e.summary }}</p>
+</div>
+{% else %}
+<div class="empty-note">No history recorded yet.</div>
+{% endfor %}
+{% endblock %}

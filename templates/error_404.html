@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Page Not Found — {{ clinic_name }}{% endblock %}
+
+{# base.html renders {% block content %} only inside the logged-in shell,
+   and {% block auth_content %} only in the logged-out layout (see
+   login.html) — a 404 is reachable in BOTH states (e.g. a stale bookmark
+   opened after the session has expired), so both blocks are defined here
+   with the same body, each wrapped to match its surrounding layout. #}
+
+{% block content %}
+<div class="error-page">
+  <div class="card error-card">
+    {% with variant = "lost" %}{% include "_error_dog.html" %}{% endwith %}
+    <h1>Hmm, we can't find that one.</h1>
+    <p class="page-sub">The page you're looking for doesn't exist, or may have been moved or deleted.</p>
+    <div class="error-actions">
+      <a class="btn" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+      <a class="btn secondary" href="javascript:history.back()">Go Back</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-wrap">
+  <div class="auth-card error-card">
+    {% with variant = "lost" %}{% include "_error_dog.html" %}{% endwith %}
+    <h1>Hmm, we can't find that one.</h1>
+    <p class="page-sub">The page you're looking for doesn't exist, or may have been moved or deleted.</p>
+    <div class="error-actions">
+      <a class="btn" href="{{ url_for('login') }}">Back to Log In</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

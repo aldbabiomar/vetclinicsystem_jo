@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Owner' if owner else 'New Owner' }} — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ 'Edit Owner' if owner else 'New Owner' }}</h1></div></div>
+<div class="card">
+<form method="post" data-track-unsaved>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-grid">
+    <div class="field"><label>Name</label><input required name="name" value="{{ owner.name if owner else '' }}"></div>
+    <div class="field"><label>Phone</label><input name="phone" value="{{ owner.phone if owner else '' }}"></div>
+    <div class="field full"><label>Address</label><input name="address" value="{{ owner.address if owner else '' }}"></div>
+    <div class="field full"><label>Notes</label><textarea name="notes">{{ owner.notes if owner else '' }}</textarea></div>
+  </div>
+  <div class="form-actions">
+    <button class="btn" type="submit">{{ 'Save Changes' if owner else 'Add Owner' }}</button>
+    <a class="btn secondary" href="{{ url_for('owner_detail', owner_id=owner.id) if owner else url_for('owners_list') }}">Cancel</a>
+  </div>
+</form>
+</div>
+<script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
+{% endblock %}

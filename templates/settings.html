@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Settings — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Settings</h1><p class="page-sub">Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:5050</strong>.</p></div></div>
+
+<div class="card">
+<form method="post" data-track-unsaved>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="section-title" style="margin-top:0;">Clinic</div>
+  <div class="form-grid">
+    <div class="field"><label>Clinic Name</label><input name="clinic_name" value="{{ settings.clinic_name }}"></div>
+    <div class="field"><label>Location</label><input name="clinic_location" value="{{ settings.clinic_location }}"></div>
+    <div class="field"><label>Clinic Opening Date</label><input type="date" name="opening_date" value="{{ settings.opening_date }}"></div>
+  </div>
+
+  <div class="section-title">Inventory Alerts</div>
+  <div class="form-grid">
+    <div class="field"><label>Audit Overdue After (Days)</label><input type="number" name="audit_overdue_days" value="{{ settings.audit_overdue_days }}" min="1" max="3650" step="1"></div>
+    <div class="field"><label>Expiry Warning Window (Days)</label><input type="number" name="expiry_soon_days" value="{{ settings.expiry_soon_days }}" min="1" max="3650" step="1"></div>
+  </div>
+
+  <div class="section-title">Appointments</div>
+  <div class="form-grid">
+    <div class="field"><label>Day Starts At</label><input type="time" name="appt_start_time" value="{{ settings.appt_start_time }}"></div>
+    <div class="field"><label>Day Ends At</label><input type="time" name="appt_end_time" value="{{ settings.appt_end_time }}"></div>
+    <div class="field"><label>Slot Length (Minutes)</label><input type="number" name="appt_slot_minutes" value="{{ settings.appt_slot_minutes }}" min="5" max="240" step="1"></div>
+  </div>
+
+  <div class="section-title">Discount Limits</div>
+  <p class="small muted" style="margin:-6px 0 10px;">Maximum discount percent each role can apply on Visit, Inpatient, and POS billing. Enforced server-side — staff can't exceed their role's cap no matter what's entered on screen.</p>
+  <div class="form-grid">
+    <div class="field"><label>Admin Max Discount (%)</label><input type="number" name="discount_cap_admin" value="{{ settings.discount_cap_admin }}" min="0" max="100" step="1"></div>
+    <div class="field"><label>Vet Max Discount (%)</label><input type="number" name="discount_cap_vet" value="{{ settings.discount_cap_vet }}" min="0" max="100" step="1"></div>
+    <div class="field"><label>Reception Max Discount (%)</label><input type="number" name="discount_cap_reception" value="{{ settings.discount_cap_reception }}" min="0" max="100" step="1"></div>
+  </div>
+
+  <div class="section-title">Backups</div>
+  <div class="form-grid">
+    <div class="field"><label>Backup Folder (on this computer)</label><input name="backup_dir" placeholder="e.g. /Users/you/JordanReferralCenterBackups or D:\JordanReferralCenterBackups" value="{{ settings.backup_dir }}"></div>
+    <div class="field"><label>Nightly Backup Time</label><input type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
+    <div class="field"><label>Keep Last N Backups</label><input type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
+  </div>
+
+  <div class="form-actions"><button class="btn" type="submit">Save Settings</button></div>
+</form>
+
+<form method="post" action="{{ url_for('settings_backup_now') }}" style="margin-top:10px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn secondary" type="submit">Back Up Now</button>
+</form>
+
+{% if recent_backups %}
+<div class="section-title">Recent Backups</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Started</th><th>Status</th><th>Size</th><th>File</th></tr></thead>
+  <tbody>
+    {% for b in recent_backups %}
+    <tr>
+      <td>{{ b.started_at }}</td>
+      <td>{% if b.status == 'success' %}<span class="badge">Success</span>{% elif b.status == 'failed' %}<span class="badge danger">Failed — {{ b.error }}</span>{% else %}<span class="badge warn">Running</span>{% endif %}</td>
+      <td>{{ (b.filesize_bytes / 1024 / 1024) | round(1) if b.filesize_bytes else "—" }}{% if b.filesize_bytes %} MB{% endif %}</td>
+      <td class="muted">{{ b.filepath or "—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+</div>
+<script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
+{% endblock %}

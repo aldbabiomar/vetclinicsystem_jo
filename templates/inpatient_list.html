@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Inpatient Cases — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Inpatient Cases</h1><p class="page-sub">{{ total_count }} shown.</p></div>
+  <a class="btn" href="{{ url_for('inpatient_new') }}">+ Admit Patient</a>
+</div>
+<div class="filter-chips">
+  <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('inpatient_list') }}">Currently Admitted</a>
+  <a class="chip {{ 'active' if show_all }}" href="{{ url_for('inpatient_list', all=1) }}">All Cases</a>
+</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Admitted</th><th>Animal</th><th>Owner</th><th>Complaint</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for c in cases %}
+    <tr onclick="window.location='{{ url_for('inpatient_detail', case_id=c.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('inpatient_detail', case_id=c.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
+      <td>{{ c.admission_date }}</td><td><strong>{{ c.animal_name }}</strong></td><td>{{ c.owner_name }}</td>
+      <td>{{ c.complaint or "—" }}</td>
+      <td><span class="badge {{ 'ok' if c.dismissed else 'warn' }}">{{ 'Discharged' if c.dismissed else 'Admitted' }}</span></td>
+    </tr>
+    {% else %}<tr><td colspan="5" class="empty-note">No inpatient cases.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

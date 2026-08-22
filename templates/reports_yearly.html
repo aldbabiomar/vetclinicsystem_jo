@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Yearly P&amp;L — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Yearly P&amp;L</h1><p class="page-sub">Same figures as Monthly P&amp;L, rolled up by year. {{ total_count }} year(s) shown.</p></div>
+  <div style="display:flex; gap:10px;">
+    <form method="post" action="{{ url_for('reports_rebuild_summary') }}" onsubmit="return confirm('Rebuild all report data from scratch? This re-checks every month against current billing, sales, and cost data. It can take a few seconds on a large database.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="return_to" value="{{ url_for('reports_yearly') }}">
+      <button class="btn secondary" type="submit" title="Force a full recalculation of every month, in case anything ever looks out of sync">Rebuild Report Data</button>
+    </form>
+    <a class="btn secondary" href="{{ url_for('reports') }}">← Monthly P&amp;L</a>
+  </div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Year</th><th class="num-col">Revenue</th><th class="num-col">COGS</th><th class="num-col">Gross Profit</th>
+    <th class="num-col">OpEx</th><th class="num-col">Net Profit</th><th class="num-col">Net Margin</th><th class="num-col">YoY Change</th>
+  </tr></thead>
+  <tbody>
+    {% for r in pl %}
+    <tr>
+      <td><strong>{{ r.year }}</strong></td>
+      <td class="num-col">{{ r.revenue|money }}</td>
+      <td class="num-col">{{ r.cogs|money }}</td>
+      <td class="num-col">{{ r.gross_profit|money }}</td>
+      <td class="num-col">{{ r.total_opex|money }}</td>
+      <td class="num-col" style="font-weight:700; color: {{ 'var(--ok)' if r.net_profit >= 0 else 'var(--danger)' }};">{{ r.net_profit|money }}</td>
+      <td class="num-col">{{ (r.net_margin*100)|round(0)|int if r.net_margin is not none else "—" }}{% if r.net_margin is not none %}%{% endif %}</td>
+      <td class="num-col" style="color: {{ 'var(--ok)' if r.yoy_change and r.yoy_change >= 0 else ('var(--danger)' if r.yoy_change and r.yoy_change < 0 else 'var(--ink-soft)') }};">
+        {% if r.yoy_change is not none %}{{ '+' if r.yoy_change >= 0 }}{{ r.yoy_change }}%{% else %}—{% endif %}
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="8" class="empty-note">Not enough data yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

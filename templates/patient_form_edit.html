@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Edit Patient — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Edit Patient Details</h1><p class="page-sub">{{ patient.id }}</p></div></div>
+<div class="card">
+<form method="post" data-track-unsaved>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-grid">
+    <div class="field"><label>Animal Name</label><input required name="animal_name" value="{{ patient.animal_name }}"></div>
+    <div class="field"><label>Species</label>
+      <select name="species">{% for sp in ['Dog','Cat','Bird','Rabbit','Other'] %}<option {{ 'selected' if patient.species==sp }}>{{ sp }}</option>{% endfor %}</select>
+    </div>
+    <div class="field"><label>Sex</label>
+      <select name="sex"><option value="">—</option>{% for sx in ['M','F'] %}<option {{ 'selected' if patient.sex==sx }}>{{ sx }}</option>{% endfor %}</select>
+    </div>
+    <div class="field"><label>Reproductive Status</label>
+      <select name="repro_status"><option value="">—</option>{% for rs in ['Intact','Neutered','Spayed'] %}<option {{ 'selected' if patient.repro_status==rs }}>{{ rs }}</option>{% endfor %}</select>
+    </div>
+    <div class="field"><label>Age / DOB Note</label><input name="age_note" value="{{ patient.age_note or '' }}"></div>
+    <div class="field"><label>Housing</label>
+      <select name="housing"><option value="">—</option>{% for h in ['Indoor','Outdoor','Stray'] %}<option {{ 'selected' if patient.housing==h }}>{{ h }}</option>{% endfor %}</select>
+    </div>
+    <div class="field full"><label>Notes</label><textarea name="notes">{{ patient.notes or '' }}</textarea></div>
+  </div>
+  <div class="form-actions">
+    <button class="btn" type="submit">Save Changes</button>
+    <a class="btn secondary" href="{{ url_for('patient_detail', patient_id=patient.id) }}">Cancel</a>
+  </div>
+</form>
+</div>
+<script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Users — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Users</h1><p class="page-sub">Add staff, change roles, disable accounts, reset passwords.</p></div>
+  <button class="btn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New User</button>
+</div>
+
+<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+  <form method="post" action="{{ url_for('admin_user_new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="field"><label>Full Name</label><input required name="full_name"></div>
+      <div class="field"><label>Username</label><input required name="username"></div>
+      <div class="field"><label>Temporary Password</label><input required type="text" name="password" minlength="6"></div>
+      <div class="field"><label>Role</label>
+        <select name="role" required>{% for r in roles %}<option>{{ r }}</option>{% endfor %}</select>
+      </div>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Create User</button></div>
+  </form>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Reset Password</th><th></th></tr></thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td><strong>{{ u.full_name }}</strong>{% if u.id == current_username %}{% endif %}</td>
+      <td class="muted">{{ u.username }}</td>
+      <td>
+        <form method="post" action="{{ url_for('admin_user_role', user_id=u.id) }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <select name="role" onchange="this.form.submit()" class="small">
+            {% for r in roles %}<option {{ 'selected' if u.role==r }}>{{ r }}</option>{% endfor %}
+          </select>
+        </form>
+      </td>
+      <td><span class="badge {{ 'ok' if u.active else 'muted' }}">{{ 'Active' if u.active else 'Disabled' }}</span></td>
+      <td>
+        <form method="post" action="{{ url_for('admin_user_reset_password', user_id=u.id) }}" class="inline-form" style="display:flex; gap:6px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="text" name="new_password" placeholder="New Password" minlength="6" required style="width:140px;">
+          <button class="btn small secondary" type="submit">Reset</button>
+        </form>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('admin_user_toggle', user_id=u.id) }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn small {{ 'danger' if u.active else 'secondary' }}" type="submit">{{ 'Disable' if u.active else 'Enable' }}</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

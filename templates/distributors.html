@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Distributors — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Distributors</h1>
+    <p class="page-sub">{{ distributors|length }} on file.</p>
+  </div>
+  <button class="btn" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Distributor</button>
+</div>
+
+<form class="search-bar" method="get">
+  <input type="text" name="q" value="{{ search }}" placeholder="Search by Distributor Name…">
+  <button class="btn secondary" type="submit">Search</button>
+  {% if search %}<a class="btn secondary" href="{{ url_for('distributors_list') }}">Clear</a>{% endif %}
+</form>
+
+<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+  <form method="post" action="{{ url_for('distributor_new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="field"><label>Distributor Name</label><input required name="name"></div>
+      <div class="field"><label>Contact Person</label><input name="contact_person"></div>
+      <div class="field"><label>Phone</label><input name="phone"></div>
+      <div class="field"><label>Email</label><input type="email" name="email"></div>
+      <div class="field"><label>Product Catalog Link</label><input name="catalog_link"></div>
+      <div class="field"><label>Lead Time (Days)</label><input type="number" name="lead_time_days"></div>
+      <div class="field"><label>Payment Terms</label><input name="payment_terms" placeholder="E.g. Net 30"></div>
+      <div class="field full"><label>Notes</label><input name="notes"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Add Distributor</button>
+      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>ID</th><th>Name</th><th>Contact</th><th>Phone</th><th>Email</th><th class="num-col">Lead Time</th><th>Terms</th><th></th>
+  </tr></thead>
+  <tbody>
+    {% for d in distributors %}
+    <form id="edit-{{ d.id }}" method="post" action="{{ url_for('distributor_edit', dist_id=d.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
+    <tr>
+      <td class="muted">{{ d.id }}</td>
+      <td><input form="edit-{{ d.id }}" name="name" value="{{ d.name }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td><input form="edit-{{ d.id }}" name="contact_person" value="{{ d.contact_person or '' }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td><input form="edit-{{ d.id }}" name="phone" value="{{ d.phone or '' }}" style="border:none; background:transparent; padding:2px; width:110px;"></td>
+      <td><input form="edit-{{ d.id }}" name="email" value="{{ d.email or '' }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td class="num-col"><input form="edit-{{ d.id }}" type="number" name="lead_time_days" value="{{ d.lead_time_days if d.lead_time_days is not none else '' }}" style="border:none; background:transparent; padding:2px; width:50px; text-align:right;"></td>
+      <td><input form="edit-{{ d.id }}" name="payment_terms" value="{{ d.payment_terms or '' }}" style="border:none; background:transparent; padding:2px; width:80px;"></td>
+      <td style="white-space:nowrap;">
+        <button class="btn small secondary" form="edit-{{ d.id }}" type="submit">Save</button>
+        <form method="post" action="{{ url_for('distributor_delete', dist_id=d.id) }}" style="display:inline;" onsubmit="return confirm('Delete {{ d.name }}?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn small danger" type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty-note">No distributors yet — add your suppliers here.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

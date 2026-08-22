@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Retention — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Retention</h1>
+    <p class="page-sub">Each row is the group of clients whose <em>first-ever visit</em> fell in that month. Each column is how many months later. The cell is the % of that group still coming back. Admin only.</p>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn secondary" href="{{ url_for('insights') }}">← Insights</a>
+  </div>
+</div>
+
+{% if not cohort.grid %}
+<div class="card">
+  <p class="small muted">Not enough visit history yet to build a cohort grid — this fills in automatically as patients return for follow-up visits.</p>
+</div>
+{% else %}
+<div class="card" style="overflow-x:auto;">
+<table class="cohort-table">
+  <thead>
+    <tr>
+      <th>Cohort (First Visit)</th>
+      <th class="num-col">Size</th>
+      {% for o in cohort.offsets %}<th class="num-col">+{{ o }}mo</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in cohort.grid %}
+    <tr>
+      <td><strong>{{ row.cohort_month }}</strong></td>
+      <td class="num-col">{{ row.cohort_size }}</td>
+      {% for cell in row.cells %}
+        {% if cell is none %}
+          <td class="num-col cohort-cell">—</td>
+        {% else %}
+          <td class="num-col cohort-cell" style="background: rgba(75,143,107,{{ (cell/100)|round(2) }}); color: {{ 'white' if cell >= 55 else 'var(--ink)' }};">{{ cell }}%</td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="small muted" style="margin-top:10px;">
+  Reading down a column shows whether retention at that stage is improving over time. Reading across a row shows how fast that group drops off. "—" means that much time hasn't passed yet for that cohort.
+</p>
+{% include "_pagination.html" %}
+{% endif %}
+
+<style>
+.cohort-table th, .cohort-table td { white-space: nowrap; }
+.cohort-cell { font-weight: 600; }
+</style>
+{% endblock %}

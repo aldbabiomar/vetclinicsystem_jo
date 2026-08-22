@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Something Went Wrong — {{ clinic_name }}{% endblock %}
+
+{# Same dual-block pattern as error_404.html — a crash can happen while
+   logged out too (e.g. the database itself is down at the login page). #}
+
+{% macro error_body() %}
+  {% with variant = "broken" %}{% include "_error_dog.html" %}{% endwith %}
+  <h1>Something went wrong on our end.</h1>
+  <p class="page-sub">
+    This wasn't your fault — an unexpected error happened while handling that page.
+    Copy the box below and send it along and it can be looked into.
+  </p>
+
+  <div class="error-report">
+    <div class="error-report-head">
+      <span class="small muted">Details for support — safe to copy and send</span>
+      <button type="button" class="btn small secondary" data-copy-target="error-report-box">Copy</button>
+    </div>
+    <pre id="error-report-box" class="error-report-box error-report-box-full">Error ID:  {{ error_id }}
+Time:      {{ error_time }}
+Page:      {{ request_line }}
+Type:      {{ exc_type }}
+Message:   {{ exc_message }}
+
+{{ traceback_text }}</pre>
+  </div>
+
+  <div class="error-actions" style="margin-top:18px;">
+    <a class="btn" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    <a class="btn secondary" href="javascript:location.reload()">Try Again</a>
+  </div>
+
+  <script>
+  document.querySelectorAll('[data-copy-target]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = document.getElementById(btn.dataset.copyTarget).textContent;
+      navigator.clipboard.writeText(text).then(function () {
+        var original = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = original; }, 1500);
+      });
+    });
+  });
+  </script>
+{% endmacro %}
+
+{% block content %}
+<div class="error-page">
+  <div class="card error-card error-card-wide">
+    {{ error_body() }}
+  </div>
+</div>
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-wrap">
+  <div class="auth-card error-card error-card-wide">
+    {{ error_body() }}
+  </div>
+</div>
+{% endblock %}

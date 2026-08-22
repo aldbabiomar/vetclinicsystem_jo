@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}Boarding — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Boarding</h1><p class="page-sub">{{ total_count }} {{ 'boarding session(s)' }}{% if not show_all %} currently boarding{% endif %}.</p></div>
+  <button class="btn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Add Boarding</button>
+</div>
+
+<div class="filter-chips">
+  <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('boarding_page') }}">Currently Boarding</a>
+  <a class="chip {{ 'active' if show_all }}" href="{{ url_for('boarding_page', all=1) }}">All (Incl. Picked Up)</a>
+</div>
+
+<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+  <div class="field" style="margin-bottom:12px;">
+    <label>Search Patient (Name, Patient ID, Owner Name, or Owner Phone)</label>
+    <input type="text" id="patientSearch" autocomplete="off" placeholder="Start Typing…">
+  </div>
+  <div id="searchResults" style="margin-bottom:10px;"></div>
+
+  <form method="post" action="{{ url_for('boarding_new') }}" id="addBoardingForm" style="display:none;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel"></strong></p>
+    <input type="hidden" name="patient_id" id="patientIdField">
+    <div class="form-grid">
+      <div class="field"><label>Entry Date</label><input required type="date" name="entry_date" value="{{ today }}" onchange="suggestTotal()" id="entryDateField"></div>
+      <div class="field"><label>Expected Dismissal Date</label><input type="date" name="dismissal_date" onchange="suggestTotal()" id="dismissalDateField"></div>
+      <div class="field"><label>Allocated Room</label><input name="room"></div>
+      <div class="field"><label>Admitted Items (Leash, Bed, Etc.)</label><input name="admitted_items"></div>
+      <div class="field"><label>Price per Day (JOD)</label><input type="number" step="1" min="0" name="price_per_day" id="pricePerDayField" onchange="suggestTotal()"></div>
+      <div class="field"><label>Total (JOD)</label><input type="number" step="1" min="0" name="total" id="totalField" placeholder="Auto-suggested from price × nights"></div>
+      <div class="field full" id="boardingDateWarning" style="display:none; color:var(--danger);"></div>
+      <div class="field full">
+        <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
+          <input type="checkbox" name="special_needs" id="specialNeedsCheck" onchange="document.getElementById('specialNeedsNotesField').style.display = this.checked ? 'block' : 'none';">
+          Special Needs?
+        </label>
+        <p class="small muted" style="margin:2px 0 8px;">Check this to report any chronic diseases or custom requirements for the stay (medication schedule, dietary restrictions, mobility issues, etc.).</p>
+        <div id="specialNeedsNotesField" style="display:none;">
+          <textarea name="special_needs_notes" placeholder="Describe the special need…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Add Boarding</button>
+      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.querySelector('.page-head button').style.display='inline-flex';">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<div id="incidentModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="section-title" style="margin-top:0;">Something's Wrong</div>
+    <p class="small muted" id="incidentPatientLabel" style="margin-bottom:12px;"></p>
+    <form method="post" id="incidentForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field full" style="margin-bottom:12px;"><label>What's wrong?</label><textarea name="issue" required></textarea></div>
+      <label class="checkbox-row small" style="text-transform:none; font-weight:500; margin-bottom:8px;">
+        <input type="checkbox" name="contacted" id="incidentContactedCheck" onchange="document.getElementById('incidentContactFields').style.display = this.checked ? 'block' : 'none';">
+        Contacted the owner?
+      </label>
+      <div id="incidentContactFields" style="display:none;">
+        <div class="field" style="margin-bottom:10px;"><label>How?</label>
+          <select name="contact_method"><option>Phone Call</option><option>Text Message</option></select>
+        </div>
+        <div class="field full" style="margin-bottom:12px;"><label>Owner's Response</label><textarea name="response"></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn small" type="submit">Log Incident</button>
+        <button class="btn small secondary" type="button" onclick="document.getElementById('incidentModal').style.display='none';">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="paymentModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="section-title" style="margin-top:0;">Record Payment</div>
+    <p class="small muted" id="paymentPatientLabel" style="margin-bottom:12px;"></p>
+    <form method="post" id="paymentForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field" style="margin-bottom:10px;"><label>Amount (JOD)</label><input type="number" step="1" min="1" name="amount" required></div>
+      <div class="field" style="margin-bottom:10px;"><label>Method</label><select name="method"><option>Cash</option><option>Card</option><option>Transfer</option></select></div>
+      <div class="field full" style="margin-bottom:12px;"><label>Notes</label><input name="notes"></div>
+      <div class="form-actions">
+        <button class="btn small" type="submit">Record Payment</button>
+        <button class="btn small secondary" type="button" onclick="document.getElementById('paymentModal').style.display='none';">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Patient</th><th>Owner</th><th>Room</th><th>Entry</th><th>Dismissal</th>
+    <th class="num-col">Total (JOD)</th><th>Payment</th><th>Special Needs</th><th>Incidents</th><th></th>
+  </tr></thead>
+  <tbody>
+    {% for s in sessions %}
+    <tr>
+      <td>{{ s.animal_name }} <span class="small muted">({{ s.species }})</span></td>
+      <td class="small">{{ s.owner_name }}{% if s.owner_phone %}<br><span class="muted">{{ s.owner_phone }}</span>{% endif %}</td>
+      <td>{{ s.room or "—" }}</td>
+      <td class="small">{{ s.entry_date }}</td>
+      <td class="small">{{ s.dismissal_date or ("Picked up" if s.dismissed else "—") }}</td>
+      <td class="num-col">{{ s.billing.total|money }}</td>
+      <td><span class="badge {{ 'ok' if s.billing.status=='Fully Paid' else ('danger' if s.billing.status=='Unpaid' else 'muted') }}">{{ s.billing.status }}</span></td>
+      <td>{% if s.special_needs %}<span class="badge warn" title="{{ s.special_needs_notes or '' }}">Yes</span>{% else %}<span class="muted small">None</span>{% endif %}</td>
+      <td>{% if s.incident_count %}<span class="badge danger">{{ s.incident_count }}</span>{% else %}<span class="muted small">0</span>{% endif %}</td>
+      <td class="actions-cell">
+        <div class="action-btns">
+          <button class="btn small danger" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" onclick="openIncident(this)">Something's Wrong!</button>
+          <div class="action-btns-row">
+            <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" onclick="openPayment(this)">Payment</button>
+            <button class="btn small secondary" type="button" onclick="toggleEdit({{ s.id }})">Edit</button>
+          </div>
+          <a class="btn small secondary" href="{{ url_for('boarding_export_pdf', boarding_id=s.id) }}">Export (PDF)</a>
+          {% if not s.dismissed %}
+          <form method="post" action="{{ url_for('boarding_dismiss', boarding_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Mark {{ s.animal_name }} as picked up?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn small secondary" type="submit">Mark Picked Up</button>
+          </form>
+          {% endif %}
+          {% if s.owner_phone %}
+          <a class="btn small ok" target="_blank" rel="noopener"
+             href="https://wa.me/{{ s.owner_phone|replace('+','') }}?text={{ ('Hi ' ~ s.owner_name ~ ', this is a reminder that ' ~ s.animal_name ~ ' is due for their pickup from boarding on ' ~ (s.dismissal_date or 'the agreed date') ~ '. - ' ~ clinic_name)|urlencode }}">Send WhatsApp Message</a>
+          {% else %}
+          <a class="btn small secondary" href="{{ url_for('owner_edit', owner_id=s.owner_id) }}">Add phone to send WhatsApp</a>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    <tr id="editRow-{{ s.id }}" style="display:none;">
+      <td colspan="10">
+        <form method="post" action="{{ url_for('boarding_edit', boarding_id=s.id) }}" class="form-grid" style="padding:10px 0;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="field"><label>Entry Date</label><input type="date" name="entry_date" value="{{ s.entry_date }}"></div>
+          <div class="field"><label>Dismissal Date</label><input type="date" name="dismissal_date" value="{{ s.dismissal_date or '' }}"></div>
+          <div class="field"><label>Room</label><input name="room" value="{{ s.room or '' }}"></div>
+          <div class="field"><label>Admitted Items</label><input name="admitted_items" value="{{ s.admitted_items or '' }}"></div>
+          <div class="field"><label>Price per Day (JOD)</label><input type="number" step="1" name="price_per_day" value="{{ s.price_per_day if s.price_per_day is not none else '' }}"></div>
+          <div class="field"><label>Total (JOD)</label><input type="number" step="1" name="total" value="{{ s.total if s.total is not none else '' }}"></div>
+          <div class="field full">
+            <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
+              <input type="checkbox" name="special_needs" id="specialNeedsCheck-{{ s.id }}" {{ 'checked' if s.special_needs }} onchange="document.getElementById('specialNeedsNotesField-' + {{ s.id }}).style.display = this.checked ? 'block' : 'none';"> Special Needs?
+            </label>
+            <textarea name="special_needs_notes" id="specialNeedsNotesField-{{ s.id }}" placeholder="Describe the special need…" style="display: {{ 'block' if s.special_needs else 'none' }};">{{ s.special_needs_notes or '' }}</textarea>
+            {% if s.special_needs_notes and not s.special_needs %}
+            <p class="small muted">Notes on file but Special Needs is unchecked — they won't be saved unless you check the box.</p>
+            {% endif %}
+          </div>
+          <div class="form-actions"><button class="btn small" type="submit">Save Changes</button></div>
+        </form>
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="10" class="empty-note">No boarding sessions on record.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+
+<script>
+const searchInput = document.getElementById('patientSearch');
+const resultsDiv = document.getElementById('searchResults');
+let debounceTimer;
+searchInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  const q = searchInput.value.trim();
+  if (q.length === 0) { resultsDiv.innerHTML = ''; return; }
+  if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">Type at least 2 characters.</div>'; return; }
+  debounceTimer = setTimeout(() => {
+    fetch(`/api/patients/search?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
+        window.__boardingSearchResults = data;
+        resultsDiv.innerHTML = data.map((p, idx) =>
+          `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" onclick="selectPatient(window.__boardingSearchResults[this.dataset.idx])">
+             <div><div class="who">${escapeHtml(p.animal_name)} <span class="meta">(${escapeHtml(p.species || '')})</span></div>
+             <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || 'no phone')} · ${escapeHtml(p.id)}</div></div>
+           </div>`
+        ).join('');
+      })
+      .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">Could not search patients; check server connection.</div>'; });
+  }, 200);
+});
+function selectPatient(p) {
+  document.getElementById('patientIdField').value = p.id;
+  document.getElementById('selectedPatientLabel').textContent = `${p.animal_name} — ${p.owner_name} (${p.id})`;
+  document.getElementById('addBoardingForm').style.display = 'block';
+  resultsDiv.innerHTML = '';
+  searchInput.value = '';
+}
+function suggestTotal() {
+  const price = parseFloat(document.getElementById('pricePerDayField').value);
+  const entry = document.getElementById('entryDateField').value;
+  const dismissal = document.getElementById('dismissalDateField').value;
+  const warningEl = document.getElementById('boardingDateWarning');
+  if (dismissal && entry && new Date(dismissal) < new Date(entry)) {
+    warningEl.style.display = 'block';
+    warningEl.textContent = 'Expected Dismissal Date is before Entry Date — billing will still count as 1 night. Please double-check these dates.';
+  } else if (dismissal && entry && dismissal === entry) {
+    warningEl.style.display = 'block';
+    warningEl.textContent = 'Same-day boarding is billed as 1 night.';
+  } else {
+    warningEl.style.display = 'none';
+    warningEl.textContent = '';
+  }
+  if (!price || !entry) return;
+  const start = new Date(entry);
+  const end = dismissal ? new Date(dismissal) : new Date();
+  const nights = Math.max(1, Math.round((end - start) / 86400000));
+  document.getElementById('totalField').value = Math.round(price * nights);
+}
+function openIncident(btn) {
+  const { id, name } = btn.dataset;
+  document.getElementById('incidentForm').action = `/boarding/${id}/incident`;
+  document.getElementById('incidentPatientLabel').textContent = name;
+  document.getElementById('incidentModal').style.display = 'flex';
+}
+function openPayment(btn) {
+  const { id, name } = btn.dataset;
+  document.getElementById('paymentForm').action = `/boarding/${id}/payment`;
+  document.getElementById('paymentPatientLabel').textContent = name;
+  document.getElementById('paymentModal').style.display = 'flex';
+}
+function toggleEdit(id) {
+  const row = document.getElementById('editRow-' + id);
+  row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>
+{% endblock %}

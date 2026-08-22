@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ clinic_name }}{% endblock %}</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if session.get('user_id') %}
+<div class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="mobile-topbar-brand">{{ clinic_name }}</span>
+</div>
+<div class="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="app-shell">
+  <nav class="sidebar">
+    <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">&times;</button>
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11.5L12 4l9 7.5"/>
+          <path d="M4.5 10.5V21h15V10.5"/>
+          <path d="M12 6.5v3M10.5 8h3"/>
+        </svg>
+      </span>
+      <span class="brand-name">{{ clinic_name }}</span>
+    </div>
+    <div class="brand-sub">{{ clinic_location }}</div>
+
+    <div class="nav-group">
+      <a class="nav-link {{ 'active' if request.endpoint=='dashboard' }}" href="{{ url_for('dashboard') }}">
+        Dashboard {% if alert_count %}<span class="nav-badge">{{ alert_count }}</span>{% endif %}
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Patients &amp; Visits</div>
+      <a class="nav-link {{ 'active' if request.endpoint in ['owners_list','owner_new','owner_detail','owner_edit'] }}" href="{{ url_for('owners_list') }}">Owners</a>
+      <a class="nav-link {{ 'active' if request.endpoint in ['patients_list','patient_detail','patient_edit','patient_history'] }}" href="{{ url_for('patients_list') }}">Patients</a>
+      <a class="nav-link {{ 'active' if request.endpoint in ['visits_list','visit_new_start','visit_new_existing','visit_new_patient','visit_detail','visit_edit'] }}" href="{{ url_for('visits_list') }}">Visits</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='followups_list' }}" href="{{ url_for('followups_list') }}">Follow-Ups</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='wellness_list' }}" href="{{ url_for('wellness_list') }}">Wellness</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='grooming_list' }}" href="{{ url_for('grooming_list') }}">Grooming</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='boarding_page' }}" href="{{ url_for('boarding_page') }}">Boarding</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='appointments_page' }}" href="{{ url_for('appointments_page') }}">Appointments</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Inpatient</div>
+      <a class="nav-link {{ 'active' if request.endpoint in ['inpatient_list','inpatient_new','inpatient_detail'] }}" href="{{ url_for('inpatient_list') }}">Inpatient Cases</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Inventory</div>
+      <a class="nav-link {{ 'active' if request.endpoint=='inventory_status_page' }}" href="{{ url_for('inventory_status_page') }}">Inventory Status</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='ordering_sheet_page' }}" href="{{ url_for('ordering_sheet_page') }}">Ordering Sheet</a>
+      <a class="nav-link {{ 'active' if request.endpoint in ['audit_history_list','audit_session_view'] }}" href="{{ url_for('audit_history_list') }}">Audit History</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='inventory_catalog' }}" href="{{ url_for('inventory_catalog') }}">Inventory Catalog</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='distributors_list' }}" href="{{ url_for('distributors_list') }}">Distributors</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Sales &amp; Billing</div>
+      <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('pos_page') }}">Point of Sale</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='pos_history' }}" href="{{ url_for('pos_history') }}">Sales History</a>
+      {% if current_role == 'Admin' %}
+      <a class="nav-link {{ 'active' if request.endpoint=='price_list' }}" href="{{ url_for('price_list') }}">Price List</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('refunds_page') }}">Refunds</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='reports' }}" href="{{ url_for('reports') }}">Monthly P&amp;L</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='reports_yearly' }}" href="{{ url_for('reports_yearly') }}">Yearly P&amp;L</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='insights' }}" href="{{ url_for('insights') }}">Insights</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='retention' }}" href="{{ url_for('retention') }}">Retention</a>
+      {% endif %}
+    </div>
+
+    {% if current_role == 'Admin' %}
+    <div class="nav-group">
+      <div class="nav-label">Admin</div>
+      <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin_users') }}">Users</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin_logs') }}">Logins and Changes</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='settings_page' }}" href="{{ url_for('settings_page') }}">Settings</a>
+    </div>
+    {% endif %}
+
+    <div class="nav-group" style="margin-top:auto;">
+      <a class="nav-link {{ 'active' if request.endpoint=='change_password' }}" href="{{ url_for('change_password') }}">{{ current_username }} · {{ current_role }}</a>
+      <a class="nav-link" href="{{ url_for('logout') }}">Log Out</a>
+    </div>
+  </nav>
+
+  <main class="main {% block main_class %}{% endblock %}">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script>
+function toggleSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.toggle('open');
+  backdrop.classList.toggle('open');
+}
+function closeSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.remove('open');
+  backdrop.classList.remove('open');
+}
+document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
+  link.addEventListener('click', closeSidebar);
+});
+</script>
+{% else %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="auth-flash-wrap">
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block auth_content %}{% endblock %}
+{% endif %}
+<script>
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+</script>
+<script>
+(function() {
+  var token = document.querySelector('meta[name="csrf-token"]').content;
+  document.querySelectorAll('form').forEach(function(form) {
+    var method = (form.getAttribute('method') || 'get').toLowerCase();
+    if (method !== 'post') return;
+    if (form.querySelector('input[name="csrf_token"]')) return;
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'csrf_token';
+    input.value = token;
+    form.appendChild(input);
+  });
+})();
+</script>
+<script src="{{ url_for('static', filename='upload-progress.js') }}"></script>
+</body>
+</html>

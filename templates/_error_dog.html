@@ -1,0 +1,75 @@
+{# Reusable line-art dog for error pages, drawn in the same style as the
+   sidebar brand mark (currentColor stroke, rounded caps, soft organic
+   ellipses). variant: 'lost' (404 — tilted head + floating "?"),
+   'stop' (403 — one paw raised, "halt" pose), or 'broken' (500 — startled
+   look + floating "!"). #}
+<svg class="error-dog" viewBox="0 0 220 200" fill="none" xmlns="http://www.w3.org/2000/svg"
+     stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+
+  {% if variant == 'stop' %}
+  <g transform="rotate(-4 110 100)">
+  {% elif variant == 'broken' %}
+  <g transform="rotate(2 110 100)">
+  {% else %}
+  <g transform="rotate(-9 110 100)">
+  {% endif %}
+
+    <!-- body -->
+    <path d="M74 178c-4-26 2-46 14-58" />
+    <path d="M150 178c6-24 2-45-8-56" />
+    <path d="M70 178h84" />
+
+    <!-- ears: one up, one flopped — the "confused" tilt -->
+    <path d="M68 74c-14-16-20-30-12-38 9-8 22 2 26 20" />
+    <path d="M150 66c16-6 28-4 30 6 2 11-12 18-30 16" />
+
+    <!-- head -->
+    <ellipse cx="110" cy="96" rx="46" ry="40" />
+
+    <!-- muzzle -->
+    <path d="M92 118c4 10 22 10 26 0" />
+    <ellipse cx="110" cy="112" rx="7" ry="5" fill="currentColor" stroke="none" />
+
+    {% if variant == 'broken' %}
+    <!-- startled eyes: both wide open -->
+    <circle cx="92" cy="90" r="4" fill="currentColor" stroke="none" />
+    <circle cx="128" cy="90" r="4" fill="currentColor" stroke="none" />
+    <!-- both eyebrows raised -->
+    <path d="M82 74c4-5 10-6 15-3" />
+    <path d="M120 71c5-3 11-2 15 3" />
+    {% else %}
+    <!-- eyes: one wide-open, one squinted — quizzical expression -->
+    <circle cx="92" cy="90" r="3.6" fill="currentColor" stroke="none" />
+    <path d="M124 92c4-4 10-4 14 0" />
+    <!-- eyebrow, raised -->
+    <path d="M84 76c4-5 10-6 15-3" />
+    {% endif %}
+
+    <!-- tongue -->
+    <path d="M108 122c1 8-1 14-1 14" stroke-width="3" />
+
+  </g>
+
+  {% if variant == 'stop' %}
+  <!-- one front paw raised, palm-out — "halt" -->
+  <g>
+    <path d="M150 150c10-6 20-16 22-28" />
+    <path d="M164 118c2-4 7-5 9-1" />
+    <path d="M170 116c2-4 6-4 8-1" />
+    <path d="M176 116c2-3 6-3 7 0" />
+  </g>
+  {% elif variant == 'broken' %}
+  <!-- floating exclamation mark -->
+  <g stroke-width="4">
+    <path d="M176 54v18" />
+    <circle cx="176" cy="80" r="1" fill="currentColor" stroke="none" />
+  </g>
+  {% else %}
+  <!-- floating question mark, tail wag line -->
+  <g stroke-width="3">
+    <path d="M168 58c0-7 6-10 11-8 5 2 6 8 2 11-4 3-5 5-5 9" />
+    <circle cx="176" cy="80" r="0.8" fill="currentColor" stroke="none" />
+  </g>
+  <path d="M62 168c-8 2-14 8-14 14" stroke-width="2.6" opacity="0.6" />
+  {% endif %}
+</svg>

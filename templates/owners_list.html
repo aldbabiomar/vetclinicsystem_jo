@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Owners — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Owners</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} on file.{% endif %}</p></div>
+  <a class="btn" href="{{ url_for('owner_new') }}">+ New Owner</a>
+</div>
+<form class="search-bar" method="get">
+  <input type="text" name="q" placeholder="Search Name or Phone…" value="{{ search }}">
+  <button class="btn secondary" type="submit">Search</button>
+  {% if search %}<a class="btn secondary" href="{{ url_for('owners_list') }}">Clear</a>{% endif %}
+</form>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th class="num-col">Patients</th></tr></thead>
+  <tbody>
+    {% for o in owners %}
+    <tr onclick="window.location='{{ url_for('owner_detail', owner_id=o.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('owner_detail', owner_id=o.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
+      <td class="muted">{{ o.id }}</td><td><strong>{{ o.name }}</strong></td><td>{{ o.phone or "—" }}</td>
+      <td class="num-col">{{ counts.get(o.id, 0) }}</td>
+    </tr>
+    {% else %}<tr><td colspan="4" class="empty-note">No owners match.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

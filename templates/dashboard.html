@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="page-sub">Snapshot as of today, {{ today }}.{% if current_role == 'Admin' %} Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:5050</strong>.{% endif %}</p>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn secondary" href="{{ url_for('visit_new_start') }}">+ Log a Visit</a>
+  </div>
+</div>
+
+{% if current_role == 'Admin' and opex_due %}
+<div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
+  This month's operating costs haven't been entered yet — add them on the Monthly P&amp;L page before the month closes.
+</div>
+{% endif %}
+
+{% if current_role == 'Admin' and backup_alert %}
+<div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
+  {{ backup_alert }} <a href="{{ url_for('settings_page') }}">Open Settings →</a>
+</div>
+{% endif %}
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="num">{{ snap.total_patients }}</div><div class="label">Total Patients on File</div></div>
+  <div class="stat-card ok"><div class="num">{{ snap.active_cases }}</div><div class="label">Active / Ongoing Cases</div></div>
+  <div class="stat-card {{ 'alert' if snap.due_today }}"><div class="num">{{ snap.due_today|length }}</div><div class="label">Follow-Ups Due Today</div></div>
+  <div class="stat-card {{ 'warn' if snap.admitted_now }}"><div class="num">{{ snap.admitted_now }}</div><div class="label">Currently Admitted (Inpatient)</div></div>
+</div>
+
+<div class="panel-grid">
+  <div class="card panel">
+    <h2>Follow-Ups Due Today <span class="count">{{ snap.due_today|length }}</span></h2>
+    {% if snap.due_today %}
+      {% for f in snap.due_today[:6] %}
+      <div class="list-line">
+        <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }})</span></div><div class="meta">{{ f.followup_method }} — {{ f.followup_reason }}</div></div>
+        <a class="btn small secondary" href="{{ url_for('visit_detail', visit_id=f.visit_id) }}">Open</a>
+      </div>
+      {% endfor %}
+      {% if snap.due_today|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('followups_list') }}">View all follow-ups →</a></div>{% endif %}
+    {% else %}<div class="empty-note">Nothing due today.</div>{% endif %}
+  </div>
+
+  <div class="card panel">
+    <h2>Reminder Calls — Call Today for Tomorrow's Visit <span class="count">{{ snap.reminders_tomorrow|length }}</span></h2>
+    {% if snap.reminders_tomorrow %}
+      {% for f in snap.reminders_tomorrow[:6] %}
+      <div class="list-line">
+        <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }}, {{ f.phone or "no phone on file" }})</span></div><div class="meta">Visit set for {{ f.followup_date }}</div></div>
+        <a class="btn small secondary" href="{{ url_for('visit_detail', visit_id=f.visit_id) }}">Open</a>
+      </div>
+      {% endfor %}
+      {% if snap.reminders_tomorrow|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('followups_list') }}">View all follow-ups →</a></div>{% endif %}
+    {% else %}<div class="empty-note">No reminder calls needed today.</div>{% endif %}
+  </div>
+
+  <div class="card panel">
+    <h2>Wellness Reminders Due <span class="count">{{ snap.wellness_due|length }}</span></h2>
+    {% if snap.wellness_due %}
+      {% for w in snap.wellness_due[:6] %}
+      <div class="list-line">
+        <div><div class="who">{{ w.animal_name }} <span class="meta">({{ w.owner_name }})</span></div><div class="meta">{{ w.wellness_type }} due {{ w.wellness_next_dose_date }}</div></div>
+        <a class="btn small secondary" href="{{ url_for('wellness_list') }}">Open</a>
+      </div>
+      {% endfor %}
+      {% if snap.wellness_due|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('wellness_list') }}">View all wellness reminders →</a></div>{% endif %}
+    {% else %}<div class="empty-note">No wellness reminders due.</div>{% endif %}
+  </div>
+
+  <div class="card panel">
+    <h2>Grooming Queue <span class="count">{{ snap.grooming_queue|length }}</span></h2>
+    {% if snap.grooming_queue %}
+      {% for gr in snap.grooming_queue[:6] %}
+      <div class="list-line">
+        <div><div class="who">{{ gr.animal_name }} <span class="meta">({{ gr.owner_name }})</span></div><div class="meta">{{ gr.grooming_status or "Waiting" }}</div></div>
+      </div>
+      {% endfor %}
+      {% if snap.grooming_queue|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('grooming_list') }}">View grooming queue →</a></div>{% endif %}
+    {% else %}<div class="empty-note">No grooming in progress.</div>{% endif %}
+  </div>
+
+  <div class="card panel">
+    <h2>Low Stock <span class="count">{{ snap.low_stock|length }}</span></h2>
+    {% if snap.low_stock %}
+      {% for i in snap.low_stock[:6] %}<div class="list-line"><div class="who">{{ i.name }}</div><div class="meta">{{ i.current_stock }} {{ i.unit }} left (threshold {{ i.reorder_threshold }})</div></div>{% endfor %}
+      {% if snap.low_stock|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('ordering_sheet_page') }}">View ordering sheet →</a></div>{% endif %}
+    {% else %}<div class="empty-note">Nothing below threshold.</div>{% endif %}
+  </div>
+
+  <div class="card panel">
+    <h2>Audit &amp; Expiry Alerts <span class="count">{{ (snap.overdue_audit|length) + (snap.expiring|length) }}</span></h2>
+    {% if snap.overdue_audit or snap.expiring %}
+      {% set audit_expiry_combined = snap.overdue_audit + snap.expiring %}
+      {% for i in audit_expiry_combined[:6] %}
+        {% if i.audit_status in ('OVERDUE', 'Never audited') %}
+          <div class="list-line"><div class="who">{{ i.name }}</div><span class="badge danger">{{ i.audit_status }}</span></div>
+        {% else %}
+          <div class="list-line"><div class="who">{{ i.name }}</div><span class="badge warn">{{ i.expiry_status }}</span></div>
+        {% endif %}
+      {% endfor %}
+      {% if audit_expiry_combined|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory_status_page') }}">View inventory status →</a></div>{% endif %}
+    {% else %}<div class="empty-note">No audit or expiry issues.</div>{% endif %}
+  </div>
+</div>
+
+{% if current_role == 'Admin' %}
+<div class="section-title">Missed Items — Needs Admin Review <span class="count">{{ missed_total }}</span></div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Type</th><th>Patient</th><th>Deadline Passed</th><th>Responsible Staff</th><th></th></tr></thead>
+  <tbody>
+    {% for m in missed %}
+    <tr>
+      <td><span class="badge danger">{{ m.kind }}</span></td>
+      <td>{{ m.animal_name }}</td>
+      <td class="muted">{{ m.deadline }}</td>
+      <td>{{ m.responsible or "Unassigned" }}</td>
+      <td><a class="btn small secondary" href="{{ url_for('visit_detail', visit_id=m.visit_id) }}">Open</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="empty-note">Nothing overdue by more than two weeks.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% with page=missed_page, total_pages=missed_total_pages, total_count=missed_total %}
+{% include "_pagination.html" %}
+{% endwith %}
+{% endif %}
+{% endblock %}

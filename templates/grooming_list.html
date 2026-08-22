@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Grooming — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Grooming Queue</h1><p class="page-sub">Ongoing grooming requests logged as part of a visit. {{ total_count }} shown.</p></div></div>
+
+<div class="filter-chips">
+  <a class="chip {{ 'active' if not include_finished }}" href="{{ url_for('grooming_list') }}">In Progress</a>
+  <a class="chip {{ 'active' if include_finished }}" href="{{ url_for('grooming_list', all=1) }}">Include Finished</a>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Patient ID</th><th>Animal</th><th>Owner</th><th>Phone</th><th>Admitted Items</th><th>Status</th><th>Contacted?</th><th></th></tr></thead>
+  <tbody>
+    {% for gr in rows %}
+    <form id="g-{{ gr.visit_id }}" method="post" action="{{ url_for('grooming_update', visit_id=gr.visit_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
+    <tr>
+      <td class="muted">{{ gr.patient_id }}</td>
+      <td><a href="{{ url_for('visit_detail', visit_id=gr.visit_id) }}"><strong>{{ gr.animal_name }}</strong></a></td>
+      <td>{{ gr.owner_name }}</td><td>{{ gr.phone or "—" }}</td>
+      <td class="small">{{ gr.grooming_admitted_items or "—" }}</td>
+      <td>
+        <select form="g-{{ gr.visit_id }}" name="grooming_status" class="small">
+          {% for s in ['Waiting','Ongoing','Finished'] %}<option {{ 'selected' if gr.grooming_status==s }}>{{ s }}</option>{% endfor %}
+        </select>
+      </td>
+      <td>
+        <select form="g-{{ gr.visit_id }}" name="grooming_contacted" class="small">
+          <option value="N" {{ 'selected' if gr.grooming_contacted=='N' }}>No</option>
+          <option value="Y" {{ 'selected' if gr.grooming_contacted=='Y' }}>Yes</option>
+        </select>
+      </td>
+      <td><button class="btn small secondary" form="g-{{ gr.visit_id }}" type="submit">Save</button></td>
+    </tr>
+    {% else %}<tr><td colspan="8" class="empty-note">Nothing in the grooming queue.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

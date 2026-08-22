@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}{{ visit.id }} — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ visit.animal_name }} <span class="muted" style="font-weight:400;font-size:16px;">— {{ visit.date }}</span></h1>
+    <p class="page-sub">{{ visit.id }} · Owner: {{ visit.owner_name }}{% if visit.owner_phone %} ({{ visit.owner_phone }}){% endif %}</p>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn secondary" href="{{ url_for('visit_export_pdf', visit_id=visit.id) }}">Export Visit (PDF)</a>
+    <a class="btn secondary" href="{{ url_for('visit_edit', visit_id=visit.id) }}">Edit Visit</a>
+  </div>
+</div>
+
+<div class="panel-grid" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Case</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Visit Type</div><div class="v">{{ visit.visit_type }}</div></div>
+      <div class="detail-item"><div class="k">Doctor</div><div class="v">{{ visit.doctor or "—" }}</div></div>
+      <div class="detail-item"><div class="k">Weight</div><div class="v">{{ (visit.weight_kg ~ " kg") if visit.weight_kg is not none else "—" }}</div></div>
+      <div class="detail-item"><div class="k">BCS</div><div class="v">{{ (visit.bcs ~ "/9") if visit.bcs is not none else "—" }}</div></div>
+      <div class="detail-item"><div class="k">Case Status</div><div class="v"><span class="badge {{ 'ok' if visit.case_status=='Resolved' else ('danger' if visit.case_status=='Deceased/Euthanized' else 'warn') }}">{{ visit.case_status }}</span></div></div>
+    </div>
+    <div class="detail-item"><div class="k">Presenting Complaint</div><div class="v">{{ visit.complaint or "—" }}</div></div>
+    <div class="detail-item"><div class="k">History</div><div class="v">{{ visit.history or "—" }}</div></div>
+    <div class="detail-item"><div class="k">Physical Exam &amp; Diagnostics</div><div class="v">{{ visit.exam or "—" }}</div></div>
+    <div class="detail-item"><div class="k">Treatment Plan</div><div class="v">{{ visit.treatment or "—" }}</div></div>
+    <div class="detail-item"><div class="k">Updates Log</div><div class="v updates-log">{{ visit.updates_log or "—" }}</div></div>
+
+    <div style="margin-top:10px;">
+      <button class="btn small secondary" type="button" onclick="var b=document.getElementById('uploadBox'); b.style.display = (b.style.display==='none' ? 'block' : 'none');">Additional Tests / X-Rays</button>
+      <span class="small muted">({{ files|length }} file(s) on record)</span>
+    </div>
+    <div id="uploadBox" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+      {% for file in files %}
+      <div class="list-line"><a href="{{ url_for('serve_attachment', relpath=file.relative_path) }}" target="_blank">{{ file.original_name }}</a><span class="meta">{{ file.uploaded_at[:10] }}</span></div>
+      {% else %}<div class="empty-note">No files uploaded yet.</div>{% endfor %}
+      <form method="post" action="{{ url_for('visit_attachment_upload', visit_id=visit.id) }}" enctype="multipart/form-data" style="margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="file" name="file" accept=".pdf,.jpg,.jpeg" required>
+        <button class="btn small" type="submit">Upload</button>
+        <button class="btn small secondary" type="button" onclick="document.getElementById('uploadBox').style.display='none';">Close</button>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    {% if visit.followup_needed == 'Y' %}
+    <div class="card" style="margin-bottom:16px;">
+      <div class="section-title" style="margin-top:0;">Follow-Up</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="k">Method</div><div class="v">{{ visit.followup_method or "—" }}</div></div>
+        <div class="detail-item"><div class="k">Reason</div><div class="v">{{ visit.followup_reason or "—" }}</div></div>
+        <div class="detail-item"><div class="k">Date</div><div class="v">{{ visit.followup_date or "—" }}</div></div>
+        <div class="detail-item"><div class="k">Status</div><div class="v"><span class="badge {{ 'warn' if visit.followup_status=='Pending' else 'ok' }}">{{ visit.followup_status }}</span></div></div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if visit.wellness_needed == 'Y' %}
+    <div class="card" style="margin-bottom:16px;">
+      <div class="section-title" style="margin-top:0;">Wellness Reminder</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="k">Type</div><div class="v">{{ visit.wellness_type or "—" }}</div></div>
+        <div class="detail-item"><div class="k">Next Dose Date</div><div class="v">{{ visit.wellness_next_dose_date or "—" }}</div></div>
+        <div class="detail-item"><div class="k">Contacted</div><div class="v">{{ visit.wellness_contacted }}</div></div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if visit.grooming_needed == 'Y' %}
+    <div class="card" style="margin-bottom:16px;">
+      <div class="section-title" style="margin-top:0;">Grooming</div>
+      <div class="detail-item"><div class="k">Services</div><div class="v">{{ visit.grooming_services or "—" }}</div></div>
+      <div class="detail-item"><div class="k">Admitted Items</div><div class="v">{{ visit.grooming_admitted_items or "—" }}</div></div>
+      <div class="detail-item"><div class="k">Status</div><div class="v"><span class="badge {{ 'ok' if visit.grooming_status=='Finished' else 'warn' }}">{{ visit.grooming_status or "Waiting" }}</span></div></div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="section-title" style="margin-top:0;">Billing</div>
+      <form method="post" action="{{ url_for('visit_billing_save', visit_id=visit.id) }}" id="billingForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="display:flex; gap:16px; margin-bottom:12px;">
+          <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
+            <input type="radio" name="billing_type" value="Automatic" onchange="toggleBillingType()" id="btAuto" {{ 'checked' if not billing or billing.billing_type=='Automatic' }}> Automatic Calculation
+          </label>
+          <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
+            <input type="radio" name="billing_type" value="Manual" onchange="toggleBillingType()" id="btManual" {{ 'checked' if billing and billing.billing_type=='Manual' }}> Manual Entry
+          </label>
+        </div>
+        <div id="autoFields" class="field full" style="margin-bottom:12px;">
+          <label>Billed Item Codes (Comma-Separated Price IDs)</label>
+          <input name="codes" value="{{ billing.codes if billing else '' }}" placeholder="E.g. P001, P003">
+        </div>
+        <div id="manualFields" class="field full" style="margin-bottom:12px;">
+          <label>Billed Amount (JOD) — Exported as "Veterinary Services"</label>
+          <input type="number" step="1" name="manual_amount" value="{{ billing.manual_amount if billing and billing.manual_amount else '' }}">
+        </div>
+        <div class="field full" style="margin-bottom:12px;"><label>Date Billed</label><input type="date" name="date_billed" value="{{ billing.date_billed if billing else visit.date }}"></div>
+        <div class="field full" style="margin-bottom:14px;"><label>Notes</label><input name="notes" value="{{ billing.notes if billing else '' }}"></div>
+        <button class="btn small" type="submit">Save Billing</button>
+      </form>
+
+      <details style="margin-top:14px;">
+        <summary class="small muted" style="cursor:pointer;">Price List Reference</summary>
+        <div style="margin-top:8px;">
+          <input type="text" id="priceRefSearch" placeholder="Search by code or service name…"
+                 oninput="filterPriceRef()" style="width:100%; margin-bottom:8px;">
+          <div style="max-height:200px; overflow:auto;">
+            <table id="priceRefTable">
+              {% for p in price_list %}
+              <tr data-search="{{ (p.id ~ ' ' ~ p.name)|lower }}"><td class="small">{{ p.id }}</td><td class="small">{{ p.name }}</td><td class="small num-col">{{ p.sale_price|money }}</td></tr>
+              {% endfor %}
+            </table>
+            <p id="priceRefEmpty" class="small muted" style="display:none; margin-top:6px;">No matching items.</p>
+          </div>
+        </div>
+      </details>
+
+      <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
+        {% for l in summary.lines %}<div class="list-line"><div>{{ l.name }}</div><div>{{ l.price|money }} JOD</div></div>{% endfor %}
+        <div class="detail-item" style="margin-top:8px;"><div class="k">Subtotal</div><div class="v">{{ summary.subtotal|money }} JOD</div></div>
+        <form method="post" action="{{ url_for('visit_discount_save', visit_id=visit.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="field" style="flex:1;"><label>Discount % (Max {{ discount_cap }}%)</label><input type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ summary.discount_percent }}"></div>
+          <button class="btn small secondary" type="submit">Apply</button>
+        </form>
+        <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} JOD</div></div>
+        <div class="detail-item"><div class="k">Paid</div><div class="v">{{ summary.paid|money }} JOD</div></div>
+        <span class="badge {{ 'ok' if summary.status=='Fully Paid' else ('danger' if summary.status=='Unpaid' else 'muted') }}">{{ summary.status }}</span>
+      </div>
+
+      <div id="codeCaseModal" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+          <div class="section-title" style="margin-top:0;">Some of those codes weren't found</div>
+          <p class="small" id="codeCaseMissing" style="color:var(--danger);"></p>
+          <p class="small">Billed Item Codes are <b>case-sensitive</b> — they must match the Price List exactly, capital letters included.</p>
+          <div class="dodont" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0;">
+            <div style="background:var(--danger-tint); border:1px solid var(--danger); border-radius:var(--radius); padding:10px 12px;">
+              <div class="small" style="font-weight:700; color:var(--danger);">Wrong</div>
+              <code class="small">p001, p003</code>
+            </div>
+            <div style="background:var(--ok-tint); border:1px solid var(--ok); border-radius:var(--radius); padding:10px 12px;">
+              <div class="small" style="font-weight:700; color:var(--ok);">Right</div>
+              <code class="small">P001, P003</code>
+            </div>
+          </div>
+          <p class="small muted">Tip: open "Price List Reference" above to copy the exact code.</p>
+          <div class="form-actions"><button class="btn small" type="button" onclick="document.getElementById('codeCaseModal').style.display='none';">Got it</button></div>
+        </div>
+      </div>
+
+      <form method="post" action="{{ url_for('visit_payment_add', visit_id=visit.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="1" name="amount" required></div>
+        <div class="field"><label>Method</label><select name="method"><option>Cash</option><option>Card</option><option>Transfer</option></select></div>
+        <button class="btn small secondary" type="submit">Add</button>
+      </form>
+      {% if payments %}
+      <div style="margin-top:10px;">
+        {% for p in payments %}<div class="list-line small"><div>{{ p.date }} — {{ p.method }}</div><div>{{ p.amount|money }} JOD</div></div>{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleBillingType() {
+  const auto = document.getElementById('btAuto').checked;
+  document.getElementById('autoFields').style.display = auto ? 'flex' : 'none';
+  document.getElementById('manualFields').style.display = auto ? 'none' : 'flex';
+}
+toggleBillingType();
+
+function filterPriceRef() {
+  const q = document.getElementById('priceRefSearch').value.trim().toLowerCase();
+  const rows = document.querySelectorAll('#priceRefTable tr[data-search]');
+  let visible = 0;
+  rows.forEach(row => {
+    const match = row.dataset.search.includes(q);
+    row.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('priceRefEmpty').style.display = visible ? 'none' : '';
+}
+
+{% if summary.code_check and 'not found' in summary.code_check %}
+document.getElementById('codeCaseMissing').textContent = {{ summary.code_check|tojson }};
+document.getElementById('codeCaseModal').style.display = 'flex';
+{% endif %}
+</script>
+{% endblock %}
