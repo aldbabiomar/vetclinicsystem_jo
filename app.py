@@ -2753,7 +2753,6 @@ def _save_audit_lines(db, session_id):
         expiry = request.form.get(f"expiry_{iid}", "").strip()
         notes = request.form.get(f"notes_{iid}", "").strip()
 
-        existing = db.execute("SELECT id FROM audit_session_lines WHERE session_id=? AND item_id=?", (session_id, iid)).fetchone()
         try:
             vals = (
                 float(stock), float(received),
@@ -2764,18 +2763,20 @@ def _save_audit_lines(db, session_id):
             )
         except ValueError:
             raise BadNumber(iid)
-        if existing:
-            db.execute(
-                "UPDATE audit_session_lines SET stock_counted=?, received_since_prior=?, reorder_threshold=?, "
-                "critical_item=?, target_coverage_days=?, nearest_expiry_date=?, notes=? WHERE id=?",
-                (*vals, existing["id"]),
-            )
-        else:
-            db.execute(
-                "INSERT INTO audit_session_lines (session_id,item_id,stock_counted,received_since_prior,"
-                "reorder_threshold,critical_item,target_coverage_days,nearest_expiry_date,notes) VALUES (?,?,?,?,?,?,?,?,?)",
-                (session_id, iid, *vals),
-            )
+        # UPSERT rather than a SELECT-then-branch INSERT/UPDATE — closes
+        # the race where two concurrent saves for the same item could
+        # both read no existing row and both attempt an INSERT, the
+        # second raising an unhandled UniqueViolation against the
+        # (session_id, item_id) UNIQUE constraint.
+        db.execute(
+            "INSERT INTO audit_session_lines (session_id,item_id,stock_counted,received_since_prior,"
+            "reorder_threshold,critical_item,target_coverage_days,nearest_expiry_date,notes) VALUES (?,?,?,?,?,?,?,?,?) "
+            "ON CONFLICT (session_id, item_id) DO UPDATE SET stock_counted=excluded.stock_counted, "
+            "received_since_prior=excluded.received_since_prior, reorder_threshold=excluded.reorder_threshold, "
+            "critical_item=excluded.critical_item, target_coverage_days=excluded.target_coverage_days, "
+            "nearest_expiry_date=excluded.nearest_expiry_date, notes=excluded.notes",
+            (session_id, iid, *vals),
+        )
 
 
 @app.route("/audit-history/session/<int:session_id>/save", methods=["POST"])
