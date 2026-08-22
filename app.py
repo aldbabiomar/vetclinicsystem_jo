@@ -1388,7 +1388,7 @@ def visit_edit(visit_id):
             "grooming_needed": grooming_needed, "grooming_services": grooming_services,
             "grooming_notes": f.get("grooming_notes") if grooming_needed == "Y" else None,
             "grooming_admitted_items": f.get("grooming_admitted_items") if grooming_needed == "Y" else None,
-            "grooming_status": f.get("grooming_status") if grooming_needed == "Y" else None,
+            "grooming_status": (f.get("grooming_status") or "Waiting") if grooming_needed == "Y" else None,
             "grooming_contacted": f.get("grooming_contacted", "N"),
             "payment_status": f.get("payment_status", "N/A"),
         }

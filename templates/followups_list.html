@@ -25,7 +25,7 @@
         <form method="post" class="inline-form" action="{{ url_for('followup_status_update', visit_id=f.visit_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <select name="status" onchange="this.form.submit()" class="small">
-            {% for s in ['Pending','Completed','Cancelled'] %}<option value="{{ s }}" {{ 'selected' if f.followup_status==s }}>{{ s }}</option>{% endfor %}
+            {% for s in ['Pending','Completed','Cancelled','N/A'] %}<option value="{{ s }}" {{ 'selected' if f.followup_status==s }}>{{ s }}</option>{% endfor %}
           </select>
         </form>
       </td>
