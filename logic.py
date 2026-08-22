@@ -1209,12 +1209,16 @@ def search_patients(db, term):
 def patient_history(db, patient_id):
     visits = db.execute("SELECT * FROM visits WHERE patient_id=? ORDER BY date DESC", (patient_id,)).fetchall()
     cases = db.execute("SELECT * FROM inpatient_cases WHERE patient_id=? ORDER BY admission_date DESC", (patient_id,)).fetchall()
+    boarding = boarding_sessions_for_patient(db, patient_id)
     events = []
     for v in visits:
         events.append({"kind": "Visit", "date": v["date"], "record": dict(v), "summary": v["complaint"] or v["visit_type"]})
     for c in cases:
         events.append({"kind": "Inpatient stay", "date": c["admission_date"], "record": dict(c),
                         "summary": c["complaint"] or "Inpatient stay"})
+    for b in boarding:
+        events.append({"kind": "Boarding", "date": b["entry_date"], "record": dict(b),
+                        "summary": f"Boarding — {b['room']}" if b["room"] else "Boarding stay"})
     events.sort(key=lambda e: e["date"] or date.min, reverse=True)
     return events
 

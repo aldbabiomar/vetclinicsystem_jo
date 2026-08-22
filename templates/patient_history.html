@@ -11,7 +11,8 @@
   <div style="display:flex; justify-content:space-between; align-items:baseline;">
     <div><span class="badge {{ 'primary' if e.kind=='Visit' else 'warn' }}">{{ e.kind }}</span> <strong style="margin-left:8px;">{{ e.date or "—" }}</strong></div>
     {% if e.kind == 'Visit' %}<a href="{{ url_for('visit_detail', visit_id=e.record.id) }}">Open visit →</a>
-    {% else %}<a href="{{ url_for('inpatient_detail', case_id=e.record.id) }}">Open case →</a>{% endif %}
+    {% elif e.kind == 'Inpatient stay' %}<a href="{{ url_for('inpatient_detail', case_id=e.record.id) }}">Open case →</a>
+    {% else %}<a href="{{ url_for('boarding_export_pdf', boarding_id=e.record.id) }}">View boarding record →</a>{% endif %}
   </div>
   <p class="small muted" style="margin:8px 0 0;">{{ e.summary }}</p>
 </div>
