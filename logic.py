@@ -627,7 +627,7 @@ def followups(db, only_pending=False):
     rows = [dict(r) for r in db.execute(q).fetchall()]
     today = date.today()
     out = [_annotate_followup(r, today) for r in rows]
-    out.sort(key=lambda r: (r["followup_date"] or date.max))
+    out.sort(key=lambda r: (r["followup_date"] or date.min), reverse=True)
     return out
 
 
@@ -809,6 +809,16 @@ def missed_items(db):
         if changed and (today - changed).days >= MISSED_WINDOW_DAYS:
             out.append({"kind": "Lost to Follow Up", "visit_id": r["id"], "animal_name": r["animal_name"],
                         "deadline": fmt_date(changed), "responsible": r["doctor"] or r["created_by"]})
+    # Newest missed deadline first — the three sources above are each
+    # already sorted that way individually, but concatenating them
+    # doesn't interleave them, so the combined list needs its own sort.
+    # "deadline" is a date object for the first two sources (straight from
+    # a DATE column) and a string for the third (fmt_date()'s output) —
+    # normalize to ISO text so the comparison never mixes types.
+    def _deadline_key(r):
+        d = r["deadline"]
+        return d.isoformat() if hasattr(d, "isoformat") else (d or "")
+    out.sort(key=_deadline_key, reverse=True)
     return out
 
 

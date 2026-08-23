@@ -3,6 +3,14 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.2.2] - 2026-08-23
+
+### Fixed
+- **The Dashboard's missed-items panel didn't sort by deadline** — items
+  showed in whatever order the underlying queries happened to return them,
+  rather than newest-missed-first. Follow-ups, wellness reminders, and
+  Lost-to-Follow-Up cases now all sort consistently, newest deadline first.
+
 ## [1.2.1] - 2026-08-23
 
 ### Fixed
