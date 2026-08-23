@@ -1367,7 +1367,10 @@ def record_consignment_receipt(db, item_id, distributor_id, quantity, unit_cost_
     refund restocking already use — this is what makes the new stock
     immediately visible on Inventory Status and the next audit walk with
     zero changes to inventory_status(). Does not commit."""
-    now = datetime.now().isoformat(timespec="seconds")
+    # Microsecond precision — see the comment on audit_session_confirm()'s
+    # confirmed_at write in app.py; this writes an inventory_transactions
+    # row too, which that column gets compared against.
+    now = datetime.now().isoformat(timespec="microseconds")
     cur = db.execute(
         "INSERT INTO consignment_receipts (item_id, distributor_id, quantity, unit_cost_at_receipt, "
         "received_date, delivery_reference, notes, received_by, created_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
@@ -1410,7 +1413,10 @@ def record_consignment_shrinkage(db, item_id, distributor_id, quantity, reason, 
         return False, None, f"Only {current_stock:g} unit(s) on the shelf — can't write off {quantity:g}."
     item = db.execute("SELECT cost_price FROM inventory_list WHERE id=?", (item_id,)).fetchone()
     unit_cost = (item["cost_price"] or 0) if item else 0
-    now = datetime.now().isoformat(timespec="seconds")
+    # Microsecond precision — see the comment on audit_session_confirm()'s
+    # confirmed_at write in app.py; this writes an inventory_transactions
+    # row too, which that column gets compared against.
+    now = datetime.now().isoformat(timespec="microseconds")
     cur = db.execute(
         "INSERT INTO consignment_shrinkage (item_id, distributor_id, quantity, reason, liable_party, "
         "liability_overridden, unit_cost, notes, logged_by, logged_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
@@ -1448,7 +1454,10 @@ def record_consignment_return(db, item_id, distributor_id, quantity, return_date
         return False, None, f"Only {current_stock:g} unit(s) on the shelf — can't return {quantity:g}."
     item = db.execute("SELECT cost_price FROM inventory_list WHERE id=?", (item_id,)).fetchone()
     unit_cost = (item["cost_price"] or 0) if item else 0
-    now = datetime.now().isoformat(timespec="seconds")
+    # Microsecond precision — see the comment on audit_session_confirm()'s
+    # confirmed_at write in app.py; this writes an inventory_transactions
+    # row too, which that column gets compared against.
+    now = datetime.now().isoformat(timespec="microseconds")
     cur = db.execute(
         "INSERT INTO consignment_returns (item_id, distributor_id, quantity, unit_cost_at_return, "
         "return_date, reason, notes, returned_by, created_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",

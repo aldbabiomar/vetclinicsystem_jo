@@ -136,6 +136,16 @@ def apply_schema():
 # (those stay as their own separate, manually-run scripts).
 INCREMENTAL_SCHEMA_STATEMENTS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE sales ADD COLUMN IF NOT EXISTS idempotency_key TEXT",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_idempotency_key ON sales(idempotency_key) WHERE idempotency_key IS NOT NULL",
+    # NOTE: if this database already has two or more owners sharing the
+    # same non-null phone number (the exact duplicate-owner bug this
+    # index closes), this statement fails outright and the whole
+    # incremental-migration run stops here. Find and merge/clear the
+    # duplicates first (e.g. `SELECT phone, COUNT(*) FROM owners WHERE
+    # phone IS NOT NULL GROUP BY phone HAVING COUNT(*) > 1`), then re-run
+    # setup.py.
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_owners_phone_unique ON owners(phone) WHERE phone IS NOT NULL",
 ]
 
 

@@ -36,11 +36,12 @@
       </div>
       <form method="post" action="{{ url_for('pos_checkout') }}" id="checkoutForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
         <input type="hidden" name="discount_percent" id="discountHidden">
         <input type="hidden" name="payment_method" id="paymentHidden">
         <input type="hidden" name="cash_received" id="cashReceivedHidden">
         <div id="cartFieldsHidden"></div>
-        <button class="btn" type="submit" style="width:100%; justify-content:center;" onclick="return prepareSubmit()">Complete Sale</button>
+        <button class="btn" type="submit" id="completeSaleBtn" style="width:100%; justify-content:center;" onclick="return prepareSubmit()">Complete Sale</button>
       </form>
     </div>
   </div>
@@ -163,6 +164,13 @@ function prepareSubmit() {
   cart.forEach(c => {
     container.innerHTML += `<input type="hidden" name="item_id" value="${c.id}"><input type="hidden" name="quantity" value="${c.qty}">`;
   });
+  // Belt-and-suspenders alongside the server-side idempotency check
+  // (pos_checkout()) — stops a double-click from ever firing a second
+  // request in the first place, on top of the server refusing to create
+  // a second sale even if it does.
+  const btn = document.getElementById('completeSaleBtn');
+  if (btn.disabled) return false;
+  btn.disabled = true;
   return true;
 }
 </script>

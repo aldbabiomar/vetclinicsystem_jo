@@ -242,9 +242,20 @@ if not error_logger.handlers:
     error_logger.addHandler(_err_handler)
 
 
+# Separate from (and shorter than) DB_POOL_TIMEOUT_SECONDS, which the pool
+# itself still uses for background/maintenance callers (dbmod.connect()).
+# During a full DB outage every request that reaches get_db() would
+# otherwise block for the pool's full default wait (10s) before failing —
+# tying up one of Waitress's worker threads that whole time and making the
+# app look hung rather than degraded. A shorter wait here means a
+# request-serving caller finds out sooner and the generic error handler
+# gets a chance to respond well before the thread pool is exhausted.
+DB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("DB_REQUEST_TIMEOUT_SECONDS", "4"))
+
+
 def get_db():
     if "db" not in g:
-        g.db = dbmod.getconn()
+        g.db = dbmod.getconn(timeout=DB_REQUEST_TIMEOUT_SECONDS)
     return g.db
 
 
@@ -266,10 +277,21 @@ def close_db(exc):
     db = g.pop("db", None)
     if db is not None:
         try:
-            if exc is None:
-                db.commit()
-            else:
-                db.rollback()
+            try:
+                if exc is None:
+                    db.commit()
+                else:
+                    db.rollback()
+            except Exception:
+                # teardown_appcontext runs after the response has already
+                # been built, outside the request-handling flow that
+                # @app.errorhandler(Exception) covers — an exception raised
+                # here (e.g. the connection died mid-request, so this
+                # commit/rollback itself fails) would otherwise propagate
+                # straight past Flask to Waitress, replacing the app's own
+                # already-built response with a raw, unbranded fault page.
+                # Logged and swallowed instead.
+                error_logger.error("close_db(): commit/rollback failed\n" + traceback.format_exc())
         finally:
             # Always return the connection to the pool, even if the
             # commit/rollback above raised (e.g. the connection dropped
@@ -1027,6 +1049,7 @@ def dashboard():
 # API
 # ---------------------------------------------------------------------------
 @app.route("/api/patients/search")
+@auth.permission_required("manage_visits", "manage_boarding", "manage_inpatient")
 def api_patients_search():
     db = get_db()
     term = request.args.get("q", "").strip()
@@ -1038,6 +1061,7 @@ def api_patients_search():
 
 
 @app.route("/api/inventory/lookup")
+@auth.permission_required("process_pos_sales")
 def api_inventory_lookup():
     db = get_db()
     barcode_val = request.args.get("barcode", "").strip()
@@ -1070,6 +1094,7 @@ def api_inventory_lookup():
 
 
 @app.route("/api/price-list/lookup")
+@auth.permission_required("manage_visits", "manage_inpatient")
 def api_price_list_lookup():
     db = get_db()
     q = request.args.get("q", "").strip()
@@ -1116,6 +1141,7 @@ def api_sale_refundable_items(sale_id):
 # Owners
 # ---------------------------------------------------------------------------
 @app.route("/owners")
+@auth.permission_required("manage_owners")
 def owners_list():
     db = get_db()
     search = request.args.get("q", "").strip()
@@ -1137,6 +1163,7 @@ def owners_list():
 
 
 @app.route("/owners/new", methods=["GET", "POST"])
+@auth.permission_required("manage_owners")
 def owner_new():
     db = get_db()
     if request.method == "POST":
@@ -1146,17 +1173,44 @@ def owner_new():
         except BadPhone:
             flash("That phone number doesn't look valid — check the digits and try again.", "error")
             return render_template("owner_form.html", owner=None)
+        # Friendly fast-path — not the real guarantee (see the IntegrityError
+        # catch below for that): an owner with this phone already on file
+        # almost always means "add another pet to them", not "make a new
+        # owner", so send staff straight there instead of a duplicate row.
+        if phone:
+            existing = db.execute("SELECT id FROM owners WHERE phone=?", (phone,)).fetchone()
+            if existing:
+                flash(f"Owner {existing['id']} already has this phone number on file — "
+                      f"add the pet to them instead of creating a new owner.", "error")
+                return redirect(url_for("owner_detail", owner_id=existing["id"]))
         oid = dbmod.next_id(db, "OW")
-        db.execute("INSERT INTO owners (id,name,phone,address,notes) VALUES (?,?,?,?,?)",
-                  (oid, f["name"], phone, f.get("address"), f.get("notes")))
-        auth.log_change(db, "owners", oid, "create")
-        db.commit()
+        try:
+            db.execute("INSERT INTO owners (id,name,phone,address,notes) VALUES (?,?,?,?,?)",
+                      (oid, f["name"], phone, f.get("address"), f.get("notes")))
+            auth.log_change(db, "owners", oid, "create")
+            db.commit()
+        except dbmod.IntegrityError:
+            # The pre-check above is best-effort, not atomic — two
+            # near-simultaneous submits for the same new phone number can
+            # both pass it before either commits. idx_owners_phone_unique
+            # (schema_postgres.sql) is what actually prevents the
+            # duplicate; this catches the resulting IntegrityError for
+            # whichever request loses that race.
+            db.rollback()
+            existing = db.execute("SELECT id FROM owners WHERE phone=?", (phone,)).fetchone()
+            if existing:
+                flash(f"Owner {existing['id']} already has this phone number on file — "
+                      f"add the pet to them instead of creating a new owner.", "error")
+                return redirect(url_for("owner_detail", owner_id=existing["id"]))
+            flash("That phone number is already on file for another owner.", "error")
+            return render_template("owner_form.html", owner=None)
         flash(f"Owner {oid} added.", "success")
         return redirect(url_for("owner_detail", owner_id=oid))
     return render_template("owner_form.html", owner=None)
 
 
 @app.route("/owners/<owner_id>")
+@auth.permission_required("manage_owners")
 def owner_detail(owner_id):
     db = get_db()
     owner = db.execute("SELECT * FROM owners WHERE id=?", (owner_id,)).fetchone()
@@ -1168,6 +1222,7 @@ def owner_detail(owner_id):
 
 
 @app.route("/owners/<owner_id>/edit", methods=["GET", "POST"])
+@auth.permission_required("manage_owners")
 def owner_edit(owner_id):
     db = get_db()
     owner = db.execute("SELECT * FROM owners WHERE id=?", (owner_id,)).fetchone()
@@ -1201,6 +1256,7 @@ PATIENT_SORT_COLUMNS = {
 
 
 @app.route("/patients")
+@auth.permission_required("manage_patients")
 def patients_list():
     db = get_db()
     search = request.args.get("q", "").strip()
@@ -1229,6 +1285,7 @@ def patients_list():
 
 
 @app.route("/patients/<patient_id>")
+@auth.permission_required("manage_patients")
 def patient_detail(patient_id):
     db = get_db()
     patient = db.execute(
@@ -1250,6 +1307,7 @@ def patient_detail(patient_id):
 
 
 @app.route("/patients/<patient_id>/edit", methods=["GET", "POST"])
+@auth.permission_required("manage_patients")
 def patient_edit(patient_id):
     db = get_db()
     patient = db.execute("SELECT * FROM patients WHERE id=?", (patient_id,)).fetchone()
@@ -1274,6 +1332,7 @@ def patient_edit(patient_id):
 
 
 @app.route("/patients/<patient_id>/history")
+@auth.permission_required("manage_patients")
 def patient_history(patient_id):
     db = get_db()
     patient = db.execute(
@@ -1287,6 +1346,7 @@ def patient_history(patient_id):
 
 
 @app.route("/patients/<patient_id>/export/file")
+@auth.permission_required("manage_patients")
 def patient_export_file(patient_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM patients WHERE id=?", (patient_id,)).fetchone():
@@ -1296,6 +1356,7 @@ def patient_export_file(patient_id):
 
 
 @app.route("/patients/<patient_id>/export/billing")
+@auth.permission_required("manage_patients")
 def patient_export_billing(patient_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM patients WHERE id=?", (patient_id,)).fetchone():
@@ -1305,6 +1366,7 @@ def patient_export_billing(patient_id):
 
 
 @app.route("/pos/history/<int:sale_id>/export")
+@auth.permission_required("view_sales_history")
 def pos_export_receipt(sale_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM sales WHERE id=?", (sale_id,)).fetchone():
@@ -1314,6 +1376,7 @@ def pos_export_receipt(sale_id):
 
 
 @app.route("/visits/<visit_id>/export")
+@auth.permission_required("manage_visits")
 def visit_export_pdf(visit_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM visits WHERE id=?", (visit_id,)).fetchone():
@@ -1323,6 +1386,7 @@ def visit_export_pdf(visit_id):
 
 
 @app.route("/inpatient/<int:case_id>/export")
+@auth.permission_required("manage_inpatient")
 def inpatient_export_pdf(case_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM inpatient_cases WHERE id=?", (case_id,)).fetchone():
@@ -1342,11 +1406,13 @@ GROOMING_SERVICES = logic.GROOMING_SERVICES
 
 
 @app.route("/visits/new")
+@auth.permission_required("manage_visits")
 def visit_new_start():
     return render_template("visit_new_start.html")
 
 
 @app.route("/visits/new/existing", methods=["GET", "POST"])
+@auth.permission_required("manage_visits")
 def visit_new_existing():
     db = get_db()
     if request.method == "POST":
@@ -1361,6 +1427,7 @@ def visit_new_existing():
 
 
 @app.route("/visits/new/new-patient", methods=["GET", "POST"])
+@auth.permission_required("manage_visits")
 def visit_new_patient():
     db = get_db()
     if request.method == "POST":
@@ -1370,10 +1437,36 @@ def visit_new_patient():
         except BadPhone:
             flash("That owner phone number doesn't look valid — check the digits and try again.", "error")
             return redirect(url_for("visit_new_patient"))
-        oid = dbmod.next_id(db, "OW")
-        db.execute("INSERT INTO owners (id,name,phone,address) VALUES (?,?,?,?)",
-                  (oid, f["owner_name"], owner_phone, f.get("owner_address")))
-        auth.log_change(db, "owners", oid, "create")
+
+        # This form is meant for a genuinely new owner+pet — but nothing
+        # stopped staff from re-entering an existing owner's exact
+        # name+phone while adding another one of their pets, silently
+        # creating a duplicate owner row instead of linking to the
+        # existing one. If this phone is already on file, add the new
+        # pet under that existing owner instead of making a second one
+        # (idx_owners_phone_unique in schema_postgres.sql would otherwise
+        # just reject the insert outright, and staff have already filled
+        # in the whole visit form by this point — losing that work to a
+        # hard error would be a worse experience than quietly reusing the
+        # existing owner, which is what they almost always actually meant).
+        existing_owner = db.execute("SELECT id FROM owners WHERE phone=?", (owner_phone,)).fetchone() if owner_phone else None
+        if existing_owner:
+            oid = existing_owner["id"]
+            flash(f"Owner {oid} already has this phone number on file — the new pet was added to their existing profile.", "success")
+        else:
+            oid = dbmod.next_id(db, "OW")
+            try:
+                db.execute("INSERT INTO owners (id,name,phone,address) VALUES (?,?,?,?)",
+                          (oid, f["owner_name"], owner_phone, f.get("owner_address")))
+                auth.log_change(db, "owners", oid, "create")
+            except dbmod.IntegrityError:
+                # Best-effort check above isn't atomic — a concurrent
+                # submit for the same new phone number can win the race.
+                # idx_owners_phone_unique is what actually prevents the
+                # duplicate; fall back to the owner that won.
+                db.rollback()
+                oid = db.execute("SELECT id FROM owners WHERE phone=?", (owner_phone,)).fetchone()["id"]
+                flash(f"Owner {oid} already has this phone number on file — the new pet was added to their existing profile.", "success")
 
         pid = dbmod.next_id(db, "PT")
         db.execute(
@@ -1447,6 +1540,7 @@ def _create_inpatient_case(db, patient_id, visit_id, complaint, admission_date, 
 # Visits (sortable + date filter)
 # ---------------------------------------------------------------------------
 @app.route("/visits")
+@auth.permission_required("manage_visits")
 def visits_list():
     db = get_db()
     sort = request.args.get("sort", "date")
@@ -1485,6 +1579,7 @@ def visits_list():
 
 
 @app.route("/visits/<visit_id>")
+@auth.permission_required("manage_visits")
 def visit_detail(visit_id):
     db = get_db()
     visit = db.execute(
@@ -1504,6 +1599,7 @@ def visit_detail(visit_id):
 
 
 @app.route("/visits/<visit_id>/edit", methods=["GET", "POST"])
+@auth.permission_required("manage_visits")
 def visit_edit(visit_id):
     db = get_db()
     visit = db.execute("SELECT * FROM visits WHERE id=?", (visit_id,)).fetchone()
@@ -1579,6 +1675,7 @@ def visit_edit(visit_id):
 
 
 @app.route("/visits/<visit_id>/billing", methods=["POST"])
+@auth.permission_required("manage_visits")
 def visit_billing_save(visit_id):
     db = get_db()
     f = request.form
@@ -1689,6 +1786,7 @@ def visit_billing_save(visit_id):
 
 
 @app.route("/visits/<visit_id>/discount", methods=["POST"])
+@auth.permission_required("manage_visits")
 def visit_discount_save(visit_id):
     db = get_db()
     try:
@@ -1734,6 +1832,7 @@ def visit_discount_save(visit_id):
 
 
 @app.route("/visits/<visit_id>/payment", methods=["POST"])
+@auth.permission_required("manage_visits")
 def visit_payment_add(visit_id):
     db = get_db()
     f = request.form
@@ -1773,6 +1872,7 @@ def visit_payment_add(visit_id):
 
 
 @app.route("/visits/<visit_id>/attachments", methods=["POST"])
+@auth.permission_required("manage_visits")
 def visit_attachment_upload(visit_id):
     db = get_db()
     patient_row = db.execute("SELECT patient_id FROM visits WHERE id=?", (visit_id,)).fetchone()
@@ -1789,6 +1889,7 @@ def visit_attachment_upload(visit_id):
 
 
 @app.route("/files/<path:relpath>")
+@auth.permission_required("manage_visits", "manage_inpatient")
 def serve_attachment(relpath):
     db = get_db()
     row = db.execute("SELECT relative_path FROM attachments WHERE relative_path=?", (relpath,)).fetchone()
@@ -1839,6 +1940,7 @@ def attachment_delete(attachment_id):
 # Follow-ups
 # ---------------------------------------------------------------------------
 @app.route("/followups")
+@auth.permission_required("manage_followups")
 def followups_list():
     db = get_db()
     show_all = request.args.get("all") == "1"
@@ -1849,6 +1951,7 @@ def followups_list():
 
 
 @app.route("/followups/<visit_id>/status", methods=["POST"])
+@auth.permission_required("manage_followups")
 def followup_status_update(visit_id):
     db = get_db()
     status = request.form.get("status")
@@ -1867,6 +1970,7 @@ def followup_status_update(visit_id):
 # Wellness
 # ---------------------------------------------------------------------------
 @app.route("/wellness")
+@auth.permission_required("manage_wellness")
 def wellness_list():
     db = get_db()
     page = get_page()
@@ -1876,6 +1980,7 @@ def wellness_list():
 
 
 @app.route("/wellness/<visit_id>/update", methods=["POST"])
+@auth.permission_required("manage_wellness")
 def wellness_update(visit_id):
     db = get_db()
     f = request.form
@@ -1895,6 +2000,7 @@ def wellness_update(visit_id):
 # Grooming
 # ---------------------------------------------------------------------------
 @app.route("/grooming")
+@auth.permission_required("manage_grooming")
 def grooming_list():
     db = get_db()
     include_finished = request.args.get("all") == "1"
@@ -1905,6 +2011,7 @@ def grooming_list():
 
 
 @app.route("/grooming/<visit_id>/update", methods=["POST"])
+@auth.permission_required("manage_grooming")
 def grooming_update(visit_id):
     db = get_db()
     f = request.form
@@ -2141,6 +2248,7 @@ BILLING_TYPES = ["Automatic", "Manual"]
 
 
 @app.route("/inventory-catalog")
+@auth.permission_required("manage_inventory_catalog")
 def inventory_catalog():
     db = get_db()
     show_inactive = request.args.get("inactive") == "1"
@@ -2170,6 +2278,7 @@ def inventory_catalog():
 
 
 @app.route("/inventory-catalog/new", methods=["POST"])
+@auth.permission_required("manage_inventory_catalog")
 def inventory_catalog_new():
     db = get_db()
     f = request.form
@@ -2195,6 +2304,7 @@ def inventory_catalog_new():
 
 
 @app.route("/inventory-catalog/<item_id>/edit", methods=["POST"])
+@auth.permission_required("manage_inventory_catalog")
 def inventory_catalog_edit(item_id):
     db = get_db()
     f = request.form
@@ -2231,6 +2341,7 @@ def inventory_catalog_edit(item_id):
 
 
 @app.route("/inventory-catalog/bulk-edit", methods=["POST"])
+@auth.permission_required("manage_inventory_catalog")
 def inventory_catalog_bulk_edit():
     """Same batching rationale as price_list_bulk_edit — see that route's
     docstring. One request, one transaction, at most one financial-summary
@@ -2272,6 +2383,7 @@ def inventory_catalog_bulk_edit():
 
 
 @app.route("/inventory-catalog/<item_id>/toggle-active", methods=["POST"])
+@auth.permission_required("manage_inventory_catalog")
 def inventory_catalog_toggle(item_id):
     db = get_db()
     row = db.execute("SELECT active FROM inventory_list WHERE id=?", (item_id,)).fetchone()
@@ -2287,6 +2399,7 @@ def inventory_catalog_toggle(item_id):
 
 
 @app.route("/inventory-catalog/<item_id>/create-barcode", methods=["POST"])
+@auth.permission_required("manage_inventory_catalog")
 def inventory_catalog_create_barcode(item_id):
     db = get_db()
     item = db.execute("SELECT barcode FROM inventory_list WHERE id=?", (item_id,)).fetchone()
@@ -2315,6 +2428,7 @@ def inventory_catalog_create_barcode(item_id):
 
 
 @app.route("/inventory-catalog/<item_id>/barcode-label")
+@auth.permission_required("manage_inventory_catalog")
 def inventory_barcode_label(item_id):
     db = get_db()
     item = db.execute("SELECT * FROM inventory_list WHERE id=?", (item_id,)).fetchone()
@@ -2325,6 +2439,7 @@ def inventory_barcode_label(item_id):
 
 
 @app.route("/inventory-catalog/barcodes/generated")
+@auth.permission_required("manage_inventory_catalog")
 def inventory_catalog_barcodes_generated():
     """Every active item that has a barcode, across the whole catalog
     regardless of which page of Inventory Catalog is showing — feeds the
@@ -2342,6 +2457,7 @@ def inventory_catalog_barcodes_generated():
 
 
 @app.route("/inventory-catalog/barcodes/bulk-print", methods=["POST"])
+@auth.permission_required("manage_inventory_catalog")
 def inventory_catalog_barcodes_bulk_print():
     db = get_db()
     try:
@@ -2377,6 +2493,7 @@ def inventory_catalog_barcodes_bulk_print():
 # Distributors
 # ---------------------------------------------------------------------------
 @app.route("/distributors")
+@auth.permission_required("manage_distributors")
 def distributors_list():
     db = get_db()
     search = request.args.get("q", "").strip()
@@ -2391,6 +2508,7 @@ def distributors_list():
 
 
 @app.route("/distributors/new", methods=["POST"])
+@auth.permission_required("manage_distributors")
 def distributor_new():
     db = get_db()
     f = request.form
@@ -2418,6 +2536,7 @@ def distributor_new():
 
 
 @app.route("/distributors/<dist_id>/edit", methods=["POST"])
+@auth.permission_required("manage_distributors")
 def distributor_edit(dist_id):
     db = get_db()
     f = request.form
@@ -2448,6 +2567,7 @@ def distributor_edit(dist_id):
 
 
 @app.route("/distributors/<dist_id>/delete", methods=["POST"])
+@auth.permission_required("manage_distributors")
 def distributor_delete(dist_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM distributors WHERE id=?", (dist_id,)).fetchone():
@@ -2479,6 +2599,7 @@ def distributor_delete(dist_id):
 # POS, or any report; balance/status are always computed (never stored).
 # ---------------------------------------------------------------------------
 @app.route("/distributors/<dist_id>")
+@auth.permission_required("manage_distributors")
 def distributor_detail(dist_id):
     db = get_db()
     dist = db.execute("SELECT * FROM distributors WHERE id=?", (dist_id,)).fetchone()
@@ -2490,6 +2611,7 @@ def distributor_detail(dist_id):
 
 
 @app.route("/distributors/<dist_id>/bills/new", methods=["POST"])
+@auth.permission_required("manage_distributors")
 def distributor_bill_new(dist_id):
     db = get_db()
     f = request.form
@@ -2520,6 +2642,7 @@ def distributor_bill_new(dist_id):
 
 
 @app.route("/distributors/<dist_id>/bills/<bill_id>/delete", methods=["POST"])
+@auth.permission_required("manage_distributors")
 def distributor_bill_delete(dist_id, bill_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM distributor_bills WHERE id=? AND distributor_id=?", (bill_id, dist_id)).fetchone():
@@ -2539,6 +2662,7 @@ def distributor_bill_delete(dist_id, bill_id):
 
 
 @app.route("/distributors/<dist_id>/bills/<bill_id>/payments/new", methods=["POST"])
+@auth.permission_required("manage_distributors")
 def distributor_payment_new(dist_id, bill_id):
     db = get_db()
     f = request.form
@@ -2592,6 +2716,7 @@ def distributor_payment_new(dist_id, bill_id):
 
 
 @app.route("/distributors/<dist_id>/payments/<int:payment_id>/delete", methods=["POST"])
+@auth.permission_required("manage_distributors")
 def distributor_payment_delete(dist_id, payment_id):
     db = get_db()
     owned = db.execute(
@@ -2610,6 +2735,7 @@ def distributor_payment_delete(dist_id, payment_id):
 
 
 @app.route("/distributors/<dist_id>/export.pdf")
+@auth.permission_required("manage_distributors")
 def distributor_export_pdf(dist_id):
     db = get_db()
     dist = db.execute("SELECT id FROM distributors WHERE id=?", (dist_id,)).fetchone()
@@ -3116,6 +3242,7 @@ def cash_register_audit_new():
 # Inventory Status / Ordering Sheet
 # ---------------------------------------------------------------------------
 @app.route("/inventory-status")
+@auth.permission_required("view_inventory_status")
 def inventory_status_page():
     db = get_db()
     rows = logic.inventory_status(db)
@@ -3134,6 +3261,7 @@ def inventory_status_page():
 
 
 @app.route("/ordering-sheet")
+@auth.permission_required("manage_ordering_sheet")
 def ordering_sheet_page():
     db = get_db()
     rows = logic.ordering_sheet(db)
@@ -3144,6 +3272,7 @@ def ordering_sheet_page():
 # Audit sessions (whole-catalog Save / Confirm)
 # ---------------------------------------------------------------------------
 @app.route("/audit-history")
+@auth.permission_required("manage_audit_history")
 def audit_history_list():
     db = get_db()
     page = get_page()
@@ -3153,6 +3282,7 @@ def audit_history_list():
 
 
 @app.route("/audit-history/start", methods=["POST"])
+@auth.permission_required("manage_audit_history")
 def audit_session_start():
     db = get_db()
     session_id = logic.get_or_create_draft_session(db, date.today().isoformat(), session["user_id"])
@@ -3160,6 +3290,7 @@ def audit_session_start():
 
 
 @app.route("/audit-history/session/<int:session_id>")
+@auth.permission_required("manage_audit_history")
 def audit_session_view(session_id):
     db = get_db()
     sess = db.execute("SELECT s.*, u.full_name as performed_by_name FROM audit_sessions s "
@@ -3225,6 +3356,7 @@ def _save_audit_lines(db, session_id):
 
 
 @app.route("/audit-history/session/<int:session_id>/save", methods=["POST"])
+@auth.permission_required("manage_audit_history")
 def audit_session_save(session_id):
     db = get_db()
     sess = db.execute("SELECT * FROM audit_sessions WHERE id=?", (session_id,)).fetchone()
@@ -3244,6 +3376,7 @@ def audit_session_save(session_id):
 
 
 @app.route("/audit-history/session/<int:session_id>/confirm", methods=["POST"])
+@auth.permission_required("manage_audit_history")
 def audit_session_confirm(session_id):
     db = get_db()
     sess = db.execute("SELECT * FROM audit_sessions WHERE id=?", (session_id,)).fetchone()
@@ -3255,8 +3388,17 @@ def audit_session_confirm(session_id):
     except BadNumber:
         flash("Audit counts must be valid numbers. Nothing was confirmed — please correct the highlighted value(s).", "error")
         return redirect(url_for("audit_session_view", session_id=session_id))
+    # Microsecond precision (not seconds) — inventory_status()'s stock
+    # calculation compares inventory_transactions.timestamp against this
+    # column with a strict '>' on whole-second-precision TEXT strings; a
+    # sale landing in the exact same second as this confirm would tie and
+    # get silently excluded from the running total, letting a same-second
+    # sale slip past the stock check unnoticed (see the matching change to
+    # the `now` timestamps written alongside every inventory_transactions
+    # row: pos_checkout(), refund restocking, and the consignment
+    # receipt/shrinkage/return helpers in logic.py).
     db.execute("UPDATE audit_sessions SET status='Confirmed', confirmed_at=? WHERE id=?",
-              (datetime.now().isoformat(timespec="seconds"), session_id))
+              (datetime.now().isoformat(timespec="microseconds"), session_id))
     auth.log_change(db, "audit_sessions", str(session_id), "update", {"status": ("Draft", "Confirmed")})
     db.commit()
     flash("Audit confirmed and locked. Inventory Status and Ordering Sheet now reflect these counts.", "success")
@@ -3267,6 +3409,7 @@ def audit_session_confirm(session_id):
 # Boarding
 # ---------------------------------------------------------------------------
 @app.route("/boarding")
+@auth.permission_required("manage_boarding")
 def boarding_page():
     db = get_db()
     show_all = request.args.get("all") == "1"
@@ -3304,6 +3447,7 @@ def boarding_page():
 
 
 @app.route("/boarding/new", methods=["POST"])
+@auth.permission_required("manage_boarding")
 def boarding_new():
     db = get_db()
     f = request.form
@@ -3348,6 +3492,7 @@ def boarding_new():
 
 
 @app.route("/boarding/<int:boarding_id>/edit", methods=["POST"])
+@auth.permission_required("manage_boarding")
 def boarding_edit(boarding_id):
     db = get_db()
     f = request.form
@@ -3410,6 +3555,7 @@ def boarding_edit(boarding_id):
 
 
 @app.route("/boarding/<int:boarding_id>/dismiss", methods=["POST"])
+@auth.permission_required("manage_boarding")
 def boarding_dismiss(boarding_id):
     db = get_db()
     row = db.execute(
@@ -3445,6 +3591,7 @@ def boarding_dismiss(boarding_id):
 
 
 @app.route("/boarding/<int:boarding_id>/incident", methods=["POST"])
+@auth.permission_required("manage_boarding")
 def boarding_incident(boarding_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM boarding_sessions WHERE id=?", (boarding_id,)).fetchone():
@@ -3470,6 +3617,7 @@ def boarding_incident(boarding_id):
 
 
 @app.route("/boarding/<int:boarding_id>/payment", methods=["POST"])
+@auth.permission_required("manage_boarding")
 def boarding_payment(boarding_id):
     db = get_db()
     # Locked before computing the balance, same reasoning as
@@ -3505,6 +3653,7 @@ def boarding_payment(boarding_id):
 
 
 @app.route("/boarding/<int:boarding_id>/export")
+@auth.permission_required("manage_boarding")
 def boarding_export_pdf(boarding_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM boarding_sessions WHERE id=?", (boarding_id,)).fetchone():
@@ -3517,16 +3666,33 @@ def boarding_export_pdf(boarding_id):
 # Point of Sale (Retail only)
 # ---------------------------------------------------------------------------
 @app.route("/pos")
+@auth.permission_required("process_pos_sales")
 def pos_page():
     db = get_db()
     cap = auth.discount_cap_for()
-    return render_template("pos.html", discount_cap=cap)
+    # Fresh one-time token per page load — see pos_checkout()'s dedup
+    # check and idx_sales_idempotency_key in schema_postgres.sql.
+    return render_template("pos.html", discount_cap=cap, idempotency_key=uuid.uuid4().hex)
 
 
 @app.route("/pos/checkout", methods=["POST"])
+@auth.permission_required("process_pos_sales")
 def pos_checkout():
     db = get_db()
     f = request.form
+    # Friendly fast-path for a double-click on "Complete Sale" — the same
+    # unchanged cart submitted twice previously created two separate,
+    # fully valid sales (double-charge, double stock deduction). The
+    # token is one-time per POS page load (see pos_page()); a second
+    # submission carrying the same token is recognized here as a repeat
+    # of a sale that already went through, and sent straight to that
+    # sale's receipt instead of creating another one. Not the real
+    # guarantee — see the IntegrityError catch below for that.
+    idempotency_key = f.get("idempotency_key") or None
+    if idempotency_key:
+        existing_sale = db.execute("SELECT id FROM sales WHERE idempotency_key=?", (idempotency_key,)).fetchone()
+        if existing_sale:
+            return redirect(url_for("pos_receipt", sale_id=existing_sale["id"]))
     item_ids = request.form.getlist("item_id")
     quantities = request.form.getlist("quantity")
     try:
@@ -3637,27 +3803,47 @@ def pos_checkout():
                       f"({total:,.3f} JOD).", "error")
                 return redirect(url_for("pos_page"))
             change_given = max(round(cash_received - total, 3), 0)
-    now = datetime.now().isoformat(timespec="seconds")
-    cur = db.execute(
-        "INSERT INTO sales (sale_date, cashier_id, subtotal, discount_percent, discount_applied_by, total, "
-        "payment_method, cash_received, change_given) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
-        (now, session["user_id"], round(subtotal, 3), discount_percent,
-         session["user_id"] if discount_percent else None, total, payment_method, cash_received, change_given),
-    )
-    sale_id = cur.fetchone()["id"]
-    for iid, qty, price, line_total, unit_cost in lines:
-        db.execute("INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost) VALUES (?,?,?,?,?,?)",
-                  (sale_id, iid, qty, price, round(line_total, 3), unit_cost))
-        db.execute("INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
-                  "VALUES (?,?,?,?,?,?)", (iid, -qty, "sale", str(sale_id), now, session["user_id"]))
-    logic.recompute_month_summary(db, now[:7])
-    auth.log_change(db, "sales", str(sale_id), "create")
-    db.commit()
+    # Microsecond precision — see the matching comment on audit_confirm's
+    # confirmed_at write; a sale timestamped in the same second as an audit
+    # confirmation would otherwise tie under the strict '>' stock-since-audit
+    # comparison and get silently excluded from inventory_status()'s total.
+    now = datetime.now().isoformat(timespec="microseconds")
+    try:
+        cur = db.execute(
+            "INSERT INTO sales (sale_date, cashier_id, subtotal, discount_percent, discount_applied_by, total, "
+            "payment_method, cash_received, change_given, idempotency_key) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
+            (now, session["user_id"], round(subtotal, 3), discount_percent,
+             session["user_id"] if discount_percent else None, total, payment_method, cash_received, change_given,
+             idempotency_key),
+        )
+        sale_id = cur.fetchone()["id"]
+        for iid, qty, price, line_total, unit_cost in lines:
+            db.execute("INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost) VALUES (?,?,?,?,?,?)",
+                      (sale_id, iid, qty, price, round(line_total, 3), unit_cost))
+            db.execute("INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
+                      "VALUES (?,?,?,?,?,?)", (iid, -qty, "sale", str(sale_id), now, session["user_id"]))
+        logic.recompute_month_summary(db, now[:7])
+        auth.log_change(db, "sales", str(sale_id), "create")
+        db.commit()
+    except dbmod.IntegrityError:
+        # The fast-path check above isn't atomic — two near-simultaneous
+        # submissions carrying the same idempotency_key can both pass it
+        # before either commits. idx_sales_idempotency_key is what
+        # actually prevents the double sale; this catches the resulting
+        # IntegrityError for whichever request loses that race and sends
+        # it to the sale that won instead of erroring.
+        db.rollback()
+        if idempotency_key:
+            existing_sale = db.execute("SELECT id FROM sales WHERE idempotency_key=?", (idempotency_key,)).fetchone()
+            if existing_sale:
+                return redirect(url_for("pos_receipt", sale_id=existing_sale["id"]))
+        raise
     flash(f"Sale #{sale_id} completed — total {logic.fmt_money(total)} JOD.", "success")
     return redirect(url_for("pos_receipt", sale_id=sale_id))
 
 
 @app.route("/pos/receipt/<int:sale_id>")
+@auth.permission_required("process_pos_sales", "view_sales_history")
 def pos_receipt(sale_id):
     db = get_db()
     sale = db.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
@@ -3671,6 +3857,7 @@ def pos_receipt(sale_id):
 
 
 @app.route("/pos/history")
+@auth.permission_required("view_sales_history")
 def pos_history():
     db = get_db()
     page = get_page()
@@ -3690,6 +3877,7 @@ def pos_history():
 # Inpatient system
 # ---------------------------------------------------------------------------
 @app.route("/inpatient")
+@auth.permission_required("manage_inpatient")
 def inpatient_list():
     db = get_db()
     show_all = request.args.get("all") == "1"
@@ -3724,6 +3912,7 @@ def inpatient_list():
 
 
 @app.route("/inpatient/new", methods=["GET", "POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_new():
     db = get_db()
     if request.method == "POST":
@@ -3752,6 +3941,7 @@ def inpatient_new():
 
 
 @app.route("/inpatient/<int:case_id>")
+@auth.permission_required("manage_inpatient")
 def inpatient_detail(case_id):
     db = get_db()
     case = db.execute(
@@ -3779,6 +3969,7 @@ def inpatient_detail(case_id):
 
 
 @app.route("/inpatient/<int:case_id>/edit", methods=["POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_edit(case_id):
     db = get_db()
     f = request.form
@@ -3818,6 +4009,7 @@ def inpatient_edit(case_id):
 
 
 @app.route("/inpatient/<int:case_id>/update", methods=["POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_update_add(case_id):
     db = get_db()
     note = request.form.get("note", "").strip()
@@ -3831,6 +4023,7 @@ def inpatient_update_add(case_id):
 
 
 @app.route("/inpatient/<int:case_id>/update/<int:update_id>/edit", methods=["POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_update_edit(case_id, update_id):
     db = get_db()
     note = request.form.get("note", "").strip()
@@ -3844,6 +4037,7 @@ def inpatient_update_edit(case_id, update_id):
 
 
 @app.route("/inpatient/<int:case_id>/contact", methods=["POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_contact_add(case_id):
     db = get_db()
     f = request.form
@@ -3857,6 +4051,7 @@ def inpatient_contact_add(case_id):
 
 
 @app.route("/inpatient/<int:case_id>/billing", methods=["POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_billing_add(case_id):
     db = get_db()
     # Locked for the same reason inpatient_discount_save() locks this row
@@ -3931,6 +4126,7 @@ def inpatient_billing_add(case_id):
 
 
 @app.route("/inpatient/<int:case_id>/billing/<int:line_id>/delete", methods=["POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_billing_delete(case_id, line_id):
     db = get_db()
     row = db.execute("SELECT timestamp FROM inpatient_billing WHERE id=? AND case_id=?", (line_id, case_id)).fetchone()
@@ -3948,6 +4144,7 @@ def inpatient_billing_delete(case_id, line_id):
 
 
 @app.route("/inpatient/<int:case_id>/discount", methods=["POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_discount_save(case_id):
     db = get_db()
     try:
@@ -3987,6 +4184,7 @@ def inpatient_discount_save(case_id):
 
 
 @app.route("/inpatient/<int:case_id>/payment", methods=["POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_payment_add(case_id):
     db = get_db()
     f = request.form
@@ -4026,6 +4224,7 @@ def inpatient_payment_add(case_id):
 
 
 @app.route("/inpatient/<int:case_id>/attachments", methods=["POST"])
+@auth.permission_required("manage_inpatient")
 def inpatient_attachment_upload(case_id):
     db = get_db()
     case = db.execute("SELECT patient_id FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
@@ -4045,6 +4244,7 @@ def inpatient_attachment_upload(case_id):
 # Appointments
 # ---------------------------------------------------------------------------
 @app.route("/appointments")
+@auth.permission_required("manage_appointments")
 def appointments_page():
     db = get_db()
     today_iso = date.today().isoformat()
@@ -4071,6 +4271,7 @@ def appointments_page():
 
 
 @app.route("/appointments/new", methods=["POST"])
+@auth.permission_required("manage_appointments")
 def appointment_new():
     db = get_db()
     f = request.form
@@ -4137,6 +4338,7 @@ def appointment_new():
 
 
 @app.route("/appointments/<int:appt_id>/cancel", methods=["POST"])
+@auth.permission_required("manage_appointments")
 def appointment_cancel(appt_id):
     db = get_db()
     row = db.execute("SELECT appt_date FROM appointments WHERE id=?", (appt_id,)).fetchone()
@@ -4342,7 +4544,9 @@ def refund_retail_save():
         flash("Nothing to refund.", "error")
         return redirect(url_for("refunds_page"))
 
-    now = datetime.now().isoformat(timespec="seconds")
+    # Microsecond precision — same reasoning as pos_checkout()'s `now`
+    # (restocking here writes an inventory_transactions row too).
+    now = datetime.now().isoformat(timespec="microseconds")
     cur = db.execute(
         "INSERT INTO refunds (refund_type, refund_date, amount, restocked, sale_id, reason, refund_method, processed_by, created_at) "
         "VALUES ('retail',?,?,?,?,?,?,?,?) RETURNING id",
