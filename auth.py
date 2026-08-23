@@ -56,6 +56,7 @@ PERMISSIONS = [
 ]
 PERMISSION_KEYS = [k for k, _, _ in PERMISSIONS]
 PERMISSION_KEY_SET = set(PERMISSION_KEYS)
+PERMISSION_CATEGORIES = ["Patients & Visits", "Inpatient", "Inventory", "Sales & Billing", "Admin", "Consignment"]
 
 # The permissions that are (and always have been) Admin-only in this app —
 # everything else was open to any logged-in user. Vet and Reception seed
@@ -71,7 +72,7 @@ VET_RECEPTION_DEFAULT_PERMISSIONS = PERMISSION_KEY_SET - ADMIN_ONLY_TODAY
 
 # Discount caps a brand-new install seeds Admin/Vet/Reception with. After
 # that, each role's actual cap lives in roles.discount_cap and is editable
-# from Settings.
+# from the role's own edit form on the Users & Roles page.
 DISCOUNT_CAPS = {"Admin": 25, "Vet": 15, "Reception": 10}
 
 

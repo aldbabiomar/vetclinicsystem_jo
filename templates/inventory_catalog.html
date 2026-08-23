@@ -75,9 +75,9 @@
       <td><select form="edit-{{ i.id }}" name="category" style="border:none; background:transparent;">{% for c in categories %}<option {{ 'selected' if i.category==c }}>{{ c }}</option>{% endfor %}</select></td>
       <td><input form="edit-{{ i.id }}" name="unit" value="{{ i.unit or '' }}" style="border:none; background:transparent; padding:2px; width:70px;"></td>
       <td class="small muted">
-        {% if i.barcode %}{{ i.barcode }} <a href="{{ url_for('inventory_barcode_label', item_id=i.id) }}">print</a>
-        {% else %}<form method="post" action="{{ url_for('inventory_catalog_create_barcode', item_id=i.id) }}" style="display:inline;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn small secondary" type="submit">Create Barcode</button></form>{% endif %}
+        {% if i.barcode %}<span style="font-family:monospace;">{{ i.barcode }}</span> <a href="{{ url_for('inventory_barcode_label', item_id=i.id) }}">print</a><br>{% endif %}
+        <button class="btn small secondary" type="button" data-item-id="{{ i.id }}" data-item-name="{{ i.name }}"
+                onclick="openBarcodeManager(this.dataset.itemId, this.dataset.itemName)">{{ 'Manage Barcode' if i.barcode else 'Add Barcode' }}</button>
       </td>
       <td><input form="edit-{{ i.id }}" type="checkbox" name="track_expiry" {{ 'checked' if i.track_expiry }}></td>
       <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="cost_price" value="{{ i.cost_price if i.cost_price is not none else '' }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
@@ -119,6 +119,42 @@
   </div>
 </div>
 
+<div id="barcodeManagerModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:520px;">
+    <h2 style="margin-top:0;">Barcode — <span id="barcodeManagerItemName"></span></h2>
+    <p class="small muted" style="margin-top:-6px;">
+      Every item has at most one barcode — either a real one scanned or typed in from its own
+      packaging, or one this app creates for you to print. Never both at once: setting one up
+      below turns off the other option until you remove it.
+    </p>
+
+    <div id="barcodeManualSection" style="padding:12px 0; border-top:1px solid var(--line-soft);">
+      <div style="font-weight:600; margin-bottom:6px;" id="barcodeManualTitle">Manually Enter Barcode</div>
+      <div class="field" style="margin-bottom:8px;">
+        <input type="text" id="barcodeManualInput" placeholder="Scan or type the barcode from the packaging" maxlength="64">
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn small" type="button" id="barcodeManualSaveBtn" onclick="barcodeManagerSaveManual()">Save</button>
+        <button class="btn small danger" type="button" id="barcodeManualRemoveBtn" style="display:none;" onclick="barcodeManagerRemove()">Remove Barcode</button>
+      </div>
+    </div>
+
+    <div id="barcodeGeneratedSection" style="padding:12px 0; border-top:1px solid var(--line-soft);">
+      <div style="font-weight:600; margin-bottom:4px;" id="barcodeGeneratedTitle">Create Barcode</div>
+      <p class="small muted" style="margin:0 0 8px;" id="barcodeGeneratedHint">No barcode on the packaging? This app can create one and print a label to stick on the item.</p>
+      <div style="display:flex; gap:8px;">
+        <button class="btn small secondary" type="button" id="barcodeGeneratedCreateBtn" onclick="barcodeManagerGenerate()">Create Now</button>
+        <a class="btn small secondary" type="button" id="barcodeGeneratedPrintBtn" style="display:none;" href="#">Print Label</a>
+        <button class="btn small danger" type="button" id="barcodeGeneratedRemoveBtn" style="display:none;" onclick="barcodeManagerRemove()">Remove Barcode</button>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-top:14px;">
+      <button class="btn secondary" type="button" onclick="document.getElementById('barcodeManagerModal').style.display='none';">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function toggleDistEdit(id) {
   document.getElementById('distLabel-' + id).style.display = 'none';
@@ -141,7 +177,7 @@ async function loadBulkBarcodeList() {
     var items = await res.json();
     loading.style.display = 'none';
     if (!res.ok) {
-      alert('Could not load barcodes.');
+      window.VZToast.show('Could not load barcodes.', 'error');
       return;
     }
     if (!items.length) {
@@ -193,7 +229,7 @@ async function loadBulkBarcodeList() {
     printBtn.disabled = false;
   } catch (e) {
     loading.style.display = 'none';
-    alert('Could not reach the server.');
+    window.VZToast.show('Could not reach the server.', 'error');
   }
 }
 
@@ -224,6 +260,139 @@ function bulkBarcodePrint() {
   form.appendChild(itemsInput);
   document.body.appendChild(form);
   form.submit();
+}
+
+// ---- Barcode manager: manual entry / create / remove, one item at a time ----
+let barcodeManagerItemId = null;
+
+function openBarcodeManager(itemId, itemName) {
+  barcodeManagerItemId = itemId;
+  document.getElementById('barcodeManagerItemName').textContent = itemName;
+  document.getElementById('barcodeManagerModal').style.display = 'flex';
+  barcodeManagerRefresh();
+}
+
+async function barcodeManagerRefresh() {
+  try {
+    const res = await fetch(`/inventory-catalog/${barcodeManagerItemId}/barcode/status`);
+    const data = await res.json();
+    if (!res.ok) {
+      window.VZToast.show(data.error || 'Could not load barcode status.', 'error');
+      return;
+    }
+    barcodeManagerRender(data);
+  } catch (e) {
+    window.VZToast.show('Could not reach the server.', 'error');
+  }
+}
+
+function barcodeManagerRender(data) {
+  const isManual = data.source === 'manual';
+  const isGenerated = data.source === 'generated';
+
+  const manualTitle = document.getElementById('barcodeManualTitle');
+  const manualInput = document.getElementById('barcodeManualInput');
+  const manualSaveBtn = document.getElementById('barcodeManualSaveBtn');
+  const manualRemoveBtn = document.getElementById('barcodeManualRemoveBtn');
+  const manualSection = document.getElementById('barcodeManualSection');
+
+  manualTitle.textContent = isManual ? 'Manually Entered Barcode' : 'Manually Enter Barcode';
+  manualInput.value = isManual ? (data.barcode || '') : (isGenerated ? '' : manualInput.value);
+  manualInput.disabled = isGenerated;
+  manualSaveBtn.disabled = isGenerated;
+  manualSaveBtn.style.display = isManual ? 'none' : 'inline-flex';
+  manualRemoveBtn.style.display = isManual ? 'inline-flex' : 'none';
+  manualSection.style.opacity = isGenerated ? '0.45' : '1';
+
+  const generatedTitle = document.getElementById('barcodeGeneratedTitle');
+  const generatedHint = document.getElementById('barcodeGeneratedHint');
+  const createBtn = document.getElementById('barcodeGeneratedCreateBtn');
+  const printBtn = document.getElementById('barcodeGeneratedPrintBtn');
+  const generatedRemoveBtn = document.getElementById('barcodeGeneratedRemoveBtn');
+  const generatedSection = document.getElementById('barcodeGeneratedSection');
+
+  if (isGenerated) {
+    generatedTitle.textContent = 'Created Barcode';
+    generatedHint.textContent = "This item's barcode was created by this app. Print a label to stick on the item, or remove it to start over.";
+    createBtn.style.display = 'none';
+    printBtn.style.display = 'inline-flex';
+    printBtn.href = data.label_url;
+    generatedRemoveBtn.style.display = 'inline-flex';
+    generatedSection.style.opacity = '1';
+  } else {
+    generatedTitle.textContent = 'Create Barcode';
+    generatedHint.textContent = 'No barcode on the packaging? This app can create one and print a label to stick on the item.';
+    createBtn.style.display = 'inline-flex';
+    createBtn.disabled = isManual;
+    printBtn.style.display = 'none';
+    generatedRemoveBtn.style.display = 'none';
+    generatedSection.style.opacity = isManual ? '0.45' : '1';
+  }
+}
+
+async function barcodeManagerSaveManual() {
+  const input = document.getElementById('barcodeManualInput');
+  const raw = input.value.trim();
+  if (!raw) { window.VZToast.show('Enter a barcode.', 'error'); return; }
+  try {
+    const res = await fetch(`/inventory-catalog/${barcodeManagerItemId}/barcode/manual`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+      },
+      body: JSON.stringify({ barcode: raw }),
+    });
+    const data = await res.json();
+    if (!res.ok) { window.VZToast.show(data.error || 'Could not save that barcode.', 'error'); return; }
+    window.VZToast.show('Barcode saved.', 'success');
+    barcodeManagerRender(data);
+    barcodeManagerRefreshRow();
+  } catch (e) {
+    window.VZToast.show('Could not reach the server.', 'error');
+  }
+}
+
+async function barcodeManagerGenerate() {
+  try {
+    const res = await fetch(`/inventory-catalog/${barcodeManagerItemId}/create-barcode`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+    });
+    const data = await res.json();
+    if (!res.ok) { window.VZToast.show(data.error || 'Could not create a barcode.', 'error'); return; }
+    window.VZToast.show(`Barcode ${data.barcode} created.`, 'success');
+    barcodeManagerRender(data);
+    barcodeManagerRefreshRow();
+  } catch (e) {
+    window.VZToast.show('Could not reach the server.', 'error');
+  }
+}
+
+async function barcodeManagerRemove() {
+  const ok = await window.VZDialog.confirm('Remove this barcode? You can add a new one afterward.');
+  if (!ok) return;
+  try {
+    const res = await fetch(`/inventory-catalog/${barcodeManagerItemId}/barcode/remove`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+    });
+    const data = await res.json();
+    if (!res.ok) { window.VZToast.show(data.error || 'Could not remove that barcode.', 'error'); return; }
+    window.VZToast.show('Barcode removed.', 'success');
+    barcodeManagerRender({ barcode: null, source: null });
+    barcodeManagerRefreshRow();
+  } catch (e) {
+    window.VZToast.show('Could not reach the server.', 'error');
+  }
+}
+
+// Reloading the page is the simplest way to bring the row's barcode
+// cell (and the Bulk Barcode Print button's has_barcodes gate) back in
+// sync after a change made inside the modal — this page's other bulk
+// actions (Save Changes) already do a full reload on success too.
+function barcodeManagerRefreshRow() {
+  setTimeout(() => window.location.reload(), 700);
 }
 </script>
 <script src="{{ url_for('static', filename='unsaved-changes.js') }}"></script>

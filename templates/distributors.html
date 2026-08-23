@@ -85,7 +85,7 @@
       <td style="white-space:nowrap;">
         <a class="btn small secondary" href="{{ url_for('distributor_detail', dist_id=d.id) }}">Ledger</a>
         <button class="btn small secondary" form="edit-{{ d.id }}" type="submit">Save</button>
-        <form method="post" action="{{ url_for('distributor_delete', dist_id=d.id) }}" style="display:inline;" onsubmit="return confirm('Delete {{ d.name }}?');">
+        <form method="post" action="{{ url_for('distributor_delete', dist_id=d.id) }}" style="display:inline;" data-confirm="Delete {{ d.name }}?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn small danger" type="submit">Delete</button>
         </form>

@@ -119,16 +119,16 @@ function lookupRefundSale() {
   const input = document.getElementById('refundSaleId');
   const saleId = input.value.trim();
   const linesDiv = document.getElementById('refundSaleLines');
-  if (!saleId) { alert('Enter a sale ID first.'); return; }
+  if (!saleId) { window.VZToast.show('Enter a sale ID first.', 'error'); return; }
   fetch(`/api/sales/${encodeURIComponent(saleId)}/refundable-items`)
     .then(r => r.json().then(data => ({ ok: r.ok, data })))
     .then(({ ok, data }) => {
-      if (!ok) { alert(data.error || 'Sale not found.'); refundSaleId = null; refundLines = []; linesDiv.innerHTML = '<div class="empty-note">Look up a sale to see its refundable items.</div>'; renderRefundTotal(); return; }
+      if (!ok) { window.VZToast.show(data.error || 'Sale not found.', 'error'); refundSaleId = null; refundLines = []; linesDiv.innerHTML = '<div class="empty-note">Look up a sale to see its refundable items.</div>'; renderRefundTotal(); return; }
       refundSaleId = data.sale_id;
       refundLines = data.lines.map(l => ({ ...l, refundQty: 0 }));
       renderRefundLines();
     })
-    .catch(() => { alert('Could not look up that sale; check server connection.'); });
+    .catch(() => { window.VZToast.show('Could not look up that sale; check server connection.', 'error'); });
 }
 
 function renderRefundLines() {
@@ -147,7 +147,7 @@ function renderRefundLines() {
 function setRefundQty(idx, value) {
   let qty = parseFloat(value);
   if (isNaN(qty) || qty < 0) qty = 0;
-  if (qty > refundLines[idx].remaining) { alert(`Only ${refundLines[idx].remaining} left refundable for ${refundLines[idx].name}.`); qty = refundLines[idx].remaining; }
+  if (qty > refundLines[idx].remaining) { window.VZToast.show(`Only ${refundLines[idx].remaining} left refundable for ${refundLines[idx].name}.`, 'warn'); qty = refundLines[idx].remaining; }
   refundLines[idx].refundQty = qty;
   renderRefundLines();
 }
@@ -159,7 +159,7 @@ function renderRefundTotal() {
 
 function prepareRefundSubmit() {
   const selected = refundLines.filter(l => l.refundQty > 0);
-  if (!refundSaleId || !selected.length) { alert('Look up a sale and enter at least one refund quantity.'); return false; }
+  if (!refundSaleId || !selected.length) { window.VZToast.show('Look up a sale and enter at least one refund quantity.', 'error'); return false; }
   document.getElementById('refundSaleIdHidden').value = refundSaleId;
   document.getElementById('restockHidden').value = document.getElementById('restockCheck').checked ? 'on' : '';
   const container = document.getElementById('refundFieldsHidden');

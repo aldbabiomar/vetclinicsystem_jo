@@ -37,7 +37,7 @@
       <div class="list-line">
         <a href="{{ url_for('serve_attachment', relpath=file.relative_path) }}" target="_blank">{{ file.original_name }}</a>
         <span class="meta">{{ file.uploaded_at[:10] }}
-          <form method="post" action="{{ url_for('attachment_delete', attachment_id=file.id) }}" style="display:inline;" onsubmit="return confirm('Delete {{ file.original_name }}?');">
+          <form method="post" action="{{ url_for('attachment_delete', attachment_id=file.id) }}" style="display:inline;" data-confirm="Delete {{ file.original_name }}?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn small danger" type="submit" style="margin-left:8px;">Delete</button>
           </form>
@@ -187,7 +187,7 @@ visitBillSearchInput.addEventListener('input', () => {
 });
 
 function addToVisitBillCart(item) {
-  if (item.price == null) { alert(item.name + ' has no sale price set in the Price List.'); return; }
+  if (item.price == null) { window.VZToast.show(item.name + ' has no sale price set in the Price List.', 'error'); return; }
   const existing = visitBillCart.find(c => c.id === item.id);
   if (existing) { existing.qty += 1; } else { visitBillCart.push({id: item.id, name: item.name, price: item.price, qty: 1}); }
   visitBillSearchInput.value = '';
@@ -228,7 +228,7 @@ renderVisitBillCart();
 
 function prepareBillingSubmit() {
   if (document.getElementById('btAuto').checked) {
-    if (!visitBillCart.length) { alert('Add at least one billed item.'); return false; }
+    if (!visitBillCart.length) { window.VZToast.show('Add at least one billed item.', 'error'); return false; }
     const container = document.getElementById('visitBillFieldsHidden');
     container.innerHTML = '';
     visitBillCart.forEach(c => {

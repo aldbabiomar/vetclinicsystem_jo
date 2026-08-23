@@ -108,10 +108,11 @@ function openAdd(btn) {
   document.getElementById('addSlotLabel').textContent = `${date} · ${slot} · ${label}`;
   document.getElementById('addModal').style.display = 'flex';
 }
-function cancelAppt(el) {
+async function cancelAppt(el) {
   const id = el.dataset.apptId;
   const name = el.dataset.petName;
-  if (!confirm(`Cancel ${name}'s appointment?`)) return;
+  const ok = await window.VZDialog.confirm(`Cancel ${name}'s appointment?`, { originEl: el, okLabel: 'Cancel Appointment', cancelLabel: 'Keep It' });
+  if (!ok) return;
   const f = document.getElementById('cancelForm');
   f.action = `/appointments/${id}/cancel`;
   document.body.appendChild(f);

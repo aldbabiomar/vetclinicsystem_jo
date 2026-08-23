@@ -60,7 +60,7 @@
         <td>{{ p.payment_date }}</td><td>{{ p.amount|money }}</td>
         <td>{{ p.method or "—" }}</td><td>{{ p.notes or "—" }}</td>
         <td>
-          <form method="post" action="{{ url_for('distributor_payment_delete', dist_id=distributor.id, payment_id=p.id) }}" style="display:inline;" onsubmit="return confirm('Delete this payment?');">
+          <form method="post" action="{{ url_for('distributor_payment_delete', dist_id=distributor.id, payment_id=p.id) }}" style="display:inline;" data-confirm="Delete this payment?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn small danger" type="submit">Delete</button>
           </form>
@@ -86,7 +86,7 @@
   </form>
   {% endif %}
 
-  <form method="post" action="{{ url_for('distributor_bill_delete', dist_id=distributor.id, bill_id=bill.id) }}" style="margin-top:8px;" onsubmit="return confirm('Delete bill {{ bill.id }}?');">
+  <form method="post" action="{{ url_for('distributor_bill_delete', dist_id=distributor.id, bill_id=bill.id) }}" style="margin-top:8px;" data-confirm="Delete bill {{ bill.id }}?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn small danger" type="submit">Delete Bill</button>
   </form>

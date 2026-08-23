@@ -184,7 +184,7 @@
     <div class="list-line">
       <a href="{{ url_for('serve_attachment', relpath=file.relative_path) }}" target="_blank">{{ file.original_name }}</a>
       <span class="meta">{{ file.uploaded_at[:10] }}
-        <form method="post" action="{{ url_for('attachment_delete', attachment_id=file.id) }}" style="display:inline;" onsubmit="return confirm('Delete {{ file.original_name }}?');">
+        <form method="post" action="{{ url_for('attachment_delete', attachment_id=file.id) }}" style="display:inline;" data-confirm="Delete {{ file.original_name }}?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn small danger" type="submit" style="margin-left:8px;">Delete</button>
         </form>

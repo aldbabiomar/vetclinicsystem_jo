@@ -219,9 +219,10 @@
         const ok = await saveDirty();
         if (!ok) {
           updateSaveButton();
-          alert(
+          window.VZToast.show(
             "Some changes couldn't be saved — please check your connection and try again. " +
-            "The items that failed are still highlighted."
+            "The items that failed are still highlighted.",
+            "error"
           );
           return;
         }
@@ -294,9 +295,10 @@
       if (!ok) {
         [saveBtn, discardBtn, cancelBtn].forEach((b) => { b.disabled = false; });
         saveBtn.textContent = "Save & Continue";
-        alert(
+        window.VZToast.show(
           "Some changes couldn't be saved — please check your connection and try again. " +
-          "You're still on this page and nothing else has been lost."
+          "You're still on this page and nothing else has been lost.",
+          "error"
         );
         return; // stay put; don't navigate away from a failed save
       }

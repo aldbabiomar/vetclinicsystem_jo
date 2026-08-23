@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} — {{ clinic_name }}{% endblock %}
+{% block content %}
+<div class="vz-progress-shell">
+  <h2 style="margin:0;">{{ page_title }}</h2>
+  <p class="small muted" style="margin:0;">{{ page_note or "This can take a moment on a clinic with a lot of history." }}</p>
+  <div id="loadingProgress" class="vz-progress-panel"></div>
+</div>
+<script src="{{ url_for('static', filename='progress.js') }}"></script>
+<script>
+(function () {
+  const panel = document.getElementById('loadingProgress');
+  window.VZProgress.poll({{ job_id | tojson }}, '/jobs/status', {}, {
+    onUpdate: (d) => window.VZProgress.render(panel, d),
+    onDone: () => { window.location = {{ reload_url | tojson }}; },
+    onError: (d) => {
+      window.VZProgress.render(panel, { status: 'error', steps: ['Loading'], current: 0, message: d.message });
+      window.VZToast.show(d.message || 'Something went wrong loading this page.', 'error');
+    },
+  });
+})();
+</script>
+{% endblock %}

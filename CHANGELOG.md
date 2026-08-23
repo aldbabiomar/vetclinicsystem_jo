@@ -3,6 +3,46 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.2.0] - 2026-08-23
+
+### Added
+- **Toasts and styled confirm dialogs**, replacing native browser
+  `alert()`/`confirm()` throughout the app, plus a background-job
+  progress UI for Insights, Retention, and Consignment Overview.
+- **Custom role creation and editing** — Users & Roles now has a full
+  Roles & Permissions tab: create a role, choose exactly which
+  permissions and discount cap it gets, and edit or delete it later.
+  The built-in Admin role stays locked. Also added a per-user discount
+  override at account creation (inherit from role, or set a custom
+  limit for that person).
+- **In-app database restore** — Settings → Restore From Backup can now
+  restore any backup this app created, with the same progress UI as
+  Backup Now. A backup file can only be restored if it's inside the
+  configured backup folder and actually appears in this app's own
+  backup history — never an arbitrary path.
+- **Backup-folder browser** — Settings' Backup Folder field now has a
+  Browse… button to pick (or create) a folder on this computer,
+  instead of typing a path by hand.
+- **Start automatically on login** — a Settings toggle to have
+  VetClinicSystem JO launch automatically when this computer starts
+  (macOS and Windows).
+- **Manually enter a barcode** — Inventory Catalog items can now use a
+  real barcode scanned or typed in from the product's own packaging,
+  as an alternative to a VetClinicSystem-generated one. Bulk Barcode
+  Print continues to cover only the barcodes this app created.
+- **`reconcile_attachments.py`** — a new maintenance script to safely
+  relink attachment files that a database restore left without a
+  matching record. Run `python3 reconcile_attachments.py` (dry run) or
+  `--apply` from the app folder after a restore.
+
+### Changed
+- Barcode labels (single and bulk print) now detect the right barcode
+  format automatically instead of assuming every code is EAN-13 —
+  needed for manually entered codes, which aren't always EAN-13.
+- Removed the three separate Admin/Vet/Reception discount-limit fields
+  from Settings; each role's discount cap is now set on the role
+  itself, in Users & Roles.
+
 ## [1.1.0] - 2026-08-23
 
 ### Fixed

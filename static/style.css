@@ -377,3 +377,127 @@ textarea { resize: vertical; min-height: 72px; }
   .stat-grid, .panel-grid, .form-grid, .detail-grid { grid-template-columns: 1fr; }
   .main { padding: 16px 16px 48px; }
 }
+
+/* =====================================================================
+   Toast / dialog / progress-UI framework (ported from IQ)
+   ===================================================================== */
+
+/* ---------------- Progress bars (Settings updates, Insights, Retention, Consignment Overview) ---------------- */
+.vz-progress-panel { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm); background: var(--muted-tint); }
+.vz-progress-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; overflow-wrap: anywhere; word-break: break-word; }
+.vz-progress-bar-track { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.vz-progress-bar-fill { height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.35s ease; }
+.vz-progress-bar-fill.error { background: var(--danger); }
+.vz-progress-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 6px; }
+.vz-progress-shell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 60px 20px; text-align: center; }
+.vz-progress-shell .vz-progress-panel { width: 100%; max-width: 420px; text-align: left; }
+
+/* Inline validation message */
+.field-invalid { border-color: var(--danger) !important; box-shadow: 0 0 0 3px var(--danger-tint) !important; }
+.field-error { color: var(--danger); font-size: 12px; font-weight: 600; margin-top: 4px; }
+
+/* Scroll-edge fade instead of a hard cut under sticky table headers */
+.table-wrap { position: relative; }
+.table-wrap::before {
+  content: ""; position: sticky; top: 0; left: 0; right: 0; height: 0;
+  display: block; z-index: 3; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent);
+  opacity: 0; transition: opacity 0.15s ease, height 0.15s ease;
+}
+.table-wrap.is-scrolled::before { height: 10px; opacity: 1; }
+
+/* ---------------- Toast component ---------------- */
+.vz-toast-stack {
+  position: fixed; right: 18px; bottom: 18px; z-index: 200;
+  display: flex; flex-direction: column; gap: 8px; max-width: 360px;
+  pointer-events: none;
+}
+.vz-toast {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 9px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg); padding: 11px 12px 11px 14px; font-size: 13.5px; font-weight: 550;
+  color: var(--ink); opacity: 0; transform: translateY(10px) scale(0.98);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.vz-toast.vz-toast-in { opacity: 1; transform: translateY(0) scale(1); }
+.vz-toast.vz-toast-out { opacity: 0; transform: translateY(6px) scale(0.98); }
+.vz-toast-icon {
+  flex: none; width: 20px; height: 20px; border-radius: 999px; display: flex; align-items: center;
+  justify-content: center; font-size: 12px; font-weight: 800; color: #fff;
+}
+.vz-toast-success .vz-toast-icon { background: var(--ok); }
+.vz-toast-error .vz-toast-icon { background: var(--danger); }
+.vz-toast-warn .vz-toast-icon { background: var(--warn); }
+.vz-toast-status .vz-toast-icon { background: var(--muted); }
+.vz-toast-msg { flex: 1; min-width: 0; line-height: 1.4; overflow-wrap: anywhere; word-break: break-word; }
+.vz-toast-close {
+  flex: none; background: none; border: none; cursor: pointer; color: var(--ink-soft);
+  font-size: 16px; line-height: 1; padding: 2px 4px;
+}
+.vz-toast-close:hover { color: var(--ink); }
+@media (max-width: 760px) {
+  .vz-toast-stack { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+}
+
+/* ---------------- Styled confirm dialog ---------------- */
+.vz-confirm-box { max-width: 400px; }
+.vz-confirm-msg { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; word-break: break-word; }
+
+/* ---------------- Optimistic "Saving…" button state ---------------- */
+.btn.is-saving, button.is-saving { opacity: 0.75; cursor: progress; }
+
+/* htmx loading indicator on the element that triggered a boosted request */
+.is-loading { opacity: 0.6; pointer-events: none; }
+.htmx-request .table-wrap, .htmx-request.table-wrap { opacity: 0.6; transition: opacity 0.1s ease; }
+
+/* =====================================================================
+   Users & Roles (custom role creation/editing, ported from IQ)
+   ===================================================================== */
+.radio-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.radio-row input { width: auto; accent-color: var(--primary); }
+
+.role-cards { display: flex; flex-direction: column; gap: 14px; }
+.role-card { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px 20px; }
+.role-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.role-card-title { flex: 1 1 320px; min-width: 220px; }
+.role-card-title h3 { margin: 0 0 2px; font-size: 16px; display: flex; align-items: center; gap: 9px; }
+.role-card-desc { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
+.role-card-actions { display: flex; gap: 8px; align-items: center; flex: none; }
+.lock-ico { color: var(--muted); font-size: 13px; }
+.perm-block { margin-bottom: 13px; }
+.perm-cat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: var(--primary-dark); font-weight: 750; margin-bottom: 7px; opacity: .85; }
+.perm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 7px 16px; }
+.perm-row { display: flex; align-items: center; gap: 8px; font-size: 12.8px; }
+.perm-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--primary); flex: none; }
+.role-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; margin-top: 2px; border-top: 1px solid var(--line-soft); flex-wrap: wrap; }
+.cap-field { display: flex; align-items: center; gap: 8px; }
+.cap-field input { width: 74px; text-align: right; }
+.staff-count { font-size: 12.5px; color: var(--ink-soft); }
+.new-role-card { border: 1.5px dashed var(--line); background: transparent; box-shadow: none; display: flex; align-items: center; justify-content: center; padding: 22px; cursor: pointer; color: var(--ink-soft); font-weight: 650; font-size: 13.5px; }
+.new-role-card:hover { background: var(--line-soft); border-color: var(--primary-tint); color: var(--primary-dark); }
+.reassign-note { background: var(--warn-tint); border: 1px solid var(--warn); border-radius: var(--radius-sm); padding: 11px 13px; font-size: 13px; color: var(--ink); margin-bottom: 16px; line-height: 1.5; }
+.reassign-note strong { color: var(--warn); }
+.role-card.removing { opacity: .4; transform: scale(0.98); pointer-events: none; transition: opacity 260ms cubic-bezier(0.22, 1, 0.36, 1), transform 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .role-card.removing { transform: none !important; }
+}
+
+/* Name/description become real inputs but sit flush with the card at rest
+   so the card still reads like plain text until focused. */
+.role-name-input {
+  font: inherit; font-weight: 650; font-size: 16px; border: none; background: transparent;
+  padding: 2px 4px; margin: 0 0 2px -4px; color: inherit; width: auto; min-width: 120px;
+}
+.role-desc-input {
+  font: inherit; font-size: 12.5px; color: var(--ink-soft); border: none; background: transparent;
+  padding: 2px 4px; margin: 0 0 0 -4px; width: 100%; max-width: 640px;
+}
+.role-name-input:focus, .role-desc-input:focus {
+  outline: none; background: var(--line-soft); border-radius: 5px; box-shadow: 0 0 0 2px var(--primary-tint);
+}
+.role-card-save {
+  display: none; align-items: center; gap: 8px;
+}
+.role-card.is-dirty .role-card-save { display: flex; }
+.role-card-dirty-note { font-size: 12px; color: var(--warn); font-weight: 650; }

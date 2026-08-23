@@ -72,7 +72,7 @@
       <td><input form="edit-{{ i.id }}" name="notes" value="{{ i.notes or '' }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
       <td style="text-align:center;"><input form="edit-{{ i.id }}" type="checkbox" name="can_discount" {{ 'checked' if i.can_discount }}></td>
       <td style="white-space:nowrap;">
-        <form method="post" action="{{ url_for('price_list_delete', item_id=i.id) }}" style="display:inline;" onsubmit="return confirm('Remove {{ i.name }}?');">
+        <form method="post" action="{{ url_for('price_list_delete', item_id=i.id) }}" style="display:inline;" data-confirm="Remove {{ i.name }}?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn small danger" type="submit">Remove</button>
         </form>

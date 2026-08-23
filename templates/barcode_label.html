@@ -16,7 +16,19 @@
     Could not render the barcode. Try refreshing the page.
   </p>
 </div>
+<script>
+function renderBarcodeLabel() {
+  const code = "{{ item.barcode }}";
+  try {
+    vzRenderBarcode('#barcodeSvg', code);
+    document.getElementById('printBtn').disabled = false;
+  } catch (e) {
+    document.getElementById('barcodeError').style.display = 'block';
+  }
+}
+</script>
+<script src="{{ url_for('static', filename='barcode-render.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"
-        onload="try { JsBarcode('#barcodeSvg', '{{ item.barcode }}', {format: 'EAN13', width: 2, height: 60, fontSize: 14}); document.getElementById('printBtn').disabled = false; } catch (e) { document.getElementById('barcodeError').style.display = 'block'; }"
+        onload="renderBarcodeLabel();"
         onerror="document.getElementById('barcodeError').style.display = 'block';"></script>
 {% endblock %}

@@ -81,10 +81,10 @@ searchInput.addEventListener('input', () => {
 });
 
 function addToCart(item) {
-  if (item.price == null) { alert(item.name + ' has no sale price set in the Price List.'); return; }
+  if (item.price == null) { window.VZToast.show(item.name + ' has no sale price set in the Price List.', 'error'); return; }
   const existing = cart.find(c => c.id === item.id);
   if (existing) {
-    if (item.stock != null && existing.qty + 1 > item.stock) { alert(`Only ${item.stock} in stock.`); return; }
+    if (item.stock != null && existing.qty + 1 > item.stock) { window.VZToast.show(`Only ${item.stock} in stock.`, 'warn'); return; }
     existing.qty += 1;
   } else {
     cart.push({id: item.id, name: item.name, price: item.price, qty: 1, stock: item.stock});
@@ -94,7 +94,7 @@ function addToCart(item) {
 function changeQty(id, delta) {
   const line = cart.find(c => c.id === id);
   const next = line.qty + delta;
-  if (delta > 0 && line.stock != null && next > line.stock) { alert(`Only ${line.stock} in stock.`); return; }
+  if (delta > 0 && line.stock != null && next > line.stock) { window.VZToast.show(`Only ${line.stock} in stock.`, 'warn'); return; }
   line.qty = Math.max(1, next);
   renderCart();
 }
@@ -102,7 +102,7 @@ function setQty(id, value) {
   const line = cart.find(c => c.id === id);
   let qty = parseInt(value, 10);
   if (!Number.isFinite(qty) || qty < 1) qty = 1;
-  if (line.stock != null && qty > line.stock) { alert(`Only ${line.stock} in stock.`); qty = line.stock; }
+  if (line.stock != null && qty > line.stock) { window.VZToast.show(`Only ${line.stock} in stock.`, 'warn'); qty = line.stock; }
   line.qty = qty;
   renderCart();
 }
@@ -154,7 +154,7 @@ function renderChange(total) {
     : '';
 }
 function prepareSubmit() {
-  if (!cart.length) { alert('Cart is empty.'); return false; }
+  if (!cart.length) { window.VZToast.show('Cart is empty.', 'error'); return false; }
   document.getElementById('discountHidden').value = document.getElementById('discountInput').value;
   document.getElementById('paymentHidden').value = document.getElementById('paymentMethod').value;
   document.getElementById('cashReceivedHidden').value =

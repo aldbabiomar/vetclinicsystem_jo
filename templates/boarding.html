@@ -117,7 +117,7 @@
           </div>
           <a class="btn small secondary" href="{{ url_for('boarding_export_pdf', boarding_id=s.id) }}">Export (PDF)</a>
           {% if not s.dismissed %}
-          <form method="post" action="{{ url_for('boarding_dismiss', boarding_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Mark {{ s.animal_name }} as picked up?');">
+          <form method="post" action="{{ url_for('boarding_dismiss', boarding_id=s.id) }}" style="display:inline;" data-confirm="Mark {{ s.animal_name }} as picked up?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn small secondary" type="submit">Mark Picked Up</button>
           </form>

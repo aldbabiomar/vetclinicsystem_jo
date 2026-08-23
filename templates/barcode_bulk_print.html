@@ -31,7 +31,7 @@ function renderAllBarcodes() {
   var anyError = false;
   svgs.forEach(function (svg) {
     try {
-      JsBarcode(svg, svg.dataset.code, {format: 'EAN13', width: 2, height: 60, fontSize: 14});
+      vzRenderBarcode(svg, svg.dataset.code);
     } catch (e) {
       anyError = true;
       var box = svg.closest('.barcode-label-box');
@@ -43,6 +43,7 @@ function renderAllBarcodes() {
   document.getElementById('printBtn').disabled = false;
 }
 </script>
+<script src="{{ url_for('static', filename='barcode-render.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"
         onload="renderAllBarcodes();"
         onerror="document.getElementById('bulkPrintError').style.display = 'block';"></script>

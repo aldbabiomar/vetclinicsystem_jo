@@ -4,7 +4,7 @@
 <div class="page-head">
   <div><h1>Monthly P&amp;L</h1><p class="page-sub">Revenue from billing &amp; retail sales, COGS from measured usage. Admin only.</p></div>
   <div style="display:flex; gap:10px;">
-    <form method="post" action="{{ url_for('reports_rebuild_summary') }}" onsubmit="return confirm('Rebuild all report data from scratch? This re-checks every month against current billing, sales, and cost data. It can take a few seconds on a large database.');">
+    <form method="post" action="{{ url_for('reports_rebuild_summary') }}" data-confirm="Rebuild all report data from scratch? This re-checks every month against current billing, sales, and cost data. It can take a few seconds on a large database.">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="return_to" value="{{ url_for('reports') }}">
       <button class="btn secondary" type="submit" title="Force a full recalculation of every month, in case anything ever looks out of sync">Rebuild Report Data</button>

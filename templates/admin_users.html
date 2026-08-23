@@ -1,59 +1,281 @@
 {% extends "base.html" %}
-{% block title %}Users — {{ clinic_name }}{% endblock %}
+{% block title %}Users & Roles — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Users</h1><p class="page-sub">Add staff, change roles, disable accounts, reset passwords.</p></div>
-  <button class="btn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New User</button>
+  <div>
+    <h1>Users &amp; Roles</h1>
+    <p class="page-sub">Add staff, and add or edit the roles they can be assigned — including what each role can access and its discount limit.</p>
+  </div>
+  <button class="btn" type="button" data-open-modal="#userModal">+ New User</button>
 </div>
 
-<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
-  <form method="post" action="{{ url_for('admin_user_new') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="form-grid">
-      <div class="field"><label>Full Name</label><input required name="full_name"></div>
-      <div class="field"><label>Username</label><input required name="username"></div>
-      <div class="field"><label>Temporary Password</label><input required type="text" name="password" minlength="8"></div>
-      <div class="field"><label>Role</label>
-        <select name="role" required>{% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}</select>
+<div class="tabs" role="tablist">
+  <a href="#staff" class="tab-link active" data-tab="staff" role="tab" aria-selected="true" aria-controls="tab-staff" onclick="showURTab('staff');return false;">Staff</a>
+  <a href="#roles" class="tab-link" data-tab="roles" role="tab" aria-selected="false" aria-controls="tab-roles" onclick="showURTab('roles');return false;">Roles &amp; Permissions</a>
+</div>
+
+<!-- ============ STAFF TAB ============ -->
+<div id="tab-staff" role="tabpanel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Discount Limit</th><th>Status</th><th>Reset Password</th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td><strong>{{ u.full_name }}</strong></td>
+          <td class="muted">{{ u.username }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin_user_role', user_id=u.id) }}" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <select name="role_id" onchange="this.form.submit()" class="small">
+                {% for r in roles %}<option value="{{ r.id }}" {{ 'selected' if u.role_id==r.id }}>{{ r.name }}</option>{% endfor %}
+              </select>
+            </form>
+          </td>
+          <td class="small {{ '' if u.custom_discount_cap is none else 'primary' }}">
+            {% if u.custom_discount_cap is none %}
+              <span class="muted">Role default ({{ u.role_discount_cap }}%)</span>
+            {% else %}
+              <span class="badge primary">Custom: {{ u.custom_discount_cap }}%</span>
+            {% endif %}
+          </td>
+          <td><span class="badge {{ 'ok' if u.active else 'muted' }}">{{ 'Active' if u.active else 'Disabled' }}</span></td>
+          <td>
+            <form method="post" action="{{ url_for('admin_user_reset_password', user_id=u.id) }}" class="inline-form" style="display:flex; gap:6px;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="text" name="new_password" placeholder="New Password" minlength="8" required style="width:140px;">
+              <button class="btn small secondary" type="submit">Reset</button>
+            </form>
+          </td>
+          <td>
+            <form method="post" action="{{ url_for('admin_user_toggle', user_id=u.id) }}" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn small {{ 'danger' if u.active else 'secondary' }}" type="submit" {{ 'disabled' if u.id == session_user_id }}>{{ 'Disable' if u.active else 'Enable' }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="small muted" style="margin-top:12px;">The Role dropdown always reflects whatever roles exist in the Roles &amp; Permissions tab. A per-user discount override (set at creation, in the New User form) shows here as "Custom" — most staff just inherit their role's limit.</p>
+</div>
+
+<!-- ============ ROLES TAB ============ -->
+<div id="tab-roles" role="tabpanel" style="display:none;">
+
+  <div class="role-cards">
+    {% for role in roles %}
+    <div class="role-card" id="role-card-{{ role.id }}" data-role-id="{{ role.id }}" data-role-name="{{ role.name }}">
+      {% if role.is_system %}
+      <div class="role-card-head">
+        <div class="role-card-title">
+          <h3>{{ role.name }} <span class="lock-ico" role="img" aria-label="System role — can't be renamed, deleted, or edited" title="System role — can't be renamed, deleted, or edited">🔒</span></h3>
+          <p class="role-card-desc">{{ role.description or '' }}</p>
+        </div>
+        <div class="role-card-actions"><span class="badge muted">System role</span><button class="btn small secondary" type="button" disabled>Delete</button></div>
       </div>
+      {% for cat, perms in perm_categories %}
+      <div class="perm-block"><div class="perm-cat-label">{{ cat }}</div><div class="perm-grid">
+        {% for key, label in perms %}
+        <label class="perm-row"><input type="checkbox" checked disabled><span>{{ label }}</span></label>
+        {% endfor %}
+      </div></div>
+      {% endfor %}
+      <div class="role-card-foot">
+        <div class="cap-field"><label class="small muted">Max Discount</label><input type="number" value="{{ role.discount_cap }}" disabled><span class="small muted">%</span></div>
+        <label class="perm-row" style="margin-left:16px;" title="Whether staff with this role show up as a vet to assign in Appointments, Visits, Grooming, and Inpatient"><input type="checkbox" {{ 'checked' if role.is_vet_role }} disabled><span>Can be assigned as a vet</span></label>
+        <div class="staff-count">{{ staff_counts.get(role.id, 0) }} staff member{{ '' if staff_counts.get(role.id, 0) == 1 else 's' }} · always keeps at least one Admin</div>
+      </div>
+      {% else %}
+      <form method="post" action="{{ url_for('admin_role_edit', role_id=role.id) }}" class="role-card-form" data-track-dirty>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="role-card-head">
+          <div class="role-card-title">
+            <h3><input class="role-name-input" name="name" value="{{ role.name }}" required></h3>
+            <input class="role-desc-input" name="description" value="{{ role.description or '' }}" placeholder="Description (optional)">
+          </div>
+          <div class="role-card-actions">
+            <span class="badge ok">Custom role</span>
+            <button class="btn small danger" type="button" data-role-id="{{ role.id }}" data-role-name="{{ role.name }}" data-staff-count="{{ staff_counts.get(role.id, 0) }}"
+                    onclick="deleteRole(this.dataset.roleId, this.dataset.roleName, parseInt(this.dataset.staffCount, 10), this)">Delete</button>
+          </div>
+        </div>
+        {% for cat, perms in perm_categories %}
+        <div class="perm-block"><div class="perm-cat-label">{{ cat }}</div><div class="perm-grid">
+          {% for key, label in perms %}
+          <label class="perm-row"><input type="checkbox" name="permissions" value="{{ key }}" {{ 'checked' if key in role_perms.get(role.id, []) }}><span>{{ label }}</span></label>
+          {% endfor %}
+        </div></div>
+        {% endfor %}
+        <div class="role-card-foot">
+          <div class="cap-field"><label class="small muted">Max Discount</label><input type="number" name="discount_cap" value="{{ role.discount_cap }}" min="0" max="100"><span class="small muted">%</span></div>
+          <label class="perm-row" style="margin-left:16px;" title="Whether staff with this role show up as a vet to assign in Appointments, Visits, Grooming, and Inpatient"><input type="checkbox" name="is_vet_role" {{ 'checked' if role.is_vet_role }}><span>Can be assigned as a vet</span></label>
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div class="staff-count">{{ staff_counts.get(role.id, 0) }} staff member{{ '' if staff_counts.get(role.id, 0) == 1 else 's' }}</div>
+            <div class="role-card-save">
+              <span class="role-card-dirty-note">Unsaved changes</span>
+              <button type="button" class="btn small secondary" onclick="window.location.reload();">Cancel</button>
+              <button type="submit" class="btn small" data-saving-label="Saving…">Save</button>
+            </div>
+          </div>
+        </div>
+      </form>
+      {% endif %}
     </div>
-    <div class="form-actions"><button class="btn" type="submit">Create User</button></div>
-  </form>
+    {% endfor %}
+
+    <div class="new-role-card" id="addRoleBtn" role="button" tabindex="0" aria-label="Add a new role" data-open-modal="#roleModal">+ Add Role</div>
+  </div>
 </div>
 
-<div class="table-wrap">
-<table>
-  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Reset Password</th><th></th></tr></thead>
-  <tbody>
-    {% for u in users %}
-    <tr>
-      <td><strong>{{ u.full_name }}</strong>{% if u.id == current_username %}{% endif %}</td>
-      <td class="muted">{{ u.username }}</td>
-      <td>
-        <form method="post" action="{{ url_for('admin_user_role', user_id=u.id) }}" class="inline-form">
+<!-- Add New User modal -->
+<div class="modal-overlay" id="userModal" style="display:none;">
+  <div class="modal-box">
+    <h3 style="margin-top:0;">New User</h3>
+    <form method="post" action="{{ url_for('admin_user_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <select name="role" onchange="this.form.submit()" class="small">
-            {% for r in roles %}<option value="{{ r.id }}" {{ 'selected' if u.role_id==r.id }}>{{ r.name }}</option>{% endfor %}
+      <div class="form-grid">
+        <div class="field"><label>Full Name</label><input required name="full_name" placeholder="e.g. Jordan Lee"></div>
+        <div class="field"><label>Username</label><input required name="username" placeholder="jlee"></div>
+        <div class="field"><label>Temporary Password</label><input required type="text" name="password" minlength="8" placeholder="min. 8 characters"></div>
+        <div class="field"><label>Role</label>
+          <select name="role_id" required>
+            {% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
           </select>
-        </form>
-      </td>
-      <td><span class="badge {{ 'ok' if u.active else 'muted' }}">{{ 'Active' if u.active else 'Disabled' }}</span></td>
-      <td>
-        <form method="post" action="{{ url_for('admin_user_reset_password', user_id=u.id) }}" class="inline-form" style="display:flex; gap:6px;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input type="text" name="new_password" placeholder="New Password" minlength="8" required style="width:140px;">
-          <button class="btn small secondary" type="submit">Reset</button>
-        </form>
-      </td>
-      <td>
-        <form method="post" action="{{ url_for('admin_user_toggle', user_id=u.id) }}" class="inline-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn small {{ 'danger' if u.active else 'secondary' }}" type="submit">{{ 'Disable' if u.active else 'Enable' }}</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+        </div>
+      </div>
+      <div class="field" style="margin-top:15px;">
+        <label>Discount Limit</label>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:2px;">
+          <label class="radio-row"><input type="radio" name="capmode" value="inherit" checked onchange="document.getElementById('customCapInput').disabled = true;"><span>Inherit from role</span></label>
+          <label class="radio-row"><input type="radio" name="capmode" value="custom" onchange="document.getElementById('customCapInput').disabled = false;"><span>Custom override for this person:</span>
+            <input type="number" name="custom_discount_cap" id="customCapInput" style="width:70px;" placeholder="%" min="0" max="100" disabled></label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" type="submit">Create User</button>
+        <button class="btn secondary" type="button" data-close-modal>Cancel</button>
+      </div>
+    </form>
+  </div>
 </div>
+
+<!-- Add New Role modal -->
+<div class="modal-overlay" id="roleModal" style="display:none;">
+  <div class="modal-box">
+    <h3 style="margin-top:0;">Add Role</h3>
+    <p class="small muted" style="margin-top:-6px;">New roles start with everything below unchecked — turn on only what this role needs.</p>
+    <form method="post" action="{{ url_for('admin_role_new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid" style="margin-bottom:6px;">
+        <div class="field">
+          <label>Role Name</label>
+          <input name="name" required placeholder="e.g. Vet Tech">
+        </div>
+        <div class="field"><label>Description (optional)</label><input name="description" placeholder="e.g. Assists vets, no billing access"></div>
+      </div>
+      <div style="height:10px;"></div>
+
+      {% for cat, perms in perm_categories %}
+      <div class="perm-block"><div class="perm-cat-label">{{ cat }}</div><div class="perm-grid">
+        {% for key, label in perms %}
+        <label class="perm-row"><input type="checkbox" name="permissions" value="{{ key }}"><span>{{ label }}</span></label>
+        {% endfor %}
+      </div></div>
+      {% endfor %}
+
+      <div style="display:flex; align-items:center; gap:20px; margin-top:14px;">
+        <div class="field" style="max-width:160px; margin-top:0;"><label>Max Discount (%)</label><input type="number" name="discount_cap" value="0" min="0" max="100"></div>
+        <label class="perm-row" style="margin-top:18px;" title="Whether staff with this role show up as a vet to assign in Appointments, Visits, Grooming, and Inpatient"><input type="checkbox" name="is_vet_role"><span>Can be assigned as a vet</span></label>
+      </div>
+      <div class="form-actions">
+        <button class="btn" type="submit">Add Role</button>
+        <button class="btn secondary" type="button" data-close-modal>Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete Role modal (with inline reassignment when staff are assigned) -->
+<div class="modal-overlay" id="deleteRoleModal" style="display:none;">
+  <div class="modal-box" style="max-width:420px;">
+    <form method="post" id="deleteRoleForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <h3 id="deleteRoleTitle" style="margin-top:0;">Delete role</h3>
+      <div id="deleteRoleReassignBlock" style="display:none;">
+        <div class="reassign-note">
+          <strong id="deleteRoleStaffLine"></strong> Pick a role to move them to before this role can be deleted. Nobody is left without a role.
+        </div>
+        <div class="field">
+          <label>Move affected staff to</label>
+          <select id="reassignTarget" name="reassign_to">
+            {% for r in roles %}<option value="{{ r.id }}" data-name="{{ r.name }}">{{ r.name }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <p id="deleteRoleSimpleText" class="small muted" style="display:none;">No one is currently assigned to this role. It can be deleted right away.</p>
+      <div class="form-actions">
+        <button class="btn danger" id="deleteRoleConfirmBtn" type="submit" data-saving-label="Deleting…">Delete Role</button>
+        <button class="btn secondary" type="button" data-close-modal>Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // ---- Staff / Roles & Permissions tabs ----
+  function showURTab(name) {
+    document.getElementById('tab-staff').style.display = name === 'staff' ? '' : 'none';
+    document.getElementById('tab-roles').style.display = name === 'roles' ? '' : 'none';
+    document.querySelectorAll('.tab-link').forEach(l => { l.classList.remove('active'); l.setAttribute('aria-selected', 'false'); });
+    const link = document.querySelector(`.tab-link[data-tab="${name}"]`);
+    link.classList.add('active');
+    link.setAttribute('aria-selected', 'true');
+    if (history.replaceState) history.replaceState(null, '', '#' + name);
+  }
+  (function () {
+    const initial = (location.hash || '').replace('#', '');
+    showURTab(initial === 'roles' ? 'roles' : 'staff');
+  })();
+
+  // ---- Per-role-card dirty tracking: reveal Save/Cancel only once something changed ----
+  document.querySelectorAll('.role-card-form[data-track-dirty]').forEach(form => {
+    form.addEventListener('input', () => form.closest('.role-card').classList.add('is-dirty'));
+    form.addEventListener('change', () => form.closest('.role-card').classList.add('is-dirty'));
+  });
+
+  // ---- Delete Role modal ----
+  function deleteRole(roleId, roleName, staffCount, triggerEl) {
+    document.getElementById('deleteRoleTitle').textContent = 'Delete ' + roleName + '?';
+    document.getElementById('deleteRoleForm').action = '/admin/roles/' + roleId + '/delete';
+    const reassignBlock = document.getElementById('deleteRoleReassignBlock');
+    const simpleText = document.getElementById('deleteRoleSimpleText');
+    const confirmBtn = document.getElementById('deleteRoleConfirmBtn');
+    const select = document.getElementById('reassignTarget');
+
+    // The role being deleted can't be its own reassignment target.
+    Array.from(select.options).forEach(opt => opt.hidden = (opt.value === roleId));
+    const firstVisible = Array.from(select.options).find(o => !o.hidden);
+    if (firstVisible) select.value = firstVisible.value;
+
+    if (staffCount > 0) {
+      reassignBlock.style.display = '';
+      simpleText.style.display = 'none';
+      const label = staffCount === 1 ? '1 staff member' : (staffCount + ' staff members');
+      document.getElementById('deleteRoleStaffLine').textContent = label + ' currently assigned to ' + roleName + '.';
+      confirmBtn.textContent = 'Move & Delete';
+      confirmBtn.dataset.savingLabel = 'Moving & deleting…';
+      select.setAttribute('name', 'reassign_to');
+    } else {
+      reassignBlock.style.display = 'none';
+      simpleText.style.display = '';
+      confirmBtn.textContent = 'Delete Role';
+      confirmBtn.dataset.savingLabel = 'Deleting…';
+      select.removeAttribute('name'); // nothing to reassign — don't submit a target
+    }
+
+    window.VZSpring.present(document.getElementById('deleteRoleModal'), true, { originEl: triggerEl });
+  }
+</script>
 {% endblock %}

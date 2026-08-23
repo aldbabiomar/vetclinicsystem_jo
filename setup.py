@@ -146,6 +146,15 @@ INCREMENTAL_SCHEMA_STATEMENTS = [
     # phone IS NOT NULL GROUP BY phone HAVING COUNT(*) > 1`), then re-run
     # setup.py.
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_owners_phone_unique ON owners(phone) WHERE phone IS NOT NULL",
+    "ALTER TABLE inventory_list ADD COLUMN IF NOT EXISTS barcode_source TEXT CHECK (barcode_source IN ('manual','generated'))",
+    # Every barcode on an existing install was created exclusively via the
+    # old auto-generate-only route (manual entry didn't exist before this),
+    # so backfill accordingly — without this, a pre-existing barcode would
+    # be invisible to Bulk Barcode Print (now filtered to barcode_source=
+    # 'generated') and could be silently overwritten by manual entry
+    # without going through Remove Barcode first (whose guard checks
+    # barcode_source, not just whether a barcode is set).
+    "UPDATE inventory_list SET barcode_source='generated' WHERE barcode IS NOT NULL AND barcode_source IS NULL",
 ]
 
 

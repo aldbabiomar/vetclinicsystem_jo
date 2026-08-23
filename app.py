@@ -12,7 +12,7 @@ import traceback
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from dotenv import load_dotenv
 # On the versioned-release layout (VETCLINICSYSTEMJO_DATA_DIR set by the
@@ -562,6 +562,79 @@ def page_offset(page, per_page=PER_PAGE):
     return (page - 1) * per_page
 
 
+# ---------------------------------------------------------------------------
+# Slow report pages (Insights, Retention, Consignment Overview): background
+# job + loading shell
+# ---------------------------------------------------------------------------
+def _render_with_progress(template_name, step_labels, compute_fn, page_title, page_note=None):
+    """
+    Shared pattern for report pages slow enough to need a progress bar
+    (Insights, Retention, Consignment Overview). On first visit, starts a
+    background job running compute_fn(update) (which must return the dict
+    of template variables the real page needs) and renders a lightweight
+    loading shell instead; once the client's poll reports the job done,
+    the shell redirects back to this same URL with ?job_id=..., and THIS
+    SAME route then picks up the finished job's already-computed result
+    and renders the real page.
+
+    The slow part only ever runs once, in the background thread; the
+    actual page render always happens inside a normal request, so
+    session/g/url_for/current-user context all work exactly as they
+    always do (rendering from a background thread would have none of
+    that, which is why the heavy lifting and the rendering are kept in
+    two separate steps like this rather than trying to render from the
+    thread directly).
+    """
+    job_id = request.args.get("job_id")
+    if job_id:
+        result = jobs.take_result(job_id)
+        if result is not None:
+            return render_template(template_name, **result)
+        # Not found / not finished yet / already consumed (a stale or
+        # reloaded link) — fall through and start a fresh job below
+        # rather than erroring, since any of those are recoverable just
+        # by trying again.
+
+    new_job_id = jobs.start(step_labels, compute_fn)
+    # Preserve whatever other query params got here (e.g. ?page=2 on
+    # Retention) rather than dropping them — built as a real url_for() call
+    # so the client just navigates to a finished URL rather than having to
+    # reconstruct it with string concatenation.
+    other_args = {k: v for k, v in request.args.items() if k != "job_id"}
+    reload_url = url_for(request.endpoint, job_id=new_job_id, **other_args)
+    return render_template("_loading_shell.html", job_id=new_job_id, reload_url=reload_url,
+                            page_title=page_title, page_note=page_note)
+
+
+@app.route("/jobs/status")
+def jobs_status():
+    """
+    Polling endpoint for the report-page loading shells (Insights,
+    Retention, Consignment Overview). Gated only by being logged in (like
+    every other route, via require_login()) rather than by the specific
+    report's own permission — job_id is an unguessable random token (see
+    jobs.py's uuid4), so being able to supply one already implies having
+    just been handed it by the page that started that job. Separate from
+    /settings/job-status, which is permission-gated and has its own
+    result-shaping for the Updates section — not reused here to avoid
+    coupling two unrelated consumers.
+    """
+    job_id = request.args.get("job_id", "")
+    state = jobs.status(job_id)
+    if state is None:
+        return jsonify({"status": "not_found"}), 404
+    payload = {
+        "status": state["status"],
+        "steps": state["steps"],
+        "current": state["current"],
+        "fraction": state.get("fraction"),
+        "started_at": state["started_at"],
+    }
+    if state["status"] == "error":
+        payload["message"] = state.get("error")
+    return jsonify(payload)
+
+
 def pagination_url(page, page_param="page"):
     """Builds a link to another page of the current view, preserving every
     other query-string filter (search terms, sort, date, etc)."""
@@ -622,7 +695,8 @@ def inject_globals():
         clinic_name = logic.get_setting(db, "clinic_name", "VetClinicSystem JO")
         clinic_location = logic.get_setting(db, "clinic_location", "Amman, Jordan")
         ctx = dict(clinic_name=clinic_name, clinic_location=clinic_location, today=date.today().isoformat(),
-                   current_role=session.get("role"), current_username=session.get("username"))
+                   current_role=session.get("role"), current_username=session.get("username"),
+                   session_user_id=session.get("user_id"))
         if session.get("user_id"):
             snap = cached_dashboard_snapshot(db)
             ctx["alert_count"] = (
@@ -643,7 +717,7 @@ def inject_globals():
             clinic_name="VetClinicSystem JO", clinic_location="",
             today=date.today().isoformat(),
             current_role=session.get("role"), current_username=session.get("username"),
-            alert_count=0,
+            alert_count=0, session_user_id=session.get("user_id"),
         )
 
 
@@ -876,17 +950,48 @@ def change_password():
 
 
 # ---------------------------------------------------------------------------
-# Admin — user management
+# Admin — user & role management
 # ---------------------------------------------------------------------------
+def _active_admin_count(db):
+    return db.execute(
+        "SELECT COUNT(*) c FROM users u JOIN roles r ON r.id = u.role_id "
+        "WHERE u.active=true AND r.is_system=true"
+    ).fetchone()["c"]
+
+
+def _role_or_404(db, role_id):
+    row = db.execute("SELECT * FROM roles WHERE id=?", (role_id,)).fetchone()
+    if not row:
+        abort(404)
+    return row
+
+
 @app.route("/admin/users")
 @auth.permission_required("manage_users_roles")
 def admin_users():
     db = get_db()
     users = db.execute(
-        "SELECT u.*, r.name AS role_name FROM users u JOIN roles r ON r.id=u.role_id ORDER BY u.full_name"
+        "SELECT u.*, r.name AS role_name, r.discount_cap AS role_discount_cap "
+        "FROM users u JOIN roles r ON r.id = u.role_id ORDER BY u.full_name"
     ).fetchall()
-    roles = db.execute("SELECT id, name FROM roles ORDER BY name").fetchall()
-    return render_template("admin_users.html", users=users, roles=roles)
+    roles = db.execute("SELECT * FROM roles ORDER BY is_system DESC, created_at").fetchall()
+    staff_counts = {
+        r["role_id"]: r["c"] for r in
+        db.execute("SELECT role_id, COUNT(*) c FROM users WHERE active=true GROUP BY role_id").fetchall()
+    }
+    role_perms = {}
+    for rp in db.execute("SELECT role_id, permission_id FROM role_permissions").fetchall():
+        role_perms.setdefault(rp["role_id"], set()).add(rp["permission_id"])
+
+    perm_categories = []
+    for cat in auth.PERMISSION_CATEGORIES:
+        perm_categories.append((cat, [(k, label) for k, label, c in auth.PERMISSIONS if c == cat]))
+
+    return render_template(
+        "admin_users.html", users=users, roles=roles,
+        staff_counts=staff_counts, role_perms=role_perms,
+        perm_categories=perm_categories,
+    )
 
 
 @app.route("/admin/users/new", methods=["POST"])
@@ -897,7 +1002,7 @@ def admin_user_new():
     username = f.get("username", "").strip()
     password = f.get("password", "")
     full_name = f.get("full_name", "").strip()
-    role_id = f.get("role", "")
+    role_id = f.get("role_id", "")
     role = db.execute("SELECT id FROM roles WHERE id=?", (role_id,)).fetchone()
     if not username or not full_name or not role:
         flash("Fill in a username, full name, and role.", "error")
@@ -908,11 +1013,23 @@ def admin_user_new():
     if db.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
         flash("That username is already taken.", "error")
         return redirect(url_for("admin_users"))
+
+    custom_cap = None
+    if f.get("capmode") == "custom":
+        try:
+            custom_cap = int(f.get("custom_discount_cap", ""))
+        except ValueError:
+            flash("Custom discount override must be a whole number.", "error")
+            return redirect(url_for("admin_users"))
+        if custom_cap < 0 or custom_cap > 100:
+            flash("Custom discount override must be between 0 and 100.", "error")
+            return redirect(url_for("admin_users"))
+
     uid = auth.new_user_id()
     db.execute(
-        "INSERT INTO users (id,username,password_hash,full_name,role_id,active,must_change_password,created_at) "
-        "VALUES (?,?,?,?,?,true,true,?)",
-        (uid, username, auth.hash_password(password), full_name, role_id,
+        "INSERT INTO users (id,username,password_hash,full_name,role_id,custom_discount_cap,active,must_change_password,created_at) "
+        "VALUES (?,?,?,?,?,?,true,true,?)",
+        (uid, username, auth.hash_password(password), full_name, role_id, custom_cap,
          datetime.now().isoformat(timespec="seconds")),
     )
     auth.log_change(db, "users", uid, "create")
@@ -928,12 +1045,19 @@ def admin_user_toggle(user_id):
     if user_id == session["user_id"]:
         flash("You can't disable your own account.", "error")
         return redirect(url_for("admin_users"))
-    row = db.execute("SELECT active FROM users WHERE id=?", (user_id,)).fetchone()
+    row = db.execute(
+        "SELECT u.active, r.is_system FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id=?",
+        (user_id,),
+    ).fetchone()
     if row is None:
         flash("User not found.", "error")
         return redirect(url_for("admin_users"))
     new_val = not row["active"]
+    if new_val is False and row["is_system"] and _active_admin_count(db) <= 1:
+        flash("Can't disable the last active Admin.", "error")
+        return redirect(url_for("admin_users"))
     db.execute("UPDATE users SET active=? WHERE id=?", (new_val, user_id))
+    auth.bump_permissions_version(db)
     auth.log_change(db, "users", user_id, "update", {"active": (row["active"], new_val)})
     db.commit()
     flash("User updated.", "success")
@@ -953,31 +1077,157 @@ def admin_user_toggle(user_id):
 @auth.permission_required("manage_users_roles")
 def admin_user_role(user_id):
     db = get_db()
-    new_role_id = request.form.get("role", "")
-    new_role = db.execute("SELECT id, name FROM roles WHERE id=?", (new_role_id,)).fetchone()
+    new_role_id = request.form.get("role_id", "")
+    new_role = db.execute("SELECT id, name, is_system FROM roles WHERE id=?", (new_role_id,)).fetchone()
     if not new_role:
         flash("Not a valid role.", "error")
         return redirect(url_for("admin_users"))
     row = db.execute(
-        "SELECT u.role_id, r.name AS role_name FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=?",
+        "SELECT u.role_id, r.name AS role_name, r.is_system FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id=?",
         (user_id,),
     ).fetchone()
-    if row and row["role_id"] == new_role["id"]:
-        flash("Role updated.", "success")
+    if row is None:
+        flash("User not found.", "error")
         return redirect(url_for("admin_users"))
-    if user_id == session["user_id"] and row and row["role_name"] == "Admin" and new_role["name"] != "Admin":
-        remaining_admins = db.execute(
-            "SELECT COUNT(*) AS n FROM users u JOIN roles r ON r.id=u.role_id "
-            "WHERE r.name='Admin' AND u.active=true AND u.id != ?",
-            (user_id,),
-        ).fetchone()["n"]
-        if remaining_admins == 0:
-            flash("You can't remove your own Admin role — there must be at least one active Admin.", "error")
-            return redirect(url_for("admin_users"))
-    db.execute("UPDATE users SET role_id=? WHERE id=?", (new_role["id"], user_id))
-    auth.log_change(db, "users", user_id, "update", {"role": (row["role_name"] if row else None, new_role["name"])})
+    if row["is_system"] and not new_role["is_system"] and _active_admin_count(db) <= 1:
+        flash("Can't move the last active Admin out of the Admin role.", "error")
+        return redirect(url_for("admin_users"))
+    db.execute("UPDATE users SET role_id=? WHERE id=?", (new_role_id, user_id))
+    auth.bump_permissions_version(db)
+    auth.log_change(db, "users", user_id, "update", {"role": (row["role_name"], new_role["name"])})
     db.commit()
     flash("Role updated.", "success")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/roles/new", methods=["POST"])
+@auth.permission_required("manage_users_roles")
+def admin_role_new():
+    db = get_db()
+    f = request.form
+    name = f.get("name", "").strip()
+    description = f.get("description", "").strip() or None
+    if not name:
+        flash("Give the new role a name.", "error")
+        return redirect(url_for("admin_users"))
+    if db.execute("SELECT 1 FROM roles WHERE lower(name)=lower(?)", (name,)).fetchone():
+        flash(f'A role named "{name}" already exists.', "error")
+        return redirect(url_for("admin_users"))
+    try:
+        cap = int(f.get("discount_cap", "0") or "0")
+    except ValueError:
+        flash("Max Discount must be a whole number.", "error")
+        return redirect(url_for("admin_users"))
+    if cap < 0 or cap > 100:
+        flash("Max Discount must be between 0 and 100.", "error")
+        return redirect(url_for("admin_users"))
+
+    perms = [p for p in f.getlist("permissions") if p in auth.PERMISSION_KEY_SET]
+    is_vet_role = bool(f.get("is_vet_role"))
+    role_id = auth.new_role_id()
+    db.execute(
+        "INSERT INTO roles (id,name,description,is_system,discount_cap,is_vet_role,created_at) "
+        "VALUES (?,?,?,false,?,?,?)",
+        (role_id, name, description, cap, is_vet_role, datetime.now().isoformat(timespec="seconds")),
+    )
+    for p in perms:
+        db.execute("INSERT INTO role_permissions (role_id, permission_id) VALUES (?,?)", (role_id, p))
+    auth.bump_permissions_version(db)
+    auth.log_change(db, "roles", role_id, "create", {"name": (None, name)})
+    db.commit()
+    flash(f'"{name}" role added.', "success")
+    if auth.no_vet_role_configured(db):
+        flash("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
+              "New Visit, Grooming, and Inpatient vet pickers will show no options until "
+              "at least one role has this turned on.", "error")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/roles/<role_id>/edit", methods=["POST"])
+@auth.permission_required("manage_users_roles")
+def admin_role_edit(role_id):
+    db = get_db()
+    role = _role_or_404(db, role_id)
+    if role["is_system"]:
+        flash("The Admin role can't be edited.", "error")
+        return redirect(url_for("admin_users"))
+    f = request.form
+    name = f.get("name", "").strip()
+    description = f.get("description", "").strip() or None
+    if not name:
+        flash("A role needs a name.", "error")
+        return redirect(url_for("admin_users"))
+    if db.execute("SELECT 1 FROM roles WHERE lower(name)=lower(?) AND id<>?", (name, role_id)).fetchone():
+        flash(f'A role named "{name}" already exists.', "error")
+        return redirect(url_for("admin_users"))
+    try:
+        cap = int(f.get("discount_cap", "0") or "0")
+    except ValueError:
+        flash("Max Discount must be a whole number.", "error")
+        return redirect(url_for("admin_users"))
+    if cap < 0 or cap > 100:
+        flash("Max Discount must be between 0 and 100.", "error")
+        return redirect(url_for("admin_users"))
+
+    perms = set(p for p in f.getlist("permissions") if p in auth.PERMISSION_KEY_SET)
+    is_vet_role = bool(f.get("is_vet_role"))
+    before = {
+        "name": role["name"], "description": role["description"], "discount_cap": role["discount_cap"],
+        "is_vet_role": role["is_vet_role"],
+    }
+    db.execute(
+        "UPDATE roles SET name=?, description=?, discount_cap=?, is_vet_role=? WHERE id=?",
+        (name, description, cap, is_vet_role, role_id),
+    )
+    db.execute("DELETE FROM role_permissions WHERE role_id=?", (role_id,))
+    for p in perms:
+        db.execute("INSERT INTO role_permissions (role_id, permission_id) VALUES (?,?)", (role_id, p))
+    auth.bump_permissions_version(db)
+    after = {"name": name, "description": description, "discount_cap": cap, "is_vet_role": is_vet_role}
+    changes = {k: (before[k], after[k]) for k in before if before[k] != after[k]}
+    auth.log_change(db, "roles", role_id, "update", changes or None)
+    db.commit()
+    flash(f'"{name}" role saved.', "success")
+    if auth.no_vet_role_configured(db):
+        flash("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
+              "New Visit, Grooming, and Inpatient vet pickers will show no options until "
+              "at least one role has this turned on.", "error")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/roles/<role_id>/delete", methods=["POST"])
+@auth.permission_required("manage_users_roles")
+def admin_role_delete(role_id):
+    db = get_db()
+    role = _role_or_404(db, role_id)
+    if role["is_system"]:
+        flash("The Admin role can't be deleted.", "error")
+        return redirect(url_for("admin_users"))
+    assigned = db.execute("SELECT id FROM users WHERE role_id=?", (role_id,)).fetchall()
+    reassign_to = request.form.get("reassign_to") or None
+    if assigned:
+        target = db.execute("SELECT id, name, is_system FROM roles WHERE id=?", (reassign_to,)).fetchone()
+        if not target or target["id"] == role_id:
+            flash("Pick a role to move the affected staff to before deleting this one.", "error")
+            return redirect(url_for("admin_users"))
+        for u in assigned:
+            db.execute("UPDATE users SET role_id=? WHERE id=?", (target["id"], u["id"]))
+        db.execute("DELETE FROM roles WHERE id=?", (role_id,))
+        auth.bump_permissions_version(db)
+        auth.log_change(db, "roles", role_id, "delete",
+                         {"reassigned_to": (None, target["name"]), "staff_moved": (None, len(assigned))})
+        db.commit()
+        flash(f'{len(assigned)} staff member(s) moved to {target["name"]} · "{role["name"]}" deleted.', "success")
+    else:
+        db.execute("DELETE FROM roles WHERE id=?", (role_id,))
+        auth.bump_permissions_version(db)
+        auth.log_change(db, "roles", role_id, "delete", {"name": (role["name"], None)})
+        db.commit()
+        flash(f'"{role["name"]}" deleted.', "success")
+    if auth.no_vet_role_configured(db):
+        flash("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
+              "New Visit, Grooming, and Inpatient vet pickers will show no options until "
+              "at least one role has this turned on.", "error")
     return redirect(url_for("admin_users"))
 
 
@@ -1135,6 +1385,75 @@ def api_sale_refundable_items(sale_id):
             for l in lines
         ],
     })
+
+
+@app.route("/api/browse-folder")
+@auth.permission_required("manage_settings")
+def api_browse_folder():
+    """
+    Lists subfolders (and, when ?ext= is given, matching files too) of a
+    path on THIS SERVER's filesystem — used by both the Backup Folder
+    picker and the Restore File picker on Settings. This has to browse the
+    server's disk, not the browser's — pg_dump/pg_restore (see backup.py)
+    run on the server, so a client-side file picker (which can only see
+    the browser's own machine) would pick the wrong computer's files
+    entirely whenever Settings is opened from a different machine than
+    the one running the app.
+    """
+    db = get_db()
+    requested = request.args.get("path", "").strip()
+    ext = (request.args.get("ext") or "").strip().lower()
+    if requested:
+        path = os.path.abspath(requested)
+    else:
+        configured = logic.get_setting(db, "backup_dir")
+        path = os.path.abspath(configured) if configured and os.path.isdir(configured) else os.path.expanduser("~")
+
+    if not os.path.isdir(path):
+        return jsonify({"error": f"“{path}” isn’t a folder VetClinicSystem JO can see on this computer."}), 400
+
+    try:
+        entries = os.listdir(path)
+    except OSError as e:
+        return jsonify({"error": f"Can’t open that folder: {e.strerror or e}"}), 400
+
+    folders, files = [], []
+    for name in entries:
+        if name.startswith("."):
+            continue
+        full = os.path.join(path, name)
+        if os.path.isdir(full) and not os.path.islink(full):
+            folders.append(name)
+        elif ext and os.path.isfile(full) and name.lower().endswith(ext):
+            files.append(name)
+    folders.sort(key=str.lower)
+    files.sort(key=str.lower)
+
+    parent = os.path.dirname(path)
+    return jsonify({
+        "current": path,
+        "parent": parent if parent != path else None,
+        "folders": folders,
+        "files": files,
+    })
+
+
+@app.route("/api/browse-folder/new-folder", methods=["POST"])
+@auth.permission_required("manage_settings")
+def api_browse_folder_new():
+    data = request.get_json(silent=True) or {}
+    parent = os.path.abspath((data.get("path") or "").strip())
+    name = (data.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name:
+        return jsonify({"error": "Enter a plain folder name (no slashes)."}), 400
+    if not os.path.isdir(parent):
+        return jsonify({"error": "That parent folder no longer exists."}), 400
+    new_path = os.path.join(parent, name)
+    try:
+        os.makedirs(new_path, exist_ok=True)
+    except OSError as e:
+        return jsonify({"error": f"Couldn’t create that folder: {e.strerror or e}"}), 400
+    return jsonify({"ok": True, "path": new_path})
 
 
 # ---------------------------------------------------------------------------
@@ -2269,7 +2588,7 @@ def inventory_catalog():
     distributors = db.execute("SELECT * FROM distributors ORDER BY name").fetchall()
     _, flagged_inventory = logic.retail_consistency_flags(db)
     has_barcodes = db.execute(
-        "SELECT EXISTS(SELECT 1 FROM inventory_list WHERE barcode IS NOT NULL AND active=true) AS e"
+        "SELECT EXISTS(SELECT 1 FROM inventory_list WHERE barcode_source='generated' AND active=true) AS e"
     ).fetchone()["e"]
     return render_template("inventory_catalog.html", items=rows, distributors=distributors,
                             show_inactive=show_inactive, categories=INVENTORY_CATEGORIES, search=search,
@@ -2404,11 +2723,9 @@ def inventory_catalog_create_barcode(item_id):
     db = get_db()
     item = db.execute("SELECT barcode FROM inventory_list WHERE id=?", (item_id,)).fetchone()
     if not item:
-        flash("Item not found.", "error")
-        return redirect(url_for("inventory_catalog"))
+        return jsonify({"error": "Item not found."}), 404
     if item["barcode"]:
-        flash("This item already has a barcode. Remove it first if you want a different one.", "error")
-        return redirect(url_for("inventory_barcode_label", item_id=item_id))
+        return jsonify({"error": "A barcode already exists for this item."}), 400
     code = barcode_mod.generate_barcode(db)
     # The check above is a friendly fast-path, not the real guarantee — two
     # concurrent "Generate" clicks racing into the same candidate code (low
@@ -2416,15 +2733,76 @@ def inventory_catalog_create_barcode(item_id):
     # of a friendly error; inventory_list.barcode is DB-UNIQUE, so the loser
     # raises instead of corrupting anything.
     try:
-        db.execute("UPDATE inventory_list SET barcode=? WHERE id=?", (code, item_id))
+        db.execute("UPDATE inventory_list SET barcode=?, barcode_source='generated' WHERE id=?", (code, item_id))
     except dbmod.IntegrityError:
         db.rollback()
-        flash("That code was just claimed by another item — try again.", "error")
-        return redirect(url_for("inventory_catalog"))
+        return jsonify({"error": "That code was just claimed by another item — try again."}), 400
     auth.log_change(db, "inventory_list", item_id, "update", {"barcode": (None, code)})
     db.commit()
-    flash(f"Barcode {code} created.", "success")
-    return redirect(url_for("inventory_barcode_label", item_id=item_id))
+    return jsonify({"ok": True, "barcode": code, "source": "generated",
+                     "label_url": url_for("inventory_barcode_label", item_id=item_id)})
+
+
+@app.route("/inventory-catalog/<item_id>/barcode/manual", methods=["POST"])
+@auth.permission_required("manage_inventory_catalog")
+def inventory_catalog_barcode_manual(item_id):
+    db = get_db()
+    item = db.execute("SELECT barcode, barcode_source FROM inventory_list WHERE id=?", (item_id,)).fetchone()
+    if not item:
+        return jsonify({"error": "Item not found."}), 404
+    data = request.get_json(silent=True) or {}
+    raw = (data.get("barcode") or "").strip()
+    if not raw:
+        return jsonify({"error": "Enter a barcode."}), 400
+    if len(raw) > 64:
+        return jsonify({"error": "That's too long to be a real barcode — check what you entered."}), 400
+    if not re.match(r"^[A-Za-z0-9 .\-_]+$", raw):
+        return jsonify({"error": "Only letters, numbers, spaces, and . - _ are allowed."}), 400
+    if item["barcode_source"] == "generated":
+        return jsonify({"error": "A barcode already exists for this item."}), 400
+    if raw != item["barcode"]:
+        dupe = db.execute(
+            "SELECT name FROM inventory_list WHERE barcode=? AND id!=?", (raw, item_id)
+        ).fetchone()
+        if dupe:
+            return jsonify({"error": f'That barcode is already used by "{dupe["name"]}".'}), 400
+    try:
+        db.execute("UPDATE inventory_list SET barcode=?, barcode_source='manual' WHERE id=?", (raw, item_id))
+    except dbmod.IntegrityError:
+        db.rollback()
+        return jsonify({"error": "That barcode was just claimed by another item — try again."}), 400
+    auth.log_change(db, "inventory_list", item_id, "update", {"barcode": (item["barcode"], raw)})
+    db.commit()
+    return jsonify({"ok": True, "barcode": raw, "source": "manual"})
+
+
+@app.route("/inventory-catalog/<item_id>/barcode/remove", methods=["POST"])
+@auth.permission_required("manage_inventory_catalog")
+def inventory_catalog_barcode_remove(item_id):
+    db = get_db()
+    item = db.execute("SELECT barcode FROM inventory_list WHERE id=?", (item_id,)).fetchone()
+    if not item:
+        return jsonify({"error": "Item not found."}), 404
+    if not item["barcode"]:
+        return jsonify({"ok": True, "removed": False})
+    db.execute("UPDATE inventory_list SET barcode=NULL, barcode_source=NULL WHERE id=?", (item_id,))
+    auth.log_change(db, "inventory_list", item_id, "update", {"barcode": (item["barcode"], None)})
+    db.commit()
+    return jsonify({"ok": True, "removed": True})
+
+
+@app.route("/inventory-catalog/<item_id>/barcode/status")
+@auth.permission_required("manage_inventory_catalog")
+def inventory_catalog_barcode_status(item_id):
+    db = get_db()
+    item = db.execute("SELECT barcode, barcode_source FROM inventory_list WHERE id=?", (item_id,)).fetchone()
+    if not item:
+        return jsonify({"error": "Item not found."}), 404
+    return jsonify({
+        "barcode": item["barcode"],
+        "source": item["barcode_source"],
+        "label_url": url_for("inventory_barcode_label", item_id=item_id) if item["barcode"] else None,
+    })
 
 
 @app.route("/inventory-catalog/<item_id>/barcode-label")
@@ -2441,17 +2819,17 @@ def inventory_barcode_label(item_id):
 @app.route("/inventory-catalog/barcodes/generated")
 @auth.permission_required("manage_inventory_catalog")
 def inventory_catalog_barcodes_generated():
-    """Every active item that has a barcode, across the whole catalog
-    regardless of which page of Inventory Catalog is showing — feeds the
-    Bulk Barcode Print picker. Unlike VetClinicSystem_IQ, Jordan has no
-    barcode_source column distinguishing 'generated' from a manually
-    entered code — there's no manual-barcode-entry feature here at all,
-    every barcode is created via inventory_catalog_create_barcode — so any
-    item with a non-null barcode is eligible."""
+    """Every active item with a VetClinicSystem-generated barcode, across the
+    whole catalog regardless of which page of Inventory Catalog is showing —
+    feeds the Bulk Barcode Print picker. Deliberately excludes manually
+    entered barcodes (a real code copied from the manufacturer's own
+    packaging) — bulk printing exists to produce labels for barcodes this
+    app itself made up, since a manually entered one is already printed on
+    the item's own packaging and needs no new label."""
     db = get_db()
     rows = db.execute(
         "SELECT id, name, barcode FROM inventory_list "
-        "WHERE barcode IS NOT NULL AND active=true ORDER BY name"
+        "WHERE barcode_source='generated' AND active=true ORDER BY name"
     ).fetchall()
     return jsonify([{"id": r["id"], "name": r["name"], "barcode": r["barcode"]} for r in rows])
 
@@ -2475,10 +2853,11 @@ def inventory_catalog_barcodes_bulk_print():
             qty = 1
         qty = max(1, min(qty, 500))
         # Re-checked server-side, same as everywhere else a client-supplied
-        # id gets acted on — only an item that currently has a barcode can
-        # end up on the printed sheet, no matter what the client sent.
+        # id gets acted on — only an item that currently has a generated
+        # barcode can end up on the printed sheet, no matter what the
+        # client sent (matches the picker's own filter above).
         item = db.execute(
-            "SELECT id, name, barcode FROM inventory_list WHERE id=? AND barcode IS NOT NULL",
+            "SELECT id, name, barcode FROM inventory_list WHERE id=? AND barcode_source='generated'",
             (item_id,),
         ).fetchone()
         if item and item["barcode"]:
@@ -2757,9 +3136,26 @@ def distributor_export_pdf(dist_id):
 @app.route("/consignment")
 @auth.permission_required("view_consignment")
 def consignment_overview():
-    db = get_db()
-    rows = logic.consignment_distributors_overview(db)
-    return render_template("consignment_overview.html", rows=rows)
+    # consignment_distributors_overview() recomputes full inventory status
+    # per Consignment item per distributor — wrapped in the same
+    # background-job loading shell Insights/Retention use, for framework
+    # parity (not because this clinic's distributor count makes it slow
+    # today).
+    def compute(update):
+        con = dbmod.connect()
+        try:
+            rows = logic.consignment_distributors_overview(con)
+        finally:
+            con.close()
+        return {"rows": rows}
+
+    return _render_with_progress(
+        "consignment_overview.html",
+        ["Computing distributor balances"],
+        compute,
+        page_title="Loading Consignment Overview",
+        page_note="Computing shelf stock and amount owed for every distributor with Consignment items.",
+    )
 
 
 @app.route("/consignment/items")
@@ -4397,64 +4793,93 @@ def insights():
     months_back = 12
     cutoff = logic.month_list(months_back)[0] + "-01"
 
-    # These six queries don't depend on each other, and each is a read-only
-    # aggregate over a different slice of the schema — running them on
-    # separate connections in parallel cuts wall-clock time to roughly the
-    # slowest single query instead of the sum of all of them. (Postgres
-    # itself handles concurrent read connections fine; each thread here
-    # just needs its own psycopg connection since a single connection
-    # can't run more than one query at a time.) Borrowed from the pool
-    # instead of opening a brand-new raw connection per thread per page
-    # view — bounded by the same DB_POOL_MAX_SIZE as ordinary requests.
-    def _run(fn):
-        con = dbmod.getconn()
-        try:
-            return fn(con)
-        finally:
-            con.rollback()  # read-only; explicit rollback before returning to the pool
-            dbmod.putconn(con)
+    def compute(update):
+        # Runs in a background thread — no Flask request/g context exists
+        # here, so each query borrows its own connection from the shared
+        # pool rather than reusing anything tied to the request that
+        # kicked this off.
+        def _run(fn):
+            con = dbmod.getconn()
+            try:
+                return fn(con)
+            finally:
+                con.rollback()  # read-only; explicit rollback before returning to the pool
+                dbmod.putconn(con)
 
-    jobs = {
-        "revenue": lambda c: logic.revenue_by_category(c, months_back=months_back),
-        "vets": lambda c: logic.vet_performance(c, months_back=months_back),
-        "clients": lambda c: logic.client_value(c, limit=20),
-        "weekday_load": lambda c: logic.appointment_weekday_load(c, months_back=months_back),
-        "occupancy": lambda c: logic.inpatient_boarding_occupancy(c, months_back=months_back),
-        "payment_mix": lambda c: [dict(r) for r in c.execute(
-            "SELECT method, COUNT(*) c, COALESCE(SUM(amount),0) total FROM payments "
-            "WHERE date >= ? GROUP BY method ORDER BY total DESC",
-            (cutoff,),
-        ).fetchall()],
-        "cash_register_health": lambda c: logic.cash_register_last_30_days(c),
-    }
-    with ThreadPoolExecutor(max_workers=len(jobs)) as ex:
-        futures = {name: ex.submit(_run, fn) for name, fn in jobs.items()}
-        results = {name: f.result() for name, f in futures.items()}
+        job_defs = [
+            ("revenue", lambda c: logic.revenue_by_category(c, months_back=months_back)),
+            ("vets", lambda c: logic.vet_performance(c, months_back=months_back)),
+            ("clients", lambda c: logic.client_value(c, limit=20)),
+            ("weekday_load", lambda c: logic.appointment_weekday_load(c, months_back=months_back)),
+            ("occupancy", lambda c: logic.inpatient_boarding_occupancy(c, months_back=months_back)),
+            ("payment_mix", lambda c: [dict(r) for r in c.execute(
+                "SELECT method, COUNT(*) c, COALESCE(SUM(amount),0) total FROM payments "
+                "WHERE date >= ? GROUP BY method ORDER BY total DESC",
+                (cutoff,),
+            ).fetchall()]),
+            ("cash_register_health", lambda c: logic.cash_register_last_30_days(c)),
+        ]
+        results = {}
+        with ThreadPoolExecutor(max_workers=len(job_defs)) as ex:
+            futures = {ex.submit(_run, fn): name for name, fn in job_defs}
+            done = 0
+            # as_completed gives real progress: update() fires exactly when
+            # each section's own query actually finishes, not on a timer
+            # standing in for it.
+            for fut in as_completed(futures):
+                name = futures[fut]
+                results[name] = fut.result()
+                done += 1
+                update(done)
 
-    top_clients, avg_spend, active_client_count = results["clients"]
-    return render_template(
-        "insights.html", revenue=results["revenue"], vets=results["vets"],
-        top_clients=top_clients, avg_spend=avg_spend, active_client_count=active_client_count,
-        weekday_load=results["weekday_load"], occupancy=results["occupancy"],
-        payment_mix=results["payment_mix"], cash_register_health=results["cash_register_health"],
-        months_back=months_back,
+        top_clients, avg_spend, active_client_count = results["clients"]
+        return {
+            "revenue": results["revenue"], "vets": results["vets"],
+            "top_clients": top_clients, "avg_spend": avg_spend,
+            "active_client_count": active_client_count,
+            "weekday_load": results["weekday_load"], "occupancy": results["occupancy"],
+            "payment_mix": results["payment_mix"], "months_back": months_back,
+            "cash_register_health": results["cash_register_health"],
+        }
+
+    return _render_with_progress(
+        "insights.html",
+        ["Revenue by category", "Vet performance", "Client value",
+         "Weekday appointment load", "Inpatient/boarding occupancy", "Payment mix", "Cash Register health"],
+        compute,
+        page_title="Loading Insights",
+        page_note="Running six report queries in parallel.",
     )
 
 
 @app.route("/retention")
 @auth.permission_required("view_insights_retention")
 def retention():
-    db = get_db()
-    full = logic.cohort_retention_grid(db, max_offset=11)
-    total = len(full["grid"])
-    total_pages = page_count(total)
-    page = min(get_page(), total_pages)
-    offset = page_offset(page)
-    page_grid = full["grid"][offset:offset + PER_PAGE]
-    cohort = {"cohort_months": full["cohort_months"][offset:offset + PER_PAGE],
-              "offsets": full["offsets"], "grid": page_grid}
-    return render_template("retention.html", cohort=cohort,
-                            page=page, total_pages=total_pages, total_count=total)
+    page = get_page()
+
+    def compute(update):
+        # Runs in a background thread, so its own connection (not g.db).
+        con = dbmod.connect()
+        try:
+            full = logic.cohort_retention_grid(con, max_offset=11)
+        finally:
+            con.close()
+        total = len(full["grid"])
+        total_pages = page_count(total)
+        eff_page = min(page, total_pages)
+        offset = page_offset(eff_page)
+        page_grid = full["grid"][offset:offset + PER_PAGE]
+        cohort = {"cohort_months": full["cohort_months"][offset:offset + PER_PAGE],
+                  "offsets": full["offsets"], "grid": page_grid}
+        return {"cohort": cohort, "page": eff_page, "total_pages": total_pages, "total_count": total}
+
+    return _render_with_progress(
+        "retention.html",
+        ["Computing cohort retention grid"],
+        compute,
+        page_title="Loading Retention",
+        page_note="Computing cohort retention across every month with visit history.",
+    )
 
 
 @app.route("/refunds")
@@ -4707,9 +5132,6 @@ def settings_page():
             "expiry_soon_days": (1, 3650),
             "appt_slot_minutes": (5, 240),
             "backup_retention": (1, 3650),
-            "discount_cap_admin": (0, 100),
-            "discount_cap_vet": (0, 100),
-            "discount_cap_reception": (0, 100),
         }
         for key, (lo, hi) in NUMERIC_RANGES.items():
             val = request.form.get(key)
@@ -4748,25 +5170,6 @@ def settings_page():
                 )
                 if old != val:
                     auth.log_change(db, "settings", key, "update", {key: (old, val)})
-        # Discount caps live on roles.discount_cap now (not the settings
-        # table) so they participate in the same role_permissions model as
-        # everything else — these three fields just edit the built-in
-        # Admin/Vet/Reception system roles' caps directly, same as before
-        # from the admin's point of view.
-        cap_changed = False
-        for role_name, field in [("Admin", "discount_cap_admin"), ("Vet", "discount_cap_vet"),
-                                  ("Reception", "discount_cap_reception")]:
-            val = request.form.get(field)
-            if val is None:
-                continue
-            role = db.execute("SELECT id, discount_cap FROM roles WHERE name=?", (role_name,)).fetchone()
-            if not role or int(val) == role["discount_cap"]:
-                continue
-            db.execute("UPDATE roles SET discount_cap=? WHERE id=?", (int(val), role["id"]))
-            auth.log_change(db, "roles", role["id"], "update", {"discount_cap": (role["discount_cap"], int(val))})
-            cap_changed = True
-        if cap_changed:
-            auth.bump_permissions_version(db)
         db.commit()
         if request.form.get("backup_time"):
             import scheduler
@@ -4780,14 +5183,14 @@ def settings_page():
         return redirect(url_for("settings_page"))
     rows = db.execute("SELECT * FROM settings").fetchall()
     settings = {r["key"]: r["value"] for r in rows}
-    role_caps = {r["name"]: r["discount_cap"] for r in db.execute("SELECT name, discount_cap FROM roles").fetchall()}
-    settings["discount_cap_admin"] = str(role_caps.get("Admin", auth.DISCOUNT_CAPS["Admin"]))
-    settings["discount_cap_vet"] = str(role_caps.get("Vet", auth.DISCOUNT_CAPS["Vet"]))
-    settings["discount_cap_reception"] = str(role_caps.get("Reception", auth.DISCOUNT_CAPS["Reception"]))
     import backup as backup_mod
+    import autostart
     return render_template(
         "settings.html", settings=settings, lan_address=lan_address(),
         recent_backups=backup_mod.recent_backups(db),
+        recent_restores=backup_mod.recent_restores(db),
+        autostart_supported=autostart.is_supported(),
+        autostart_enabled=autostart.is_enabled(),
         app_version=VERSION,
     )
 
@@ -4808,11 +5211,60 @@ def settings_backup_now():
     return redirect(url_for("settings_page"))
 
 
+@app.route("/settings/restore-now", methods=["POST"])
+@auth.permission_required("manage_settings")
+def settings_restore_now():
+    source_file = (request.form.get("source_file") or "").strip()
+    import backup as backup_mod
+
+    # Path confinement + provenance check — only a .dump file inside the
+    # configured backup folder AND recorded in this app's own backup_log
+    # as a successful backup can be restored. Runs on the request's own
+    # (still-open) connection, before that connection is released and
+    # before any restore work starts, so an invalid/unauthorized path
+    # never gets anywhere near pg_restore.
+    ok, resolved_source, message = backup_mod.resolve_restorable_backup(get_db(), source_file)
+    if not ok:
+        flash(message, "error")
+        return redirect(url_for("settings_page"))
+
+    # pg_restore --clean issues DROP TABLE (and similar) against every
+    # table in the database — including ones this very request already
+    # touched, like `users` via require_login()'s lookup a moment ago.
+    # Release this request's own connection back to the pool first so it
+    # isn't still holding a read lock on those tables when pg_restore
+    # tries to drop them.
+    conn = g.pop("db", None)
+    if conn is not None:
+        conn.commit()
+        dbmod.putconn(conn)
+
+    # The restore is about to DROP and recreate every table — close the
+    # whole pool so no other pooled-but-idle connection (e.g. a second
+    # admin's open tab) is left holding cached plans/catalog snapshots
+    # across it. getconn() transparently reopens a fresh pool on the next
+    # request.
+    dbmod.close_pool()
+
+    def task(update):
+        ok, message = backup_mod.run_restore(dbmod.connect, resolved_source,
+                                              triggered_by="manual", on_progress=update)
+        return {"ok": ok, "message": message}
+
+    job_id = jobs.start(
+        ["Checking backup file", "Restoring database", "Reconciling schema", "Recording result", "Done"],
+        task,
+    )
+    return jsonify({"job_id": job_id})
+
+
 @app.route("/settings/job-status")
 @auth.permission_required("manage_settings")
 def settings_job_status():
-    """Polled by the progress panel on the Updates section."""
+    """Polled by the progress panel on the Updates section, and by Restore
+    Now."""
     job_id = request.args.get("job_id", "")
+    kind = request.args.get("kind", "")
     state = jobs.status(job_id)
     if state is None:
         return jsonify({"status": "not_found"}), 404
@@ -4827,9 +5279,25 @@ def settings_job_status():
         result = state.get("result") or {}
         payload["ok"] = result.get("ok")
         payload["message"] = result.get("message")
+        if kind == "restore" and result.get("ok"):
+            # The restore just replaced every row in the database,
+            # including `users` — force a fresh login on this browser
+            # rather than leaving a session tied to data that may no
+            # longer match what's actually there now.
+            session.clear()
     elif state["status"] == "error":
         payload["message"] = state.get("error")
     return jsonify(payload)
+
+
+@app.route("/settings/autostart", methods=["POST"])
+@auth.permission_required("manage_settings")
+def settings_autostart():
+    import autostart
+    enable = request.form.get("autostart_enabled") == "on"
+    ok, message = autostart.enable() if enable else autostart.disable()
+    flash(message, "success" if ok else "error")
+    return redirect(url_for("settings_page"))
 
 
 @app.route("/settings/updates/check")

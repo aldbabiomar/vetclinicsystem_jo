@@ -7,6 +7,9 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
+<script src="{{ url_for('static', filename='motion.js') }}"></script>
+<script src="{{ url_for('static', filename='toast.js') }}"></script>
 </head>
 <body>
 {% if session.get('user_id') %}
@@ -109,7 +112,7 @@
     <div class="nav-group">
       <div class="nav-label">Admin</div>
       {% if has_permission('manage_users_roles') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin_users') }}">Users</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin_users') }}">Users &amp; Roles</a>
       {% endif %}
       {% if has_permission('view_logins_changes') %}
       <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin_logs') }}">Logins and Changes</a>
@@ -156,6 +159,7 @@ document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
   link.addEventListener('click', closeSidebar);
 });
 </script>
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
 {% else %}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}

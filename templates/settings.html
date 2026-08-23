@@ -26,17 +26,14 @@
     <div class="field"><label>Slot Length (Minutes)</label><input type="number" name="appt_slot_minutes" value="{{ settings.appt_slot_minutes }}" min="5" max="240" step="1"></div>
   </div>
 
-  <div class="section-title">Discount Limits</div>
-  <p class="small muted" style="margin:-6px 0 10px;">Maximum discount percent each role can apply on Visit, Inpatient, and POS billing. Enforced server-side — staff can't exceed their role's cap no matter what's entered on screen.</p>
-  <div class="form-grid">
-    <div class="field"><label>Admin Max Discount (%)</label><input type="number" name="discount_cap_admin" value="{{ settings.discount_cap_admin }}" min="0" max="100" step="1"></div>
-    <div class="field"><label>Vet Max Discount (%)</label><input type="number" name="discount_cap_vet" value="{{ settings.discount_cap_vet }}" min="0" max="100" step="1"></div>
-    <div class="field"><label>Reception Max Discount (%)</label><input type="number" name="discount_cap_reception" value="{{ settings.discount_cap_reception }}" min="0" max="100" step="1"></div>
-  </div>
-
   <div class="section-title">Backups</div>
   <div class="form-grid">
-    <div class="field"><label>Backup Folder (on this computer)</label><input name="backup_dir" placeholder="e.g. /Users/you/VetClinicSystemJOBackups or D:\VetClinicSystemJOBackups" value="{{ settings.backup_dir }}"></div>
+    <div class="field"><label>Backup Folder (on this computer)</label>
+      <div style="display:flex; gap:8px;">
+        <input name="backup_dir" id="backupDirInput" placeholder="e.g. /Users/you/VetClinicSystemJOBackups or D:\VetClinicSystemJOBackups" value="{{ settings.backup_dir }}" style="flex:1;">
+        <button class="btn secondary" type="button" onclick="openFolderBrowser('backupDirInput', {filePicker:false})">Browse…</button>
+      </div>
+    </div>
     <div class="field"><label>Nightly Backup Time</label><input type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
     <div class="field"><label>Keep Last N Backups</label><input type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
   </div>
@@ -48,6 +45,30 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <button class="btn secondary" type="submit">Back Up Now</button>
 </form>
+
+<div class="section-title">Restore From Backup</div>
+<p class="small muted" style="margin-top:-6px;">
+  Replaces <strong>all</strong> current data in VetClinicSystem JO with the contents of a backup file. This can't be undone —
+  take a fresh backup first if you're not sure. Uploaded files (X-rays, lab results) aren't part of the backup
+  itself and are unaffected by a restore, but any that were attached <em>after</em> the backup being restored was
+  taken will need reconnecting — run <code>python3 reconcile_attachments.py</code> from the app folder afterward
+  to find and relink them safely.
+</p>
+<div class="form-grid">
+  <div class="field full"><label>Backup File To Restore</label>
+    <div style="display:flex; gap:8px;">
+      <input id="restoreFileInput" placeholder="Browse to a .dump backup file" value="" style="flex:1;" readonly>
+      <button class="btn secondary" type="button" onclick="openFolderBrowser('restoreFileInput', {filePicker:true, ext:'.dump'})">Browse…</button>
+    </div>
+  </div>
+</div>
+<form method="post" action="{{ url_for('settings_restore_now') }}" id="restoreForm" style="margin-top:10px;"
+      data-confirm="This replaces ALL current data in VetClinicSystem JO with the contents of this backup file, and cannot be undone. Everything added or changed since that backup was taken will be lost. Continue?">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="source_file" id="restoreSourceFile">
+  <button class="btn danger" type="submit" id="restoreSubmitBtn" data-saving-label="Restoring…" disabled>Restore Now</button>
+</form>
+<div id="restoreProgress" class="vz-progress-panel" style="display:none;"></div>
 
 <div class="section-title">Updates</div>
 <div id="updatesConfigured" style="display:none;">
@@ -73,6 +94,41 @@
   Automatic updates aren't set up on this install yet. An administrator can enable them by running
   <code>python3 setup.py --enable-updates</code> on the computer running VetClinicSystem JO.
 </div>
+
+{# This section is deliberately its own <form>, separate from the tracked
+   settings form above (data-track-unsaved marks that whole form "dirty"
+   on ANY field change inside it, which would make submitting this
+   checkbox's own form get caught by that same form's "you have unsaved
+   changes elsewhere" guard the instant the checkbox was touched). It's
+   also a genuinely different kind of action anyway: an OS-level toggle
+   (installing/removing a login item) that applies immediately, not a
+   settings-table field waiting on a general Save Settings click. #}
+<div class="section-title">Startup &amp; Shutdown</div>
+<form method="post" action="{{ url_for('settings_autostart') }}" id="autostartForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-grid">
+    <div class="field full">
+      <label class="radio-row" style="font-weight:600;">
+        <input type="checkbox" name="autostart_enabled" id="autostartCheckbox"
+               {% if autostart_enabled %}checked{% endif %}
+               {% if not autostart_supported %}disabled{% endif %}
+               onchange="document.getElementById('autostartForm').requestSubmit();">
+        Start VetClinicSystem JO automatically when this computer starts
+      </label>
+      {% if autostart_supported %}
+      <p class="small muted" style="margin:4px 0 0;">
+        On shutdown or restart, the app closes its database connections cleanly before the
+        computer powers off, so nothing is left mid-write.
+      </p>
+      {% else %}
+      <p class="small muted" style="margin:4px 0 0;">
+        Not available on this operating system — start VetClinicSystem JO manually using the launcher.
+      </p>
+      {% endif %}
+    </div>
+  </div>
+</form>
+
 <script>
 async function loadUpdatesStatus() {
   try {
@@ -168,16 +224,78 @@ function runUpdateJob(startUrl, actionLabel) {
     .catch(() => { panel.textContent = actionLabel + ' failed to start.'; });
 }
 
-function applyUpdate() {
-  if (!confirm('This will restart VetClinicSystem JO for everyone for about 30 seconds. A backup will be taken first. Continue?')) return;
+async function applyUpdate() {
+  const ok = await window.VZDialog.confirm('This will restart VetClinicSystem JO for everyone for about 30 seconds. A backup will be taken first. Continue?');
+  if (!ok) return;
   runUpdateJob('/settings/updates/apply', 'Update');
 }
 
-function rollbackUpdate() {
-  if (!confirm('This will roll back to the previous version and restart VetClinicSystem JO for everyone for about 30 seconds. Continue?')) return;
+async function rollbackUpdate() {
+  const ok = await window.VZDialog.confirm('This will roll back to the previous version and restart VetClinicSystem JO for everyone for about 30 seconds. Continue?');
+  if (!ok) return;
   runUpdateJob('/settings/updates/rollback', 'Rollback');
 }
+
+// --------------------------------------------------------------------
+// Restore Now: kicks off a background job on the server (a full database
+// restore can take a while) and polls for progress instead of blocking
+// the request the whole time — same jobs.py/VZProgress pattern the
+// report pages' loading shells use. Unlike Update/Rollback, a restore
+// does not restart the app process, so on success this just prompts a
+// fresh login rather than calling waitForRestart().
+// --------------------------------------------------------------------
+function resetSubmitButton(btn) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.classList.remove('is-saving');
+  if (btn.dataset.originalLabel) btn.textContent = btn.dataset.originalLabel;
+}
+
+document.getElementById('restoreForm').addEventListener('submit', async function (e) {
+  // Waits for the existing data-confirm handler in ui.js to run first —
+  // it intercepts the initial click, shows the "are you sure" dialog, and
+  // only re-submits (with dataset.confirmed = "1") once the person
+  // actually confirms. Without this guard, the AJAX submission below
+  // would fire on the very first click, before confirmation ever happens.
+  if (this.hasAttribute('data-confirm') && this.dataset.confirmed !== '1') return;
+  e.preventDefault();
+  const btn = document.getElementById('restoreSubmitBtn');
+  const panel = document.getElementById('restoreProgress');
+  panel.style.display = 'block';
+  const formData = new FormData(this);
+  try {
+    const res = await fetch(this.action, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok || !data.job_id) throw new Error('Could not start the restore.');
+    window.VZProgress.poll(data.job_id, '/settings/job-status', { kind: 'restore' }, {
+      onUpdate: (d) => window.VZProgress.render(panel, d),
+      onDone: (d) => {
+        if (d.ok) {
+          window.VZToast.show(`${d.message}. Please log in again.`, 'success');
+          setTimeout(() => { window.location = '/login'; }, 1200);
+        } else {
+          resetSubmitButton(btn);
+          window.VZToast.show(d.message || 'Restore failed.', 'error');
+        }
+      },
+      onError: (d) => {
+        resetSubmitButton(btn);
+        window.VZProgress.render(panel, { status: 'error', steps: ['Restore'], current: 0, message: d.message });
+        window.VZToast.show(d.message || 'Restore failed.', 'error');
+      },
+    });
+  } catch (err) {
+    resetSubmitButton(btn);
+    panel.style.display = 'none';
+    window.VZToast.show('Could not start the restore.', 'error');
+  }
+});
 </script>
+<script src="{{ url_for('static', filename='progress.js') }}"></script>
 
 {% if recent_backups %}
 <div class="section-title">Recent Backups</div>
@@ -197,6 +315,194 @@ function rollbackUpdate() {
 </table>
 </div>
 {% endif %}
+
+{% if recent_restores %}
+<div class="section-title">Recent Restores</div>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Started</th><th>Triggered By</th><th>Status</th><th>Source File</th></tr></thead>
+  <tbody>
+    {% for r in recent_restores %}
+    <tr>
+      <td>{{ r.started_at }}</td>
+      <td class="muted">{{ (r.triggered_by or "—") | title }}</td>
+      <td>{% if r.status == 'success' %}<span class="badge">Success</span>{% else %}<span class="badge danger">Failed — {{ r.error }}</span>{% endif %}</td>
+      <td class="muted">{{ r.source_file or "—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 </div>
+{% endif %}
+</div>
+
+<div id="folderBrowserModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:560px;">
+    <h2 id="folderBrowserTitle" style="margin-top:0;">Choose Backup Folder</h2>
+    <p class="small muted" style="margin-top:-6px;">Browsing this computer's folders — the one running VetClinicSystem JO, since that's where backups are actually read and written.</p>
+    <div id="folderBrowserPath" class="small" style="margin:10px 0; padding:8px 10px; border-radius:8px; background:var(--muted-tint); word-break:break-all; font-family:monospace;"></div>
+    <div id="folderBrowserError" class="small" style="color:var(--danger); display:none; margin-bottom:8px; overflow-wrap:anywhere; word-break:break-word;"></div>
+    <div id="folderBrowserList" style="max-height:280px; overflow-y:auto; border:1px solid var(--line-soft); border-radius:8px;"></div>
+    <div id="folderBrowserNewFolderRow" style="display:flex; gap:8px; margin-top:12px;">
+      <input type="text" id="folderBrowserNewName" placeholder="New folder name">
+      <button class="btn secondary" type="button" onclick="folderBrowserNewFolder()">+ New Folder</button>
+    </div>
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+      <button class="btn secondary" type="button" onclick="window.VZSpring.present(document.getElementById('folderBrowserModal'), false, {});">Cancel</button>
+      <button class="btn" type="button" id="folderBrowserSelectBtn" onclick="folderBrowserSelect()">Select This Folder</button>
+    </div>
+  </div>
+</div>
+<script>
+let folderBrowserCurrent = null;
+let folderBrowserTargetInputId = null;
+let folderBrowserFilePicker = false;
+let folderBrowserExt = '';
+
+// Delegated once on the container rather than re-bound per row (rows are
+// rebuilt on every navigation) — routes a row click by its data-action
+// instead of a per-row inline handler built from a server-supplied path.
+document.getElementById('folderBrowserList').addEventListener('click', function(e) {
+  const row = e.target.closest('.folder-browser-row');
+  if (!row) return;
+  if (row.dataset.action === 'nav') loadFolderBrowser(row.dataset.path);
+  else if (row.dataset.action === 'select-file') folderBrowserSelectFile(row.dataset.path);
+});
+
+// targetInputId: the <input> this picker fills in on selection.
+// opts.filePicker: when true, also lists files matching opts.ext and lets
+// the user click one directly to select it (used by Restore, which needs
+// an exact .dump file rather than a folder — "Select This Folder" doesn't
+// make sense there, so it's hidden and the New Folder control too, since
+// restoring reads an existing backup rather than creating a destination).
+function openFolderBrowser(targetInputId, opts) {
+  opts = opts || {};
+  folderBrowserTargetInputId = targetInputId;
+  folderBrowserFilePicker = !!opts.filePicker;
+  folderBrowserExt = opts.ext || '';
+  document.getElementById('folderBrowserTitle').textContent = folderBrowserFilePicker ? 'Choose Backup File' : 'Choose Backup Folder';
+  document.getElementById('folderBrowserNewFolderRow').style.display = folderBrowserFilePicker ? 'none' : 'flex';
+  document.getElementById('folderBrowserSelectBtn').style.display = folderBrowserFilePicker ? 'none' : 'inline-flex';
+  window.VZSpring.present(document.getElementById('folderBrowserModal'), true, {});
+  const existing = document.getElementById(targetInputId).value.trim();
+  loadFolderBrowser(folderBrowserFilePicker ? null : (existing || null));
+}
+
+async function loadFolderBrowser(path) {
+  const errEl = document.getElementById('folderBrowserError');
+  const listEl = document.getElementById('folderBrowserList');
+  errEl.style.display = 'none';
+  listEl.innerHTML = '<div class="small muted" style="padding:12px;">Loading…</div>';
+  try {
+    const params = new URLSearchParams();
+    if (path) params.set('path', path);
+    if (folderBrowserFilePicker && folderBrowserExt) params.set('ext', folderBrowserExt);
+    const qs = params.toString();
+    const url = '/api/browse-folder' + (qs ? `?${qs}` : '');
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Could not open that folder.';
+      errEl.style.display = 'block';
+      listEl.innerHTML = '';
+      return;
+    }
+    folderBrowserCurrent = data.current;
+    document.getElementById('folderBrowserPath').textContent = data.current;
+    // Built via DOM APIs (textContent for the name, data-* attributes for
+    // the path a click should navigate/select) rather than string-built
+    // HTML/onclick attributes — a folder or file name is server-supplied
+    // and shouldn't be trusted as markup just because it came from a
+    // directory listing rather than user input directly.
+    listEl.innerHTML = '';
+    if (data.parent) {
+      const row = document.createElement('div');
+      row.className = 'folder-browser-row';
+      row.style.cssText = 'cursor:pointer; padding:8px 10px;';
+      row.textContent = '↑ .. (up one level)';
+      row.dataset.action = 'nav';
+      row.dataset.path = data.parent;
+      listEl.appendChild(row);
+    }
+    const files = data.files || [];
+    if (data.folders.length === 0 && files.length === 0 && !data.parent) {
+      const empty = document.createElement('div');
+      empty.className = 'small muted';
+      empty.style.padding = '12px';
+      empty.textContent = `No ${folderBrowserFilePicker ? 'backup files' : 'subfolders'} here.`;
+      listEl.appendChild(empty);
+    } else {
+      const sep = data.current.includes('\\') ? '\\' : '/';
+      const joinPath = name => (data.current.endsWith('/') || data.current.endsWith('\\')) ? data.current + name : data.current + sep + name;
+      for (const name of data.folders) {
+        const row = document.createElement('div');
+        row.className = 'folder-browser-row';
+        row.style.cssText = 'cursor:pointer; padding:8px 10px;';
+        row.textContent = '📁 ' + name;
+        row.dataset.action = 'nav';
+        row.dataset.path = joinPath(name);
+        listEl.appendChild(row);
+      }
+      for (const name of files) {
+        const row = document.createElement('div');
+        row.className = 'folder-browser-row';
+        row.style.cssText = 'cursor:pointer; padding:8px 10px;';
+        row.textContent = '🗄️ ' + name;
+        row.dataset.action = 'select-file';
+        row.dataset.path = joinPath(name);
+        listEl.appendChild(row);
+      }
+    }
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server.';
+    errEl.style.display = 'block';
+    listEl.innerHTML = '';
+  }
+}
+
+async function folderBrowserNewFolder() {
+  const nameInput = document.getElementById('folderBrowserNewName');
+  const name = nameInput.value.trim();
+  if (!name || !folderBrowserCurrent) return;
+  const errEl = document.getElementById('folderBrowserError');
+  try {
+    const res = await fetch('/api/browse-folder/new-folder', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+      },
+      body: JSON.stringify({path: folderBrowserCurrent, name: name}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Could not create that folder.';
+      errEl.style.display = 'block';
+      return;
+    }
+    nameInput.value = '';
+    loadFolderBrowser(data.path);
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server.';
+    errEl.style.display = 'block';
+  }
+}
+
+function folderBrowserSelect() {
+  if (!folderBrowserCurrent || !folderBrowserTargetInputId) return;
+  document.getElementById(folderBrowserTargetInputId).value = folderBrowserCurrent;
+  window.VZSpring.present(document.getElementById('folderBrowserModal'), false, {});
+}
+
+function folderBrowserSelectFile(fullPath) {
+  if (!folderBrowserTargetInputId) return;
+  document.getElementById(folderBrowserTargetInputId).value = fullPath;
+  if (folderBrowserTargetInputId === 'restoreFileInput') {
+    document.getElementById('restoreSourceFile').value = fullPath;
+    document.getElementById('restoreSubmitBtn').disabled = false;
+  }
+  window.VZSpring.present(document.getElementById('folderBrowserModal'), false, {});
+}
+</script>
 <script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
 {% endblock %}
