@@ -17,7 +17,7 @@ def _ean13_check_digit(digits12):
 
 def generate_barcode(db):
     for _ in range(50):
-        body = "20" + "".join(str(random.randint(0, 9)) for _ in range(9))  # 11 digits
+        body = "20" + "".join(str(random.randint(0, 9)) for _ in range(10))  # 12 digits
         code12 = body
         check = _ean13_check_digit(code12)
         candidate = code12 + str(check)

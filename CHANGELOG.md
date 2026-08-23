@@ -3,6 +3,14 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.2.1] - 2026-08-23
+
+### Fixed
+- **Auto-generated inventory barcodes were 12 digits, not real EAN-13's
+  13** — one digit short in the random body, so every generated barcode
+  failed strict EAN-13 validation. Now generates the correct length;
+  already-generated barcodes are unaffected and keep printing normally.
+
 ## [1.2.0] - 2026-08-23
 
 ### Added
