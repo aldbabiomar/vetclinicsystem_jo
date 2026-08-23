@@ -207,9 +207,11 @@ def add_security_headers(resp):
     # blocks and onclick= handlers throughout), so this deliberately allows
     # 'unsafe-inline' rather than pretending otherwise; it doesn't stop an
     # injected inline script from running (Jinja autoescaping + the
-    # shared escapeHtml() helper are what actually prevent that — see
-    # FULL_SWEEP_FINDINGS.md 4.1 for the fuller nonce-based alternative and
-    # why it wasn't chosen here). What this does block: the page loading
+    # shared escapeHtml() helper are what actually prevent that). A
+    # nonce-based CSP would close that gap too, but requires threading a
+    # per-request nonce through every inline <script>/onclick= across every
+    # template — not worth the sitewide template rewrite for what
+    # autoescaping already covers. What this does block: the page loading
     # any script/style/image/frame/connection from anywhere other than its
     # own origin — closes off exfiltration via an injected external
     # <script src>, a malicious iframe, or a compromised dependency
