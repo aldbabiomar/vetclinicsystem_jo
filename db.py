@@ -65,7 +65,7 @@ def connect():
 
     Used only by code that doesn't run inside a normal web request and
     therefore has no g.db lifecycle to piggyback on: one-off maintenance
-    scripts (setup.py, import_seed.py, generate_test_data.py) and the
+    scripts (setup.py, import_seed.py, reconcile_attachments.py) and the
     app's background scheduler (nightly backup). Those are low-frequency,
     long-or-uncertain-duration operations that don't belong sharing a
     small pool with request traffic, so they keep opening their own
