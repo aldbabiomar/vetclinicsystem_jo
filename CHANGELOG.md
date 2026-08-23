@@ -3,6 +3,15 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.1.0] - 2026-08-23
+
+### Fixed
+- **~90 of ~130 routes had no per-permission check at all** — only login was required, not the specific permission (Manage Owners, Manage Visits, Process POS Sales, Manage Boarding, etc.) that the Roles & Permissions page presents as togglable. Every one of those routes now carries the matching permission check, verified against no regression for the Admin/Vet/Reception roles' existing default access.
+- **POS checkout could oversell stock under genuine concurrent load** — the row lock that serializes concurrent checkouts was sound, but the stock-since-last-audit calculation compared whole-second-precision timestamps with a strict `>`; a sale landing in the same wall-clock second as the audit it was being checked against got silently excluded from the running total, letting stock go negative while Inventory Status still reported a plausible (wrong) number. Every timestamp feeding that comparison now carries microsecond precision.
+- **Re-entering an existing owner's name and phone while adding a pet created a duplicate owner record** instead of linking to the existing one, both from the "new patient" visit form and from double-submitting the New Owner form. Owner phone numbers are now enforced unique at the database level; a submission that collides with an existing owner links to them instead of erroring or duplicating.
+- **Double-clicking "Complete Sale" on an unchanged cart created two separate, fully valid sales** — double-charging the customer and double-deducting stock, with no confirmation prompt either side. Checkout now carries a one-time token per POS page load; a repeat submission is recognized and sent to the original sale instead of creating another one.
+- **A database outage could occasionally show a raw, unbranded error page** instead of the app's own error page, in the narrow window right as the connection dropped — traced to the per-request cleanup step trying to commit/roll back an already-dead connection outside the app's normal error handling. Now guarded, and each request also fails faster during an outage instead of hanging for the full connection-pool timeout.
+
 ## [1.0.3] - 2026-08-23
 
 ### Fixed
