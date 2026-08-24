@@ -357,6 +357,10 @@ def main():
     )
     already_managed = bool(os.environ.get("VETCLINICSYSTEMJO_DATA_DIR")) or in_release_folder
     if already_managed or "--no-enable-updates" in sys.argv:
+        # Managed installs still want their Desktop shortcut kept current;
+        # only the layout switch below is a one-time thing.
+        if already_managed:
+            ensure_desktop_shortcut()
         print(
             "\nAll set. Start the app with:\n"
             "  python3 app.py\n"
@@ -366,6 +370,27 @@ def main():
         return
 
     enable_updates()
+
+
+def ensure_desktop_shortcut(data_dir=None):
+    """Creates (or refreshes) the Desktop shortcut — the fail-safe way to start
+    the app when autostart didn't fire or was never turned on. Re-run on every
+    setup.py pass, not just the first, so a shortcut someone deleted comes
+    back and one left pointing at an old path gets corrected.
+
+    Never fatal: an install that can't get a Desktop icon is still a perfectly
+    working install, so this only ever reports what happened."""
+    step("Desktop shortcut")
+    try:
+        import desktop_shortcut
+    except ImportError as e:
+        print(f"  Skipped — could not load desktop_shortcut.py ({e}).")
+        return
+    if not desktop_shortcut.is_supported():
+        print("  Skipped — not supported on this operating system.")
+        return
+    ok, message = desktop_shortcut.create(data_dir)
+    print(f"  {message}")
 
 
 # ---------------------------------------------------------------------------
@@ -478,6 +503,7 @@ def enable_updates(data_dir=None, releases_dir=None):
 
     if os.path.isfile(pointer):
         print(f"  Already enabled — {pointer} exists.")
+        ensure_desktop_shortcut(data_dir)
         print(f"  VETCLINICSYSTEMJO_DATA_DIR={data_dir}\n  VETCLINICSYSTEMJO_RELEASES_DIR={releases_dir}")
         return
 
@@ -543,6 +569,8 @@ def enable_updates(data_dir=None, releases_dir=None):
     with open(win_launcher, "w", newline="\r\n") as f:
         f.write(_WINDOWS_LAUNCHER)
 
+    ensure_desktop_shortcut(data_dir)
+
     print(
         f"\nDone. Add these two lines to {env_dst}:\n\n"
         f"  VETCLINICSYSTEMJO_DATA_DIR={data_dir}\n"
@@ -557,7 +585,9 @@ def enable_updates(data_dir=None, releases_dir=None):
 
 
 if __name__ == "__main__":
-    if "--enable-updates" in sys.argv:
+    if "--desktop-shortcut" in sys.argv:
+        ensure_desktop_shortcut()
+    elif "--enable-updates" in sys.argv:
         enable_updates()
     else:
         main()

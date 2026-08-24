@@ -58,68 +58,88 @@
       <a class="nav-link {{ 'active' if request.endpoint in ['inpatient_list','inpatient_new','inpatient_detail'] }}" href="{{ url_for('inpatient_list') }}">Inpatient Cases</a>
     </div>
 
-    <div class="nav-group">
-      <div class="nav-label">Inventory</div>
-      <a class="nav-link {{ 'active' if request.endpoint=='inventory_status_page' }}" href="{{ url_for('inventory_status_page') }}">Inventory Status</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='ordering_sheet_page' }}" href="{{ url_for('ordering_sheet_page') }}">Ordering Sheet</a>
-      <a class="nav-link {{ 'active' if request.endpoint in ['audit_history_list','audit_session_view'] }}" href="{{ url_for('audit_history_list') }}">Audit History</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='inventory_catalog' }}" href="{{ url_for('inventory_catalog') }}">Inventory Catalog</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='distributors_list' }}" href="{{ url_for('distributors_list') }}">Distributors</a>
+    <div class="nav-group" data-collapsible="inventory">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Inventory</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link {{ 'active' if request.endpoint=='inventory_status_page' }}" href="{{ url_for('inventory_status_page') }}">Inventory Status</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='ordering_sheet_page' }}" href="{{ url_for('ordering_sheet_page') }}">Ordering Sheet</a>
+        <a class="nav-link {{ 'active' if request.endpoint in ['audit_history_list','audit_session_view'] }}" href="{{ url_for('audit_history_list') }}">Audit History</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='inventory_catalog' }}" href="{{ url_for('inventory_catalog') }}">Inventory Catalog</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='distributors_list' }}" href="{{ url_for('distributors_list') }}">Distributors</a>
+      </div>
     </div>
 
     {% set consignment_perms = ['view_consignment','manage_consignment_items','manage_consignment_stock','manage_consignment_settlements'] %}
     {% if consignment_perms | select('in', session.get('permissions', [])) | list | length > 0 %}
-    <div class="nav-group">
-      <div class="nav-label">Consignment</div>
-      {% if has_permission('view_consignment') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='consignment_overview' }}" href="{{ url_for('consignment_overview') }}">Overview</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='consignment_items' }}" href="{{ url_for('consignment_items') }}">Items</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='consignment_receiving_page' }}" href="{{ url_for('consignment_receiving_page') }}">Receiving</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='consignment_shrinkage_page' }}" href="{{ url_for('consignment_shrinkage_page') }}">Shrinkage</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='consignment_returns_page' }}" href="{{ url_for('consignment_returns_page') }}">Returns</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='consignment_sales_page' }}" href="{{ url_for('consignment_sales_page') }}">Sales by Distributor</a>
-      {% endif %}
-      {% if has_permission('manage_consignment_settlements') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='consignment_settlements_page' }}" href="{{ url_for('consignment_overview') }}">Settlements</a>
-      {% endif %}
+    <div class="nav-group" data-collapsible="consignment">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Consignment</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        {% if has_permission('view_consignment') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_overview' }}" href="{{ url_for('consignment_overview') }}">Overview</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_items' }}" href="{{ url_for('consignment_items') }}">Items</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_receiving_page' }}" href="{{ url_for('consignment_receiving_page') }}">Receiving</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_shrinkage_page' }}" href="{{ url_for('consignment_shrinkage_page') }}">Shrinkage</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_returns_page' }}" href="{{ url_for('consignment_returns_page') }}">Returns</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_sales_page' }}" href="{{ url_for('consignment_sales_page') }}">Sales by Distributor</a>
+        {% endif %}
+        {% if has_permission('manage_consignment_settlements') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_settlements_page' }}" href="{{ url_for('consignment_overview') }}">Settlements</a>
+        {% endif %}
+      </div>
     </div>
     {% endif %}
 
-    <div class="nav-group">
-      <div class="nav-label">Sales &amp; Billing</div>
-      <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('pos_page') }}">Point of Sale</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='pos_history' }}" href="{{ url_for('pos_history') }}">Sales History</a>
-      {% if has_permission('manage_price_list') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='price_list' }}" href="{{ url_for('price_list') }}">Price List</a>
-      {% endif %}
-      {% if has_permission('manage_refunds') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('refunds_page') }}">Refunds</a>
-      {% endif %}
-      {% if has_permission('manage_cash_register') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='cash_register_page' }}" href="{{ url_for('cash_register_page') }}">Cash Register</a>
-      {% endif %}
-      {% if has_permission('view_financial_reports') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='reports' }}" href="{{ url_for('reports') }}">Monthly P&amp;L</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='reports_yearly' }}" href="{{ url_for('reports_yearly') }}">Yearly P&amp;L</a>
-      {% endif %}
-      {% if has_permission('view_insights_retention') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='insights' }}" href="{{ url_for('insights') }}">Insights</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='retention' }}" href="{{ url_for('retention') }}">Retention</a>
-      {% endif %}
+    <div class="nav-group" data-collapsible="sales">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Sales &amp; Billing</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('pos_page') }}">Point of Sale</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='pos_history' }}" href="{{ url_for('pos_history') }}">Sales History</a>
+        {% if has_permission('manage_price_list') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='price_list' }}" href="{{ url_for('price_list') }}">Price List</a>
+        {% endif %}
+        {% if has_permission('manage_refunds') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('refunds_page') }}">Refunds</a>
+        {% endif %}
+        {% if has_permission('manage_cash_register') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='cash_register_page' }}" href="{{ url_for('cash_register_page') }}">Cash Register</a>
+        {% endif %}
+        {% if has_permission('view_financial_reports') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='reports' }}" href="{{ url_for('reports') }}">Monthly P&amp;L</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='reports_yearly' }}" href="{{ url_for('reports_yearly') }}">Yearly P&amp;L</a>
+        {% endif %}
+        {% if has_permission('view_insights_retention') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='insights' }}" href="{{ url_for('insights') }}">Insights</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='retention' }}" href="{{ url_for('retention') }}">Retention</a>
+        {% endif %}
+      </div>
     </div>
 
     {% if has_permission('manage_users_roles') or has_permission('view_logins_changes') or has_permission('manage_settings') %}
-    <div class="nav-group">
-      <div class="nav-label">Admin</div>
-      {% if has_permission('manage_users_roles') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin_users') }}">Users &amp; Roles</a>
-      {% endif %}
-      {% if has_permission('view_logins_changes') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin_logs') }}">Logins and Changes</a>
-      {% endif %}
-      {% if has_permission('manage_settings') %}
-      <a class="nav-link {{ 'active' if request.endpoint=='settings_page' }}" href="{{ url_for('settings_page') }}">Settings</a>
-      {% endif %}
+    <div class="nav-group" data-collapsible="admin">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Admin</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        {% if has_permission('manage_users_roles') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin_users') }}">Users &amp; Roles</a>
+        {% endif %}
+        {% if has_permission('view_logins_changes') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin_logs') }}">Logins and Changes</a>
+        {% endif %}
+        {% if has_permission('manage_settings') %}
+        <a class="nav-link {{ 'active' if request.endpoint=='settings_page' }}" href="{{ url_for('settings_page') }}">Settings</a>
+        {% endif %}
+      </div>
     </div>
     {% endif %}
 

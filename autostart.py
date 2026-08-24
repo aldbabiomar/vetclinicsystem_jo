@@ -28,7 +28,7 @@ def is_supported():
     return platform.system() in ("Darwin", "Windows")
 
 
-def _managed_data_dir():
+def managed_data_dir():
     """Returns vetclinicsystemjo-data/ if this install has been switched onto
     the versioned-release layout (setup.py --enable-updates), whether or not
     the CURRENTLY RUNNING process happens to be using it. Autostart must
@@ -43,7 +43,11 @@ def _managed_data_dir():
     autostart can be toggled from a process that isn't running that way,
     e.g. the original checkout after enable_updates() has already been run
     elsewhere — the sibling folder structure on disk, mirroring setup.py's
-    own already_managed check."""
+    own already_managed check.
+
+    Public because desktop_shortcut.py needs the exact same answer for the
+    exact same reason — both have to resolve to the update-aware supervisor
+    launcher rather than whichever code copy is running right now."""
     env_dir = os.environ.get("VETCLINICSYSTEMJO_DATA_DIR")
     if env_dir and os.path.isfile(os.path.join(env_dir, "active_release.txt")):
         return env_dir
@@ -67,7 +71,7 @@ def _macos_plist_path():
 
 
 def _macos_launcher_path():
-    data_dir = _managed_data_dir()
+    data_dir = managed_data_dir()
     base = data_dir if data_dir else BASE_DIR
     return os.path.join(base, "Start VetClinicSystem JO.command")
 
@@ -85,7 +89,7 @@ def _windows_shortcut_path():
 
 
 def _windows_launcher_path():
-    data_dir = _managed_data_dir()
+    data_dir = managed_data_dir()
     base = data_dir if data_dir else BASE_DIR
     return os.path.join(base, "Start VetClinicSystem JO.bat")
 
