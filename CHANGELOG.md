@@ -3,6 +3,23 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.4.3] - 2026-08-24
+
+### Fixed
+- **Backups could appear to hang forever.** The backup was actually
+  waiting for a database password to be typed into the black Terminal
+  window behind the app — easy to miss entirely, and the password it
+  wanted was the database's, not your login. Backups and restores now
+  use the password the app already has, and if a password is ever wrong
+  they stop straight away with a clear message instead of waiting.
+  This affected the nightly automatic backup and the backup taken
+  before an update too, not just the Back Up Now button.
+- **Back Up Now no longer pretends to start when no backup folder is
+  set.** The button stays disabled until you've chosen and saved a
+  folder, and tells you so, instead of running a progress bar and then
+  reporting a failure. That case also no longer clutters Recent Backups
+  with failed entries.
+
 ## [1.4.2] - 2026-08-24
 
 ### Fixed
