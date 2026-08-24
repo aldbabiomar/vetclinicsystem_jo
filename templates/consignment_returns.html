@@ -8,25 +8,25 @@
       COGS, or settlement impact — nothing sold, so nothing owed either way.</p>
   </div>
   {% if has_permission('manage_consignment_stock') %}
-  <button class="btn" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Log Return</button>
+  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Log Return</button>
   {% endif %}
 </div>
 
 {% if has_permission('manage_consignment_stock') %}
-<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+<div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:20px;">
   <form method="post" action="{{ url_for('consignment_returns_new') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
       <div class="field"><label>Item</label>
         <select name="item_id" required>
           <option value="">—</option>
-          {% for i in items %}<option value="{{ i.id }}">{{ i.name }} ({{ i.distributor_name }})</option>{% endfor %}
+          {% for i in items %}<option value="{{ i.id }}" {{ 'selected' if fv(form, 'item_id')==i.id }}>{{ i.name }} ({{ i.distributor_name }})</option>{% endfor %}
         </select>
       </div>
-      <div class="field"><label>Quantity</label><input type="number" step="any" name="quantity" required></div>
-      <div class="field"><label>Return Date</label><input type="date" name="return_date" value="{{ today }}"></div>
-      <div class="field"><label>Reason</label><input name="reason" placeholder="E.g. slow-moving, discontinued"></div>
-      <div class="field full"><label>Notes</label><input name="notes"></div>
+      <div class="field"><label>Quantity</label><input type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
+      <div class="field"><label>Return Date</label><input type="date" name="return_date" value="{{ fv(form, 'return_date', today) }}"></div>
+      <div class="field"><label>Reason</label><input name="reason" value="{{ fv(form, 'reason') }}" placeholder="E.g. slow-moving, discontinued"></div>
+      <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Log Return</button>

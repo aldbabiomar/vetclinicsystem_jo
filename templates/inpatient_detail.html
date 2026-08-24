@@ -25,22 +25,22 @@
       <div class="form-grid">
         <div class="field"><label>Species / Sex / Age</label><div class="v" style="padding-top:8px;">{{ case.species }}{% if case.sex %} · {{ case.sex }}{% endif %}{% if case.age_note %} · {{ case.age_note }}{% endif %}</div></div>
         <div class="field"><label>Owner</label><div class="v" style="padding-top:8px;">{{ case.owner_name }} · {{ case.owner_phone or "no phone" }}</div></div>
-        <div class="field"><label>Weight (KG)</label><input type="number" step="0.1" min="0" name="weight_kg" value="{{ case.weight_kg if case.weight_kg is not none else '' }}"></div>
-        <div class="field"><label>BCS (1–9)</label><input type="number" step="1" min="1" max="9" name="bcs" value="{{ case.bcs if case.bcs is not none else '' }}"></div>
-        <div class="field full"><label>Presenting Complaint</label><input name="complaint" value="{{ case.complaint or '' }}"></div>
-        <div class="field full"><label>Physical Exam Findings &amp; Diagnostics</label><textarea name="exam_findings">{{ case.exam_findings or '' }}</textarea></div>
-        <div class="field full"><label>Admitted Items</label><input name="admitted_items" value="{{ case.admitted_items or '' }}"></div>
+        <div class="field"><label>Weight (KG)</label><input type="number" step="0.1" min="0" name="weight_kg" value="{{ fv(form, 'weight_kg', case.weight_kg if case.weight_kg is not none else '') }}"></div>
+        <div class="field"><label>BCS (1–9)</label><input type="number" step="1" min="1" max="9" name="bcs" value="{{ fv(form, 'bcs', case.bcs if case.bcs is not none else '') }}"></div>
+        <div class="field full"><label>Presenting Complaint</label><input name="complaint" value="{{ fv(form, 'complaint', case.complaint or '') }}"></div>
+        <div class="field full"><label>Physical Exam Findings &amp; Diagnostics</label><textarea name="exam_findings">{{ fv(form, 'exam_findings', case.exam_findings or '') }}</textarea></div>
+        <div class="field full"><label>Admitted Items</label><input name="admitted_items" value="{{ fv(form, 'admitted_items', case.admitted_items or '') }}"></div>
         <div class="field"><label>Attending Veterinarian</label>
-          <select name="attending_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}" {{ 'selected' if case.attending_vet_id==v.id }}>{{ v.full_name }}</option>{% endfor %}</select>
+          <select name="attending_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}" {{ 'selected' if fv(form, 'attending_vet_id', case.attending_vet_id)==v.id }}>{{ v.full_name }}</option>{% endfor %}</select>
         </div>
         <div class="field"><label>Supervising Veterinarian</label>
-          <select name="supervising_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}" {{ 'selected' if case.supervising_vet_id==v.id }}>{{ v.full_name }}</option>{% endfor %}</select>
+          <select name="supervising_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}" {{ 'selected' if fv(form, 'supervising_vet_id', case.supervising_vet_id)==v.id }}>{{ v.full_name }}</option>{% endfor %}</select>
         </div>
         <div class="field checkbox-row" style="margin-top:22px;">
-          <input type="checkbox" name="dismissed" id="dismissedBox" {{ 'checked' if case.dismissed }} onchange="toggleDismissal()">
+          <input type="checkbox" name="dismissed" id="dismissedBox" {{ 'checked' if fv(form, 'dismissed', 'on' if case.dismissed else '')=='on' }} onchange="toggleDismissal()">
           <label for="dismissedBox" style="text-transform:none; font-weight:500;">Dismissed</label>
         </div>
-        <div class="field dismissal-only"><label>Dismissal Date</label><input type="date" name="dismissal_date" id="dismissalDate" value="{{ case.dismissal_date or '' }}"></div>
+        <div class="field dismissal-only"><label>Dismissal Date</label><input type="date" name="dismissal_date" id="dismissalDate" value="{{ fv(form, 'dismissal_date', case.dismissal_date or '') }}"></div>
       </div>
       <div class="form-actions"><button class="btn" type="submit">Save</button></div>
     </form>
@@ -162,7 +162,7 @@
     <div class="detail-item" style="margin-top:12px;"><div class="k">Subtotal</div><div class="v">{{ billing.subtotal|money }} JOD</div></div>
     <form method="post" action="{{ url_for('inpatient_discount_save', case_id=case.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field" style="flex:1;"><label>Discount % (Max {{ discount_cap }}%)</label><input type="number" name="discount_percent" max="{{ discount_cap }}" min="0" value="{{ billing.discount_percent }}"></div>
+      <div class="field" style="flex:1;"><label>Discount % (Max {{ discount_cap }}%)</label><input type="number" name="discount_percent" max="{{ discount_cap }}" min="0" value="{{ fv(form, 'discount_percent', billing.discount_percent) if discount_error else billing.discount_percent }}"></div>
       <button class="btn small secondary" type="submit">Apply</button>
     </form>
     <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ billing.total|money }} JOD</div></div>
@@ -170,8 +170,15 @@
 
     <form method="post" action="{{ url_for('inpatient_payment_add', case_id=case.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="0.001" name="amount" required></div>
-      <div class="field"><label>Method</label><select name="method"><option>Cash</option><option>Card</option><option>Transfer</option></select></div>
+      <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="0.001" name="amount" required value="{{ fv(form, 'amount') if payment_error else '' }}"></div>
+      <div class="field"><label>Method</label>
+        <select name="method">
+          {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}
+          <option {{ 'selected' if m=='Cash' }}>Cash</option>
+          <option {{ 'selected' if m=='Card' }}>Card</option>
+          <option {{ 'selected' if m=='Transfer' }}>Transfer</option>
+        </select>
+      </div>
       <button class="btn small secondary" type="submit">Add</button>
     </form>
     {% for p in payments %}<div class="list-line small"><div>{{ p.date }} — {{ p.method }}</div><div>{{ p.amount|money }} JOD</div></div>{% endfor %}

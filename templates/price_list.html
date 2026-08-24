@@ -5,7 +5,7 @@
   <div><h1>Price List</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items.{% endif %} Admin-only page — visible to Vet/Reception only as a read-only picker while billing.</p></div>
   <div style="display:flex; gap:10px;">
     <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('price_list_bulk_edit') }}">Save Changes</button>
-    <button class="btn secondary" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
+    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
   </div>
 </div>
 
@@ -26,22 +26,23 @@
   {% if search %}<a class="btn secondary" href="{{ url_for('price_list', category=active_cat) }}">Clear</a>{% endif %}
 </form>
 
-<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+<div class="card" id="newForm" style="display:{{ 'block' if show_new_form else 'none' }}; margin-bottom:20px;">
   <form method="post" action="{{ url_for('price_list_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% set new_form = form if show_new_form else None %}
     <div class="form-grid">
-      <div class="field"><label>Name</label><input required name="name" id="newItemName"></div>
+      <div class="field"><label>Name</label><input required name="name" id="newItemName" value="{{ fv(new_form, 'name') }}"></div>
       <div class="field"><label>Category</label>
-        <select name="category" required onchange="toggleLink(this)">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select>
+        <select name="category" required onchange="toggleLink(this)">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select>
       </div>
-      <div class="field"><label>Cost Price (JOD)</label><input type="number" step="0.001" name="cost_price" id="newItemCost"></div>
-      <div class="field"><label>Sale Price (JOD)</label><input type="number" step="0.001" name="sale_price"></div>
+      <div class="field"><label>Cost Price (JOD)</label><input type="number" step="0.001" name="cost_price" id="newItemCost" value="{{ fv(new_form, 'cost_price') }}"></div>
+      <div class="field"><label>Sale Price (JOD)</label><input type="number" step="0.001" name="sale_price" value="{{ fv(new_form, 'sale_price') }}"></div>
       <div class="field link-field"><label>Linked Inventory Item (Retail Only — for POS)</label>
-        <select name="linked_item_id" onchange="fillFromLinkedItem(this)"><option value="">—</option>{% for i in inv_items %}<option value="{{ i.id }}" data-name="{{ i.name }}" data-cost="{{ i.cost_price if i.cost_price is not none else '' }}">{{ i.name }}</option>{% endfor %}</select>
+        <select name="linked_item_id" onchange="fillFromLinkedItem(this)"><option value="">—</option>{% for i in inv_items %}<option value="{{ i.id }}" data-name="{{ i.name }}" data-cost="{{ i.cost_price if i.cost_price is not none else '' }}" {{ 'selected' if fv(new_form, 'linked_item_id')==i.id }}>{{ i.name }}</option>{% endfor %}</select>
       </div>
-      <div class="field full"><label>Notes</label><input name="notes"></div>
+      <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(new_form, 'notes') }}"></div>
       <div class="field full">
-        <label class="checkbox-row small" style="text-transform:none; font-weight:500;"><input type="checkbox" name="can_discount" id="canDiscountNew" checked> Can Be Discounted?</label>
+        <label class="checkbox-row small" style="text-transform:none; font-weight:500;"><input type="checkbox" name="can_discount" id="canDiscountNew" {{ 'checked' if fv(new_form, 'can_discount', 'on')=='on' }}> Can Be Discounted?</label>
         <p class="small muted" style="margin:2px 0 0;">Checked = a discount can be applied to a bill that includes this item. Unchecked = it blocks any discount on that bill.</p>
       </div>
     </div>
@@ -57,20 +58,21 @@
   <thead><tr><th>ID</th><th>Name</th><th>Category</th><th class="num-col">Cost (JOD)</th><th class="num-col">Sale (JOD)</th><th>Notes</th><th title="Checked = a discount can be applied to a bill including this item.">Can Be Discounted?</th><th></th></tr></thead>
   <tbody>
     {% for i in items %}
+    {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}
     <form id="edit-{{ i.id }}" method="post" action="{{ url_for('price_list_edit', item_id=i.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_price }}" {% if i.id in flagged_price %}title="Retail data inconsistency: this item's Linked Inventory Item doesn't match an active Retail item in Inventory Catalog."{% endif %}>
       <td class="muted">{{ i.id }}</td>
-      <td><input form="edit-{{ i.id }}" name="name" value="{{ i.name }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td><input form="edit-{{ i.id }}" name="name" value="{{ fv(row_form, 'name', i.name) }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
       <td>
         <select form="edit-{{ i.id }}" name="category" style="border:none; background:transparent;">
-          {% for c in categories %}<option {{ 'selected' if i.category==c }}>{{ c }}</option>{% endfor %}
+          {% for c in categories %}<option {{ 'selected' if fv(row_form, 'category', i.category)==c }}>{{ c }}</option>{% endfor %}
         </select>
       </td>
-      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="cost_price" value="{{ i.cost_price if i.cost_price is not none else '' }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
-      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="sale_price" value="{{ i.sale_price if i.sale_price is not none else '' }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
-      <td><input form="edit-{{ i.id }}" name="notes" value="{{ i.notes or '' }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
-      <td style="text-align:center;"><input form="edit-{{ i.id }}" type="checkbox" name="can_discount" {{ 'checked' if i.can_discount }}></td>
+      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="cost_price" value="{{ fv(row_form, 'cost_price', i.cost_price if i.cost_price is not none else '') }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
+      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="sale_price" value="{{ fv(row_form, 'sale_price', i.sale_price if i.sale_price is not none else '') }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
+      <td><input form="edit-{{ i.id }}" name="notes" value="{{ fv(row_form, 'notes', i.notes or '') }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td style="text-align:center;"><input form="edit-{{ i.id }}" type="checkbox" name="can_discount" {{ 'checked' if fv(row_form, 'can_discount', 'on' if i.can_discount else '')=='on' }}></td>
       <td style="white-space:nowrap;">
         <form method="post" action="{{ url_for('price_list_delete', item_id=i.id) }}" style="display:inline;" data-confirm="Remove {{ i.name }}?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

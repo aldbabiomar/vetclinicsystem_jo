@@ -92,10 +92,10 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="display:flex; gap:16px; margin-bottom:12px;">
           <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-            <input type="radio" name="billing_type" value="Automatic" onchange="toggleBillingType()" id="btAuto" {{ 'checked' if not billing or billing.billing_type=='Automatic' }}> Automatic Calculation
+            <input type="radio" name="billing_type" value="Automatic" onchange="toggleBillingType()" id="btAuto" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Automatic' }}> Automatic Calculation
           </label>
           <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-            <input type="radio" name="billing_type" value="Manual" onchange="toggleBillingType()" id="btManual" {{ 'checked' if billing and billing.billing_type=='Manual' }}> Manual Entry
+            <input type="radio" name="billing_type" value="Manual" onchange="toggleBillingType()" id="btManual" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Manual' }}> Manual Entry
           </label>
         </div>
         <div id="autoFields" class="field full" style="margin-bottom:12px;">
@@ -108,10 +108,10 @@
         </div>
         <div id="manualFields" class="field full" style="margin-bottom:12px;">
           <label>Billed Amount (JOD) — Exported as "Veterinary Services"</label>
-          <input type="number" step="0.001" name="manual_amount" value="{{ billing.manual_amount if billing and billing.manual_amount else '' }}">
+          <input type="number" step="0.001" name="manual_amount" value="{{ fv(form, 'manual_amount', billing.manual_amount if billing and billing.manual_amount else '') }}">
         </div>
-        <div class="field full" style="margin-bottom:12px;"><label>Date Billed</label><input type="date" name="date_billed" value="{{ billing.date_billed if billing else visit.date }}"></div>
-        <div class="field full" style="margin-bottom:14px;"><label>Notes</label><input name="notes" value="{{ billing.notes if billing else '' }}"></div>
+        <div class="field full" style="margin-bottom:12px;"><label>Date Billed</label><input type="date" name="date_billed" value="{{ fv(form, 'date_billed', billing.date_billed if billing else visit.date) }}"></div>
+        <div class="field full" style="margin-bottom:14px;"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes', billing.notes if billing else '') }}"></div>
         <button class="btn small" type="submit" onclick="return prepareBillingSubmit()">Save Billing</button>
       </form>
 
@@ -120,7 +120,7 @@
         <div class="detail-item" style="margin-top:8px;"><div class="k">Subtotal</div><div class="v">{{ summary.subtotal|money }} JOD</div></div>
         <form method="post" action="{{ url_for('visit_discount_save', visit_id=visit.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="field" style="flex:1;"><label>Discount % (Max {{ discount_cap }}%)</label><input type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ summary.discount_percent }}"></div>
+          <div class="field" style="flex:1;"><label>Discount % (Max {{ discount_cap }}%)</label><input type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ fv(form, 'discount_percent', summary.discount_percent) if discount_error else summary.discount_percent }}"></div>
           <button class="btn small secondary" type="submit">Apply</button>
         </form>
         <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} JOD</div></div>
@@ -130,8 +130,15 @@
 
       <form method="post" action="{{ url_for('visit_payment_add', visit_id=visit.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="0.001" name="amount" required></div>
-        <div class="field"><label>Method</label><select name="method"><option>Cash</option><option>Card</option><option>Transfer</option></select></div>
+        <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="0.001" name="amount" required value="{{ fv(form, 'amount') if payment_error else '' }}"></div>
+        <div class="field"><label>Method</label>
+          <select name="method">
+            {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}
+            <option {{ 'selected' if m=='Cash' }}>Cash</option>
+            <option {{ 'selected' if m=='Card' }}>Card</option>
+            <option {{ 'selected' if m=='Transfer' }}>Transfer</option>
+          </select>
+        </div>
         <button class="btn small secondary" type="submit">Add</button>
       </form>
       {% if payments %}

@@ -11,24 +11,24 @@
   <div id="searchResults" style="margin-top:10px;"></div>
 </div>
 
-<div class="card" id="formCard" style="display:none;">
-  <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel"></strong></p>
+<div class="card" id="formCard" style="display:{{ 'block' if selected_patient_id else 'none' }};">
+  <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel">{{ selected_patient_label or '' }}</strong></p>
   <form method="post" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="patient_id" id="patientIdField">
+    <input type="hidden" name="patient_id" id="patientIdField" value="{{ selected_patient_id or '' }}">
     <div class="form-grid">
-      <div class="field"><label>Admission Date</label><input required type="date" name="admission_date" value="{{ today }}"></div>
-      <div class="field"><label>Weight (KG)</label><input type="number" step="0.1" min="0" name="weight_kg"></div>
-      <div class="field"><label>BCS (1–9)</label><input type="number" step="1" min="1" max="9" name="bcs"></div>
+      <div class="field"><label>Admission Date</label><input required type="date" name="admission_date" value="{{ fv(form, 'admission_date', today) }}"></div>
+      <div class="field"><label>Weight (KG)</label><input type="number" step="0.1" min="0" name="weight_kg" value="{{ fv(form, 'weight_kg') }}"></div>
+      <div class="field"><label>BCS (1–9)</label><input type="number" step="1" min="1" max="9" name="bcs" value="{{ fv(form, 'bcs') }}"></div>
       <div class="field"><label>Attending Veterinarian</label>
-        <select name="attending_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}">{{ v.full_name }}</option>{% endfor %}</select>
+        <select name="attending_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}" {{ 'selected' if fv(form, 'attending_vet_id')==v.id }}>{{ v.full_name }}</option>{% endfor %}</select>
       </div>
       <div class="field"><label>Supervising Veterinarian</label>
-        <select name="supervising_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}">{{ v.full_name }}</option>{% endfor %}</select>
+        <select name="supervising_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}" {{ 'selected' if fv(form, 'supervising_vet_id')==v.id }}>{{ v.full_name }}</option>{% endfor %}</select>
       </div>
-      <div class="field full"><label>Presenting Complaint</label><input name="complaint"></div>
-      <div class="field full"><label>Physical Exam Findings &amp; Diagnostics</label><textarea name="exam_findings"></textarea></div>
-      <div class="field full"><label>Admitted Items (Leash, Carrier, Etc.)</label><input name="admitted_items"></div>
+      <div class="field full"><label>Presenting Complaint</label><input name="complaint" value="{{ fv(form, 'complaint') }}"></div>
+      <div class="field full"><label>Physical Exam Findings &amp; Diagnostics</label><textarea name="exam_findings">{{ fv(form, 'exam_findings') }}</textarea></div>
+      <div class="field full"><label>Admitted Items (Leash, Carrier, Etc.)</label><input name="admitted_items" value="{{ fv(form, 'admitted_items') }}"></div>
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Admit</button>

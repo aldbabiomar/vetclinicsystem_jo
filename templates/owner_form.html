@@ -6,10 +6,10 @@
 <form method="post" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="form-grid">
-    <div class="field"><label>Name</label><input required name="name" value="{{ owner.name if owner else '' }}"></div>
-    <div class="field"><label>Phone</label><input name="phone" value="{{ owner.phone if owner else '' }}"></div>
-    <div class="field full"><label>Address</label><input name="address" value="{{ owner.address if owner else '' }}"></div>
-    <div class="field full"><label>Notes</label><textarea name="notes">{{ owner.notes if owner else '' }}</textarea></div>
+    <div class="field"><label>Name</label><input required name="name" value="{{ fv(form, 'name', owner.name if owner else '') }}"></div>
+    <div class="field"><label>Phone</label><input name="phone" value="{{ fv(form, 'phone', owner.phone if owner else '') }}" data-phone-field></div>
+    <div class="field full"><label>Address</label><input name="address" value="{{ fv(form, 'address', owner.address if owner else '') }}"></div>
+    <div class="field full"><label>Notes</label><textarea name="notes">{{ fv(form, 'notes', owner.notes if owner else '') }}</textarea></div>
   </div>
   <div class="form-actions">
     <button class="btn" type="submit">{{ 'Save Changes' if owner else 'Add Owner' }}</button>
@@ -18,4 +18,5 @@
 </form>
 </div>
 <script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
+<script src="{{ url_for('static', filename='phone-validate.js') }}"></script>
 {% endblock %}

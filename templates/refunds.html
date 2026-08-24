@@ -21,18 +21,23 @@
       <div class="detail-item"><div class="k">Refund Total</div><div class="v" id="refundCartTotal" style="font-size:20px; font-weight:700;">0 JOD</div></div>
 
       <label class="checkbox-row small" style="margin:12px 0; font-weight:500; text-transform:none;">
-        <input type="checkbox" id="restockCheck" checked> Return item(s) to stock
+        <input type="checkbox" id="restockCheck" {{ 'checked' if fv(retail_form, 'restock', 'on')=='on' }}> Return item(s) to stock
       </label>
 
       <form method="post" action="{{ url_for('refund_retail_save') }}" id="retailRefundForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="sale_id" id="refundSaleIdHidden">
         <div class="form-grid">
-          <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="{{ today }}"></div>
+          <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="{{ fv(retail_form, 'refund_date', today) }}"></div>
           <div class="field"><label>Method</label>
-            <select name="refund_method"><option value="">—</option><option>Cash</option><option>Card</option><option>Transfer</option></select>
+            <select name="refund_method">
+              <option value="" {{ 'selected' if fv(retail_form, 'refund_method')=='' }}>—</option>
+              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Cash' }}>Cash</option>
+              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Card' }}>Card</option>
+              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Transfer' }}>Transfer</option>
+            </select>
           </div>
-          <div class="field"><label>Reason (optional)</label><input type="text" name="reason" placeholder="e.g. wrong item, customer changed mind"></div>
+          <div class="field"><label>Reason (optional)</label><input type="text" name="reason" value="{{ fv(retail_form, 'reason') }}" placeholder="e.g. wrong item, customer changed mind"></div>
         </div>
         <input type="hidden" name="restock" id="restockHidden">
         <div id="refundFieldsHidden"></div>
@@ -49,14 +54,19 @@
     <form method="post" action="{{ url_for('refund_service_save') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
-        <div class="field"><label>Refund Amount (JOD)</label><input type="number" name="amount" min="1" step="0.001" required></div>
-        <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="{{ today }}"></div>
+        <div class="field"><label>Refund Amount (JOD)</label><input type="number" name="amount" min="1" step="0.001" required value="{{ fv(service_form, 'amount') }}"></div>
+        <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="{{ fv(service_form, 'refund_date', today) }}"></div>
         <div class="field"><label>Method</label>
-          <select name="refund_method"><option value="">—</option><option>Cash</option><option>Card</option><option>Transfer</option></select>
+          <select name="refund_method">
+            <option value="" {{ 'selected' if fv(service_form, 'refund_method')=='' }}>—</option>
+            <option {{ 'selected' if fv(service_form, 'refund_method')=='Cash' }}>Cash</option>
+            <option {{ 'selected' if fv(service_form, 'refund_method')=='Card' }}>Card</option>
+            <option {{ 'selected' if fv(service_form, 'refund_method')=='Transfer' }}>Transfer</option>
+          </select>
         </div>
-        <div class="field"><label>Visit ID (optional)</label><input type="text" name="visit_id" placeholder="e.g. V001"></div>
-        <div class="field"><label>Inpatient Case ID (optional)</label><input type="text" name="inpatient_case_id" placeholder="e.g. 12"></div>
-        <div class="field" style="grid-column:1/-1;"><label>Reason (optional)</label><input type="text" name="reason" placeholder="e.g. service not completed"></div>
+        <div class="field"><label>Visit ID (optional)</label><input type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
+        <div class="field"><label>Inpatient Case ID (optional)</label><input type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
+        <div class="field" style="grid-column:1/-1;"><label>Reason (optional)</label><input type="text" name="reason" value="{{ fv(service_form, 'reason') }}" placeholder="e.g. service not completed"></div>
       </div>
       <div class="form-actions"><button class="btn" type="submit">Process Service Refund</button></div>
     </form>

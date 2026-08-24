@@ -40,19 +40,20 @@
     {% set eff = latest_confirmed.get(it.id) %}
     <tr>
       <td><strong>{{ it.name }}</strong>{% if it.ownership_type == 'Consignment' %} <span class="badge" style="margin-left:4px;">consignment</span>{% endif %}<div class="small muted">{{ it.unit or '' }}</div></td>
-      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="stock_{{ it.id }}" value="{{ line.stock_counted if line and line.stock_counted is not none else '' }}" style="width:80px; text-align:right;"></td>
-      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="received_{{ it.id }}" value="{{ line.received_since_prior if line else 0 }}" style="width:70px; text-align:right;"></td>
-      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="threshold_{{ it.id }}" value="{{ line.reorder_threshold if line and line.reorder_threshold is not none else '' }}" placeholder="{{ eff.effective_reorder_threshold if eff else '' }}" style="width:70px; text-align:right;"></td>
+      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="stock_{{ it.id }}" value="{{ fv(form, 'stock_' ~ it.id, line.stock_counted if line and line.stock_counted is not none else '') }}" style="width:80px; text-align:right;"></td>
+      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="received_{{ it.id }}" value="{{ fv(form, 'received_' ~ it.id, line.received_since_prior if line else 0) }}" style="width:70px; text-align:right;"></td>
+      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="threshold_{{ it.id }}" value="{{ fv(form, 'threshold_' ~ it.id, line.reorder_threshold if line and line.reorder_threshold is not none else '') }}" placeholder="{{ eff.effective_reorder_threshold if eff else '' }}" style="width:70px; text-align:right;"></td>
       <td>
         <select {{ 'disabled' if readonly }} name="critical_{{ it.id }}" style="width:80px;">
+          {% set crit = fv(form, 'critical_' ~ it.id, ('Y' if line and line.critical_item==1 else ('N' if line and line.critical_item==0 else ''))) %}
           <option value="">{% if eff and eff.effective_critical_item %}(Y){% elif eff %}(N){% else %}—{% endif %}</option>
-          <option value="Y" {{ 'selected' if line and line.critical_item==1 }}>Y</option>
-          <option value="N" {{ 'selected' if line and line.critical_item==0 }}>N</option>
+          <option value="Y" {{ 'selected' if crit=='Y' }}>Y</option>
+          <option value="N" {{ 'selected' if crit=='N' }}>N</option>
         </select>
       </td>
-      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="target_{{ it.id }}" value="{{ line.target_coverage_days if line and line.target_coverage_days is not none else '' }}" placeholder="{{ eff.effective_target_coverage_days if eff else 30 }}" style="width:70px; text-align:right;"></td>
-      <td><input {{ 'disabled' if readonly }} type="date" name="expiry_{{ it.id }}" value="{{ line.nearest_expiry_date if line else '' }}"></td>
-      <td><input {{ 'disabled' if readonly }} name="notes_{{ it.id }}" value="{{ line.notes if line else '' }}" style="width:100px;"></td>
+      <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="target_{{ it.id }}" value="{{ fv(form, 'target_' ~ it.id, line.target_coverage_days if line and line.target_coverage_days is not none else '') }}" placeholder="{{ eff.effective_target_coverage_days if eff else 30 }}" style="width:70px; text-align:right;"></td>
+      <td><input {{ 'disabled' if readonly }} type="date" name="expiry_{{ it.id }}" value="{{ fv(form, 'expiry_' ~ it.id, line.nearest_expiry_date if line else '') }}"></td>
+      <td><input {{ 'disabled' if readonly }} name="notes_{{ it.id }}" value="{{ fv(form, 'notes_' ~ it.id, line.notes if line else '') }}" style="width:100px;"></td>
     </tr>
     {% endfor %}
   </tbody>

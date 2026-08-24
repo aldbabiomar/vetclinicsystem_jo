@@ -7,37 +7,37 @@
     <p class="page-sub">Damaged/expired Consignment stock, written off before it sold. {{ total_count }} entr{{ 'y' if total_count == 1 else 'ies' }} on file.</p>
   </div>
   {% if has_permission('manage_consignment_stock') %}
-  <button class="btn" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Log Shrinkage</button>
+  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Log Shrinkage</button>
   {% endif %}
 </div>
 
 {% if has_permission('manage_consignment_stock') %}
-<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+<div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:20px;">
   <form method="post" action="{{ url_for('consignment_shrinkage_new') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
       <div class="field"><label>Item</label>
         <select name="item_id" required>
           <option value="">—</option>
-          {% for i in items %}<option value="{{ i.id }}">{{ i.name }} ({{ i.distributor_name }})</option>{% endfor %}
+          {% for i in items %}<option value="{{ i.id }}" {{ 'selected' if fv(form, 'item_id')==i.id }}>{{ i.name }} ({{ i.distributor_name }})</option>{% endfor %}
         </select>
       </div>
-      <div class="field"><label>Quantity</label><input type="number" step="any" name="quantity" required></div>
+      <div class="field"><label>Quantity</label><input type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
       <div class="field"><label>Reason</label>
         <select name="reason" required>
-          <option value="Damaged">Damaged</option>
-          <option value="Expired">Expired</option>
-          <option value="Other">Other</option>
+          <option value="Damaged" {{ 'selected' if fv(form, 'reason', 'Damaged')=='Damaged' }}>Damaged</option>
+          <option value="Expired" {{ 'selected' if fv(form, 'reason', 'Damaged')=='Expired' }}>Expired</option>
+          <option value="Other" {{ 'selected' if fv(form, 'reason', 'Damaged')=='Other' }}>Other</option>
         </select>
       </div>
       <div class="field"><label>Liable Party</label>
         <select name="liable_party">
-          <option value="">Default for reason (Expired → Distributor, else → Clinic)</option>
-          <option value="Distributor">Distributor</option>
-          <option value="Clinic">Clinic</option>
+          <option value="" {{ 'selected' if fv(form, 'liable_party')=='' }}>Default for reason (Expired → Distributor, else → Clinic)</option>
+          <option value="Distributor" {{ 'selected' if fv(form, 'liable_party')=='Distributor' }}>Distributor</option>
+          <option value="Clinic" {{ 'selected' if fv(form, 'liable_party')=='Clinic' }}>Clinic</option>
         </select>
       </div>
-      <div class="field full"><label>Notes</label><input name="notes"></div>
+      <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes') }}"></div>
     </div>
     <p class="small muted" style="margin:4px 0 12px;">Clinic-liable shrinkage adds to what's owed the distributor at settlement — they're
       still owed for stock lost on your side. Distributor-liable shrinkage adds nothing — they absorb that loss directly.</p>

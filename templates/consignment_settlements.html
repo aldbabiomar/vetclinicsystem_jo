@@ -22,14 +22,14 @@
   {% if has_permission('manage_consignment_settlements') %}
   <form method="post" action="{{ url_for('consignment_settlement_new', distributor_id=distributor.id) }}" class="form-grid" style="margin-top:16px;" data-confirm="Record this settlement? The amount owed will be recalculated at the moment you submit.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="field"><label>Amount Paid (JOD)</label><input type="number" step="0.001" name="amount_paid" value="{{ balance.amount_owed }}" required></div>
+    <div class="field"><label>Amount Paid (JOD)</label><input type="number" step="0.001" name="amount_paid" value="{{ fv(form, 'amount_paid', balance.amount_owed) }}" required></div>
     <div class="field"><label>Payment Method</label>
       <select name="payment_method">
-        <option value="">—</option>
-        <option>Cash</option><option>Card</option><option>Transfer</option>
+        <option value="" {{ 'selected' if fv(form, 'payment_method')=='' }}>—</option>
+        <option {{ 'selected' if fv(form, 'payment_method')=='Cash' }}>Cash</option><option {{ 'selected' if fv(form, 'payment_method')=='Card' }}>Card</option><option {{ 'selected' if fv(form, 'payment_method')=='Transfer' }}>Transfer</option>
       </select>
     </div>
-    <div class="field full"><label>Notes</label><input name="notes"></div>
+    <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes') }}"></div>
     <div class="field full">
       <button class="btn" type="submit">Record Settlement</button>
     </div>

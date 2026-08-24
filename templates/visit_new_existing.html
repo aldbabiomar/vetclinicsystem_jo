@@ -11,12 +11,12 @@
   <div id="searchResults" style="margin-top:10px;"></div>
 </div>
 
-<div class="card" id="visitFormCard" style="display:none;">
-  <p class="small muted" style="margin-bottom:14px;">Selected patient: <strong id="selectedPatientLabel"></strong></p>
+<div class="card" id="visitFormCard" style="display:{{ 'block' if selected_patient_id else 'none' }};">
+  <p class="small muted" style="margin-bottom:14px;">Selected patient: <strong id="selectedPatientLabel">{{ selected_patient_label or '' }}</strong></p>
   <form method="post" id="visitForm" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="patient_id" id="patientIdField">
-    <div class="field full"><label>Presenting Complaint / Reason for Visit</label><input name="complaint"></div>
+    <input type="hidden" name="patient_id" id="patientIdField" value="{{ selected_patient_id or '' }}">
+    <div class="field full"><label>Presenting Complaint / Reason for Visit</label><input name="complaint" value="{{ fv(form, 'complaint') }}"></div>
     {% include "_visit_fields.html" %}
     <div class="form-actions">
       <button class="btn" type="submit">Log Visit</button>

@@ -9,7 +9,7 @@
     <button class="btn secondary" type="button" onclick="document.getElementById('bulkBarcodeModal').style.display='flex'; loadBulkBarcodeList();">Bulk Barcode Print</button>
     {% endif %}
     <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory_catalog_bulk_edit') }}">Save Changes</button>
-    <button class="btn secondary" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
+    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
   </div>
 </div>
 
@@ -30,19 +30,20 @@
   {% if search %}<a class="btn secondary" href="{{ url_for('inventory_catalog', inactive=1 if show_inactive else None) }}">Clear</a>{% endif %}
 </form>
 
-<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+<div class="card" id="newForm" style="display:{{ 'block' if show_new_form else 'none' }}; margin-bottom:20px;">
   <form method="post" action="{{ url_for('inventory_catalog_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% set new_form = form if show_new_form else None %}
     <div class="form-grid">
-      <div class="field"><label>Item Name</label><input required name="name"></div>
-      <div class="field"><label>Category</label><select name="category">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select></div>
-      <div class="field"><label>Unit</label><input name="unit" placeholder="Bottle, Box, Piece…"></div>
-      <div class="field"><label>Cost Price (JOD)</label><input type="number" step="0.001" name="cost_price"></div>
+      <div class="field"><label>Item Name</label><input required name="name" value="{{ fv(new_form, 'name') }}"></div>
+      <div class="field"><label>Category</label><select name="category">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Unit</label><input name="unit" placeholder="Bottle, Box, Piece…" value="{{ fv(new_form, 'unit') }}"></div>
+      <div class="field"><label>Cost Price (JOD)</label><input type="number" step="0.001" name="cost_price" value="{{ fv(new_form, 'cost_price') }}"></div>
       <div class="field"><label>Preferred Distributor</label>
-        <select name="distributor_id"><option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select>
+        <select name="distributor_id"><option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if fv(new_form, 'distributor_id')==d.id }}>{{ d.name }}</option>{% endfor %}</select>
       </div>
-      <div class="field checkbox-row" style="margin-top:22px;"><input type="checkbox" name="track_expiry" checked id="te"><label for="te" style="text-transform:none; font-weight:500;">Track Expiry Date</label></div>
-      <div class="field full"><label>Notes</label><input name="notes"></div>
+      <div class="field checkbox-row" style="margin-top:22px;"><input type="checkbox" name="track_expiry" id="te" {{ 'checked' if fv(new_form, 'track_expiry', 'on')=='on' }}><label for="te" style="text-transform:none; font-weight:500;">Track Expiry Date</label></div>
+      <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(new_form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Add Item</button>
@@ -67,26 +68,27 @@
   <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Unit</th><th>Barcode</th><th style="white-space:normal;">Track Expiry</th><th class="num-col">Cost (JOD)</th><th>Distributor</th><th></th></tr></thead>
   <tbody>
     {% for i in items %}
+    {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}
     <form id="edit-{{ i.id }}" method="post" action="{{ url_for('inventory_catalog_edit', item_id=i.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_inventory }}" {% if i.id in flagged_inventory %}title="Retail data inconsistency: no active Retail Price List item is linked to this inventory item."{% endif %}>
       <td class="muted">{{ i.id }}</td>
-      <td><input form="edit-{{ i.id }}" name="name" value="{{ i.name }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
-      <td><select form="edit-{{ i.id }}" name="category" style="border:none; background:transparent;">{% for c in categories %}<option {{ 'selected' if i.category==c }}>{{ c }}</option>{% endfor %}</select></td>
-      <td><input form="edit-{{ i.id }}" name="unit" value="{{ i.unit or '' }}" style="border:none; background:transparent; padding:2px; width:70px;"></td>
+      <td><input form="edit-{{ i.id }}" name="name" value="{{ fv(row_form, 'name', i.name) }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td><select form="edit-{{ i.id }}" name="category" style="border:none; background:transparent;">{% for c in categories %}<option {{ 'selected' if fv(row_form, 'category', i.category)==c }}>{{ c }}</option>{% endfor %}</select></td>
+      <td><input form="edit-{{ i.id }}" name="unit" value="{{ fv(row_form, 'unit', i.unit or '') }}" style="border:none; background:transparent; padding:2px; width:70px;"></td>
       <td class="small muted">
         {% if i.barcode %}<span style="font-family:monospace;">{{ i.barcode }}</span> <a href="{{ url_for('inventory_barcode_label', item_id=i.id) }}">print</a><br>{% endif %}
         <button class="btn small secondary" type="button" data-item-id="{{ i.id }}" data-item-name="{{ i.name }}"
                 onclick="openBarcodeManager(this.dataset.itemId, this.dataset.itemName)">{{ 'Manage Barcode' if i.barcode else 'Add Barcode' }}</button>
       </td>
-      <td><input form="edit-{{ i.id }}" type="checkbox" name="track_expiry" {{ 'checked' if i.track_expiry }}></td>
-      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="cost_price" value="{{ i.cost_price if i.cost_price is not none else '' }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
+      <td><input form="edit-{{ i.id }}" type="checkbox" name="track_expiry" {{ 'checked' if fv(row_form, 'track_expiry', 'on' if i.track_expiry else '')=='on' }}></td>
+      <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="cost_price" value="{{ fv(row_form, 'cost_price', i.cost_price if i.cost_price is not none else '') }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
       <td class="dist-cell">
         <span class="dist-label" id="distLabel-{{ i.id }}" onclick="toggleDistEdit('{{ i.id }}')" title="Click to change distributor">{{ i.distributor_name or "—" }}</span>
         <select form="edit-{{ i.id }}" name="distributor_id" id="distSelect-{{ i.id }}" class="dist-select"
           onchange="document.getElementById('distLabel-{{ i.id }}').textContent = this.options[this.selectedIndex].text; this.style.display='none'; document.getElementById('distLabel-{{ i.id }}').style.display='inline';"
           onblur="this.style.display='none'; document.getElementById('distLabel-{{ i.id }}').style.display='inline';">
-          <option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if i.distributor_id==d.id }}>{{ d.name }}</option>{% endfor %}
+          <option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if fv(row_form, 'distributor_id', i.distributor_id)==d.id }}>{{ d.name }}</option>{% endfor %}
         </select>
       </td>
       <td style="white-space:nowrap;">

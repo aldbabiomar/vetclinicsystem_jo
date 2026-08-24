@@ -1,20 +1,23 @@
 {# Included by visit_new_existing.html, visit_new_patient.html, and visit_form_edit.html.
-   Expects: vets, wellness_types, grooming_services in context; `visit` may be defined (edit mode) or undefined (new). #}
+   Expects: vets, wellness_types, grooming_services in context; `visit` may be defined (edit mode) or undefined (new).
+   `form` (the raw submitted request.form) may also be defined, when this is redisplaying a
+   rejected submit — in that case it takes priority over both `visit` and the new-record
+   defaults, via the fv() helper, so the person sees exactly what they just typed. #}
 
 <div class="section-title">Visit</div>
 <div class="form-grid">
-  <div class="field"><label>Date</label><input required type="date" name="date" value="{{ visit.date if visit else today }}"></div>
+  <div class="field"><label>Date</label><input required type="date" name="date" value="{{ fv(form, 'date', visit.date if visit else today) }}"></div>
   <div class="field"><label>Doctor</label>
     <select name="doctor">
       <option value="">Select Vet…</option>
-      {% for v in vets %}<option value="{{ v.full_name }}" {{ 'selected' if visit and visit.doctor==v.full_name }}>{{ v.full_name }}</option>{% endfor %}
+      {% for v in vets %}<option value="{{ v.full_name }}" {{ 'selected' if fv(form, 'doctor', visit.doctor if visit else '')==v.full_name }}>{{ v.full_name }}</option>{% endfor %}
     </select>
   </div>
-  <div class="field"><label>Weight (KG)</label><input type="number" step="0.1" min="0" name="weight_kg" value="{{ visit.weight_kg if visit and visit.weight_kg is not none else '' }}"></div>
-  <div class="field"><label>BCS (1–9)</label><input type="number" step="1" min="1" max="9" name="bcs" value="{{ visit.bcs if visit and visit.bcs is not none else '' }}"></div>
+  <div class="field"><label>Weight (KG)</label><input type="number" step="0.1" min="0" name="weight_kg" value="{{ fv(form, 'weight_kg', visit.weight_kg if visit and visit.weight_kg is not none else '') }}"></div>
+  <div class="field"><label>BCS (1–9)</label><input type="number" step="1" min="1" max="9" name="bcs" value="{{ fv(form, 'bcs', visit.bcs if visit and visit.bcs is not none else '') }}"></div>
   {% if not visit %}
   <div class="field checkbox-row" style="margin-top:22px;">
-    <input type="checkbox" name="admit_inpatient" id="admitNow"><label for="admitNow" style="text-transform:none; font-weight:500;">Admit as Inpatient Now</label>
+    <input type="checkbox" name="admit_inpatient" id="admitNow" {{ 'checked' if fv(form, 'admit_inpatient')=='on' }}><label for="admitNow" style="text-transform:none; font-weight:500;">Admit as Inpatient Now</label>
   </div>
   {% endif %}
 </div>
@@ -23,23 +26,23 @@
   <div class="field">
     <label>Wellness Visit?</label>
     <select name="wellness_needed" id="wellnessNeeded" onchange="toggleWellness()">
-      <option value="N" {{ 'selected' if visit and visit.wellness_needed=='N' or not visit }}>No</option>
-      <option value="Y" {{ 'selected' if visit and visit.wellness_needed=='Y' }}>Yes</option>
+      <option value="N" {{ 'selected' if fv(form, 'wellness_needed', visit.wellness_needed if visit else 'N')=='N' }}>No</option>
+      <option value="Y" {{ 'selected' if fv(form, 'wellness_needed', visit.wellness_needed if visit else 'N')=='Y' }}>Yes</option>
     </select>
   </div>
   <div class="field wellness-only"><label>Wellness Type</label>
     <select name="wellness_type">
       <option value="">—</option>
-      {% for w in wellness_types %}<option {{ 'selected' if visit and visit.wellness_type==w }}>{{ w }}</option>{% endfor %}
+      {% for w in wellness_types %}<option {{ 'selected' if fv(form, 'wellness_type', visit.wellness_type if visit else '')==w }}>{{ w }}</option>{% endfor %}
     </select>
   </div>
-  <div class="field wellness-only"><label>Next Dose Date</label><input type="date" name="wellness_next_dose_date" id="wellnessNextDoseDate" value="{{ visit.wellness_next_dose_date if visit else '' }}"></div>
+  <div class="field wellness-only"><label>Next Dose Date</label><input type="date" name="wellness_next_dose_date" id="wellnessNextDoseDate" value="{{ fv(form, 'wellness_next_dose_date', visit.wellness_next_dose_date if visit else '') }}"></div>
 
   <div class="field">
     <label>Grooming?</label>
     <select name="grooming_needed" id="groomingNeeded" onchange="toggleGrooming()">
-      <option value="N" {{ 'selected' if visit and visit.grooming_needed=='N' or not visit }}>No</option>
-      <option value="Y" {{ 'selected' if visit and visit.grooming_needed=='Y' }}>Yes</option>
+      <option value="N" {{ 'selected' if fv(form, 'grooming_needed', visit.grooming_needed if visit else 'N')=='N' }}>No</option>
+      <option value="Y" {{ 'selected' if fv(form, 'grooming_needed', visit.grooming_needed if visit else 'N')=='Y' }}>Yes</option>
     </select>
   </div>
 </div>
@@ -47,7 +50,7 @@
 <div class="grooming-only" style="margin-top:10px;">
   <label class="small" style="font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--ink-soft);">Grooming Services</label>
   <div style="display:flex; flex-wrap:wrap; gap:14px; margin:8px 0 14px;">
-    {% set current_services = (visit.grooming_services.split(',') if visit and visit.grooming_services else []) %}
+    {% set current_services = (form.getlist('grooming_services') if form else (visit.grooming_services.split(',') if visit and visit.grooming_services else [])) %}
     {% for gs in grooming_services %}
     <label class="checkbox-row small" style="text-transform:none; font-weight:400;">
       <input type="checkbox" name="grooming_services" value="{{ gs }}" {{ 'checked' if gs in current_services }}> {{ gs }}
@@ -55,8 +58,8 @@
     {% endfor %}
   </div>
   <div class="form-grid">
-    <div class="field full"><label>Grooming Notes</label><textarea name="grooming_notes">{{ visit.grooming_notes if visit else '' }}</textarea></div>
-    <div class="field full"><label>Admitted Items (Leash, Carrier, Etc.)</label><input name="grooming_admitted_items" value="{{ visit.grooming_admitted_items if visit else '' }}"></div>
+    <div class="field full"><label>Grooming Notes</label><textarea name="grooming_notes">{{ fv(form, 'grooming_notes', visit.grooming_notes if visit else '') }}</textarea></div>
+    <div class="field full"><label>Admitted Items (Leash, Carrier, Etc.)</label><input name="grooming_admitted_items" value="{{ fv(form, 'grooming_admitted_items', visit.grooming_admitted_items if visit else '') }}"></div>
   </div>
 </div>
 

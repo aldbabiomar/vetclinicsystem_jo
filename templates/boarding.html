@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div><h1>Boarding</h1><p class="page-sub">{{ total_count }} {{ 'boarding session(s)' }}{% if not show_all %} currently boarding{% endif %}.</p></div>
-  <button class="btn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Add Boarding</button>
+  <button class="btn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Add Boarding</button>
 </div>
 
 <div class="filter-chips">
@@ -11,33 +11,34 @@
   <a class="chip {{ 'active' if show_all }}" href="{{ url_for('boarding_page', all=1) }}">All (Incl. Picked Up)</a>
 </div>
 
-<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+{% set new_form = form if open_new_form else None %}
+<div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:20px;">
   <div class="field" style="margin-bottom:12px;">
     <label>Search Patient (Name, Patient ID, Owner Name, or Owner Phone)</label>
     <input type="text" id="patientSearch" autocomplete="off" placeholder="Start Typing…">
   </div>
   <div id="searchResults" style="margin-bottom:10px;"></div>
 
-  <form method="post" action="{{ url_for('boarding_new') }}" id="addBoardingForm" style="display:none;">
+  <form method="post" action="{{ url_for('boarding_new') }}" id="addBoardingForm" style="display:{{ 'block' if open_new_form else 'none' }};">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel"></strong></p>
-    <input type="hidden" name="patient_id" id="patientIdField">
+    <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel">{{ new_form_patient_label or '' }}</strong></p>
+    <input type="hidden" name="patient_id" id="patientIdField" value="{{ fv(new_form, 'patient_id') }}">
     <div class="form-grid">
-      <div class="field"><label>Entry Date</label><input required type="date" name="entry_date" value="{{ today }}" onchange="suggestTotal()" id="entryDateField"></div>
-      <div class="field"><label>Expected Dismissal Date</label><input type="date" name="dismissal_date" onchange="suggestTotal()" id="dismissalDateField"></div>
-      <div class="field"><label>Allocated Room</label><input name="room"></div>
-      <div class="field"><label>Admitted Items (Leash, Bed, Etc.)</label><input name="admitted_items"></div>
-      <div class="field"><label>Price per Day (JOD)</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" onchange="suggestTotal()"></div>
-      <div class="field"><label>Total (JOD)</label><input type="number" step="0.001" min="0" name="total" id="totalField" placeholder="Auto-suggested from price × nights"></div>
+      <div class="field"><label>Entry Date</label><input required type="date" name="entry_date" value="{{ fv(new_form, 'entry_date', today) }}" onchange="suggestTotal()" id="entryDateField"></div>
+      <div class="field"><label>Expected Dismissal Date</label><input type="date" name="dismissal_date" value="{{ fv(new_form, 'dismissal_date') }}" onchange="suggestTotal()" id="dismissalDateField"></div>
+      <div class="field"><label>Allocated Room</label><input name="room" value="{{ fv(new_form, 'room') }}"></div>
+      <div class="field"><label>Admitted Items (Leash, Bed, Etc.)</label><input name="admitted_items" value="{{ fv(new_form, 'admitted_items') }}"></div>
+      <div class="field"><label>Price per Day (JOD)</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" value="{{ fv(new_form, 'price_per_day') }}" onchange="suggestTotal()"></div>
+      <div class="field"><label>Total (JOD)</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="Auto-suggested from price × nights"></div>
       <div class="field full" id="boardingDateWarning" style="display:none; color:var(--danger);"></div>
       <div class="field full">
         <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-          <input type="checkbox" name="special_needs" id="specialNeedsCheck" onchange="document.getElementById('specialNeedsNotesField').style.display = this.checked ? 'block' : 'none';">
+          <input type="checkbox" name="special_needs" id="specialNeedsCheck" {{ 'checked' if fv(new_form, 'special_needs')=='on' }} onchange="document.getElementById('specialNeedsNotesField').style.display = this.checked ? 'block' : 'none';">
           Special Needs?
         </label>
         <p class="small muted" style="margin:2px 0 8px;">Check this to report any chronic diseases or custom requirements for the stay (medication schedule, dietary restrictions, mobility issues, etc.).</p>
-        <div id="specialNeedsNotesField" style="display:none;">
-          <textarea name="special_needs_notes" placeholder="Describe the special need…"></textarea>
+        <div id="specialNeedsNotesField" style="display:{{ 'block' if fv(new_form, 'special_needs')=='on' else 'none' }};">
+          <textarea name="special_needs_notes" placeholder="Describe the special need…">{{ fv(new_form, 'special_needs_notes') }}</textarea>
         </div>
       </div>
     </div>
@@ -79,9 +80,16 @@
     <p class="small muted" id="paymentPatientLabel" style="margin-bottom:12px;"></p>
     <form method="post" id="paymentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field" style="margin-bottom:10px;"><label>Amount (JOD)</label><input type="number" step="0.001" min="1" name="amount" required></div>
-      <div class="field" style="margin-bottom:10px;"><label>Method</label><select name="method"><option>Cash</option><option>Card</option><option>Transfer</option></select></div>
-      <div class="field full" style="margin-bottom:12px;"><label>Notes</label><input name="notes"></div>
+      <div class="field" style="margin-bottom:10px;"><label>Amount (JOD)</label><input type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label>Method</label>
+        <select name="method">
+          {% set m = fv(form, 'method', 'Cash') if payment_error_id else 'Cash' %}
+          <option {{ 'selected' if m=='Cash' }}>Cash</option>
+          <option {{ 'selected' if m=='Card' }}>Card</option>
+          <option {{ 'selected' if m=='Transfer' }}>Transfer</option>
+        </select>
+      </div>
+      <div class="field full" style="margin-bottom:12px;"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes') if payment_error_id else '' }}"></div>
       <div class="form-actions">
         <button class="btn small" type="submit">Record Payment</button>
         <button class="btn small secondary" type="button" onclick="document.getElementById('paymentModal').style.display='none';">Cancel</button>
@@ -131,23 +139,24 @@
         </div>
       </td>
     </tr>
-    <tr id="editRow-{{ s.id }}" style="display:none;">
+    {% set row_form = form if edit_boarding_id == s.id else None %}
+    <tr id="editRow-{{ s.id }}" style="display:{{ 'table-row' if edit_boarding_id == s.id else 'none' }};">
       <td colspan="10">
         <form method="post" action="{{ url_for('boarding_edit', boarding_id=s.id) }}" class="form-grid" style="padding:10px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="expected_updated_at" value="{{ s.updated_at or '' }}">
-          <div class="field"><label>Entry Date</label><input type="date" name="entry_date" value="{{ s.entry_date }}"></div>
-          <div class="field"><label>Dismissal Date</label><input type="date" name="dismissal_date" value="{{ s.dismissal_date or '' }}"></div>
-          <div class="field"><label>Room</label><input name="room" value="{{ s.room or '' }}"></div>
-          <div class="field"><label>Admitted Items</label><input name="admitted_items" value="{{ s.admitted_items or '' }}"></div>
-          <div class="field"><label>Price per Day (JOD)</label><input type="number" step="0.001" name="price_per_day" value="{{ s.price_per_day if s.price_per_day is not none else '' }}"></div>
+          <div class="field"><label>Entry Date</label><input type="date" name="entry_date" value="{{ fv(row_form, 'entry_date', s.entry_date) }}"></div>
+          <div class="field"><label>Dismissal Date</label><input type="date" name="dismissal_date" value="{{ fv(row_form, 'dismissal_date', s.dismissal_date or '') }}"></div>
+          <div class="field"><label>Room</label><input name="room" value="{{ fv(row_form, 'room', s.room or '') }}"></div>
+          <div class="field"><label>Admitted Items</label><input name="admitted_items" value="{{ fv(row_form, 'admitted_items', s.admitted_items or '') }}"></div>
+          <div class="field"><label>Price per Day (JOD)</label><input type="number" step="0.001" name="price_per_day" value="{{ fv(row_form, 'price_per_day', s.price_per_day if s.price_per_day is not none else '') }}"></div>
           <div class="field"><label>Total (JOD)</label><input type="number" step="0.001" name="total" placeholder="Auto-suggested from price × nights"
-            value="{{ s.total if (s.total is not none and not s.total_is_auto) else '' }}"></div>
+            value="{{ fv(row_form, 'total', s.total if (s.total is not none and not s.total_is_auto) else '') }}"></div>
           <div class="field full">
             <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-              <input type="checkbox" name="special_needs" id="specialNeedsCheck-{{ s.id }}" {{ 'checked' if s.special_needs }} onchange="document.getElementById('specialNeedsNotesField-' + {{ s.id }}).style.display = this.checked ? 'block' : 'none';"> Special Needs?
+              <input type="checkbox" name="special_needs" id="specialNeedsCheck-{{ s.id }}" {{ 'checked' if fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on' }} onchange="document.getElementById('specialNeedsNotesField-' + {{ s.id }}).style.display = this.checked ? 'block' : 'none';"> Special Needs?
             </label>
-            <textarea name="special_needs_notes" id="specialNeedsNotesField-{{ s.id }}" placeholder="Describe the special need…" style="display: {{ 'block' if s.special_needs else 'none' }};">{{ s.special_needs_notes or '' }}</textarea>
+            <textarea name="special_needs_notes" id="specialNeedsNotesField-{{ s.id }}" placeholder="Describe the special need…" style="display: {{ 'block' if (fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on') else 'none' }};">{{ fv(row_form, 'special_needs_notes', s.special_needs_notes or '') }}</textarea>
             {% if s.special_needs_notes and not s.special_needs %}
             <p class="small muted">Notes on file but Special Needs is unchecked — they won't be saved unless you check the box.</p>
             {% endif %}
@@ -231,5 +240,8 @@ function toggleEdit(id) {
   const row = document.getElementById('editRow-' + id);
   row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
 }
+{% if payment_error_id %}
+openPayment(document.querySelector('button[data-id="{{ payment_error_id }}"][onclick="openPayment(this)"]'));
+{% endif %}
 </script>
 {% endblock %}

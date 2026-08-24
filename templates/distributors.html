@@ -6,7 +6,7 @@
     <h1>Distributors</h1>
     <p class="page-sub">{{ distributors|length }} on file.</p>
   </div>
-  <button class="btn" id="newItemBtn" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Distributor</button>
+  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Distributor</button>
 </div>
 
 <div class="stat-grid">
@@ -44,18 +44,19 @@
   {% if search %}<a class="btn secondary" href="{{ url_for('distributors_list') }}">Clear</a>{% endif %}
 </form>
 
-<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+<div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:20px;">
   <form method="post" action="{{ url_for('distributor_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% set new_form = form if open_new_form else None %}
     <div class="form-grid">
-      <div class="field"><label>Distributor Name</label><input required name="name"></div>
-      <div class="field"><label>Contact Person</label><input name="contact_person"></div>
-      <div class="field"><label>Phone</label><input name="phone"></div>
-      <div class="field"><label>Email</label><input type="email" name="email"></div>
-      <div class="field"><label>Product Catalog Link</label><input name="catalog_link"></div>
-      <div class="field"><label>Lead Time (Days)</label><input type="number" name="lead_time_days"></div>
-      <div class="field"><label>Payment Terms</label><input name="payment_terms" placeholder="E.g. Net 30"></div>
-      <div class="field full"><label>Notes</label><input name="notes"></div>
+      <div class="field"><label>Distributor Name</label><input required name="name" value="{{ fv(new_form, 'name') }}"></div>
+      <div class="field"><label>Contact Person</label><input name="contact_person" value="{{ fv(new_form, 'contact_person') }}"></div>
+      <div class="field"><label>Phone</label><input name="phone" value="{{ fv(new_form, 'phone') }}" data-phone-field></div>
+      <div class="field"><label>Email</label><input type="email" name="email" value="{{ fv(new_form, 'email') }}"></div>
+      <div class="field"><label>Product Catalog Link</label><input name="catalog_link" value="{{ fv(new_form, 'catalog_link') }}"></div>
+      <div class="field"><label>Lead Time (Days)</label><input type="number" name="lead_time_days" value="{{ fv(new_form, 'lead_time_days') }}"></div>
+      <div class="field"><label>Payment Terms</label><input name="payment_terms" value="{{ fv(new_form, 'payment_terms') }}" placeholder="E.g. Net 30"></div>
+      <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(new_form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Add Distributor</button>
@@ -71,16 +72,17 @@
   </tr></thead>
   <tbody>
     {% for d in distributors %}
+    {% set row_form = form if edit_dist_id == d.id else None %}
     <form id="edit-{{ d.id }}" method="post" action="{{ url_for('distributor_edit', dist_id=d.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr>
       <td class="muted">{{ d.id }}</td>
-      <td><input form="edit-{{ d.id }}" name="name" value="{{ d.name }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
-      <td><input form="edit-{{ d.id }}" name="contact_person" value="{{ d.contact_person or '' }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
-      <td><input form="edit-{{ d.id }}" name="phone" value="{{ d.phone or '' }}" style="border:none; background:transparent; padding:2px; width:110px;"></td>
-      <td><input form="edit-{{ d.id }}" name="email" value="{{ d.email or '' }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
-      <td class="num-col"><input form="edit-{{ d.id }}" type="number" name="lead_time_days" value="{{ d.lead_time_days if d.lead_time_days is not none else '' }}" style="border:none; background:transparent; padding:2px; width:50px; text-align:right;"></td>
-      <td><input form="edit-{{ d.id }}" name="payment_terms" value="{{ d.payment_terms or '' }}" style="border:none; background:transparent; padding:2px; width:80px;"></td>
+      <td><input form="edit-{{ d.id }}" name="name" value="{{ fv(row_form, 'name', d.name) }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td><input form="edit-{{ d.id }}" name="contact_person" value="{{ fv(row_form, 'contact_person', d.contact_person or '') }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td><input form="edit-{{ d.id }}" name="phone" value="{{ fv(row_form, 'phone', d.phone or '') }}" style="border:none; background:transparent; padding:2px; width:110px;" data-phone-field></td>
+      <td><input form="edit-{{ d.id }}" name="email" value="{{ fv(row_form, 'email', d.email or '') }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td class="num-col"><input form="edit-{{ d.id }}" type="number" name="lead_time_days" value="{{ fv(row_form, 'lead_time_days', d.lead_time_days if d.lead_time_days is not none else '') }}" style="border:none; background:transparent; padding:2px; width:50px; text-align:right;"></td>
+      <td><input form="edit-{{ d.id }}" name="payment_terms" value="{{ fv(row_form, 'payment_terms', d.payment_terms or '') }}" style="border:none; background:transparent; padding:2px; width:80px;"></td>
       <td class="num-col">{{ outstanding.get(d.id)|money if outstanding.get(d.id) else "—" }}</td>
       <td style="white-space:nowrap;">
         <a class="btn small secondary" href="{{ url_for('distributor_detail', dist_id=d.id) }}">Ledger</a>
@@ -97,4 +99,5 @@
   </tbody>
 </table>
 </div>
+<script src="{{ url_for('static', filename='phone-validate.js') }}"></script>
 {% endblock %}
