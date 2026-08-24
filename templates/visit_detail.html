@@ -110,7 +110,7 @@
           <label>Billed Amount (JOD) — Exported as "Veterinary Services"</label>
           <input type="number" step="0.001" name="manual_amount" value="{{ fv(form, 'manual_amount', billing.manual_amount if billing and billing.manual_amount else '') }}">
         </div>
-        <div class="field full" style="margin-bottom:12px;"><label>Date Billed</label><input type="date" name="date_billed" value="{{ fv(form, 'date_billed', billing.date_billed if billing else visit.date) }}"></div>
+        <div class="field full" style="margin-bottom:12px;"><label>Date Billed</label><input type="date" name="date_billed" required value="{{ fv(form, 'date_billed', billing.date_billed if billing else (visit.date or today)) }}"></div>
         <div class="field full" style="margin-bottom:14px;"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes', billing.notes if billing else '') }}"></div>
         <button class="btn small" type="submit" onclick="return prepareBillingSubmit()">Save Billing</button>
       </form>
@@ -125,12 +125,14 @@
         </form>
         <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} JOD</div></div>
         <div class="detail-item"><div class="k">Paid</div><div class="v">{{ summary.paid|money }} JOD</div></div>
+        {% if summary.cleanup_amount %}<div class="detail-item"><div class="k">Clean Up applied</div><div class="v">{{ summary.cleanup_amount|money }} JOD</div></div>{% endif %}
         <span class="badge {{ 'ok' if summary.status=='Fully Paid' else ('danger' if summary.status=='Unpaid' else 'muted') }}">{{ summary.status }}</span>
       </div>
 
       <form method="post" action="{{ url_for('visit_payment_add', visit_id=visit.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="0.001" name="amount" required value="{{ fv(form, 'amount') if payment_error else '' }}"></div>
+        <div class="field"><label>Clean Up (max {{ CLEANUP_CAP }} JOD)</label><input type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error else '0' }}"></div>
         <div class="field"><label>Method</label>
           <select name="method">
             {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}

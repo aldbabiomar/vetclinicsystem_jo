@@ -17,7 +17,15 @@
       <td>{{ s.performed_by_name or "—" }}</td>
       <td><span class="badge {{ 'ok' if s.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if s.status=='Confirmed' else 'Saved' }}</span></td>
       <td class="num-col">{{ s.lines_filled }}</td>
-      <td><a class="btn small secondary" href="{{ url_for('audit_session_view', session_id=s.id) }}">View</a></td>
+      <td style="display:flex; gap:6px;">
+        <a class="btn small secondary" href="{{ url_for('audit_session_view', session_id=s.id) }}">View</a>
+        {% if s.status != 'Confirmed' %}
+        <form method="post" action="{{ url_for('audit_session_delete', session_id=s.id) }}" style="display:inline;" data-confirm="Discard this draft audit? This can't be undone.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn small danger" type="submit">Discard</button>
+        </form>
+        {% endif %}
+      </td>
     </tr>
     {% else %}<tr><td colspan="5" class="empty-note">No audits logged yet — start one above.</td></tr>{% endfor %}
   </tbody>

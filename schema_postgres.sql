@@ -250,6 +250,13 @@ CREATE TABLE IF NOT EXISTS inventory_list (
     -- enforced in app.py, not just here.
     barcode_source TEXT CHECK (barcode_source IN ('manual','generated')),
     notes TEXT,
+    -- A Consignment item is by definition somebody's stock — the whole
+    -- consignment layer (balance, overview, the receiving/shrinkage/
+    -- returns pickers) inner-joins distributors, so an item in this state
+    -- with no distributor silently disappears from all of it while still
+    -- selling as consignment stock. See ORPHANED_RECORDS_AUDIT.md F-07.
+    CONSTRAINT inventory_consignment_needs_distributor_ck
+        CHECK (ownership_type <> 'Consignment' OR distributor_id IS NOT NULL),
     FOREIGN KEY (distributor_id) REFERENCES distributors(id)
 );
 
@@ -315,7 +322,12 @@ CREATE TABLE IF NOT EXISTS inventory_transactions (
     ref_id TEXT,
     timestamp TEXT NOT NULL,
     user_id TEXT,
-    FOREIGN KEY (item_id) REFERENCES inventory_list(id)
+    FOREIGN KEY (item_id) REFERENCES inventory_list(id),
+    -- See ORPHANED_RECORDS_AUDIT.md F-19 — 14 user-referencing columns
+    -- across this schema had no FK; nothing dangles today (no delete-user
+    -- route exists, deactivate only), but the protection was accidental.
+    -- RESTRICT matches how both apps already behave.
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_invtxn_item ON inventory_transactions(item_id);
 
@@ -443,7 +455,9 @@ CREATE TABLE IF NOT EXISTS visits (
     -- Set on every visit_edit() save — lets the edit form detect (and
     -- refuse to silently overwrite) a concurrent edit by someone else.
     updated_at TEXT,
-    FOREIGN KEY (patient_id) REFERENCES patients(id)
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    -- See F-19.
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_visits_patient ON visits(patient_id);
 CREATE INDEX IF NOT EXISTS idx_visits_date ON visits(date);
@@ -464,7 +478,15 @@ CREATE TABLE IF NOT EXISTS billing (
     -- every time lines/discount/manual_amount change. Reports read this
     -- instead of re-deriving subtotal*(1-discount%) independently.
     total NUMERIC(12,3) NOT NULL DEFAULT 0,
-    FOREIGN KEY (visit_id) REFERENCES visits(id)
+    -- "Clean Up" — a capped, explicit staff write-off applied at payment
+    -- time (see CLEANUP_FEATURE_PLAN.md). Cumulative running total ever
+    -- forgiven on this bill.
+    cleanup_amount NUMERIC(12,3) NOT NULL DEFAULT 0,
+    cleanup_applied_by TEXT,
+    FOREIGN KEY (visit_id) REFERENCES visits(id),
+    -- See F-19.
+    FOREIGN KEY (discount_applied_by) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 
 -- Automatic visit billing's line items, snapshotted at Save time (search-
@@ -516,12 +538,18 @@ CREATE TABLE IF NOT EXISTS boarding_sessions (
     -- report read instead of recomputing per row — kept in sync by
     -- logic.refresh_boarding_total() every time the session is saved.
     billed_total NUMERIC(12,3),
+    -- "Clean Up" write-off — see the matching comment on billing.cleanup_amount.
+    cleanup_amount NUMERIC(12,3) NOT NULL DEFAULT 0,
+    cleanup_applied_by TEXT,
     dismissed BOOLEAN NOT NULL DEFAULT FALSE,   -- has the animal actually left yet
     created_by TEXT,
     -- Set on every boarding_edit() save — lets the edit form detect (and
     -- refuse to silently overwrite) a concurrent edit by someone else.
     updated_at TEXT,
-    FOREIGN KEY (patient_id) REFERENCES patients(id)
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    -- See F-19.
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_boarding_patient ON boarding_sessions(patient_id);
 
@@ -535,7 +563,9 @@ CREATE TABLE IF NOT EXISTS boarding_incidents (
     contact_method TEXT,                        -- 'Phone Call' / 'Text Message'
     response TEXT,
     user_id TEXT,
-    FOREIGN KEY (boarding_id) REFERENCES boarding_sessions(id)
+    FOREIGN KEY (boarding_id) REFERENCES boarding_sessions(id),
+    -- See F-19.
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_boardingincidents_boarding ON boarding_incidents(boarding_id);
 
@@ -561,13 +591,20 @@ CREATE TABLE IF NOT EXISTS inpatient_cases (
     -- actually charges), kept in sync by logic.refresh_inpatient_total()
     -- every time procedures/discount change.
     total NUMERIC(12,3) NOT NULL DEFAULT 0,
+    -- "Clean Up" write-off — see the matching comment on billing.cleanup_amount.
+    cleanup_amount NUMERIC(12,3) NOT NULL DEFAULT 0,
+    cleanup_applied_by TEXT,
     -- Set on every inpatient_edit() save — lets the edit form detect (and
     -- refuse to silently overwrite) a concurrent edit by someone else.
     updated_at TEXT,
     FOREIGN KEY (patient_id) REFERENCES patients(id),
     FOREIGN KEY (visit_id) REFERENCES visits(id),
     FOREIGN KEY (attending_vet_id) REFERENCES users(id),
-    FOREIGN KEY (supervising_vet_id) REFERENCES users(id)
+    FOREIGN KEY (supervising_vet_id) REFERENCES users(id),
+    -- See F-19.
+    FOREIGN KEY (discount_applied_by) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_inpatient_patient ON inpatient_cases(patient_id);
 
@@ -581,6 +618,16 @@ CREATE TABLE IF NOT EXISTS payments (
     date DATE NOT NULL,
     user_id TEXT,
     notes TEXT,
+    -- Every payment belongs to exactly one of the three billable record
+    -- types. All three columns are nullable so any one of them can be
+    -- used; nothing previously stopped a row from using none of them,
+    -- which cash_register_totals() would still have counted. See
+    -- ORPHANED_RECORDS_AUDIT.md F-14.
+    CONSTRAINT payments_one_anchor_ck CHECK (
+        (visit_id IS NOT NULL)::int
+      + (inpatient_case_id IS NOT NULL)::int
+      + (boarding_id IS NOT NULL)::int = 1
+    ),
     FOREIGN KEY (visit_id) REFERENCES visits(id),
     FOREIGN KEY (inpatient_case_id) REFERENCES inpatient_cases(id),
     FOREIGN KEY (boarding_id) REFERENCES boarding_sessions(id),
@@ -596,7 +643,9 @@ CREATE TABLE IF NOT EXISTS inpatient_updates (
     timestamp TEXT NOT NULL,
     note TEXT NOT NULL,
     user_id TEXT,
-    FOREIGN KEY (case_id) REFERENCES inpatient_cases(id)
+    FOREIGN KEY (case_id) REFERENCES inpatient_cases(id),
+    -- See F-19.
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_inpupdates_case ON inpatient_updates(case_id);
 
@@ -607,7 +656,9 @@ CREATE TABLE IF NOT EXISTS inpatient_contact_log (
     picked_up INTEGER NOT NULL,
     staff_user_id TEXT,
     notes TEXT,
-    FOREIGN KEY (case_id) REFERENCES inpatient_cases(id)
+    FOREIGN KEY (case_id) REFERENCES inpatient_cases(id),
+    -- See F-19.
+    FOREIGN KEY (staff_user_id) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_inpcontact_case ON inpatient_contact_log(case_id);
 
@@ -627,7 +678,9 @@ CREATE TABLE IF NOT EXISTS inpatient_billing (
     logged_by TEXT,
     timestamp TEXT NOT NULL,
     FOREIGN KEY (case_id) REFERENCES inpatient_cases(id),
-    FOREIGN KEY (price_id) REFERENCES price_list(id)
+    FOREIGN KEY (price_id) REFERENCES price_list(id),
+    -- See F-19.
+    FOREIGN KEY (logged_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_inpbilling_case ON inpatient_billing(case_id);
 
@@ -641,6 +694,12 @@ CREATE TABLE IF NOT EXISTS attachments (
     original_name TEXT NOT NULL,
     uploaded_at TEXT NOT NULL,
     uploaded_by TEXT,
+    -- list_attachments() only ever queries by visit_id OR
+    -- inpatient_case_id, so a row with neither is invisible everywhere —
+    -- and so is the clinical file it points at. See
+    -- ORPHANED_RECORDS_AUDIT.md F-13.
+    CONSTRAINT attachments_one_anchor_ck
+        CHECK ((visit_id IS NOT NULL) <> (inpatient_case_id IS NOT NULL)),
     FOREIGN KEY (patient_id) REFERENCES patients(id),
     FOREIGN KEY (visit_id) REFERENCES visits(id),
     FOREIGN KEY (inpatient_case_id) REFERENCES inpatient_cases(id),
@@ -675,7 +734,15 @@ CREATE TABLE IF NOT EXISTS sales (
     -- before inserting a new one; NULL for any sale that predates this
     -- column (never collides — see idx_sales_idempotency_key below).
     idempotency_key TEXT,
-    FOREIGN KEY (cashier_id) REFERENCES users(id)
+    -- "Clean Up" write-off — see the matching comment on billing.cleanup_amount.
+    -- POS is single-shot (one sale, no repeat payments), so this is set
+    -- once at checkout rather than accumulated across submissions.
+    cleanup_amount NUMERIC(12,3) NOT NULL DEFAULT 0,
+    cleanup_applied_by TEXT,
+    FOREIGN KEY (cashier_id) REFERENCES users(id),
+    -- See F-19.
+    FOREIGN KEY (discount_applied_by) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_idempotency_key ON sales(idempotency_key) WHERE idempotency_key IS NOT NULL;
 
@@ -692,6 +759,13 @@ CREATE TABLE IF NOT EXISTS sale_items (
     -- month's COGS every time an item's cost is edited). Nullable: an
     -- item without a cost_price set has nothing to snapshot.
     unit_cost NUMERIC(12,3),
+    -- Distributor snapshotted at sale time, alongside unit_cost above —
+    -- this is what makes consignment_balance()'s attribution historically
+    -- stable: re-pointing an item to a different distributor afterward
+    -- (Inventory Catalog) no longer moves a past sale's cost with it.
+    -- NULL for non-Consignment items and for sales that predate this
+    -- column. See ORPHANED_RECORDS_AUDIT.md F-07.
+    distributor_id TEXT REFERENCES distributors(id),
     FOREIGN KEY (sale_id) REFERENCES sales(id),
     FOREIGN KEY (item_id) REFERENCES inventory_list(id)
 );
@@ -726,9 +800,26 @@ CREATE TABLE IF NOT EXISTS refunds (
     refund_method TEXT,
     processed_by TEXT,
     created_at TEXT NOT NULL,
+    -- Snapshot of the originating sale's/bill's cleanup_amount at the
+    -- moment this refund was recorded — see CLEANUP_FEATURE_PLAN.md §4.5.
+    -- Written once, not a live lookup, so this row stays self-contained
+    -- even if the original bill's cleanup_amount changes afterward.
+    cleanup_amount_at_refund NUMERIC(12,3) NOT NULL DEFAULT 0,
+    -- A refund always reverses exactly one thing: a POS sale (retail), or
+    -- one visit or one inpatient case (service). A goodwill/no-specific-record
+    -- refund is handled through Cash Register instead, not this table.
+    -- See ORPHANED_RECORDS_AUDIT.md F-05.
+    CONSTRAINT refunds_anchor_ck CHECK (
+        (refund_type = 'retail'  AND sale_id IS NOT NULL
+            AND visit_id IS NULL AND inpatient_case_id IS NULL)
+     OR (refund_type = 'service' AND sale_id IS NULL
+            AND (visit_id IS NOT NULL) <> (inpatient_case_id IS NOT NULL))
+    ),
     FOREIGN KEY (sale_id) REFERENCES sales(id),
     FOREIGN KEY (visit_id) REFERENCES visits(id),
-    FOREIGN KEY (inpatient_case_id) REFERENCES inpatient_cases(id)
+    FOREIGN KEY (inpatient_case_id) REFERENCES inpatient_cases(id),
+    -- See F-19.
+    FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_refunds_date ON refunds(refund_date);
 CREATE INDEX IF NOT EXISTS idx_refunds_sale ON refunds(sale_id);
@@ -825,7 +916,12 @@ CREATE TABLE IF NOT EXISTS appointments (
     appointment_type TEXT NOT NULL CHECK (appointment_type IN ('Medical','Grooming')),
     reason TEXT,
     created_by TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    -- resource_id is the one that already demonstrably orphans —
+    -- logic.orphaned_appointments() exists precisely because this
+    -- reference can stop resolving. See F-19.
+    FOREIGN KEY (resource_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_appt_date ON appointments(appt_date);
 

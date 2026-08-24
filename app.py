@@ -33,6 +33,7 @@ from flask import (
 )
 from flask.json.provider import DefaultJSONProvider
 from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 
 import logic
@@ -154,7 +155,23 @@ def _reject_null_bytes():
             or any("\x00" in v for v in request.args.values())
             or any("\x00" in v for v in request.form.values())):
         return ("Bad Request", 400)
+    # JSON-body routes (bulk-edit endpoints etc.) bypass request.form
+    # entirely, so a null byte there reached Postgres unfiltered — the
+    # form-value check above never runs for them. See ERROR_500_AUDIT.md
+    # E-14.
+    if request.method == "POST" and request.is_json and _has_null(request.get_json(silent=True)):
+        return ("Bad Request", 400)
     return None
+
+
+def _has_null(value):
+    if isinstance(value, str):
+        return "\x00" in value
+    if isinstance(value, dict):
+        return any(_has_null(k) or _has_null(v) for k, v in value.items())
+    if isinstance(value, list):
+        return any(_has_null(v) for v in value)
+    return False
 
 
 # Simple in-memory per-IP rate limit on login attempts — independent of
@@ -261,6 +278,16 @@ def get_db():
     return g.db
 
 
+def mark_transaction_failed():
+    """Call from any error handler that runs *after* an exception has been
+    caught and turned into a rendered response — @app.errorhandler(Exception)
+    swallows the exception before it can reach close_db()'s teardown
+    argument, so without this, teardown sees exc=None and commits whatever
+    the request had already written, half-finished transaction included.
+    See ORPHANED_RECORDS_AUDIT.md F-01."""
+    g.db_failed = True
+
+
 def is_safe_local_path(path):
     """Only allow redirects to relative, in-app paths (no scheme/host)."""
     if not path:
@@ -277,10 +304,11 @@ def is_safe_local_path(path):
 @app.teardown_appcontext
 def close_db(exc):
     db = g.pop("db", None)
+    failed = g.pop("db_failed", False)
     if db is not None:
         try:
             try:
-                if exc is None:
+                if exc is None and not failed:
                     db.commit()
                 else:
                     db.rollback()
@@ -309,6 +337,15 @@ class BadNumber(ValueError):
     isn't a valid number — lets the route catch it once and show a friendly
     error instead of a raw ValueError (Python) or invalid-input-syntax
     error (Postgres) turning into an uncaught 500."""
+
+
+# The widest value any NUMERIC(12,3) column in this schema can hold. Checked
+# here, once, rather than at each call site — an amount past this is always a
+# typo (a phone number into a price field is the common one), and letting it
+# reach Postgres turns that typo into a 500 mid-form instead of a flash. See
+# ERROR_500_AUDIT.md E-06.
+MAX_MONEY = Decimal("999999999.999")
+MAX_QUANTITY = Decimal("9999999.999")  # widest value any NUMERIC(10,3) column can hold
 
 
 def parse_money(raw, required=False):
@@ -343,21 +380,69 @@ def parse_money(raw, required=False):
     # needing its own guard.
     if not val.is_finite():
         raise BadNumber(raw)
+    if abs(val) > MAX_MONEY:
+        raise BadNumber(f"{raw} is too large — check for a typo.")
     return val
 
 
-def parse_int(raw, required=False):
-    """Same shape as parse_money(), for INTEGER columns (e.g. lead_time_days).
-    Blank collapses to None; non-numeric input raises BadNumber instead of
-    reaching the DB and surfacing as a raw Postgres cast error."""
+def parse_quantity(raw, required=False):
+    """Same shape as parse_money(), for NUMERIC(10,3) quantity columns
+    (POS cart, refund lines, inpatient billing) — bounded at that column
+    type's own ceiling rather than MAX_MONEY's wider one. See
+    ERROR_500_AUDIT.md E-06."""
     if raw is None or str(raw).strip() == "":
         if required:
             raise BadNumber("required")
         return None
     try:
-        return int(raw)
+        val = Decimal(str(raw).strip())
+    except InvalidOperation:
+        raise BadNumber(raw)
+    if not val.is_finite():
+        raise BadNumber(raw)
+    if abs(val) > MAX_QUANTITY:
+        raise BadNumber(f"{raw} is too large — check for a typo.")
+    return val
+
+
+# Flat ceiling on the cumulative "Clean Up" write-off allowed per bill —
+# see CLEANUP_FEATURE_PLAN.md §3.3. Not per-role; a global constant.
+CLEANUP_CAP = Decimal("1.000")
+
+
+MAX_INT = 2_147_483_647  # widest value any INTEGER column in this schema can hold
+
+
+def parse_int(raw, required=False):
+    """Same shape as parse_money(), for INTEGER columns (e.g. lead_time_days).
+    Blank collapses to None; non-numeric input raises BadNumber instead of
+    reaching the DB and surfacing as a raw Postgres cast error. Bounded at
+    MAX_INT so an oversized value degrades to a flash instead of a raw
+    Postgres overflow error. See ERROR_500_AUDIT.md E-06."""
+    if raw is None or str(raw).strip() == "":
+        if required:
+            raise BadNumber("required")
+        return None
+    try:
+        val = int(raw)
     except ValueError:
         raise BadNumber(raw)
+    if abs(val) > MAX_INT:
+        raise BadNumber(f"{raw} is too large — check for a typo.")
+    return val
+
+
+BCS_MIN, BCS_MAX = 1, 9
+
+
+def parse_bcs(raw):
+    """Mirrors the CHECK (bcs BETWEEN 1 AND 9) constraint on visits/
+    inpatient_cases so an out-of-range value is a friendly flash rather
+    than a raw CheckViolation. See ERROR_500_AUDIT.md E-05."""
+    val = parse_int(raw)
+    if val is not None and not (BCS_MIN <= val <= BCS_MAX):
+        raise BadNumber(f"Body Condition Score must be between {BCS_MIN} and {BCS_MAX}.")
+    return val
 
 
 class BadDate(ValueError):
@@ -671,6 +756,7 @@ app.jinja_env.globals["pagination_url"] = pagination_url
 app.jinja_env.globals["has_permission"] = auth.has_permission
 app.jinja_env.globals["bind_port"] = BIND_PORT
 app.jinja_env.globals["fv"] = form_value
+app.jinja_env.globals["CLEANUP_CAP"] = CLEANUP_CAP
 
 
 # ---------------------------------------------------------------------------
@@ -783,12 +869,25 @@ def _fallback_redirect():
     return redirect(url_for("dashboard"))
 
 
+def required_field(f, key, label):
+    """Returns the stripped value, or None (with a flash already set) if
+    it's missing or blank. Covers both the KeyError case (f[key] on a
+    missing key raises BadRequestKeyError) and the empty-string case,
+    which NOT NULL alone does not. See ERROR_500_AUDIT.md E-04."""
+    val = (f.get(key) or "").strip()
+    if not val:
+        flash(f"{label} is required.", "error")
+        return None
+    return val
+
+
 @app.errorhandler(BadNumber)
 def handle_bad_number(e):
     """Safety net for BadNumber. Most routes already catch this themselves
     with a field-specific message (e.g. 'Payment amount must be a valid
     number.'); this exists so a route that forgets to catch it degrades to
     a flashed error instead of an uncaught 500."""
+    mark_transaction_failed()
     flash("One of the number fields on that form wasn't valid. Please check the amounts and try again.", "error")
     return _fallback_redirect()
 
@@ -796,8 +895,53 @@ def handle_bad_number(e):
 @app.errorhandler(BadPhone)
 def handle_bad_phone(e):
     """Safety net for BadPhone — same idea as handle_bad_number() above."""
+    mark_transaction_failed()
     flash("That phone number doesn't look valid. Please check it and try again.", "error")
     return _fallback_redirect()
+
+
+@app.errorhandler(BadDate)
+def handle_bad_date(e):
+    """Safety net for BadDate — same idea as handle_bad_number() above.
+    See ORPHANED_RECORDS_AUDIT.md F-04."""
+    mark_transaction_failed()
+    flash(str(e), "error")
+    return _fallback_redirect()
+
+
+@app.errorhandler(HTTPException)
+def handle_http_exception(e):
+    """Registered *after* the specific 403/404/413 handlers above, which
+    Flask still prefers (exact status-code match beats a class-based one)
+    — this only catches HTTPExceptions with no more specific handler:
+    plain 400s (BadRequestKeyError from a missing request.form[...] key —
+    see E-04), CSRFError (see E-17), and anything else in that family.
+    Marks the transaction failed for non-GET requests so close_db()
+    doesn't commit whatever a route had already written before aborting —
+    see ORPHANED_RECORDS_AUDIT.md F-01. GET requests are excluded since
+    they're not expected to have pending writes to roll back."""
+    if request.method != "GET":
+        mark_transaction_failed()
+    if isinstance(e, CSRFError):
+        flash("Your session expired while this page was open. Please log in again — "
+              "you may need to re-enter what you were working on.", "error")
+        return redirect(url_for("login"))
+    if e.code == 400:
+        flash("That form was missing something the server needed. "
+              "Please reload the page and try again.", "error")
+        return _fallback_redirect()
+    return e
+
+
+@app.errorhandler(dbmod.PoolTimeout)
+def handle_pool_timeout(e):
+    """The connection pool caps at a fixed size and require_login() calls
+    get_db() on every single request — exhaustion doesn't degrade one
+    page, it 500s everything at once. See ERROR_500_AUDIT.md E-03."""
+    error_logger.error(f"DB pool exhausted on {request.method} {request.path}")
+    if request.accept_mimetypes.best == "application/json" or request.path.startswith("/api/"):
+        return jsonify({"error": "The system is busy right now — try again in a moment."}), 503
+    return render_template("error_busy.html"), 503
 
 
 _REDACT_PATTERNS = [
@@ -854,7 +998,12 @@ def handle_unexpected_error(e):
     always goes to logs/errors.log regardless, for whoever has real
     server access and needs the exact value to reproduce something.
     """
+    mark_transaction_failed()
     if isinstance(e, HTTPException):
+        # No longer reachable now that @app.errorhandler(HTTPException) is
+        # registered separately (Flask always prefers the more specific
+        # handler) — left as defense-in-depth in case that registration is
+        # ever removed.
         return e
 
     error_id = uuid.uuid4().hex[:8].upper()
@@ -991,6 +1140,30 @@ def _role_or_404(db, role_id):
     return row
 
 
+def _future_appt_count(db, user_id):
+    """How many upcoming appointments are booked against this user as the
+    vet resource — day_grid() only builds columns for users whose role has
+    is_vet_role=true, so any of these becomes unreachable from the grid
+    the moment that stops being true for this user (a role change) or for
+    their role itself (F-25). Shared by admin_user_toggle(),
+    admin_user_role() (F-17), and admin_role_edit()/admin_role_delete()
+    (F-25) so all four share one implementation."""
+    return db.execute(
+        "SELECT COUNT(*) c FROM appointments WHERE resource_type='vet' AND resource_id=? AND appt_date >= ?",
+        (user_id, date.today().isoformat()),
+    ).fetchone()["c"]
+
+
+def _warn_orphaned_appointments(db, user_id):
+    """Flashes a heads-up if moving this user off vet-eligibility just
+    stranded upcoming appointments. See ORPHANED_RECORDS_AUDIT.md F-17."""
+    n = _future_appt_count(db, user_id)
+    if n:
+        flash(f"Heads up: {n} upcoming appointment(s) were booked against this person — "
+              f"they won't show on the Appointments grid anymore. Check Appointments for "
+              f'the "need attention" list to reschedule them.', "error")
+
+
 @app.route("/admin/users")
 @auth.permission_required("manage_users_roles")
 def admin_users():
@@ -1087,14 +1260,7 @@ def admin_user_toggle(user_id):
     db.commit()
     flash("User updated.", "success")
     if new_val is False:
-        future_appts = db.execute(
-            "SELECT COUNT(*) c FROM appointments WHERE resource_type='vet' AND resource_id=? AND appt_date >= ?",
-            (user_id, date.today().isoformat()),
-        ).fetchone()["c"]
-        if future_appts:
-            flash(f"Heads up: {future_appts} upcoming appointment(s) were booked against this person — "
-                  f"they won't show on the Appointments grid anymore. Check Appointments for the "
-                  f"\"need attention\" list to reschedule them.", "error")
+        _warn_orphaned_appointments(db, user_id)
     return redirect(url_for("admin_users"))
 
 
@@ -1103,12 +1269,13 @@ def admin_user_toggle(user_id):
 def admin_user_role(user_id):
     db = get_db()
     new_role_id = request.form.get("role_id", "")
-    new_role = db.execute("SELECT id, name, is_system FROM roles WHERE id=?", (new_role_id,)).fetchone()
+    new_role = db.execute("SELECT id, name, is_system, is_vet_role FROM roles WHERE id=?", (new_role_id,)).fetchone()
     if not new_role:
         flash("Not a valid role.", "error")
         return redirect(url_for("admin_users"))
     row = db.execute(
-        "SELECT u.role_id, r.name AS role_name, r.is_system FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id=?",
+        "SELECT u.role_id, r.name AS role_name, r.is_system, r.is_vet_role FROM users u "
+        "JOIN roles r ON r.id = u.role_id WHERE u.id=?",
         (user_id,),
     ).fetchone()
     if row is None:
@@ -1122,6 +1289,14 @@ def admin_user_role(user_id):
     auth.log_change(db, "users", user_id, "update", {"role": (row["role_name"], new_role["name"])})
     db.commit()
     flash("Role updated.", "success")
+    # admin_user_toggle() gets this right (moving a vet to a non-vet role
+    # produces the identical day_grid() outcome — is_vet_role=true is what
+    # decides whether a column is built for them) — this route used to say
+    # nothing. Only warn when the *new* role isn't vet-eligible; moving
+    # between two vet-eligible roles doesn't orphan anything. See
+    # ORPHANED_RECORDS_AUDIT.md F-17.
+    if row["is_vet_role"] and not new_role["is_vet_role"]:
+        _warn_orphaned_appointments(db, user_id)
     return redirect(url_for("admin_users"))
 
 
@@ -1217,6 +1392,21 @@ def admin_role_edit(role_id):
         flash("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
               "New Visit, Grooming, and Inpatient vet pickers will show no options until "
               "at least one role has this turned on.", "error")
+    # Flipping a role's own is_vet_role flag affects every active user on
+    # it at once, not just one person — admin_user_role()'s per-user
+    # warning (F-17) doesn't fire here, since no single user's role_id
+    # actually changed. Distinct finding: F-25 — the audit's original
+    # framing called this IQ-only (JO had no custom-role feature at the
+    # time it was written), but JO gained custom role creation in the
+    # same-day parity pass, so this now applies here too. See
+    # ORPHANED_RECORDS_AUDIT.md.
+    if before["is_vet_role"] and not is_vet_role:
+        affected = db.execute("SELECT id FROM users WHERE role_id=? AND active=true", (role_id,)).fetchall()
+        total = sum(_future_appt_count(db, u["id"]) for u in affected)
+        if total:
+            flash(f"Heads up: {total} upcoming appointment(s) across {len(affected)} staff member(s) "
+                  f"on this role won't show on the Appointments grid anymore. Check Appointments for "
+                  f'the "need attention" list to reschedule them.', "error")
     return redirect(url_for("admin_users"))
 
 
@@ -1231,7 +1421,7 @@ def admin_role_delete(role_id):
     assigned = db.execute("SELECT id FROM users WHERE role_id=?", (role_id,)).fetchall()
     reassign_to = request.form.get("reassign_to") or None
     if assigned:
-        target = db.execute("SELECT id, name, is_system FROM roles WHERE id=?", (reassign_to,)).fetchone()
+        target = db.execute("SELECT id, name, is_system, is_vet_role FROM roles WHERE id=?", (reassign_to,)).fetchone()
         if not target or target["id"] == role_id:
             flash("Pick a role to move the affected staff to before deleting this one.", "error")
             return redirect(url_for("admin_users"))
@@ -1243,6 +1433,15 @@ def admin_role_delete(role_id):
                          {"reassigned_to": (None, target["name"]), "staff_moved": (None, len(assigned))})
         db.commit()
         flash(f'{len(assigned)} staff member(s) moved to {target["name"]} · "{role["name"]}" deleted.', "success")
+        # Same reasoning as admin_role_edit() above — reassigning every
+        # user on a deleted vet-eligible role to a non-vet-eligible target
+        # role affects them all at once. See ORPHANED_RECORDS_AUDIT.md F-25.
+        if role["is_vet_role"] and not target["is_vet_role"]:
+            total = sum(_future_appt_count(db, u["id"]) for u in assigned)
+            if total:
+                flash(f"Heads up: {total} upcoming appointment(s) across {len(assigned)} staff member(s) "
+                      f"just moved off a vet-eligible role won't show on the Appointments grid anymore. "
+                      f'Check Appointments for the "need attention" list to reschedule them.', "error")
     else:
         db.execute("DELETE FROM roles WHERE id=?", (role_id,))
         auth.bump_permissions_version(db)
@@ -1310,12 +1509,30 @@ def dashboard():
     missed_offset = page_offset(missed_page)
     missed = all_missed[missed_offset:missed_offset + PER_PAGE]
     opex_due = logic.opex_reminder_due(db) if auth.has_permission("view_financial_reports") else False
+    # A blank Date Billed silently drops that bill from every P&L figure
+    # forever (see logic._revenue_and_cogs_by_month()'s `continue`) — this
+    # is the visible half of the fix in visit_billing_save(), which now
+    # defaults date_billed instead of allowing it blank going forward; this
+    # catches anything that slipped through before that fix, or via direct
+    # SQL. See ORPHANED_RECORDS_AUDIT.md F-06.
+    unbilled_count = 0
+    if auth.has_permission("view_financial_reports"):
+        unbilled_count = db.execute(
+            "SELECT COUNT(*) c FROM billing WHERE date_billed IS NULL AND total > 0"
+        ).fetchone()["c"]
     backup_alert = None
+    migration_failures = None
     if auth.has_permission("manage_settings"):
         import backup as backup_mod
         backup_alert = logic.backup_alert_message(backup_mod.last_backup(db))
+        # Set by setup.apply_incremental_migrations() when a schema statement
+        # fails on this launch — a per-statement failure no longer blocks
+        # every later one (see setup.py), but it's still worth an admin's
+        # attention. See ORPHANED_RECORDS_AUDIT.md F-22.
+        migration_failures = logic.get_setting(db, "migration_failures")
     return render_template("dashboard.html", snap=snap, lan_address=lan_address(), missed=missed,
                             is_overseer=is_overseer, opex_due=opex_due, backup_alert=backup_alert,
+                            unbilled_count=unbilled_count, migration_failures=migration_failures,
                             missed_page=missed_page, missed_total_pages=page_count(missed_total),
                             missed_total=missed_total)
 
@@ -1398,6 +1615,8 @@ def api_sale_refundable_items(sale_id):
     return jsonify({
         "sale_id": sale["id"],
         "sale_date": sale["sale_date"],
+        "sale_total": sale["total"],
+        "cleanup_amount": sale["cleanup_amount"] or 0,
         "lines": [
             {
                 "sale_item_id": l["sale_item_id"],
@@ -1527,10 +1746,13 @@ def owner_new():
                 flash(f"Owner {existing['id']} already has this phone number on file — "
                       f"add the pet to them instead of creating a new owner.", "error")
                 return redirect(url_for("owner_detail", owner_id=existing["id"]))
+        name = required_field(f, "name", "Owner name")
+        if name is None:
+            return render_template("owner_form.html", owner=None, form=f)
         oid = dbmod.next_id(db, "OW")
         try:
             db.execute("INSERT INTO owners (id,name,phone,address,notes) VALUES (?,?,?,?,?)",
-                      (oid, f["name"], phone, f.get("address"), f.get("notes")))
+                      (oid, name, phone, f.get("address"), f.get("notes")))
             auth.log_change(db, "owners", oid, "create")
             db.commit()
         except dbmod.IntegrityError:
@@ -1580,7 +1802,10 @@ def owner_edit(owner_id):
         except BadPhone:
             flash("That phone number doesn't look valid — check the digits and try again.", "error")
             return render_template("owner_form.html", owner=owner, form=f)
-        new_vals = {"name": f["name"], "phone": phone, "address": f.get("address"), "notes": f.get("notes")}
+        name = required_field(f, "name", "Owner name")
+        if name is None:
+            return render_template("owner_form.html", owner=owner, form=f)
+        new_vals = {"name": name, "phone": phone, "address": f.get("address"), "notes": f.get("notes")}
         changes = auth.diff_dict(owner, new_vals)
         db.execute("UPDATE owners SET name=?, phone=?, address=?, notes=? WHERE id=?",
                   (new_vals["name"], new_vals["phone"], new_vals["address"], new_vals["notes"], owner_id))
@@ -1660,7 +1885,17 @@ def patient_edit(patient_id):
         return redirect(url_for("patients_list"))
     if request.method == "POST":
         f = request.form
-        new_vals = {"animal_name": f["animal_name"], "species": f["species"], "sex": f.get("sex"),
+
+        def redisplay():
+            return render_template("patient_form_edit.html", patient=patient, form=f)
+
+        animal_name = required_field(f, "animal_name", "Pet name")
+        if animal_name is None:
+            return redisplay()
+        species = required_field(f, "species", "Species")
+        if species is None:
+            return redisplay()
+        new_vals = {"animal_name": animal_name, "species": species, "sex": f.get("sex"),
                     "age_note": f.get("age_note"), "repro_status": f.get("repro_status"),
                     "housing": f.get("housing"), "notes": f.get("notes")}
         changes = auth.diff_dict(patient, new_vals)
@@ -1804,6 +2039,15 @@ def visit_new_patient():
         except BadNumber:
             flash("Weight and BCS must be valid numbers.", "error")
             return redisplay()
+        owner_name = required_field(f, "owner_name", "Owner name")
+        if owner_name is None:
+            return redisplay()
+        animal_name = required_field(f, "animal_name", "Pet name")
+        if animal_name is None:
+            return redisplay()
+        species = required_field(f, "species", "Species")
+        if species is None:
+            return redisplay()
 
         # This form is meant for a genuinely new owner+pet — but nothing
         # stopped staff from re-entering an existing owner's exact
@@ -1824,21 +2068,34 @@ def visit_new_patient():
             oid = dbmod.next_id(db, "OW")
             try:
                 db.execute("INSERT INTO owners (id,name,phone,address) VALUES (?,?,?,?)",
-                          (oid, f["owner_name"], owner_phone, f.get("owner_address")))
+                          (oid, owner_name, owner_phone, f.get("owner_address")))
                 auth.log_change(db, "owners", oid, "create")
             except dbmod.IntegrityError:
                 # Best-effort check above isn't atomic — a concurrent
                 # submit for the same new phone number can win the race.
                 # idx_owners_phone_unique is what actually prevents the
-                # duplicate; fall back to the owner that won.
+                # duplicate; fall back to the owner that won. But the
+                # violation might not be that constraint at all (e.g. a
+                # NOT NULL on owners.name from a blank owner_name), and
+                # owner_phone can legitimately be None (phone is optional)
+                # — in either case the SELECT below finds nothing, so it
+                # must be guarded rather than assumed to succeed, mirroring
+                # owner_new()'s own handling of this same race. See
+                # ERROR_500_AUDIT.md E-12 / ORPHANED_RECORDS_AUDIT.md F-03.
                 db.rollback()
-                oid = db.execute("SELECT id FROM owners WHERE phone=?", (owner_phone,)).fetchone()["id"]
+                existing = db.execute("SELECT id FROM owners WHERE phone=?", (owner_phone,)).fetchone() \
+                    if owner_phone else None
+                if not existing:
+                    flash("That owner couldn't be saved — check the name and phone number "
+                          "and try again.", "error")
+                    return redisplay()
+                oid = existing["id"]
                 flash(f"Owner {oid} already has this phone number on file — the new pet was added to their existing profile.", "success")
 
         pid = dbmod.next_id(db, "PT")
         db.execute(
             "INSERT INTO patients (id,owner_id,animal_name,species,sex,age_note,repro_status,housing) VALUES (?,?,?,?,?,?,?,?)",
-            (pid, oid, f["animal_name"], f["species"], f.get("sex"), f.get("age_note"), f.get("repro_status"), f.get("housing")),
+            (pid, oid, animal_name, species, f.get("sex"), f.get("age_note"), f.get("repro_status"), f.get("housing")),
         )
         auth.log_change(db, "patients", pid, "create")
         db.commit()
@@ -1871,7 +2128,7 @@ def _parse_visit_fields(f):
     wellness_needed = f.get("wellness_needed", "N")
     grooming_needed = f.get("grooming_needed", "N")
     weight_kg = parse_money(f.get("weight_kg"))
-    bcs = parse_int(f.get("bcs"))
+    bcs = parse_bcs(f.get("bcs"))
     wellness_next_dose_date = (
         clean_date(f.get("wellness_next_dose_date"), field="wellness_next_dose_date")
         if wellness_needed == "Y" else None
@@ -2013,6 +2270,13 @@ def visit_edit(visit_id):
         grooming_needed = f.get("grooming_needed", "N")
         grooming_services = ",".join(f.getlist("grooming_services")) if grooming_needed == "Y" else None
         new_case_status = f.get("case_status", visit["case_status"])
+        if new_case_status not in CASE_STATUSES:
+            flash("Case status must be one of: " + ", ".join(CASE_STATUSES) + ".", "error")
+            return redisplay()
+        new_visit_type = f.get("visit_type")
+        if new_visit_type not in ("Outpatient", "Inpatient"):
+            flash("Visit type must be Outpatient or Inpatient.", "error")
+            return redisplay()
         status_changed_at = visit["case_status_changed_at"]
         if new_case_status != visit["case_status"]:
             status_changed_at = date.today().isoformat()
@@ -2022,7 +2286,7 @@ def visit_edit(visit_id):
             edited_followup_date = clean_date(f.get("followup_date"), field="followup_date")
             edited_wellness_next_dose_date = clean_date(f.get("wellness_next_dose_date"), field="wellness_next_dose_date") if wellness_needed == "Y" else None
             edited_weight_kg = parse_money(f.get("weight_kg"))
-            edited_bcs = parse_int(f.get("bcs"))
+            edited_bcs = parse_bcs(f.get("bcs"))
         except BadDate as e:
             flash(str(e), "error")
             return redisplay()
@@ -2034,7 +2298,7 @@ def visit_edit(visit_id):
             return redisplay()
 
         new_vals = {
-            "visit_type": f.get("visit_type"), "date": edited_date, "doctor": f.get("doctor"),
+            "visit_type": new_visit_type, "date": edited_date, "doctor": f.get("doctor"),
             "weight_kg": edited_weight_kg, "bcs": edited_bcs,
             "complaint": f.get("complaint"), "history": f.get("history"), "exam": f.get("exam"),
             "treatment": f.get("treatment"), "case_status": new_case_status, "case_status_changed_at": status_changed_at,
@@ -2052,6 +2316,23 @@ def visit_edit(visit_id):
             "grooming_contacted": f.get("grooming_contacted", "N"),
             "payment_status": f.get("payment_status", "N/A"),
         }
+        # An inpatient_cases row is only ever created at visit-creation time
+        # (when admit_inpatient was ticked) — nothing here kept case_status
+        # in sync with it. Setting Admitted to Inpatient on an existing
+        # visit with no case would make the admission invisible to
+        # /inpatient; moving an admitted visit's status away with the case
+        # still open would deny the admission ever happened while it sits
+        # on the active list forever. See ORPHANED_RECORDS_AUDIT.md F-10.
+        was_admitted = visit["case_status"] == "Admitted to Inpatient"
+        now_admitted = new_case_status == "Admitted to Inpatient"
+        existing_case = db.execute(
+            "SELECT id, dismissed FROM inpatient_cases WHERE visit_id=? ORDER BY id DESC LIMIT 1",
+            (visit_id,)).fetchone()
+        if was_admitted and not now_admitted and existing_case and not existing_case["dismissed"]:
+            flash(f"Inpatient case #{existing_case['id']} is still open for this visit — "
+                  f"dismiss it there first, or leave the status as Admitted to Inpatient.", "error")
+            return redisplay()
+
         changes = auth.diff_dict(visit, new_vals)
         db.execute(
             """UPDATE visits SET visit_type=?, date=?, doctor=?, weight_kg=?, bcs=?, complaint=?, history=?, exam=?, treatment=?,
@@ -2063,6 +2344,10 @@ def visit_edit(visit_id):
             (*new_vals.values(), datetime.now().isoformat(timespec="seconds"), visit_id),
         )
         auth.log_change(db, "visits", visit_id, "update", changes)
+        if now_admitted and not existing_case:
+            _create_inpatient_case(db, visit["patient_id"], visit_id, f.get("complaint"),
+                                    edited_date or visit["date"], edited_weight_kg, edited_bcs)
+            flash("An inpatient case was opened for this visit.", "success")
         db.commit()
         flash("Visit updated.", "success")
         return redirect(url_for("visit_detail", visit_id=visit_id))
@@ -2161,8 +2446,31 @@ def visit_billing_save(visit_id):
     except BadDate as e:
         flash(str(e), "error")
         return redisplay()
+    if not date_billed:
+        # A blank Date Billed used to reach the database as NULL — and
+        # logic._revenue_and_cogs_by_month() silently skips any billing row
+        # with no date_billed, so the revenue never appears in P&L, forever,
+        # with nothing flagging it. Falls back to the visit's own date
+        # (itself nullable) or today, same as the template's displayed
+        # default. See ORPHANED_RECORDS_AUDIT.md F-06.
+        visit_row = db.execute("SELECT date FROM visits WHERE id=?", (visit_id,)).fetchone()
+        date_billed = (visit_row["date"] if visit_row else None) or date.today().isoformat()
     notes = f.get("notes")
     existing = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit_id,)).fetchone()
+    # Re-saving this bill with a shorter cart (or a smaller Manual amount)
+    # can shrink the total below what's already been paid against it —
+    # nothing else ever surfaces `paid > total` after that. See
+    # ORPHANED_RECORDS_AUDIT.md F-14.
+    if existing:
+        new_subtotal = manual_amount if billing_type == "Manual" else sum(l["quantity"] * l["unit_price"] for l in priced_lines)
+        paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE visit_id=?", (visit_id,)).fetchone()
+        new_total, _, _, _ = logic.compute_bill_totals(
+            new_subtotal or 0, existing["discount_percent"], 0, existing["cleanup_amount"])
+        if paid_row["s"] > new_total:
+            flash(f"That change would leave {logic.fmt_money(paid_row['s'])} paid against a "
+                  f"{logic.fmt_money(new_total)} JOD bill. Process a service refund for the "
+                  f"difference first.", "error")
+            return redisplay()
     old_month = logic.month_key(existing["date_billed"]) if existing else None
     # UPSERT rather than a SELECT-then-branch INSERT/UPDATE — visit_id is
     # billing's primary key, so two near-simultaneous saves (double-click,
@@ -2237,13 +2545,16 @@ def visit_discount_save(visit_id):
             flash(f"Can't apply a discount — this bill includes item(s) marked as not discountable: {', '.join(blocked)}.", "error")
             return redisplay()
     existing = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit_id,)).fetchone()
-    # Same UPSERT reasoning as visit_billing_save() — visit_id is billing's
-    # primary key, so a plain SELECT-then-branch here is racy the same way.
+    if not existing:
+        # A discount needs a bill to apply to — the old UPSERT here would
+        # otherwise create a childless billing row (total=0, no lines, no
+        # date_billed) for a visit that was never billed at all. See
+        # ORPHANED_RECORDS_AUDIT.md F-16.
+        flash("Save the bill first — a discount needs something to apply to.", "error")
+        return redisplay()
     db.execute(
-        "INSERT INTO billing (visit_id, discount_percent, discount_applied_by) VALUES (?,?,?) "
-        "ON CONFLICT (visit_id) DO UPDATE SET discount_percent=excluded.discount_percent, "
-        "discount_applied_by=excluded.discount_applied_by",
-        (visit_id, percent, session["user_id"]),
+        "UPDATE billing SET discount_percent=?, discount_applied_by=? WHERE visit_id=?",
+        (percent, session["user_id"], visit_id),
     )
     logic.refresh_visit_billing_total(db, visit_id)
     if existing and existing["date_billed"]:
@@ -2282,9 +2593,24 @@ def visit_payment_add(visit_id):
     if amount <= 0:
         flash("Payment amount must be greater than 0.", "error")
         return redisplay()
-    balance = logic.visit_billing_summary(db, visit_id)["balance"]
+    summary = logic.visit_billing_summary(db, visit_id)
+    balance = summary["balance"]
     if amount > balance:
         flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this visit.", "error")
+        return redisplay()
+    try:
+        cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
+    except BadNumber:
+        flash("Clean Up amount must be a valid number.", "error")
+        return redisplay()
+    if cleanup_amount < 0:
+        flash("Clean Up amount can't be negative.", "error")
+        return redisplay()
+    if summary["cleanup_amount"] + cleanup_amount > CLEANUP_CAP:
+        flash(f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill.", "error")
+        return redisplay()
+    if cleanup_amount > balance:
+        flash("Clean Up can't exceed the remaining balance.", "error")
         return redisplay()
     try:
         payment_date = clean_date(f.get("date"), field="date") or date.today().isoformat()
@@ -2297,6 +2623,14 @@ def visit_payment_add(visit_id):
     )
     payment_id = cur.fetchone()["id"]
     auth.log_change(db, "payments", str(payment_id), "create")
+    if cleanup_amount > 0:
+        db.execute(
+            "UPDATE billing SET cleanup_amount = cleanup_amount + ?, cleanup_applied_by = ? WHERE visit_id = ?",
+            (cleanup_amount, session["user_id"], visit_id),
+        )
+        auth.log_change(db, "billing", visit_id, "update", changes={
+            "cleanup_amount": (summary["cleanup_amount"], summary["cleanup_amount"] + cleanup_amount)})
+        logic.refresh_visit_billing_total(db, visit_id)
     db.commit()
     flash("Payment recorded.", "success")
     return redirect(url_for("visit_detail", visit_id=visit_id))
@@ -2327,6 +2661,17 @@ def serve_attachment(relpath):
     if row is None:
         flash("File not found.", "error")
         return redirect(url_for("dashboard"))
+    disk_path = os.path.join(attach_mod.UPLOAD_ROOT, relpath)
+    if not os.path.isfile(disk_path):
+        # The DB row is fine — only the file itself is missing (e.g.
+        # uploads/ wasn't included in a backup/restore, since it's not
+        # part of the database backup at all). send_from_directory would
+        # otherwise raise a bare 404 with no indication the record is
+        # intact. See ORPHANED_RECORDS_AUDIT.md F-12.
+        flash("This file's record exists but the file itself is missing from the uploads "
+              "folder — it may not have been included in a backup/restore. "
+              "Check with whoever manages backups before re-uploading.", "error")
+        return redirect(request.referrer or url_for("dashboard"))
     return send_from_directory(attach_mod.UPLOAD_ROOT, relpath)
 
 
@@ -2516,6 +2861,10 @@ def price_list_new():
         flash("Category must be one of: " + ", ".join(PRICE_CATEGORIES) + ".", "error")
         return redisplay()
     linked_item_id = f.get("linked_item_id") or None
+    if linked_item_id and not db.execute(
+            "SELECT 1 FROM inventory_list WHERE id=?", (linked_item_id,)).fetchone():
+        flash("That inventory item no longer exists — reload the page and pick again.", "error")
+        return redisplay()
     if linked_item_id:
         # Two active rows linking to the same inventory item makes POS
         # pricing nondeterministic — item_sale_price() picks whichever one
@@ -2529,11 +2878,14 @@ def price_list_new():
             flash(f"That inventory item is already linked to {existing_link['id']} ({existing_link['name']}) — "
                   f"an item can only be linked from one active Price List row at a time.", "error")
             return redisplay()
+    name = required_field(f, "name", "Name")
+    if name is None:
+        return redisplay()
     pid = dbmod.next_id(db, "P")
     can_discount = f.get("can_discount") == "on"
     db.execute(
         "INSERT INTO price_list (id,name,category,cost_price,sale_price,notes,active,linked_item_id,can_discount) VALUES (?,?,?,?,?,?,true,?,?)",
-        (pid, f["name"], f["category"], cost_price, sale_price,
+        (pid, name, f["category"], cost_price, sale_price,
          f.get("notes"), linked_item_id, can_discount),
     )
     auth.log_change(db, "price_list", pid, "create")
@@ -2568,6 +2920,10 @@ def price_list_edit(item_id):
         flash("Price list item not found.", "error")
         return redirect(url_for("price_list"))
     new_linked_item_id = (f.get("linked_item_id") or None) if "linked_item_id" in f else old["linked_item_id"]
+    if new_linked_item_id and not db.execute(
+            "SELECT 1 FROM inventory_list WHERE id=?", (new_linked_item_id,)).fetchone():
+        flash("That inventory item no longer exists — reload the page and pick again.", "error")
+        return redisplay()
     if new_linked_item_id and new_linked_item_id != old["linked_item_id"]:
         dup = db.execute(
             "SELECT id, name FROM price_list WHERE linked_item_id=? AND active=true AND id != ?",
@@ -2577,7 +2933,10 @@ def price_list_edit(item_id):
             flash(f"That inventory item is already linked to {dup['id']} ({dup['name']}) — "
                   f"an item can only be linked from one active Price List row at a time.", "error")
             return redisplay()
-    new_vals = {"name": f["name"], "category": f["category"], "cost_price": cost_price,
+    name = required_field(f, "name", "Name")
+    if name is None:
+        return redisplay()
+    new_vals = {"name": name, "category": f["category"], "cost_price": cost_price,
                 "sale_price": sale_price, "notes": f.get("notes"),
                 "linked_item_id": new_linked_item_id,
                 "can_discount": f.get("can_discount") == "on"}
@@ -2634,7 +2993,19 @@ def price_list_bulk_edit():
         if not old:
             errors[item_id] = "Item not found."
             continue
+        name = (fields.get("name") or "").strip()
+        if not name:
+            errors[item_id] = "Name is required."
+            continue
+        category = fields.get("category", "")
+        if category not in PRICE_CATEGORIES:
+            errors[item_id] = "Category must be one of: " + ", ".join(PRICE_CATEGORIES) + "."
+            continue
         new_linked_item_id = (fields.get("linked_item_id") or None) if "linked_item_id" in fields else old["linked_item_id"]
+        if new_linked_item_id and not db.execute(
+                "SELECT 1 FROM inventory_list WHERE id=?", (new_linked_item_id,)).fetchone():
+            errors[item_id] = "That inventory item no longer exists — reload the page and pick again."
+            continue
         if new_linked_item_id:
             # Checked against both the database (another row, unrelated to
             # this batch) and what this same batch has already claimed (two
@@ -2648,7 +3019,7 @@ def price_list_bulk_edit():
                 errors[item_id] = f"That inventory item is already linked to {dup_id} — an item can only be linked from one active row at a time."
                 continue
             claimed_in_batch[new_linked_item_id] = item_id
-        new_vals = {"name": fields.get("name", ""), "category": fields.get("category", ""),
+        new_vals = {"name": name, "category": category,
                     "cost_price": cost_price, "sale_price": sale_price, "notes": fields.get("notes"),
                     "linked_item_id": new_linked_item_id,
                     "can_discount": fields.get("can_discount") == "on"}
@@ -2741,12 +3112,20 @@ def inventory_catalog_new():
     if f.get("category", "Medical") not in INVENTORY_CATEGORIES:
         flash("Category must be one of: " + ", ".join(INVENTORY_CATEGORIES) + ".", "error")
         return redisplay()
+    distributor_id = f.get("distributor_id") or None
+    if distributor_id and not db.execute(
+            "SELECT 1 FROM distributors WHERE id=?", (distributor_id,)).fetchone():
+        flash("That distributor no longer exists — reload the page and pick again.", "error")
+        return redisplay()
+    name = required_field(f, "name", "Name")
+    if name is None:
+        return redisplay()
     iid = dbmod.next_id(db, "INV")
     db.execute(
         "INSERT INTO inventory_list (id,name,category,unit,track_expiry,cost_price,distributor_id,active,notes) "
         "VALUES (?,?,?,?,?,?,?,true,?)",
-        (iid, f["name"], f.get("category", "Medical"), f.get("unit"), f.get("track_expiry") == "on",
-         cost_price, f.get("distributor_id") or None, f.get("notes")),
+        (iid, name, f.get("category", "Medical"), f.get("unit"), f.get("track_expiry") == "on",
+         cost_price, distributor_id, f.get("notes")),
     )
     auth.log_change(db, "inventory_list", iid, "create")
     db.commit()
@@ -2775,9 +3154,28 @@ def inventory_catalog_edit(item_id):
         flash("Category must be one of: " + ", ".join(INVENTORY_CATEGORIES) + ".", "error")
         return redisplay()
     old = db.execute("SELECT * FROM inventory_list WHERE id=?", (item_id,)).fetchone()
-    new_vals = {"name": f["name"], "category": f.get("category", "Medical"), "unit": f.get("unit"),
+    if not old:
+        flash("Inventory item not found.", "error")
+        return redirect(url_for("inventory_catalog"))
+    category = f.get("category", "Medical")
+    if category != old["category"] and old["ownership_type"] == "Consignment":
+        flash("Set this item back to Owned on the Consignment Items page before changing its category.", "error")
+        return redisplay()
+    distributor_id = f.get("distributor_id") or None
+    if distributor_id and not db.execute(
+            "SELECT 1 FROM distributors WHERE id=?", (distributor_id,)).fetchone():
+        flash("That distributor no longer exists — reload the page and pick again.", "error")
+        return redisplay()
+    if distributor_id != old["distributor_id"] and logic.consignment_item_locked(db, item_id):
+        flash("This item has consignment activity against it — its distributor can't be "
+              "changed here. Create a new inventory item for the new supply source.", "error")
+        return redisplay()
+    name = required_field(f, "name", "Name")
+    if name is None:
+        return redisplay()
+    new_vals = {"name": name, "category": category, "unit": f.get("unit"),
                 "track_expiry": f.get("track_expiry") == "on", "cost_price": cost_price,
-                "distributor_id": f.get("distributor_id") or None,
+                "distributor_id": distributor_id,
                 "notes": f.get("notes", old["notes"]), "active": old["active"]}
     changes = auth.diff_dict(old, new_vals)
     db.execute(
@@ -2818,9 +3216,29 @@ def inventory_catalog_bulk_edit():
         if not old:
             errors[item_id] = "Item not found."
             continue
-        new_vals = {"name": fields.get("name", ""), "category": fields.get("category", "Medical"),
+        name = (fields.get("name") or "").strip()
+        if not name:
+            errors[item_id] = "Name is required."
+            continue
+        category = fields.get("category", "Medical")
+        if category not in INVENTORY_CATEGORIES:
+            errors[item_id] = "Category must be one of: " + ", ".join(INVENTORY_CATEGORIES) + "."
+            continue
+        if category != old["category"] and old["ownership_type"] == "Consignment":
+            errors[item_id] = "Set this item back to Owned on the Consignment Items page before changing its category."
+            continue
+        distributor_id = fields.get("distributor_id") or None
+        if distributor_id and not db.execute(
+                "SELECT 1 FROM distributors WHERE id=?", (distributor_id,)).fetchone():
+            errors[item_id] = "That distributor no longer exists — reload the page and pick again."
+            continue
+        if distributor_id != old["distributor_id"] and logic.consignment_item_locked(db, item_id):
+            errors[item_id] = ("This item has consignment activity against it — its distributor can't be "
+                                "changed here. Create a new inventory item for the new supply source.")
+            continue
+        new_vals = {"name": name, "category": category,
                     "unit": fields.get("unit"), "track_expiry": fields.get("track_expiry") == "on",
-                    "cost_price": cost_price, "distributor_id": fields.get("distributor_id") or None,
+                    "cost_price": cost_price, "distributor_id": distributor_id,
                     "notes": fields.get("notes", old["notes"]), "active": old["active"]}
         changes = auth.diff_dict(old, new_vals)
         db.execute(
@@ -2862,7 +3280,13 @@ def inventory_catalog_create_barcode(item_id):
         return jsonify({"error": "Item not found."}), 404
     if item["barcode"]:
         return jsonify({"error": "A barcode already exists for this item."}), 400
-    code = barcode_mod.generate_barcode(db)
+    try:
+        code = barcode_mod.generate_barcode(db)
+    except RuntimeError as e:
+        # generate_barcode() gives up after 50 collision retries and raises
+        # rather than looping forever — without this, that message never
+        # reaches the user. See ERROR_500_AUDIT.md E-15.
+        return jsonify({"error": str(e)}), 500
     # The check above is a friendly fast-path, not the real guarantee — two
     # concurrent "Generate" clicks racing into the same candidate code (low
     # but non-zero probability) would otherwise surface as a raw 500 instead
@@ -3047,11 +3471,14 @@ def distributor_new():
     except BadNumber:
         flash("Lead Time (Days) must be a whole number.", "error")
         return redisplay()
+    name = required_field(f, "name", "Name")
+    if name is None:
+        return redisplay()
     did = dbmod.next_id(db, "D")
     db.execute(
         "INSERT INTO distributors (id,name,contact_person,phone,email,catalog_link,lead_time_days,payment_terms,notes) "
         "VALUES (?,?,?,?,?,?,?,?,?)",
-        (did, f["name"], f.get("contact_person"), phone, f.get("email"), f.get("catalog_link"),
+        (did, name, f.get("contact_person"), phone, f.get("email"), f.get("catalog_link"),
          lead_time_days, f.get("payment_terms"), f.get("notes")),
     )
     auth.log_change(db, "distributors", did, "create")
@@ -3087,7 +3514,10 @@ def distributor_edit(dist_id):
         flash("Lead Time (Days) must be a whole number.", "error")
         return redisplay()
     old = db.execute("SELECT * FROM distributors WHERE id=?", (dist_id,)).fetchone()
-    new_vals = {"name": f["name"], "contact_person": f.get("contact_person"), "phone": phone,
+    name = required_field(f, "name", "Name")
+    if name is None:
+        return redisplay()
+    new_vals = {"name": name, "contact_person": f.get("contact_person"), "phone": phone,
                 "email": f.get("email"), "catalog_link": f.get("catalog_link"),
                 "lead_time_days": lead_time_days, "payment_terms": f.get("payment_terms"),
                 "notes": f.get("notes")}
@@ -3109,13 +3539,19 @@ def distributor_delete(dist_id):
     if not db.execute("SELECT 1 FROM distributors WHERE id=?", (dist_id,)).fetchone():
         flash("Distributor not found.", "error")
         return redirect(url_for("distributors_list"))
-    # A distributor can be referenced from inventory items and manual
-    # ledger bills — a bare DELETE would just crash with a raw
-    # ForeignKeyViolation the moment either has a row. Check first and
-    # name what's still linked, rather than let Postgres reject it as an
-    # unhandled 500.
+    # A distributor can be referenced from six tables (inventory items,
+    # manual ledger bills, and every Consignment table) — a bare DELETE
+    # would just crash with a raw ForeignKeyViolation the moment any of
+    # them has a row, same failure mode admin_role_delete() already
+    # guards against for roles. Check first and name what's still linked,
+    # rather than let Postgres reject it as an unhandled 500. See
+    # ORPHANED_RECORDS_AUDIT.md F-08.
     still_linked = []
-    for label, table in [("inventory item(s)", "inventory_list"), ("distributor bill(s)", "distributor_bills")]:
+    for label, table in [
+        ("inventory item(s)", "inventory_list"), ("distributor bill(s)", "distributor_bills"),
+        ("consignment receipt(s)", "consignment_receipts"), ("consignment shrinkage entry/entries", "consignment_shrinkage"),
+        ("consignment return(s)", "consignment_returns"), ("consignment settlement(s)", "consignment_settlements"),
+    ]:
         if db.execute(f"SELECT 1 FROM {table} WHERE distributor_id=? LIMIT 1", (dist_id,)).fetchone():
             still_linked.append(label)
     if still_linked:
@@ -3942,7 +4378,17 @@ def _audit_session_context(db, session_id):
                       "LEFT JOIN users u ON u.id=s.performed_by WHERE s.id=?", (session_id,)).fetchone()
     if not sess:
         return None
-    items = db.execute("SELECT * FROM inventory_list WHERE active=true ORDER BY category, name").fetchall()
+    # A line saved for an item that's since been deactivated must stay
+    # visible/editable here — otherwise it's invisible on this view (can't
+    # be seen or fixed) while still there when the session confirms,
+    # locking in a value nobody could check. See ORPHANED_RECORDS_AUDIT.md
+    # F-11.
+    items = db.execute(
+        "SELECT i.* FROM inventory_list i WHERE i.active = true "
+        "OR EXISTS (SELECT 1 FROM audit_session_lines l WHERE l.session_id=? AND l.item_id=i.id) "
+        "ORDER BY i.category, i.name",
+        (session_id,),
+    ).fetchall()
     existing_lines = {r["item_id"]: dict(r) for r in db.execute(
         "SELECT * FROM audit_session_lines WHERE session_id=?", (session_id,)).fetchall()}
     # Effective (carried-forward) values from the last CONFIRMED audit, for placeholder display
@@ -3971,7 +4417,15 @@ def _save_audit_lines(db, session_id):
     audit_session_lines. Shared by Save and Confirm so that clicking Confirm
     directly (without Save first) can never silently discard the numbers
     someone just typed in."""
-    items = db.execute("SELECT id FROM inventory_list WHERE active=true").fetchall()
+    # Same reasoning as _audit_session_context() — a line already saved for
+    # a now-deactivated item must still be re-savable, or a technician's
+    # just-typed count for it silently drops on Save. See
+    # ORPHANED_RECORDS_AUDIT.md F-11.
+    items = db.execute(
+        "SELECT id FROM inventory_list i WHERE i.active = true "
+        "OR EXISTS (SELECT 1 FROM audit_session_lines l WHERE l.session_id=? AND l.item_id=i.id)",
+        (session_id,),
+    ).fetchall()
     for it in items:
         iid = it["id"]
         stock = request.form.get(f"stock_{iid}", "").strip()
@@ -4056,6 +4510,17 @@ def audit_session_confirm(session_id):
         if ctx is None:
             return redirect(url_for("audit_history_list"))
         return render_template("audit_session_view.html", **ctx, form=request.form)
+
+    # An all-blank confirm produces an immutable Confirmed session with
+    # zero lines — permanent noise in Audit History with nothing to show
+    # for it. See ORPHANED_RECORDS_AUDIT.md F-15.
+    filled = db.execute(
+        "SELECT COUNT(*) c FROM audit_session_lines WHERE session_id=? AND stock_counted IS NOT NULL",
+        (session_id,)).fetchone()["c"]
+    if not filled:
+        flash("Nothing has been counted in this audit yet — fill in at least one item "
+              "before confirming.", "error")
+        return redirect(url_for("audit_session_view", session_id=session_id))
     # Microsecond precision (not seconds) — inventory_status()'s stock
     # calculation compares inventory_transactions.timestamp against this
     # column with a strict '>' on whole-second-precision TEXT strings; a
@@ -4071,6 +4536,28 @@ def audit_session_confirm(session_id):
     db.commit()
     flash("Audit confirmed and locked. Inventory Status and Ordering Sheet now reflect these counts.", "success")
     return redirect(url_for("audit_session_view", session_id=session_id))
+
+
+@app.route("/audit-history/session/<int:session_id>/delete", methods=["POST"])
+@auth.permission_required("manage_audit_history")
+def audit_session_delete(session_id):
+    """Discards an abandoned draft. Clicking Start on the same day commits
+    an empty session immediately, and the reuse query is scoped to
+    audit_date=today, so an abandoned draft from any previous day is never
+    picked up again — with no delete route, these just accumulated
+    forever. Confirmed sessions are immutable history, not deletable here.
+    See ORPHANED_RECORDS_AUDIT.md F-15."""
+    db = get_db()
+    sess = db.execute("SELECT status FROM audit_sessions WHERE id=?", (session_id,)).fetchone()
+    if not sess or sess["status"] != "Draft":
+        flash("Only a draft audit can be discarded.", "error")
+        return redirect(url_for("audit_history_list"))
+    db.execute("DELETE FROM audit_session_lines WHERE session_id=?", (session_id,))
+    db.execute("DELETE FROM audit_sessions WHERE id=?", (session_id,))
+    auth.log_change(db, "audit_sessions", str(session_id), "delete")
+    db.commit()
+    flash("Draft audit discarded.", "success")
+    return redirect(url_for("audit_history_list"))
 
 
 # ---------------------------------------------------------------------------
@@ -4143,8 +4630,8 @@ def boarding_new():
         return render_template("boarding.html", **ctx)
 
     patient_id = f.get("patient_id")
-    if not patient_id:
-        flash("Pick a patient first.", "error")
+    if not patient_id or not db.execute("SELECT 1 FROM patients WHERE id=?", (patient_id,)).fetchone():
+        flash("Pick a patient from the search results first.", "error")
         return redisplay()
     try:
         price_per_day = parse_money(f.get("price_per_day"))
@@ -4343,9 +4830,24 @@ def boarding_payment(boarding_id):
     if amount <= 0:
         flash("Payment amount must be greater than 0.", "error")
         return redisplay()
-    balance = logic.boarding_billing_summary(db, boarding_id)["balance"]
+    summary = logic.boarding_billing_summary(db, boarding_id)
+    balance = summary["balance"]
     if amount > balance:
         flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this stay.", "error")
+        return redisplay()
+    try:
+        cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
+    except BadNumber:
+        flash("Clean Up amount must be a valid number.", "error")
+        return redisplay()
+    if cleanup_amount < 0:
+        flash("Clean Up amount can't be negative.", "error")
+        return redisplay()
+    if summary["cleanup_amount"] + cleanup_amount > CLEANUP_CAP:
+        flash(f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill.", "error")
+        return redisplay()
+    if cleanup_amount > balance:
+        flash("Clean Up can't exceed the remaining balance.", "error")
         return redisplay()
     cur = db.execute(
         "INSERT INTO payments (boarding_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?) RETURNING id",
@@ -4354,6 +4856,14 @@ def boarding_payment(boarding_id):
     )
     payment_id = cur.fetchone()["id"]
     auth.log_change(db, "payments", str(payment_id), "create")
+    if cleanup_amount > 0:
+        db.execute(
+            "UPDATE boarding_sessions SET cleanup_amount = cleanup_amount + ?, cleanup_applied_by = ? WHERE id = ?",
+            (cleanup_amount, session["user_id"], boarding_id),
+        )
+        auth.log_change(db, "boarding_sessions", str(boarding_id), "update", changes={
+            "cleanup_amount": (summary["cleanup_amount"], summary["cleanup_amount"] + cleanup_amount)})
+        logic.refresh_boarding_total(db, boarding_id)
     db.commit()
     flash("Payment recorded.", "success")
     return redirect(url_for("boarding_page"))
@@ -4444,7 +4954,7 @@ def pos_checkout():
     qty_by_item = {}
     for iid, qty in zip(item_ids, quantities):
         try:
-            qty = parse_money(qty, required=True)
+            qty = parse_quantity(qty, required=True)
         except BadNumber:
             flash("Cart quantities must be valid numbers.", "error")
             return redisplay()
@@ -4478,10 +4988,15 @@ def pos_checkout():
     # later run (see sale_items.unit_cost's own column comment). Read
     # once, right after locking, alongside the row lock above — this is
     # the cost that will actually be recorded against this sale.
-    cost_by_item = {r["id"]: r["cost_price"] for r in db.execute(
-        "SELECT id, cost_price FROM inventory_list WHERE id IN (" + ",".join("?" * len(qty_by_item)) + ")",
+    # Distributor snapshotted alongside cost, same reasoning — this is what
+    # makes consignment_balance()'s attribution historically stable against
+    # a later distributor re-point. See ORPHANED_RECORDS_AUDIT.md F-07.
+    item_rows = {r["id"]: r for r in db.execute(
+        "SELECT id, cost_price, distributor_id FROM inventory_list WHERE id IN (" + ",".join("?" * len(qty_by_item)) + ")",
         list(qty_by_item.keys()),
     ).fetchall()} if qty_by_item else {}
+    cost_by_item = {iid: r["cost_price"] for iid, r in item_rows.items()}
+    distributor_by_item = {iid: r["distributor_id"] for iid, r in item_rows.items()}
 
     for iid, qty in qty_by_item.items():
         price = logic.item_sale_price(db, iid)
@@ -4504,13 +5019,31 @@ def pos_checkout():
             return redisplay()
         line_total = price * qty
         subtotal += line_total
-        lines.append((iid, qty, price, line_total, cost_by_item.get(iid)))
+        lines.append((iid, qty, price, line_total, cost_by_item.get(iid), distributor_by_item.get(iid)))
 
     if not lines:
         flash("Nothing to sell.", "error")
         return redisplay()
 
     total = round(subtotal * (1 - discount_percent / Decimal(100)), 3)
+    try:
+        cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
+    except BadNumber:
+        flash("Clean Up amount must be a valid number.", "error")
+        return redisplay()
+    if cleanup_amount < 0:
+        flash("Clean Up amount can't be negative.", "error")
+        return redisplay()
+    # A brand-new sale has no prior cleanup_amount to accumulate against
+    # — unlike the other three surfaces, which can be paid off across
+    # multiple submissions.
+    if cleanup_amount > CLEANUP_CAP:
+        flash(f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill.", "error")
+        return redisplay()
+    if cleanup_amount > total:
+        flash("Clean Up can't exceed the remaining balance.", "error")
+        return redisplay()
+    total = max(total - cleanup_amount, 0)
     payment_method = f.get("payment_method")
     cash_received = change_given = None
     if payment_method == "Cash":
@@ -4533,15 +5066,16 @@ def pos_checkout():
     try:
         cur = db.execute(
             "INSERT INTO sales (sale_date, cashier_id, subtotal, discount_percent, discount_applied_by, total, "
-            "payment_method, cash_received, change_given, idempotency_key) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
+            "payment_method, cash_received, change_given, idempotency_key, cleanup_amount, cleanup_applied_by) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
             (now, session["user_id"], round(subtotal, 3), discount_percent,
              session["user_id"] if discount_percent else None, total, payment_method, cash_received, change_given,
-             idempotency_key),
+             idempotency_key, cleanup_amount, session["user_id"] if cleanup_amount else None),
         )
         sale_id = cur.fetchone()["id"]
-        for iid, qty, price, line_total, unit_cost in lines:
-            db.execute("INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost) VALUES (?,?,?,?,?,?)",
-                      (sale_id, iid, qty, price, round(line_total, 3), unit_cost))
+        for iid, qty, price, line_total, unit_cost, distributor_id in lines:
+            db.execute("INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost, distributor_id) VALUES (?,?,?,?,?,?,?)",
+                      (sale_id, iid, qty, price, round(line_total, 3), unit_cost, distributor_id))
             db.execute("INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
                       "VALUES (?,?,?,?,?,?)", (iid, -qty, "sale", str(sale_id), now, session["user_id"]))
         logic.recompute_month_summary(db, now[:7])
@@ -4651,7 +5185,7 @@ def inpatient_new():
             )
         try:
             new_weight_kg = parse_money(f.get("weight_kg"))
-            new_bcs = parse_int(f.get("bcs"))
+            new_bcs = parse_bcs(f.get("bcs"))
             new_admission_date = clean_date(f.get("admission_date"), field="admission_date")
         except BadNumber:
             flash("Weight and BCS must be valid numbers.", "error")
@@ -4659,7 +5193,11 @@ def inpatient_new():
         except BadDate as e:
             flash(str(e), "error")
             return redisplay()
-        case_id = _create_inpatient_case(db, f["patient_id"], None, f.get("complaint"), new_admission_date,
+        patient_id = (f.get("patient_id") or "").strip()
+        if not patient_id or not db.execute("SELECT 1 FROM patients WHERE id=?", (patient_id,)).fetchone():
+            flash("Pick a patient from the search results first.", "error")
+            return redisplay()
+        case_id = _create_inpatient_case(db, patient_id, None, f.get("complaint"), new_admission_date,
                                           new_weight_kg, new_bcs)
         db.execute(
             "UPDATE inpatient_cases SET exam_findings=?, admitted_items=?, attending_vet_id=?, supervising_vet_id=? WHERE id=?",
@@ -4727,7 +5265,7 @@ def inpatient_edit(case_id):
     try:
         edited_dismissal_date = clean_date(f.get("dismissal_date"), field="dismissal_date") if dismissed else None
         edited_weight_kg = parse_money(f.get("weight_kg"))
-        edited_bcs = parse_int(f.get("bcs"))
+        edited_bcs = parse_bcs(f.get("bcs"))
     except (BadDate, BadNumber) as e:
         flash(str(e) if isinstance(e, BadDate) else "Weight and BCS must be valid numbers.", "error")
         return redisplay()
@@ -4830,7 +5368,7 @@ def inpatient_billing_add(case_id):
     for pid in price_ids:
         raw_qty = request.form.get(f"qty_{pid}", "").strip()
         try:
-            qty = parse_money(raw_qty)
+            qty = parse_quantity(raw_qty)
         except BadNumber:
             had_bad_number = True
             continue
@@ -4877,6 +5415,20 @@ def inpatient_billing_delete(case_id, line_id):
     row = db.execute("SELECT timestamp FROM inpatient_billing WHERE id=? AND case_id=?", (line_id, case_id)).fetchone()
     if not row:
         flash("That billing line was already removed.", "error")
+        return redirect(url_for("inpatient_detail", case_id=case_id))
+    # Deleting a line can zero out (or shrink) the case's total while
+    # payments already taken against it stay on the books — nothing else
+    # ever surfaces `paid > total` after that. See ORPHANED_RECORDS_AUDIT.md
+    # F-14.
+    summary = logic.inpatient_billing_summary(db, case_id)
+    this_line = next((l for l in summary["lines"] if l["id"] == line_id), None)
+    remaining_subtotal = summary["subtotal"] - (this_line["line_total"] if this_line else 0)
+    remaining_total, _, _, _ = logic.compute_bill_totals(
+        remaining_subtotal, summary["discount_percent"], 0, summary["cleanup_amount"])
+    if summary["paid"] > remaining_total:
+        flash(f"Removing this line would leave {logic.fmt_money(summary['paid'])} paid against a "
+              f"{logic.fmt_money(remaining_total)} JOD bill. Process a service refund for the "
+              f"difference first.", "error")
         return redirect(url_for("inpatient_detail", case_id=case_id))
     db.execute("DELETE FROM inpatient_billing WHERE id=? AND case_id=?", (line_id, case_id))
     logic.refresh_inpatient_total(db, case_id)
@@ -4965,9 +5517,24 @@ def inpatient_payment_add(case_id):
     if amount <= 0:
         flash("Payment amount must be greater than 0.", "error")
         return redisplay()
-    balance = logic.inpatient_billing_summary(db, case_id)["balance"]
+    summary = logic.inpatient_billing_summary(db, case_id)
+    balance = summary["balance"]
     if amount > balance:
         flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this case.", "error")
+        return redisplay()
+    try:
+        cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
+    except BadNumber:
+        flash("Clean Up amount must be a valid number.", "error")
+        return redisplay()
+    if cleanup_amount < 0:
+        flash("Clean Up amount can't be negative.", "error")
+        return redisplay()
+    if summary["cleanup_amount"] + cleanup_amount > CLEANUP_CAP:
+        flash(f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill.", "error")
+        return redisplay()
+    if cleanup_amount > balance:
+        flash("Clean Up can't exceed the remaining balance.", "error")
         return redisplay()
     try:
         payment_date = clean_date(f.get("date"), field="date") or date.today().isoformat()
@@ -4980,6 +5547,14 @@ def inpatient_payment_add(case_id):
     )
     payment_id = cur.fetchone()["id"]
     auth.log_change(db, "payments", str(payment_id), "create")
+    if cleanup_amount > 0:
+        db.execute(
+            "UPDATE inpatient_cases SET cleanup_amount = cleanup_amount + ?, cleanup_applied_by = ? WHERE id = ?",
+            (cleanup_amount, session["user_id"], case_id),
+        )
+        auth.log_change(db, "inpatient_cases", str(case_id), "update", changes={
+            "cleanup_amount": (summary["cleanup_amount"], summary["cleanup_amount"] + cleanup_amount)})
+        logic.refresh_inpatient_total(db, case_id)
     db.commit()
     flash("Payment recorded.", "success")
     return redirect(url_for("inpatient_detail", case_id=case_id))
@@ -5029,10 +5604,11 @@ def _appointments_page_context():
     columns, grid = logic.day_grid(db, selected_day)
     prev_week = (days[0] - timedelta(days=7)).isoformat()
     next_week = (days[0] + timedelta(days=7)).isoformat()
-    orphaned = logic.orphaned_appointments(db)
+    show_past = request.args.get("show_past") == "1"
+    orphaned = logic.orphaned_appointments(db, include_past=show_past)
     return dict(days=days, selected_day=selected_day, columns=columns,
                 grid=grid, week_anchor=week_anchor, prev_week=prev_week, next_week=next_week,
-                today_iso=today_iso, orphaned=orphaned)
+                today_iso=today_iso, orphaned=orphaned, show_past=show_past)
 
 
 @app.route("/appointments")
@@ -5061,7 +5637,9 @@ def appointment_new():
     if appt_date is None:
         flash("Appointment date is required.", "error")
         return redisplay()
-    slot_label = f["slot_label"]
+    slot_label = required_field(f, "slot_label", "Time slot")
+    if slot_label is None:
+        return redisplay()
     resource_type = f.get("resource_type")
     if resource_type not in RESOURCE_TYPES:
         flash("Resource type must be one of: " + ", ".join(RESOURCE_TYPES) + ".", "error")
@@ -5090,6 +5668,13 @@ def appointment_new():
         flash("That slot is already booked for this vet/groomer.", "error")
         return redisplay()
 
+    pet_name = required_field(f, "pet_name", "Pet name")
+    if pet_name is None:
+        return redisplay()
+    owner_name = required_field(f, "owner_name", "Owner name")
+    if owner_name is None:
+        return redisplay()
+
     # The check above is a friendly fast-path, not the real guarantee — two
     # concurrent bookings for the same slot could both pass it before either
     # inserts. The database's uq_appointments_slot unique index (see
@@ -5101,7 +5686,7 @@ def appointment_new():
         cur = db.execute(
             "INSERT INTO appointments (appt_date, slot_label, resource_type, resource_id, pet_name, owner_name, "
             "appointment_type, reason, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
-            (appt_date, slot_label, resource_type, resource_id, f["pet_name"], f["owner_name"],
+            (appt_date, slot_label, resource_type, resource_id, pet_name, owner_name,
              appointment_type, f.get("reason"), session["user_id"], datetime.now().isoformat(timespec="seconds")),
         )
         appt_id = cur.fetchone()["id"]
@@ -5206,7 +5791,10 @@ def insights():
             ("cash_register_health", lambda c: logic.cash_register_last_30_days(c)),
         ]
         results = {}
-        with ThreadPoolExecutor(max_workers=len(job_defs)) as ex:
+        # Capped rather than len(job_defs) — this report alone shouldn't be
+        # able to claim most of the DB connection pool at once and starve
+        # every other request. See ERROR_500_AUDIT.md E-03.
+        with ThreadPoolExecutor(max_workers=3) as ex:
             futures = {ex.submit(_run, fn): name for name, fn in job_defs}
             done = 0
             # as_completed gives real progress: update() fires exactly when
@@ -5349,7 +5937,7 @@ def refund_retail_save():
     lines, total = [], 0
     for sid, qty_raw in zip(sale_item_ids, quantities):
         try:
-            qty = parse_money(qty_raw, required=True)
+            qty = parse_quantity(qty_raw, required=True)
         except BadNumber:
             flash("Refund quantities must be valid numbers.", "error")
             return redisplay()
@@ -5378,10 +5966,25 @@ def refund_retail_save():
     # Microsecond precision — same reasoning as pos_checkout()'s `now`
     # (restocking here writes an inventory_transactions row too).
     now = datetime.now().isoformat(timespec="microseconds")
+    rounded_total = round(total, 3)
+    # Aggregate cap — see CLEANUP_FEATURE_PLAN.md §3.7/§4.5. Per-line
+    # pricing above is untouched; this only stops the SUM of every retail
+    # refund against this sale from exceeding what the sale actually
+    # collected (sale["total"] already reflects any Clean Up applied at
+    # sale time, so no separate reference to cleanup_amount is needed
+    # here).
+    already_refunded_total = db.execute(
+        "SELECT COALESCE(SUM(amount),0) s FROM refunds WHERE sale_id=? AND refund_type='retail'", (sale_id,)
+    ).fetchone()["s"]
+    if already_refunded_total + rounded_total > sale["total"]:
+        flash(f"That's more than this sale actually collected ({logic.fmt_money(sale['total'])} JOD, after any "
+              f"Clean Up applied at sale time) minus what's already been refunded.", "error")
+        return redisplay()
     cur = db.execute(
-        "INSERT INTO refunds (refund_type, refund_date, amount, restocked, sale_id, reason, refund_method, processed_by, created_at) "
-        "VALUES ('retail',?,?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(total, 3), restock, sale_id, reason, f.get("refund_method"), session["user_id"], now),
+        "INSERT INTO refunds (refund_type, refund_date, amount, restocked, sale_id, reason, refund_method, "
+        "processed_by, created_at, cleanup_amount_at_refund) VALUES ('retail',?,?,?,?,?,?,?,?,?) RETURNING id",
+        (refund_date, rounded_total, restock, sale_id, reason, f.get("refund_method"), session["user_id"], now,
+         sale["cleanup_amount"] or 0),
     )
     refund_id = cur.fetchone()["id"]
 
@@ -5433,6 +6036,13 @@ def refund_service_save():
     if amount <= 0:
         flash("Refund amount must be greater than 0.", "error")
         return redisplay()
+    # A service refund always reverses one specific visit or one specific
+    # inpatient case — never both at once, and never neither. A goodwill/
+    # no-specific-record refund is handled through Cash Register instead,
+    # not this table. See ORPHANED_RECORDS_AUDIT.md F-05.
+    if bool(visit_id) == bool(case_id_raw):
+        flash("A service refund must be linked to exactly one visit OR one inpatient case.", "error")
+        return redisplay()
 
     # Locked before computing the cap — same reasoning as
     # consignment_settlement_new()/boarding_payment(): without this, two
@@ -5470,10 +6080,22 @@ def refund_service_save():
             return redisplay()
 
     now = datetime.now().isoformat(timespec="seconds")
+    # Snapshot, not a live lookup — see CLEANUP_FEATURE_PLAN.md §3.7/§4.5.
+    # No cap change here: the paid-minus-already-refunded caps above
+    # already correctly exclude any Clean Up amount, since Clean Up is
+    # never itself a `payments` row.
+    cleanup_amount_at_refund = 0
+    if visit_id:
+        b = db.execute("SELECT cleanup_amount FROM billing WHERE visit_id=?", (visit_id,)).fetchone()
+        cleanup_amount_at_refund += (b["cleanup_amount"] if b else 0) or 0
+    if case_id:
+        c = db.execute("SELECT cleanup_amount FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
+        cleanup_amount_at_refund += (c["cleanup_amount"] if c else 0) or 0
     cur = db.execute(
-        "INSERT INTO refunds (refund_type, refund_date, amount, visit_id, inpatient_case_id, reason, refund_method, processed_by, created_at) "
-        "VALUES ('service',?,?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(amount, 3), visit_id, case_id, reason, f.get("refund_method"), session["user_id"], now),
+        "INSERT INTO refunds (refund_type, refund_date, amount, visit_id, inpatient_case_id, reason, refund_method, "
+        "processed_by, created_at, cleanup_amount_at_refund) VALUES ('service',?,?,?,?,?,?,?,?,?) RETURNING id",
+        (refund_date, round(amount, 3), visit_id, case_id, reason, f.get("refund_method"), session["user_id"], now,
+         cleanup_amount_at_refund),
     )
     refund_id = cur.fetchone()["id"]
     logic.recompute_month_summary(db, logic.month_key(refund_date))
@@ -5561,6 +6183,30 @@ def settings_page():
             if n < lo or n > hi:
                 flash(f"{key.replace('_', ' ').title()} must be between {lo} and {hi}.", "error")
                 return redirect(url_for("settings_page"))
+
+        # Time-of-day fields — validated as real HH:MM before anything else
+        # touches them. appt_start_time/appt_end_time feed straight into
+        # logic.generate_slots()'s datetime.strptime(..., "%H:%M") (used by
+        # Appointments, New Visit, Grooming, and Inpatient's vet pickers),
+        # and backup_time feeds scheduler.reschedule()'s CronTrigger — an
+        # unvalidated value there doesn't just break one page, it can raise
+        # at the next app *startup* (scheduler.start() runs unguarded before
+        # the server starts serving), making the whole app fail to launch
+        # until someone fixes the row directly in the database. The <input
+        # type="time"> in the template stops this in the normal UI, but
+        # that's client-side only, so it's validated here too. See
+        # ERROR_500_AUDIT.md E-01/E-02.
+        TIME_FIELDS = ["appt_start_time", "appt_end_time", "backup_time"]
+        for key in TIME_FIELDS:
+            val = request.form.get(key)
+            if val is None or val.strip() == "":
+                continue
+            try:
+                datetime.strptime(val.strip(), "%H:%M")
+            except ValueError:
+                flash(f"{key.replace('_', ' ').title()} must be a valid time (HH:MM).", "error")
+                return redirect(url_for("settings_page"))
+
         start = request.form.get("appt_start_time")
         end = request.form.get("appt_end_time")
         if start and end and start >= end:
@@ -5601,12 +6247,18 @@ def settings_page():
     settings = {r["key"]: r["value"] for r in rows}
     import backup as backup_mod
     import autostart
+    # An 'in_progress' marker that was never updated to 'success'/'failed'
+    # means the process died mid-restore — the database may be in a
+    # partially restored state. See ORPHANED_RECORDS_AUDIT.md F-20.
+    restore_marker = backup_mod.read_restore_marker()
+    incomplete_restore = bool(restore_marker and restore_marker.get("status") == "in_progress")
     return render_template(
         "settings.html", settings=settings, lan_address=lan_address(),
         recent_backups=backup_mod.recent_backups(db),
         recent_restores=backup_mod.recent_restores(db),
         autostart_supported=autostart.is_supported(),
         autostart_enabled=autostart.is_enabled(),
+        incomplete_restore=incomplete_restore,
         app_version=VERSION,
     )
 
@@ -5614,17 +6266,28 @@ def settings_page():
 @app.route("/settings/backup-now", methods=["POST"])
 @auth.permission_required("manage_settings")
 def settings_backup_now():
-    db = get_db()
     import backup as backup_mod
-    if not backup_mod.maintenance_lock.acquire(blocking=False):
-        flash("A backup, restore, or update is already running — try again once it finishes.", "error")
-        return redirect(url_for("settings_page"))
-    try:
-        ok, message = backup_mod.run_backup(db)
-    finally:
-        backup_mod.maintenance_lock.release()
-    flash(message, "success" if ok else "error")
-    return redirect(url_for("settings_page"))
+
+    def task(update):
+        # Runs in a background thread — needs its own DB connection,
+        # since g.db belongs to this request and gets closed at request
+        # teardown long before a background thread finishes. Also keeps
+        # run_backup() from committing on the request's own connection,
+        # which would otherwise commit any other pending write this
+        # request happened to have made as a side effect of taking a
+        # backup. See ORPHANED_RECORDS_AUDIT.md F-24.
+        conn = dbmod.connect()
+        try:
+            ok, message = backup_mod.run_backup(conn, triggered_by="manual", on_progress=update)
+            return {"ok": ok, "message": message}
+        finally:
+            conn.close()
+
+    job_id = jobs.start(
+        ["Checking backup folder", "Dumping database", "Applying retention policy", "Done"],
+        task,
+    )
+    return jsonify({"job_id": job_id})
 
 
 @app.route("/settings/restore-now", methods=["POST"])
@@ -5677,8 +6340,8 @@ def settings_restore_now():
 @app.route("/settings/job-status")
 @auth.permission_required("manage_settings")
 def settings_job_status():
-    """Polled by the progress panel on the Updates section, and by Restore
-    Now."""
+    """Polled by the progress panel on the Updates section, and by Backup
+    Now / Restore Now."""
     job_id = request.args.get("job_id", "")
     kind = request.args.get("kind", "")
     state = jobs.status(job_id)
@@ -5792,8 +6455,29 @@ if __name__ == "__main__":
             "Run: python3 setup.py first."
         )
 
-    import scheduler
-    scheduler.start(get_db=dbmod.connect, close_db=lambda c: c.close())
+    try:
+        import scheduler
+        scheduler.start(get_db=dbmod.connect, close_db=lambda c: c.close())
+    except Exception:
+        # A scheduler failure should never take the whole app down — the
+        # front desk still needs to open. See ERROR_500_AUDIT.md E-01.
+        error_logger.error("Nightly backup scheduler failed to start:\n" + traceback.format_exc())
+        print("  !! Nightly backups are NOT scheduled — see logs/errors.log. The app will still run.")
+
+    try:
+        import backup as boot_backup_mod
+        boot_conn = dbmod.connect()
+        try:
+            reaped = boot_backup_mod.reap_stale_running(boot_conn)
+            if reaped:
+                print(f"  Reaped {reaped} stale 'running' backup log row(s) from an earlier, killed run.")
+        finally:
+            boot_conn.close()
+        # Makes "no restore has happened" provable rather than assumed —
+        # see ORPHANED_RECORDS_AUDIT.md F-20.
+        boot_backup_mod.ensure_no_restore_marker()
+    except Exception:
+        error_logger.error("Boot-time backup/restore-marker housekeeping failed:\n" + traceback.format_exc())
 
     def _graceful_shutdown(signum, frame):
         # Closes every pooled connection cleanly rather than letting them

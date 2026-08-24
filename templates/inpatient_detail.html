@@ -166,11 +166,13 @@
       <button class="btn small secondary" type="submit">Apply</button>
     </form>
     <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ billing.total|money }} JOD</div></div>
+    {% if billing.cleanup_amount %}<div class="detail-item"><div class="k">Clean Up applied</div><div class="v">{{ billing.cleanup_amount|money }} JOD</div></div>{% endif %}
     <span class="badge {{ 'ok' if billing.status=='Fully Paid' else ('danger' if billing.status=='Unpaid' else 'muted') }}">{{ billing.status }}</span>
 
     <form method="post" action="{{ url_for('inpatient_payment_add', case_id=case.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="0.001" name="amount" required value="{{ fv(form, 'amount') if payment_error else '' }}"></div>
+      <div class="field"><label>Clean Up (max {{ CLEANUP_CAP }} JOD)</label><input type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error else '0' }}"></div>
       <div class="field"><label>Method</label>
         <select name="method">
           {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}

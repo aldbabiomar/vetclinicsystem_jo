@@ -11,6 +11,7 @@ setup with nothing extra to install).
 To restore a backup later:
     pg_restore --clean --if-exists -d <DATABASE_URL> <path-to-.dump-file>
 """
+import json
 import os
 import shutil
 import subprocess
@@ -22,10 +23,74 @@ import logic
 FILENAME_PREFIX = "vetclinicsystemjo_backup_"
 FILENAME_SUFFIX = ".dump"
 
+# Same VETCLINICSYSTEMJO_DATA_DIR convention attachments.py uses — this
+# file must survive an in-app update (which replaces the release folder
+# this module lives in), so it's anchored in the persistent data dir, not
+# next to this file. See ORPHANED_RECORDS_AUDIT.md F-20.
+_data_dir = os.environ.get("VETCLINICSYSTEMJO_DATA_DIR")
+_RESTORE_MARKER_PATH = os.path.join(_data_dir, "last_restore.json") if _data_dir \
+    else os.path.join(os.path.dirname(__file__), "last_restore.json")
+
+
+def _write_restore_marker(status, dump_path=None, started=None):
+    """reconcile_attachments.py's entire safety argument rests on knowing
+    *when* the most recently restored backup was taken — but pg_restore
+    --clean drops and recreates every table, including restore_log itself,
+    and the row recording a successful restore is written only after the
+    wipe (see _try_log_restore, best-effort). If the process dies in that
+    window, the restore happened but left no DB record. This marker file
+    lives outside the database entirely so it survives that exact failure
+    mode — written 'in_progress' immediately before pg_restore runs, then
+    updated to 'success' or 'failed' once it's known. See F-20."""
+    try:
+        tmp = _RESTORE_MARKER_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({
+                "status": status,
+                "source_file": dump_path,
+                "started_at": started.isoformat(timespec="seconds") if started else None,
+                "recorded_at": datetime.now().isoformat(timespec="seconds"),
+            }, f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, _RESTORE_MARKER_PATH)  # atomic
+    except OSError:
+        pass
+
+
+def read_restore_marker():
+    """Returns the marker dict written by _write_restore_marker()/
+    ensure_no_restore_marker(), or None if it doesn't exist or is
+    unreadable. Public reader for reconcile_attachments.py — see F-20."""
+    try:
+        with open(_RESTORE_MARKER_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def ensure_no_restore_marker():
+    """Called once at app boot (app.py). Writes a 'no_restore_since_boot'
+    marker unless the existing marker already records a real restore
+    ('in_progress'/'success') — never overwrites actual restore evidence.
+    This is what makes 'no restore has happened' a provable fact an
+    operator can check, rather than an absence of evidence. See F-20."""
+    try:
+        with open(_RESTORE_MARKER_PATH, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+        if existing.get("status") in ("in_progress", "success"):
+            return
+    except (OSError, ValueError):
+        pass
+    _write_restore_marker("no_restore_since_boot")
+
 # Held for the duration of a backup, restore, or in-app update (see
 # updater.py) so none of those three can start while another is already
-# running against the same database.
-maintenance_lock = threading.Lock()
+# running against the same database. An RLock, not a plain Lock — an
+# update's apply_update() (updater.py) holds this lock for its whole run
+# and, on the very same thread, also calls into run_backup() as its own
+# first step; a plain Lock would fail to re-acquire itself there.
+maintenance_lock = threading.RLock()
 
 
 def _pg_conn_parts():
@@ -238,15 +303,7 @@ def run_restore(get_fresh_db, dump_path, triggered_by=None, on_progress=None):
     """Acquires maintenance_lock (see its own comment) before running the
     actual restore in _run_restore_locked(). Returns (ok: bool, message:
     str) immediately, without touching anything, if another backup/
-    restore/update is already in progress.
-
-    Unlike run_backup() above (whose lock is acquired by its caller,
-    settings_backup_now(), since that call is synchronous within a single
-    request), restore runs inside a background job (see settings_restore_now
-    in app.py) — the request that starts it returns almost immediately, long
-    before the actual pg_restore finishes, so the lock has to be acquired
-    here, inside the code that actually runs in the background thread, not
-    at the route level."""
+    restore/update is already in progress."""
     if not maintenance_lock.acquire(blocking=False):
         return False, "Another backup, restore, or update is already running — try again once it finishes."
     try:
@@ -293,16 +350,24 @@ def _run_restore_locked(get_fresh_db, dump_path, triggered_by=None, on_progress=
     def on_count(done, total):
         step(1, f"Restoring database ({done}/{total} objects)")
 
+    _write_restore_marker("in_progress", dump_path, started)
     try:
         _run_pg_restore(dump_path, on_count=on_count)
     except subprocess.CalledProcessError as e:
         err = (e.stderr or "").strip() or str(e)
+        _write_restore_marker("failed", dump_path, started)
         _try_log_restore(get_fresh_db, "failed", dump_path, err, started, triggered_by)
         return False, (f"Restore failed: {err} — the database may be in a partially restored "
                         f"state. Check it carefully before continuing to use the app.")
     except Exception as e:
+        _write_restore_marker("failed", dump_path, started)
         _try_log_restore(get_fresh_db, "failed", dump_path, str(e), started, triggered_by)
         return False, f"Restore failed: {e}"
+    # The data itself is restored (and IDs rewound) at this point,
+    # regardless of whether the schema-reconcile step below succeeds —
+    # marked here, not at the very end, since this is the actual moment
+    # reconcile_attachments.py's safety concern applies from.
+    _write_restore_marker("success", dump_path, started)
 
     step(2, "Reconciling schema")
     # A backup taken before this running app version shipped a schema
@@ -365,11 +430,36 @@ def recent_restores(db, limit=10):
     return db.execute("SELECT * FROM restore_log ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
 
 
-def run_backup(db, dest_dir=None, retention=None, triggered_by=None):
+def run_backup(db, dest_dir=None, retention=None, triggered_by=None, on_progress=None):
+    """Acquires maintenance_lock (see its own comment) before running the
+    actual backup in _run_backup_locked(). Returns (ok: bool, message: str)
+    immediately, without touching anything, if another backup/restore/
+    update is already running."""
+    if not maintenance_lock.acquire(blocking=False):
+        msg = "Another backup, restore, or update is already running — try again once it finishes."
+        _log(db, "failed", None, None, msg)
+        return False, msg
+    try:
+        return _run_backup_locked(db, dest_dir, retention, triggered_by, on_progress)
+    finally:
+        maintenance_lock.release()
+
+
+def _run_backup_locked(db, dest_dir=None, retention=None, triggered_by=None, on_progress=None):
     """
     Performs one backup, applies retention, and logs the outcome to
     backup_log. Returns (ok: bool, message: str).
+
+    on_progress(step_index, label=None), if given, is called at each real
+    phase transition (checking the folder, running pg_dump, applying
+    retention) — the same three-argument shape jobs.py's update() uses, so
+    a caller running this inside jobs.start() can just pass that straight
+    through.
     """
+    def step(i, label=None):
+        if on_progress:
+            on_progress(i, label)
+
     dest_dir = dest_dir or logic.get_setting(db, "backup_dir")
     if not dest_dir:
         msg = "No backup folder configured yet — set one on the Settings page."
@@ -378,6 +468,7 @@ def run_backup(db, dest_dir=None, retention=None, triggered_by=None):
 
     retention = retention or int(logic.get_setting(db, "backup_retention", "30") or 30)
 
+    step(0)  # Checking backup folder
     try:
         os.makedirs(dest_dir, exist_ok=True)
         probe = os.path.join(dest_dir, ".vetclinicsystemjo_write_test")
@@ -395,11 +486,14 @@ def run_backup(db, dest_dir=None, retention=None, triggered_by=None):
 
     log_id = _log(db, "running", None, None, None, started=started)
 
+    step(1)  # Dumping database
     try:
         _run_pg_dump(out_path)
         size = os.path.getsize(out_path)
         _finish_log(db, log_id, "success", out_path, size, None)
+        step(2)  # Applying retention policy
         _apply_retention(dest_dir, retention)
+        step(3)  # Done
         return True, f"Backup saved to {out_path}"
     except subprocess.CalledProcessError as e:
         err = (e.stderr or "").strip() or str(e)
@@ -439,6 +533,26 @@ def _finish_log(db, log_id, status, filepath, size, error):
         (status, datetime.now().isoformat(timespec="seconds"), filepath, size, error, log_id),
     )
     db.commit()
+
+
+def reap_stale_running(db):
+    """A 'running' row can only be genuine if this process created it, and
+    this process was just started — so anything still 'running' at boot is
+    from a run that was killed (machine shut down mid-backup is not exotic
+    for a nightly 02:00 job on a single clinic desktop). Left alone, a
+    stranded 'running' row actively misleads: backup_alert_message() only
+    alarms on 'failed' or a 2+-day-old started_at — 'running' is neither,
+    so the Dashboard reports healthy backups for as long as that row sits
+    there. Called once at app boot. See ORPHANED_RECORDS_AUDIT.md F-21."""
+    n = db.execute(
+        "UPDATE backup_log SET status='failed', finished_at=?, "
+        "error='Backup did not finish — the app was stopped or the machine shut down "
+        "while it was running.' "
+        "WHERE status='running' RETURNING id",
+        (datetime.now().isoformat(timespec="seconds"),),
+    ).rowcount
+    db.commit()
+    return n
 
 
 def last_backup(db):

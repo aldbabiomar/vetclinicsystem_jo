@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Server Busy — {{ clinic_name }}{% endblock %}
+
+{# Reachable in both logged-in and logged-out states (a pool exhaustion
+   can happen on the login POST itself), same reasoning as error_404.html —
+   both blocks defined here with the same body. Deliberately its own
+   template rather than error_500.html: this isn't a crash, it's the
+   system momentarily out of database connections, so no traceback box —
+   and the refresh button is manual, not auto-refreshing, so a busy front
+   desk doesn't amplify the load at exactly the wrong moment. See
+   ERROR_500_AUDIT.md E-03. #}
+
+{% block content %}
+<div class="error-page">
+  <div class="card error-card">
+    {% with variant = "broken" %}{% include "_error_dog.html" %}{% endwith %}
+    <h1>The system is busy right now.</h1>
+    <p class="page-sub">Too many people are using it at once. Wait a moment, then try again.</p>
+    <div class="error-actions">
+      <a class="btn" href="javascript:location.reload()">Try Again</a>
+      <a class="btn secondary" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-wrap">
+  <div class="auth-card error-card">
+    {% with variant = "broken" %}{% include "_error_dog.html" %}{% endwith %}
+    <h1>The system is busy right now.</h1>
+    <p class="page-sub">Too many people are using it at once. Wait a moment, then try again.</p>
+    <div class="error-actions">
+      <a class="btn" href="javascript:location.reload()">Try Again</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

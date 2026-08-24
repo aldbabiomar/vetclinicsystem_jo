@@ -35,6 +35,14 @@
   </div>
 </div>
 {% endif %}
+<p class="small muted" style="margin:-8px 0 12px;">
+  {% if show_past %}
+  Showing unreachable bookings from any date, including past ones.
+  <a href="{{ url_for('appointments_page', week=week_anchor, day=selected_day) }}">Hide past bookings</a>
+  {% else %}
+  <a href="{{ url_for('appointments_page', week=week_anchor, day=selected_day, show_past=1) }}">Show past unreachable bookings</a>
+  {% endif %}
+</p>
 <div class="tabs">
   {% for d in days %}
   <a class="{{ 'active' if d.isoformat()==selected_day }}" href="{{ url_for('appointments_page', week=week_anchor, day=d.isoformat()) }}">

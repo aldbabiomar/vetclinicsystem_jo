@@ -384,6 +384,16 @@ def describe_device(user_agent):
 # ---------------------------------------------------------------------------
 # Change / audit logging
 # ---------------------------------------------------------------------------
+def _as_text(v):
+    """audit_log.old_value/new_value are TEXT, but log_change()'s callers
+    routinely pass Decimal/float/bool/date values straight through —
+    Postgres removed implicit casts to text in 8.3, so whether that works
+    depends on how psycopg types the bound parameter. Coerced explicitly
+    here so it never depends on that. See ERROR_500_AUDIT.md's
+    'Could not verify without a live database' section."""
+    return None if v is None else str(v)
+
+
 def log_change(db, table_name, record_id, action, changes=None):
     """
     action: 'create' / 'update' / 'delete'
@@ -407,7 +417,7 @@ def log_change(db, table_name, record_id, action, changes=None):
             db.execute(
                 "INSERT INTO audit_log (user_id,username,timestamp,action,table_name,record_id,field,old_value,new_value) "
                 "VALUES (?,?,?,?,?,?,?,?,?)",
-                (uid, uname, ts, "update", table_name, record_id, field, old, new),
+                (uid, uname, ts, "update", table_name, record_id, field, _as_text(old), _as_text(new)),
             )
     else:
         db.execute(

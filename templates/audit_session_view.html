@@ -39,7 +39,7 @@
     {% set line = existing_lines.get(it.id) %}
     {% set eff = latest_confirmed.get(it.id) %}
     <tr>
-      <td><strong>{{ it.name }}</strong>{% if it.ownership_type == 'Consignment' %} <span class="badge" style="margin-left:4px;">consignment</span>{% endif %}<div class="small muted">{{ it.unit or '' }}</div></td>
+      <td><strong>{{ it.name }}</strong>{% if it.ownership_type == 'Consignment' %} <span class="badge" style="margin-left:4px;">consignment</span>{% endif %}{% if not it.active %} <span class="badge muted" style="margin-left:4px;">deactivated</span>{% endif %}<div class="small muted">{{ it.unit or '' }}</div></td>
       <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="stock_{{ it.id }}" value="{{ fv(form, 'stock_' ~ it.id, line.stock_counted if line and line.stock_counted is not none else '') }}" style="width:80px; text-align:right;"></td>
       <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="received_{{ it.id }}" value="{{ fv(form, 'received_' ~ it.id, line.received_since_prior if line else 0) }}" style="width:70px; text-align:right;"></td>
       <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="threshold_{{ it.id }}" value="{{ fv(form, 'threshold_' ~ it.id, line.reorder_threshold if line and line.reorder_threshold is not none else '') }}" placeholder="{{ eff.effective_reorder_threshold if eff else '' }}" style="width:70px; text-align:right;"></td>

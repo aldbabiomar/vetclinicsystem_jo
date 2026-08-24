@@ -41,12 +41,19 @@
   <div class="form-actions"><button class="btn" type="submit">Save Settings</button></div>
 </form>
 
-<form method="post" action="{{ url_for('settings_backup_now') }}" style="margin-top:10px;">
+<form method="post" action="{{ url_for('settings_backup_now') }}" id="backupNowForm" style="margin-top:10px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <button class="btn secondary" type="submit">Back Up Now</button>
+  <button class="btn secondary" type="submit" id="backupNowBtn" data-saving-label="Backing up…">Back Up Now</button>
 </form>
+<div id="backupProgress" class="vz-progress-panel" style="display:none;"></div>
 
 <div class="section-title">Restore From Backup</div>
+{% if incomplete_restore %}
+<div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:12px;">
+  A restore may not have completed — the app was stopped or crashed partway through the last one.
+  Check the database carefully before continuing to use the app.
+</div>
+{% endif %}
 <p class="small muted" style="margin-top:-6px;">
   Replaces <strong>all</strong> current data in VetClinicSystem JO with the contents of a backup file. This can't be undone —
   take a fresh backup first if you're not sure. Uploaded files (X-rays, lab results) aren't part of the backup
@@ -250,6 +257,38 @@ function resetSubmitButton(btn) {
   btn.classList.remove('is-saving');
   if (btn.dataset.originalLabel) btn.textContent = btn.dataset.originalLabel;
 }
+
+document.getElementById('backupNowForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const btn = document.getElementById('backupNowBtn');
+  const panel = document.getElementById('backupProgress');
+  panel.style.display = 'block';
+  try {
+    const res = await fetch(this.action, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+    });
+    const data = await res.json();
+    if (!res.ok || !data.job_id) throw new Error('Could not start the backup.');
+    window.VZProgress.poll(data.job_id, '/settings/job-status', {}, {
+      onUpdate: (d) => window.VZProgress.render(panel, d),
+      onDone: (d) => {
+        resetSubmitButton(btn);
+        window.VZToast.show(d.message || (d.ok ? 'Backup complete.' : 'Backup failed.'), d.ok ? 'success' : 'error');
+        setTimeout(() => window.location.reload(), 900);
+      },
+      onError: (d) => {
+        resetSubmitButton(btn);
+        window.VZProgress.render(panel, { status: 'error', steps: ['Backup'], current: 0, message: d.message });
+        window.VZToast.show(d.message || 'Backup failed.', 'error');
+      },
+    });
+  } catch (err) {
+    resetSubmitButton(btn);
+    panel.style.display = 'none';
+    window.VZToast.show('Could not start the backup.', 'error');
+  }
+});
 
 document.getElementById('restoreForm').addEventListener('submit', async function (e) {
   // Waits for the existing data-confirm handler in ui.js to run first —

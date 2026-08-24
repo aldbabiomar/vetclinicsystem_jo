@@ -81,6 +81,7 @@
     <form method="post" id="paymentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field" style="margin-bottom:10px;"><label>Amount (JOD)</label><input type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label>Clean Up (max {{ CLEANUP_CAP }} JOD)</label><input type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error_id else '0' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label>Method</label>
         <select name="method">
           {% set m = fv(form, 'method', 'Cash') if payment_error_id else 'Cash' %}

@@ -155,12 +155,136 @@ INCREMENTAL_SCHEMA_STATEMENTS = [
     # without going through Remove Barcode first (whose guard checks
     # barcode_source, not just whether a barcode is set).
     "UPDATE inventory_list SET barcode_source='generated' WHERE barcode IS NOT NULL AND barcode_source IS NULL",
+
+    # --- "Clean Up" feature — see CLEANUP_FEATURE_PLAN.md.
+    "ALTER TABLE billing ADD COLUMN IF NOT EXISTS cleanup_amount NUMERIC(12,3) NOT NULL DEFAULT 0",
+    "ALTER TABLE billing ADD COLUMN IF NOT EXISTS cleanup_applied_by TEXT",
+    "ALTER TABLE inpatient_cases ADD COLUMN IF NOT EXISTS cleanup_amount NUMERIC(12,3) NOT NULL DEFAULT 0",
+    "ALTER TABLE inpatient_cases ADD COLUMN IF NOT EXISTS cleanup_applied_by TEXT",
+    "ALTER TABLE boarding_sessions ADD COLUMN IF NOT EXISTS cleanup_amount NUMERIC(12,3) NOT NULL DEFAULT 0",
+    "ALTER TABLE boarding_sessions ADD COLUMN IF NOT EXISTS cleanup_applied_by TEXT",
+    "ALTER TABLE sales ADD COLUMN IF NOT EXISTS cleanup_amount NUMERIC(12,3) NOT NULL DEFAULT 0",
+    "ALTER TABLE sales ADD COLUMN IF NOT EXISTS cleanup_applied_by TEXT",
+    "ALTER TABLE refunds ADD COLUMN IF NOT EXISTS cleanup_amount_at_refund NUMERIC(12,3) NOT NULL DEFAULT 0",
+
+    # --- ORPHANED_RECORDS_AUDIT.md F-07 — distributor snapshot on sale_items.
+    "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS distributor_id TEXT REFERENCES distributors(id)",
+
+    # --- ORPHANED_RECORDS_AUDIT.md F-05/F-07/F-13/F-14 — CHECK constraints.
+    # Postgres has no "ADD CONSTRAINT IF NOT EXISTS" — DROP IF EXISTS then
+    # ADD, run every launch, is what makes each pair idempotent.
+    "ALTER TABLE refunds DROP CONSTRAINT IF EXISTS refunds_anchor_ck",
+    "ALTER TABLE refunds ADD CONSTRAINT refunds_anchor_ck CHECK ("
+    "    (refund_type = 'retail'  AND sale_id IS NOT NULL"
+    "        AND visit_id IS NULL AND inpatient_case_id IS NULL)"
+    " OR (refund_type = 'service' AND sale_id IS NULL"
+    "        AND (visit_id IS NOT NULL) <> (inpatient_case_id IS NOT NULL))"
+    ")",
+    "ALTER TABLE inventory_list DROP CONSTRAINT IF EXISTS inventory_consignment_needs_distributor_ck",
+    "ALTER TABLE inventory_list ADD CONSTRAINT inventory_consignment_needs_distributor_ck "
+    "CHECK (ownership_type <> 'Consignment' OR distributor_id IS NOT NULL)",
+    "ALTER TABLE attachments DROP CONSTRAINT IF EXISTS attachments_one_anchor_ck",
+    "ALTER TABLE attachments ADD CONSTRAINT attachments_one_anchor_ck "
+    "CHECK ((visit_id IS NOT NULL) <> (inpatient_case_id IS NOT NULL))",
+    "ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_one_anchor_ck",
+    "ALTER TABLE payments ADD CONSTRAINT payments_one_anchor_ck CHECK ("
+    "    (visit_id IS NOT NULL)::int"
+    "  + (inpatient_case_id IS NOT NULL)::int"
+    "  + (boarding_id IS NOT NULL)::int = 1"
+    ")",
+
+    # --- ORPHANED_RECORDS_AUDIT.md F-19 — RESTRICT FKs on 14 (+4 Clean Up)
+    # user-referencing columns that had none. Same idempotent DROP/ADD
+    # pattern; names match Postgres's own default unnamed-FK convention
+    # (<table>_<column>_fkey), so these agree with a fresh CREATE TABLE.
+    "ALTER TABLE inventory_transactions DROP CONSTRAINT IF EXISTS inventory_transactions_user_id_fkey",
+    "ALTER TABLE inventory_transactions ADD CONSTRAINT inventory_transactions_user_id_fkey "
+    "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE visits DROP CONSTRAINT IF EXISTS visits_created_by_fkey",
+    "ALTER TABLE visits ADD CONSTRAINT visits_created_by_fkey "
+    "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE billing DROP CONSTRAINT IF EXISTS billing_discount_applied_by_fkey",
+    "ALTER TABLE billing ADD CONSTRAINT billing_discount_applied_by_fkey "
+    "FOREIGN KEY (discount_applied_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE billing DROP CONSTRAINT IF EXISTS billing_cleanup_applied_by_fkey",
+    "ALTER TABLE billing ADD CONSTRAINT billing_cleanup_applied_by_fkey "
+    "FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE boarding_sessions DROP CONSTRAINT IF EXISTS boarding_sessions_created_by_fkey",
+    "ALTER TABLE boarding_sessions ADD CONSTRAINT boarding_sessions_created_by_fkey "
+    "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE boarding_sessions DROP CONSTRAINT IF EXISTS boarding_sessions_cleanup_applied_by_fkey",
+    "ALTER TABLE boarding_sessions ADD CONSTRAINT boarding_sessions_cleanup_applied_by_fkey "
+    "FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE boarding_incidents DROP CONSTRAINT IF EXISTS boarding_incidents_user_id_fkey",
+    "ALTER TABLE boarding_incidents ADD CONSTRAINT boarding_incidents_user_id_fkey "
+    "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE inpatient_cases DROP CONSTRAINT IF EXISTS inpatient_cases_discount_applied_by_fkey",
+    "ALTER TABLE inpatient_cases ADD CONSTRAINT inpatient_cases_discount_applied_by_fkey "
+    "FOREIGN KEY (discount_applied_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE inpatient_cases DROP CONSTRAINT IF EXISTS inpatient_cases_created_by_fkey",
+    "ALTER TABLE inpatient_cases ADD CONSTRAINT inpatient_cases_created_by_fkey "
+    "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE inpatient_cases DROP CONSTRAINT IF EXISTS inpatient_cases_cleanup_applied_by_fkey",
+    "ALTER TABLE inpatient_cases ADD CONSTRAINT inpatient_cases_cleanup_applied_by_fkey "
+    "FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE inpatient_updates DROP CONSTRAINT IF EXISTS inpatient_updates_user_id_fkey",
+    "ALTER TABLE inpatient_updates ADD CONSTRAINT inpatient_updates_user_id_fkey "
+    "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE inpatient_contact_log DROP CONSTRAINT IF EXISTS inpatient_contact_log_staff_user_id_fkey",
+    "ALTER TABLE inpatient_contact_log ADD CONSTRAINT inpatient_contact_log_staff_user_id_fkey "
+    "FOREIGN KEY (staff_user_id) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE inpatient_billing DROP CONSTRAINT IF EXISTS inpatient_billing_logged_by_fkey",
+    "ALTER TABLE inpatient_billing ADD CONSTRAINT inpatient_billing_logged_by_fkey "
+    "FOREIGN KEY (logged_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE sales DROP CONSTRAINT IF EXISTS sales_discount_applied_by_fkey",
+    "ALTER TABLE sales ADD CONSTRAINT sales_discount_applied_by_fkey "
+    "FOREIGN KEY (discount_applied_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE sales DROP CONSTRAINT IF EXISTS sales_cleanup_applied_by_fkey",
+    "ALTER TABLE sales ADD CONSTRAINT sales_cleanup_applied_by_fkey "
+    "FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE refunds DROP CONSTRAINT IF EXISTS refunds_processed_by_fkey",
+    "ALTER TABLE refunds ADD CONSTRAINT refunds_processed_by_fkey "
+    "FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE appointments DROP CONSTRAINT IF EXISTS appointments_resource_id_fkey",
+    "ALTER TABLE appointments ADD CONSTRAINT appointments_resource_id_fkey "
+    "FOREIGN KEY (resource_id) REFERENCES users(id) ON DELETE RESTRICT",
+    "ALTER TABLE appointments DROP CONSTRAINT IF EXISTS appointments_created_by_fkey",
+    "ALTER TABLE appointments ADD CONSTRAINT appointments_created_by_fkey "
+    "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT",
 ]
 
 
 def apply_incremental_migrations(con):
+    """Each statement in its own savepoint — a single failing statement
+    (e.g. the duplicate-owner-phone unique index, if a database already
+    has a violating pair) used to abort the whole transaction, silently
+    skipping every statement after it, on every single launch, forever.
+    Now a failure is isolated to that one statement; the rest still apply.
+    See ORPHANED_RECORDS_AUDIT.md F-22."""
+    failures = []
     for stmt in INCREMENTAL_SCHEMA_STATEMENTS:
-        con.execute(stmt)
+        try:
+            with con.transaction():
+                con.execute(stmt)
+        except Exception as e:
+            failures.append((stmt, str(e)))
+    if failures:
+        db_error_message = "; ".join(
+            f"{stmt.split(chr(10))[0][:90]}: {err}" for stmt, err in failures
+        )
+        con.execute(
+            "INSERT INTO settings (key, value) VALUES ('migration_failures', ?) "
+            "ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+            (db_error_message,),
+        )
+        print(f"\n  !! {len(failures)} of {len(INCREMENTAL_SCHEMA_STATEMENTS)} incremental "
+              f"statement(s) could not be applied:")
+        for stmt, err in failures:
+            print(f"     - {stmt.split(chr(10))[0][:90]}\n       {err}")
+        print("     The app will still start, but the features these support may not work.")
+        print("     Resolve the underlying data issue and restart.\n")
+    else:
+        con.execute("DELETE FROM settings WHERE key = 'migration_failures'")
     con.commit()
 
 

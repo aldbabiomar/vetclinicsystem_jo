@@ -13,6 +13,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 )
 
+from decimal import Decimal
 import logic
 import attachments
 
@@ -175,9 +176,12 @@ def export_patient_billing(db, patient_id):
             amount = l.get("line_total", l["price"])
             label = l["name"] if not l.get("quantity") or l["quantity"] == 1 else f"{l['name']} × {l['quantity']:g}"
             data.append([label, f"{amount:.3f}"])
+        pre_cleanup_total = round(summary["subtotal"] * (1 - summary["discount_percent"] / Decimal(100)), 3)
         data.append(["Subtotal", f"{summary['subtotal']:.3f}"])
         if summary["discount_percent"]:
-            data.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:.3f}"])
+            data.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - pre_cleanup_total:.3f}"])
+        if summary["cleanup_amount"]:
+            data.append(["Clean Up", f"-{summary['cleanup_amount']:.3f}"])
         data.append(["Total", f"{summary['total']:.3f}"])
         data.append(["Paid", f"{summary['paid']:.3f}"])
         data.append(["Status", summary["status"]])
@@ -229,9 +233,12 @@ def export_sale_receipt(db, sale_id):
     story.append(t)
     story.append(Spacer(1, 14))
 
+    pre_cleanup_total = round(sale["subtotal"] * (1 - sale["discount_percent"] / Decimal(100)), 3)
     summary_rows = [["Subtotal", f"{sale['subtotal']:,.3f} JOD"]]
     if sale["discount_percent"]:
-        summary_rows.append([f"Discount ({sale['discount_percent']:.0f}%)", f"-{sale['subtotal'] - sale['total']:,.3f} JOD"])
+        summary_rows.append([f"Discount ({sale['discount_percent']:.0f}%)", f"-{sale['subtotal'] - pre_cleanup_total:,.3f} JOD"])
+    if sale["cleanup_amount"]:
+        summary_rows.append(["Clean Up", f"-{sale['cleanup_amount']:,.3f} JOD"])
     summary_rows.append(["Total", f"{sale['total']:,.3f} JOD"])
     summary_rows.append(["Payment Method", sale["payment_method"] or "\u2014"])
     st = Table(summary_rows, colWidths=[110 * mm, 55 * mm])
@@ -320,9 +327,12 @@ def export_visit_pdf(db, visit_id):
             data.append([label, f"{amount:,.3f}"])
         story.append(_section_table(data, [120 * mm, 45 * mm]))
         story.append(Spacer(1, 6))
+    pre_cleanup_total = round(summary["subtotal"] * (1 - summary["discount_percent"] / Decimal(100)), 3)
     bill_rows = [["Subtotal", f"{summary['subtotal']:,.3f} JOD"]]
     if summary["discount_percent"]:
-        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:,.3f} JOD"])
+        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - pre_cleanup_total:,.3f} JOD"])
+    if summary["cleanup_amount"]:
+        bill_rows.append(["Clean Up", f"-{summary['cleanup_amount']:,.3f} JOD"])
     bill_rows.append(["Total", f"{summary['total']:,.3f} JOD"])
     bill_rows.append(["Paid", f"{summary['paid']:,.3f} JOD"])
     bill_rows.append(["Status", summary["status"]])
@@ -402,9 +412,12 @@ def export_inpatient_pdf(db, case_id):
             data.append([l["name"], f"{l['quantity']:g}", f"{l['unit_price']:,.3f}", f"{l['line_total']:,.3f}"])
         story.append(_section_table(data, [70 * mm, 20 * mm, 35 * mm, 40 * mm]))
         story.append(Spacer(1, 6))
+    pre_cleanup_total = round(summary["subtotal"] * (1 - summary["discount_percent"] / Decimal(100)), 3)
     bill_rows = [["Subtotal", f"{summary['subtotal']:,.3f} JOD"]]
     if summary["discount_percent"]:
-        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - summary['total']:,.3f} JOD"])
+        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - pre_cleanup_total:,.3f} JOD"])
+    if summary["cleanup_amount"]:
+        bill_rows.append(["Clean Up", f"-{summary['cleanup_amount']:,.3f} JOD"])
     bill_rows.append(["Total", f"{summary['total']:,.3f} JOD"])
     bill_rows.append(["Paid", f"{summary['paid']:,.3f} JOD"])
     bill_rows.append(["Status", summary["status"]])
@@ -474,10 +487,12 @@ def export_boarding_pdf(db, boarding_id):
     story.append(Paragraph("Billing", ss["H2"]))
     bill_rows = [
         ["Price per Day", f"{b['price_per_day']:,.3f} JOD" if b["price_per_day"] is not None else "\u2014"],
-        ["Total", f"{summary['total']:,.3f} JOD"],
-        ["Paid", f"{summary['paid']:,.3f} JOD"],
-        ["Status", summary["status"]],
     ]
+    if summary["cleanup_amount"]:
+        bill_rows.append(["Clean Up", f"-{summary['cleanup_amount']:,.3f} JOD"])
+    bill_rows.append(["Total", f"{summary['total']:,.3f} JOD"])
+    bill_rows.append(["Paid", f"{summary['paid']:,.3f} JOD"])
+    bill_rows.append(["Status", summary["status"]])
     bt2 = Table(bill_rows, colWidths=[125 * mm, 40 * mm])
     bt2.setStyle(TableStyle([
         ("FONTSIZE", (0, 0), (-1, -1), 10), ("ALIGN", (1, 0), (1, -1), "RIGHT"),

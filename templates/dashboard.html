@@ -23,6 +23,18 @@
 </div>
 {% endif %}
 
+{% if unbilled_count %}
+<div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
+  {{ unbilled_count }} bill{{ 'ing has' if unbilled_count == 1 else 's have' }} no Date Billed set — {{ 'it is' if unbilled_count == 1 else 'they are' }} missing from Monthly &amp; Yearly P&amp;L until fixed.
+</div>
+{% endif %}
+
+{% if migration_failures %}
+<div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
+  Some schema updates couldn't be applied on the last launch — some newer features may not work correctly: {{ migration_failures }}
+</div>
+{% endif %}
+
 <div class="stat-grid">
   <div class="stat-card"><div class="num">{{ snap.total_patients }}</div><div class="label">Total Patients on File</div></div>
   <div class="stat-card ok"><div class="num">{{ snap.active_cases }}</div><div class="label">Active / Ongoing Cases</div></div>

@@ -15,6 +15,7 @@
         <button type="button" class="btn secondary" onclick="lookupRefundSale()">Find Sale</button>
       </div>
     </div>
+    <div id="refundSaleCleanupNote" class="small" style="display:none; margin-bottom:8px;"></div>
     <div id="refundSaleLines"><div class="empty-note">Look up a sale to see its refundable items.</div></div>
 
     <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
@@ -64,8 +65,8 @@
             <option {{ 'selected' if fv(service_form, 'refund_method')=='Transfer' }}>Transfer</option>
           </select>
         </div>
-        <div class="field"><label>Visit ID (optional)</label><input type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
-        <div class="field"><label>Inpatient Case ID (optional)</label><input type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
+        <div class="field"><label>Visit ID (required — or Inpatient Case ID below)</label><input type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
+        <div class="field"><label>Inpatient Case ID (required — or Visit ID above)</label><input type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
         <div class="field" style="grid-column:1/-1;"><label>Reason (optional)</label><input type="text" name="reason" value="{{ fv(service_form, 'reason') }}" placeholder="e.g. service not completed"></div>
       </div>
       <div class="form-actions"><button class="btn" type="submit">Process Service Refund</button></div>
@@ -109,7 +110,7 @@
           {% if not r.visit_id and not r.inpatient_case_id %}—{% endif %}
         {% endif %}
       </td>
-      <td class="num-col">{{ r.amount|money }} JOD</td>
+      <td class="num-col">{{ r.amount|money }} JOD{% if r.cleanup_amount_at_refund %}<div class="meta small">Clean Up on original bill: {{ r.cleanup_amount_at_refund|money }} JOD</div>{% endif %}</td>
       <td class="small">{{ r.refund_method or "—" }}</td>
       <td class="small muted">{{ r.reason or "—" }}</td>
       <td class="small">{{ r.processed_by_name or "—" }}</td>
@@ -133,9 +134,16 @@ function lookupRefundSale() {
   fetch(`/api/sales/${encodeURIComponent(saleId)}/refundable-items`)
     .then(r => r.json().then(data => ({ ok: r.ok, data })))
     .then(({ ok, data }) => {
-      if (!ok) { window.VZToast.show(data.error || 'Sale not found.', 'error'); refundSaleId = null; refundLines = []; linesDiv.innerHTML = '<div class="empty-note">Look up a sale to see its refundable items.</div>'; renderRefundTotal(); return; }
+      if (!ok) { window.VZToast.show(data.error || 'Sale not found.', 'error'); refundSaleId = null; refundLines = []; linesDiv.innerHTML = '<div class="empty-note">Look up a sale to see its refundable items.</div>'; document.getElementById('refundSaleCleanupNote').style.display = 'none'; renderRefundTotal(); return; }
       refundSaleId = data.sale_id;
       refundLines = data.lines.map(l => ({ ...l, refundQty: 0 }));
+      const cleanupNote = document.getElementById('refundSaleCleanupNote');
+      if (data.cleanup_amount) {
+        cleanupNote.textContent = `This sale had a ${data.cleanup_amount} JOD Clean Up applied — total refunds against it can't exceed what was actually collected (${data.sale_total} JOD).`;
+        cleanupNote.style.display = 'block';
+      } else {
+        cleanupNote.style.display = 'none';
+      }
       renderRefundLines();
     })
     .catch(() => { window.VZToast.show('Could not look up that sale; check server connection.', 'error'); });

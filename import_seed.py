@@ -10,12 +10,14 @@ import json
 import re
 import os
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 from dotenv import load_dotenv
 load_dotenv()
 
 import auth
 import db as dbmod
+import logic
 
 BASE_DIR = os.path.dirname(__file__)
 SCHEMA_PATH = os.path.join(BASE_DIR, "schema_postgres.sql")
@@ -204,10 +206,26 @@ def main():
             continue
         r = cur.execute("SELECT date FROM visits WHERE id=?", (vid,)).fetchone()
         date_billed = r["date"] if r else None
+        # `codes` was removed from billing in both schemas (see the column
+        # comment in schema_postgres.sql where it used to be) — this INSERT
+        # crashed the moment billing had any real rows. Seeded as Manual
+        # with a lump sum (no per-line source data to seed Automatic
+        # billing lines with), per ORPHANED_RECORDS_AUDIT.md F-23. Latent
+        # and unverified against real historical data — both apps' current
+        # seed_data.json ships an empty billing array, and no real seed
+        # import is planned; row[1] is kept as the amount source (the same
+        # position the old `codes` field occupied) since that's the only
+        # per-row figure available here, coerced safely (Decimal, not
+        # float — matches every other money value in this app) rather
+        # than assumed numeric.
+        try:
+            amount = Decimal(str(row[1])) if row[1] not in (None, "") else Decimal(0)
+        except InvalidOperation:
+            amount = Decimal(0)
         cur.execute(
-            "INSERT INTO billing (visit_id,billing_type,codes,date_billed,discount_percent,notes) "
-            "VALUES (?,'Automatic',?,?,0,?) ON CONFLICT (visit_id) DO NOTHING",
-            (vid, s(row[1]), date_billed, s(row[5])),
+            "INSERT INTO billing (visit_id,billing_type,manual_amount,date_billed,discount_percent,total,notes) "
+            "VALUES (?,'Manual',?,?,0,?,?) ON CONFLICT (visit_id) DO NOTHING",
+            (vid, amount, date_billed, amount, s(row[5])),
         )
         n += 1
     print("billing:", n)
@@ -280,6 +298,12 @@ def main():
         if max_n:
             dbmod.seed_counter(cur, prefix, max_n)
     print("id_counters primed for:", ", ".join(id_prefixes[t][1] for t in id_prefixes))
+
+    # So imported billing history actually shows up in Monthly/Yearly P&L —
+    # nothing else triggers this rebuild for rows inserted directly via
+    # this script rather than through the app's own routes. See
+    # ORPHANED_RECORDS_AUDIT.md F-23.
+    logic.recompute_full_summary(con)
 
     con.commit()
     con.close()

@@ -24,8 +24,11 @@ that got wiped and its IDs may have been reissued, so it's flagged for a
 human to check instead.
 
 Usage:
-    python3 reconcile_attachments.py            # dry run — report only, changes nothing
-    python3 reconcile_attachments.py --apply    # actually insert the missing rows
+    python3 reconcile_attachments.py                 # dry run — report only, changes nothing
+    python3 reconcile_attachments.py --apply         # actually insert the missing rows
+    python3 reconcile_attachments.py --check-missing # the OTHER direction: attachments
+                                                      # rows whose file is gone from disk
+                                                      # (report only — never deletes a row)
 
 Safe to re-run: already-linked files are skipped every time, and a dry
 run never writes anything (to the database or to disk — this script never
@@ -50,6 +53,7 @@ else:
 
 import db as dbmod
 import attachments as attach_mod
+import backup as backup_mod
 
 # Matches attachments.py's _safe_name(): "<14-digit timestamp>_<6 hex>_<original name>".
 FILENAME_RE = re.compile(r"^(\d{14})_[0-9a-f]{6}_(.+)$")
@@ -105,7 +109,7 @@ def resolve_record_key(key):
     return None
 
 
-def restored_backup_snapshot_time(db):
+def _cutoff_from_restore_log(db):
     """Returns the datetime the most recently restored backup was itself
     CREATED — not when the restore ran, which is a materially different
     (later) moment. Parsed from restore_log.source_file, whose filename
@@ -136,7 +140,62 @@ def restored_backup_snapshot_time(db):
         return None
 
 
+def _cutoff_from_marker_file():
+    """The marker file (backup.py's _write_restore_marker) catches the
+    case restore_log can't: pg_restore --clean drops restore_log itself,
+    so a process killed between the data wipe and _try_log_restore()'s
+    write leaves no DB row at all, even though the restore genuinely
+    happened. 'in_progress'/'success' both count as real evidence a
+    restore ran — 'started_at' is used as the (conservative, slightly
+    early) cutoff in either case. 'no_restore_since_boot' is not a cutoff
+    by itself — it's a diagnostic breadcrumb proving the boot-time check
+    ran, not a positive restore event. See ORPHANED_RECORDS_AUDIT.md F-20."""
+    marker = backup_mod.read_restore_marker()
+    if not marker or marker.get("status") not in ("in_progress", "success"):
+        return None
+    try:
+        return datetime.fromisoformat(marker["started_at"]) if marker.get("started_at") else None
+    except ValueError:
+        return None
+
+
+def restored_backup_snapshot_time(db):
+    """Combines both cutoff sources — see _cutoff_from_restore_log() and
+    _cutoff_from_marker_file() above — taking whichever is later, since
+    either one alone can miss a restore the other one catches."""
+    candidates = [c for c in (_cutoff_from_restore_log(db), _cutoff_from_marker_file()) if c]
+    return max(candidates) if candidates else None
+
+
+def check_missing():
+    """The reverse direction from the rest of this script: a row in
+    `attachments` whose file is no longer on disk (uploads/ isn't part of
+    the database backup, so a restore can leave a row pointing at nothing).
+    Report only — never deletes a row, since the record itself is still
+    legitimate history even if the file behind it is gone. See
+    ORPHANED_RECORDS_AUDIT.md F-12."""
+    db = dbmod.connect()
+    try:
+        rows = db.execute(
+            "SELECT id, patient_id, visit_id, inpatient_case_id, relative_path, "
+            "original_name, uploaded_at FROM attachments"
+        ).fetchall()
+    finally:
+        db.close()
+    missing = [r for r in rows if not os.path.isfile(os.path.join(attach_mod.UPLOAD_ROOT, r["relative_path"]))]
+    print(f"Checked {len(rows)} attachment row(s) against disk.\n")
+    print(f"Missing file, record intact ({len(missing)}):")
+    for r in missing:
+        print(f"  id={r['id']} path={r['relative_path']} original_name={r['original_name']!r} "
+              f"uploaded_at={r['uploaded_at']}")
+    if not missing:
+        print("  (none)")
+
+
 def main():
+    if "--check-missing" in sys.argv:
+        check_missing()
+        return
     apply = "--apply" in sys.argv
     if apply:
         print("Running with --apply — missing attachments rows will be inserted.")
@@ -151,8 +210,16 @@ def main():
             print(f"Most recently restored backup was taken at {cutoff.isoformat()} — files uploaded "
                   f"after that are flagged for manual review instead of being auto-readopted.\n")
         else:
-            print("No successful restore on record — every orphaned file with a matching current "
-                  "record is safe to readopt.\n")
+            # Fail closed, not open — see ORPHANED_RECORDS_AUDIT.md F-20.
+            # No cutoff could be determined (no restore_log row, no marker
+            # file) means "unknown," not "provably never happened" — the
+            # boot-time marker (backup.ensure_no_restore_marker) is what
+            # makes "no restore" a checked fact rather than an assumption;
+            # if even that's missing, treat every file as potentially
+            # post-restore rather than assume it's safe.
+            print("No restore cutoff could be determined. Every orphaned file will be flagged for\n"
+                  "manual review rather than readopted.\n")
+            cutoff = datetime.min
 
         if not os.path.isdir(attach_mod.UPLOAD_ROOT):
             print(f"No uploads folder at {attach_mod.UPLOAD_ROOT} — nothing to do.")
