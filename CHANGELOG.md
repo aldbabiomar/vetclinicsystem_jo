@@ -3,6 +3,22 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.6.3] - 2026-08-24
+
+### Fixed
+- **On phones and tablets, wide lists dragged the whole page sideways**
+  (Price List, Monthly P&L, Visits, Sales History, Patients, Inpatient).
+  Those tables now scroll on their own inside their card, so the page and
+  the menu bar stay put. On a full-size screen nothing changes — the
+  column headings still stay put as you scroll.
+- **Tablets in portrait had the same sideways-scrolling problem** even on
+  the layout as a whole. Fixed.
+- **Typing in a form on an iPhone or iPad zoomed the page in** and left it
+  zoomed. Form fields are now sized so that stops happening.
+- **Buttons and menu items were too small to tap comfortably** on a phone —
+  the sidebar links, the menu button, and ordinary buttons are all now a
+  full finger-sized target. Unchanged on desktop.
+
 ## [1.6.2] - 2026-08-24
 
 ### Changed
