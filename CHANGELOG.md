@@ -3,6 +3,65 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.3.0] - 2026-08-24
+
+### Added
+- **Clean Up** — a small, capped amount you can apply to a visit,
+  inpatient, or boarding bill (or a POS sale) to round off or write down
+  the total, instead of forcing every bill to land on an exact figure.
+  Shows on the bill, the printed receipt/PDF, and is accounted for
+  correctly if the sale is later refunded.
+- **Back Up Now** shows a live progress bar and no longer freezes the
+  page while the backup runs.
+
+### Fixed
+- Several forms could still be submitted with a required field left
+  blank (owner/patient name, price list/inventory item name, appointment
+  details) without a clear error — now rejected with a specific message
+  instead of a confusing failure later on.
+- A visit's Body Condition Score, and quantities/amounts on Point of
+  Sale, refunds, and inpatient billing, are now checked against sane
+  bounds before saving, instead of accepting anything typed in.
+- Marking a visit "Admitted to Inpatient" now reliably creates the
+  matching inpatient case (and the reverse — you can't move a visit off
+  that status while its inpatient case is still open).
+- A handful of pages could occasionally crash with a server error
+  instead of showing a normal message — creating/editing price list or
+  inventory items with a distributor or linked item that no longer
+  exists, deleting a role or disabling a user whose upcoming appointments
+  would be left stranded, and a few others. These now either fail
+  cleanly with an explanation or, where it makes sense, warn you and let
+  you continue.
+- Deactivated inventory items no longer disappear from an audit session
+  that already referenced them.
+- A discount can no longer be applied to a visit before its bill has
+  been saved.
+- Deleting an inpatient billing line, or applying a discount, can no
+  longer push a bill below what's already been paid on it.
+- A refund is now required to reference exactly one visit or one
+  inpatient case — never both, never neither.
+- New Draft audit sessions can be discarded, and can no longer be
+  confirmed with nothing actually counted.
+- Attached files, payments, and refunds are now guaranteed at the
+  database level to reference exactly one thing, closing a class of
+  bug where a bad or incomplete request could leave one referencing
+  nothing (or everything at once).
+- If the app is closed or crashes mid-restore, Settings now shows a
+  clear warning instead of silently leaving the database in an unknown
+  state.
+- Backup/restore/update no longer silently overlap with each other if
+  triggered close together; a stale "running" backup left over from a
+  crash is now automatically cleared on the next startup instead of
+  blocking new ones forever.
+- A single bad row created by very old data no longer prevents *every*
+  routine database update from applying on startup — only that one
+  update is skipped (and flagged on the Dashboard for an admin to look
+  at), the rest still apply normally.
+- Editing or deleting a custom role that's the only one marked "can be
+  assigned as a vet" now warns you if it leaves any staff member's
+  upcoming appointments stranded, same as removing a person from vet
+  duty individually already did.
+
 ## [1.2.3] - 2026-08-24
 
 ### Fixed
