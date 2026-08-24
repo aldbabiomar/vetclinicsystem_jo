@@ -3,6 +3,16 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.6.5] - 2026-08-24
+
+### Added
+- **A final backup is now taken when the computer shuts down or restarts**,
+  or when you close the app's window — a last safety net in case the
+  database is stopped abruptly straight afterwards.
+- **Recent Backups now shows what started each backup** (Manual, Nightly,
+  Update or Shutdown). Backups taken before this update show "—", since
+  that wasn't being recorded.
+
 ## [1.6.4] - 2026-08-24
 
 ### Fixed
