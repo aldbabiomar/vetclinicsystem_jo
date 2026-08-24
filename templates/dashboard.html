@@ -12,25 +12,25 @@
 </div>
 
 {% if opex_due %}
-<div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
+<div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
   This month's operating costs haven't been entered yet — add them on the Monthly P&amp;L page before the month closes.
 </div>
 {% endif %}
 
 {% if backup_alert %}
-<div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
+<div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
   {{ backup_alert }} <a href="{{ url_for('settings_page') }}">Open Settings →</a>
 </div>
 {% endif %}
 
 {% if unbilled_count %}
-<div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
+<div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
   {{ unbilled_count }} bill{{ 'ing has' if unbilled_count == 1 else 's have' }} no Date Billed set — {{ 'it is' if unbilled_count == 1 else 'they are' }} missing from Monthly &amp; Yearly P&amp;L until fixed.
 </div>
 {% endif %}
 
 {% if migration_failures %}
-<div class="flash warn" style="background:var(--warn-tint); color:var(--warn); margin-bottom:16px;">
+<div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
   Some schema updates couldn't be applied on the last launch — some newer features may not work correctly: {{ migration_failures }}
 </div>
 {% endif %}
