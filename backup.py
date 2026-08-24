@@ -15,6 +15,7 @@ import json
 import os
 import shutil
 import subprocess
+from urllib.parse import unquote, urlsplit
 import threading
 from datetime import datetime
 
@@ -94,26 +95,46 @@ maintenance_lock = threading.RLock()
 
 
 def _pg_conn_parts():
-    """Pull user/db/host/port out of DATABASE_URL for pg_dump's -U/-d flags."""
+    """Pull user/password/db/host/port out of DATABASE_URL for pg_dump and
+    pg_restore.
+
+    The password matters as much as the rest: without it libpq falls back to
+    prompting, and it reads that prompt from the controlling terminal rather
+    than stdin — so a backup launched from the app would sit forever behind a
+    "Password:" in whatever Terminal window the launcher happens to own,
+    looking to everyone like it had simply hung. Installs without the
+    Postgres client tools never hit this, because the docker exec fallback
+    below connects over the container's local socket instead."""
     url = os.environ.get("DATABASE_URL", "")
-    # postgresql://user:pass@host:port/dbname
     try:
-        rest = url.split("://", 1)[1]
-        creds, hostpart = rest.split("@", 1)
-        user = creds.split(":", 1)[0]
-        hostport, dbname = hostpart.split("/", 1)
-        host, port = (hostport.split(":", 1) + ["5432"])[:2]
-        return user, dbname, host, port
+        parts = urlsplit(url)
+        user = unquote(parts.username or "")
+        password = unquote(parts.password or "")
+        dbname = (parts.path or "").lstrip("/")
+        host = parts.hostname or "127.0.0.1"
+        port = str(parts.port or 5432)
+        if not (user and dbname):
+            raise ValueError("DATABASE_URL missing user or database name")
+        return user, password, dbname, host, port
     except Exception:
-        return "vetclinicsystemjo", "vetclinicsystemjo", "127.0.0.1", "5432"
+        return "vetclinicsystemjo", "", "vetclinicsystemjo", "127.0.0.1", "5432"
+
+
+def _pg_env(password):
+    """A child environment carrying the password, so pg_dump/pg_restore never
+    need to ask for one."""
+    env = dict(os.environ)
+    if password:
+        env["PGPASSWORD"] = password
+    return env
 
 
 def _run_pg_dump(out_path):
-    user, dbname, host, port = _pg_conn_parts()
-    env = dict(os.environ)
+    user, password, dbname, host, port = _pg_conn_parts()
+    env = _pg_env(password)
 
     if shutil.which("pg_dump"):
-        cmd = ["pg_dump", "-h", host, "-p", port, "-U", user, "-F", "c", "-f", out_path, dbname]
+        cmd = ["pg_dump", "-w", "-h", host, "-p", port, "-U", user, "-F", "c", "-f", out_path, dbname]
         subprocess.run(cmd, check=True, env=env, capture_output=True, text=True)
         # The dump contains full patient/owner PHI (names, phones,
         # addresses, medical history) and the configured backup folder is
@@ -126,7 +147,8 @@ def _run_pg_dump(out_path):
 
     container = os.environ.get("VETCLINICSYSTEMJO_PG_CONTAINER", "vetclinicsystemjo_postgres")
     if shutil.which("docker"):
-        cmd = ["docker", "exec", container, "pg_dump", "-U", user, "-F", "c", dbname]
+        cmd = ["docker", "exec", "-e", f"PGPASSWORD={password}", container,
+               "pg_dump", "-w", "-U", user, "-F", "c", dbname]
         with open(out_path, "wb") as f:
             subprocess.run(cmd, check=True, stdout=f, stderr=subprocess.PIPE)
         os.chmod(out_path, 0o600)
@@ -249,8 +271,8 @@ def _run_pg_restore(dump_path, on_count=None):
     pg_restore reports each object it processes — see
     _stream_restore_progress above. total may be None (TOC listing
     failed), in which case the caller just doesn't get sub-step detail."""
-    user, dbname, host, port = _pg_conn_parts()
-    env = dict(os.environ)
+    user, password, dbname, host, port = _pg_conn_parts()
+    env = _pg_env(password)
     # A safety net, not the primary fix (that's closing the calling
     # request's own connection before this runs — see settings_restore_now
     # in app.py). This just makes sure that if some OTHER connection ever
@@ -262,7 +284,7 @@ def _run_pg_restore(dump_path, on_count=None):
 
     if shutil.which("pg_restore"):
         total = _pg_restore_toc_count(["pg_restore", "--list", dump_path])
-        cmd = ["pg_restore", "-h", host, "-p", port, "-U", user, "-d", dbname,
+        cmd = ["pg_restore", "-w", "-h", host, "-p", port, "-U", user, "-d", dbname,
                "--clean", "--if-exists", "--verbose", dump_path]
         proc = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL,
                                  stderr=subprocess.PIPE, text=True)
@@ -281,7 +303,8 @@ def _run_pg_restore(dump_path, on_count=None):
         try:
             total = _pg_restore_toc_count(["docker", "exec", container, "pg_restore", "--list", container_path])
             cmd = ["docker", "exec", "-e", "PGOPTIONS=-c lock_timeout=30000",
-                   container, "pg_restore", "-U", user, "-d", dbname,
+                   "-e", f"PGPASSWORD={password}",
+                   container, "pg_restore", "-w", "-U", user, "-d", dbname,
                    "--clean", "--if-exists", "--verbose", container_path]
             proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
                                      stderr=subprocess.PIPE, text=True)
@@ -462,8 +485,11 @@ def _run_backup_locked(db, dest_dir=None, retention=None, triggered_by=None, on_
 
     dest_dir = dest_dir or logic.get_setting(db, "backup_dir")
     if not dest_dir:
+        # Deliberately not written to backup_log: nothing was attempted, and a
+        # nightly job with no folder set would otherwise fill Recent Backups
+        # with failures and bury real ones. The Dashboard already reports this
+        # state on its own via logic.backup_alert_message().
         msg = "No backup folder configured yet — set one on the Settings page."
-        _log(db, "failed", None, None, msg)
         return False, msg
 
     retention = retention or int(logic.get_setting(db, "backup_retention", "30") or 30)
