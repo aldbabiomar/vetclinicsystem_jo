@@ -3,6 +3,13 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.6.1] - 2026-08-24
+
+### Changed
+- Green, amber and red accents are slightly deeper so status chips and
+  buttons using them are properly readable. Same hues, just darker; the
+  main crimson, the sidebar and the overall look are unchanged.
+
 ## [1.6.0] - 2026-08-24
 
 ### Added
