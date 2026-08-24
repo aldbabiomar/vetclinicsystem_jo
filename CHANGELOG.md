@@ -3,6 +3,16 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.4.2] - 2026-08-24
+
+### Fixed
+- The Browse-for-a-folder window's buttons were scattered across two
+  uneven rows. The folder-name box and all the buttons now sit neatly on
+  one line, lined up with the folder list above them — and on a phone or
+  narrow window they stack, with Cancel and Select centred underneath.
+- Pop-up windows could be wider than the screen on a phone, pushing their
+  buttons out of reach. They now always fit.
+
 ## [1.4.1] - 2026-08-24
 
 ### Fixed
