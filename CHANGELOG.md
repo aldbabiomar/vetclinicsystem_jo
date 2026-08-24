@@ -3,6 +3,19 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.5.0] - 2026-08-24
+
+### Added
+- **Column headings now stay put while you scroll long lists** — Owners,
+  Patients, Visits, Follow-Ups, Wellness, Grooming, Boarding, Inpatient,
+  Price List, Inventory Catalog, Audit Sessions, Sales History, Refunds,
+  Yearly P&L and the Dashboard's missed-items table. Previously only the
+  Consignment screens did this.
+
+### Fixed
+- On a phone, those sticky headings would have sat hidden behind the top
+  bar. They now sit just below it.
+
 ## [1.4.4] - 2026-08-24
 
 ### Fixed
