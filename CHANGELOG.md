@@ -3,6 +3,12 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.6.4] - 2026-08-24
+
+### Fixed
+- The light/dark toggle in the sidebar is now the same finger-sized target
+  as everything else on a phone.
+
 ## [1.6.3] - 2026-08-24
 
 ### Fixed
