@@ -3,6 +3,16 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.3.1] - 2026-08-24
+
+### Fixed
+- "Start automatically when this computer starts" could point at the
+  wrong copy of the app on installs with automatic updates enabled — it
+  would keep launching whatever version was installed at the time you
+  turned the toggle on, ignoring later updates until the app was started
+  by hand at least once. It now always finds and uses the correct,
+  currently-active version on every restart.
+
 ## [1.3.0] - 2026-08-24
 
 ### Added
