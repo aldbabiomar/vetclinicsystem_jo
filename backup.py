@@ -147,10 +147,14 @@ def _run_pg_dump(out_path):
 
     container = os.environ.get("VETCLINICSYSTEMJO_PG_CONTAINER", "vetclinicsystemjo_postgres")
     if shutil.which("docker"):
-        cmd = ["docker", "exec", "-e", f"PGPASSWORD={password}", container,
+        # "-e PGPASSWORD" names the variable without a value on purpose:
+        # docker forwards it from this process's environment, so the secret
+        # never appears in the command line where `ps` would expose it to
+        # every other user on the machine.
+        cmd = ["docker", "exec", "-e", "PGPASSWORD", container,
                "pg_dump", "-w", "-U", user, "-F", "c", dbname]
         with open(out_path, "wb") as f:
-            subprocess.run(cmd, check=True, stdout=f, stderr=subprocess.PIPE)
+            subprocess.run(cmd, check=True, env=env, stdout=f, stderr=subprocess.PIPE)
         os.chmod(out_path, 0o600)
         return
 
@@ -303,10 +307,10 @@ def _run_pg_restore(dump_path, on_count=None):
         try:
             total = _pg_restore_toc_count(["docker", "exec", container, "pg_restore", "--list", container_path])
             cmd = ["docker", "exec", "-e", "PGOPTIONS=-c lock_timeout=30000",
-                   "-e", f"PGPASSWORD={password}",
+                   "-e", "PGPASSWORD",  # value forwarded from env, not argv
                    container, "pg_restore", "-w", "-U", user, "-d", dbname,
                    "--clean", "--if-exists", "--verbose", container_path]
-            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
+            proc = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL,
                                      stderr=subprocess.PIPE, text=True)
             stderr_text = _stream_restore_progress(proc, total, on_count)
             if proc.returncode != 0:
