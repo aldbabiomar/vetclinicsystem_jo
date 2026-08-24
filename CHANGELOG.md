@@ -3,6 +3,15 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.6.2] - 2026-08-24
+
+### Changed
+- **The amber/warning colour is back to its original gold** on borders,
+  icons and legend markers. Only the *text* that sits on an amber
+  background (status chips, warning banners) uses a darker shade, because
+  that is the part that has to stay readable — and those backgrounds are
+  now paler too, so the chips look lighter overall.
+
 ## [1.6.1] - 2026-08-24
 
 ### Changed
