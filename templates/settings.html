@@ -344,11 +344,12 @@ document.getElementById('restoreForm').addEventListener('submit', async function
 <div class="section-title">Recent Backups</div>
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Started</th><th>Status</th><th>Size</th><th>File</th></tr></thead>
+  <thead><tr><th>Started</th><th>Triggered By</th><th>Status</th><th>Size</th><th>File</th></tr></thead>
   <tbody>
     {% for b in recent_backups %}
     <tr>
       <td>{{ b.started_at }}</td>
+      <td class="muted">{{ (b.triggered_by or "—") | title }}</td>
       <td>{% if b.status == 'success' %}<span class="badge">Success</span>{% elif b.status == 'failed' %}<span class="badge danger">Failed — {{ b.error }}</span>{% else %}<span class="badge warn">Running</span>{% endif %}</td>
       <td>{{ (b.filesize_bytes / 1024 / 1024) | round(1) if b.filesize_bytes else "—" }}{% if b.filesize_bytes %} MB{% endif %}</td>
       <td class="muted">{{ b.filepath or "—" }}</td>

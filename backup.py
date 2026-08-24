@@ -464,7 +464,7 @@ def run_backup(db, dest_dir=None, retention=None, triggered_by=None, on_progress
     update is already running."""
     if not maintenance_lock.acquire(blocking=False):
         msg = "Another backup, restore, or update is already running — try again once it finishes."
-        _log(db, "failed", None, None, msg)
+        _log(db, "failed", None, None, msg, triggered_by=triggered_by)
         return False, msg
     try:
         return _run_backup_locked(db, dest_dir, retention, triggered_by, on_progress)
@@ -507,14 +507,14 @@ def _run_backup_locked(db, dest_dir=None, retention=None, triggered_by=None, on_
         os.remove(probe)
     except OSError as e:
         msg = f"Backup folder isn't writable: {e}"
-        _log(db, "failed", None, None, msg)
+        _log(db, "failed", None, None, msg, triggered_by=triggered_by)
         return False, msg
 
     started = datetime.now()
     filename = f"{FILENAME_PREFIX}{started.strftime('%Y%m%d_%H%M%S')}{FILENAME_SUFFIX}"
     out_path = os.path.join(dest_dir, filename)
 
-    log_id = _log(db, "running", None, None, None, started=started)
+    log_id = _log(db, "running", None, None, None, started=started, triggered_by=triggered_by)
 
     step(1)  # Dumping database
     try:
@@ -546,12 +546,12 @@ def _apply_retention(dest_dir, retention):
             pass
 
 
-def _log(db, status, filepath, size, error, started=None):
+def _log(db, status, filepath, size, error, started=None, triggered_by=None):
     ts = (started or datetime.now()).isoformat(timespec="seconds")
     row = db.execute(
-        "INSERT INTO backup_log (started_at, status, filepath, filesize_bytes, error) "
-        "VALUES (?,?,?,?,?) RETURNING id",
-        (ts, status, filepath, size, error),
+        "INSERT INTO backup_log (started_at, status, filepath, filesize_bytes, error, triggered_by) "
+        "VALUES (?,?,?,?,?,?) RETURNING id",
+        (ts, status, filepath, size, error, triggered_by),
     ).fetchone()
     db.commit()
     return row["id"]

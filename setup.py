@@ -137,6 +137,9 @@ def apply_schema():
 INCREMENTAL_SCHEMA_STATEMENTS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE sales ADD COLUMN IF NOT EXISTS idempotency_key TEXT",
+    # backup_log has always accepted a triggered_by argument but had nowhere
+    # to put it, so every existing row records NULL. Older rows stay NULL.
+    "ALTER TABLE backup_log ADD COLUMN IF NOT EXISTS triggered_by TEXT",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_idempotency_key ON sales(idempotency_key) WHERE idempotency_key IS NOT NULL",
     # NOTE: if this database already has two or more owners sharing the
     # same non-null phone number (the exact duplicate-owner bug this

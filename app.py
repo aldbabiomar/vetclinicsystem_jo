@@ -6489,6 +6489,29 @@ if __name__ == "__main__":
         error_logger.error("Boot-time backup/restore-marker housekeeping failed:\n" + traceback.format_exc())
 
     def _graceful_shutdown(signum, frame):
+        """
+        Runs on SIGTERM/SIGINT (Ctrl-C)/SIGBREAK — sent by the OS on
+        shutdown/restart/logout, or by a person closing the launcher
+        window. Every write this app makes is already committed
+        per-request (see close_db/teardown_appcontext above), so there's
+        no in-flight "unsaved" transaction sitting on the server side to
+        lose here. What this actually guards against is Postgres (running
+        in Docker or as a local service) getting killed abruptly in the
+        same shutdown sequence with nothing recent to fall back on — so:
+        take one more backup as a last safety net, then exit cleanly
+        instead of being hard-killed mid-request.
+        """
+        print("\nVetClinicSystem JO is shutting down \u2014 taking a final backup first...")
+        try:
+            db = dbmod.connect()
+            try:
+                import backup as backup_mod
+                ok, message = backup_mod.run_backup(db, triggered_by="shutdown")
+                print(message if ok else f"Final backup failed: {message}")
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"Could not take a final backup during shutdown: {e}")
         # Closes every pooled connection cleanly rather than letting them
         # get dropped mid-socket-close when the process exits.
         dbmod.close_pool()

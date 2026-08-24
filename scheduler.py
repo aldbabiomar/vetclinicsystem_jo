@@ -18,7 +18,7 @@ def _do_nightly_backup(get_db, close_db):
     db = get_db()
     try:
         import backup
-        backup.run_backup(db)
+        backup.run_backup(db, triggered_by="nightly")
     finally:
         close_db(db)
 

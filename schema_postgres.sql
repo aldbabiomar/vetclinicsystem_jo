@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS backup_log (
     status TEXT NOT NULL CHECK (status IN ('running','success','failed')),
     filepath TEXT,
     filesize_bytes BIGINT,
-    error TEXT
+    error TEXT,
+    triggered_by TEXT  -- 'manual' / 'nightly' / 'update' / 'shutdown' — NULL for older rows predating this column
 );
 CREATE INDEX IF NOT EXISTS idx_backup_log_started ON backup_log(started_at);
 
