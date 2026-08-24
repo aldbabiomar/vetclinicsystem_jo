@@ -506,7 +506,7 @@ textarea { resize: vertical; min-height: 72px; }
   .nav-link, .nav-group-toggle { min-height: 44px; }
   .hamburger-btn { width: 44px; height: 44px; }
   .sidebar-close-btn { min-height: 44px; min-width: 44px; }
-  .theme-toggle-btn { width: 40px; height: 40px; }
+  .theme-toggle-btn { width: 44px; height: 44px; }
   .chip { display: inline-flex; align-items: center; min-height: 44px; }
   input:not([type="checkbox"]):not([type="radio"]), select { min-height: 44px; }
 }
