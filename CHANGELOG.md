@@ -3,6 +3,14 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.6.0] - 2026-08-24
+
+### Added
+- **Dark mode.** A sun/moon button next to the clinic name in the sidebar
+  switches between light and dark, and remembers your choice on that
+  computer. Date pickers, dropdowns and scrollbars follow the theme too.
+  Light mode is unchanged.
+
 ## [1.5.0] - 2026-08-24
 
 ### Added
