@@ -7,6 +7,15 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script>
+// Applied before first paint so switching themes never shows a flash of the other theme.
+(function() {
+  try {
+    var saved = localStorage.getItem('vetclinicsystemjo-theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
 <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
 <script src="{{ url_for('static', filename='motion.js') }}"></script>
 <script src="{{ url_for('static', filename='toast.js') }}"></script>
@@ -32,6 +41,15 @@
         </svg>
       </span>
       <span class="brand-name">{{ clinic_name }}</span>
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>
+        </svg>
+      </button>
     </div>
     <div class="brand-sub">{{ clinic_location }}</div>
 
@@ -174,6 +192,15 @@ function closeSidebar() {
   if (!sidebar || !backdrop) return;
   sidebar.classList.remove('open');
   backdrop.classList.remove('open');
+}
+function toggleTheme() {
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  try { localStorage.setItem('vetclinicsystemjo-theme', isDark ? 'light' : 'dark'); } catch (e) {}
 }
 document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
   link.addEventListener('click', closeSidebar);

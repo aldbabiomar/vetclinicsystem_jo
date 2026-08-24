@@ -37,6 +37,52 @@
   font-size: 15px;
 }
 
+/* ---- Dark theme (per-user toggle in the sidebar; same variables, new values) ----
+   Derived from JO's own light palette rather than copied from IQ's: the
+   neutrals stay plum-tinted to match --ink (#2B1620), and the sidebar is
+   DEEPENED rather than inverted, because unlike IQ's light-blue sidebar
+   JO's is already dark navy in light mode. --primary is lifted to #E76A8C
+   so it reads as link text on a dark background (6.20:1) while still taking
+   dark button text at the same ratio — see the filled-button rule below for
+   why button text flips instead of the fill being deepened. */
+html[data-theme="dark"] {
+  /* Tells the browser to render its OWN chrome dark too — date/time
+     pickers, select dropdowns, scrollbars. Without it those stay light
+     and punch white holes in a dark page. Inherited by the ChamPet dark
+     palette as well, since that element still matches this selector. */
+  color-scheme: dark;
+
+  --bg: #150E12;
+  --paper: #1F161B;
+  --ink: #F5E9EE;
+  --ink-soft: #B3A0A8;
+  --line: #3A2C33;
+  --line-soft: #291F25;
+
+  --primary: #E76A8C;
+  --primary-dark: #F07EA0;
+  --primary-tint: #3A1522;
+
+  --sidebar-bg: #030B21;
+  --sidebar-ink: #E8EAF2;
+  --sidebar-muted: #98A2C0;
+  --sidebar-active: #16265C;
+
+  --ok: #7FBF9B;
+  --ok-tint: #16281E;
+  --warn: #D9A85C;
+  --warn-tint: #2E2312;
+  --danger: #E08A72;
+  --danger-dark: #EC9A82;
+  --danger-tint: #33201B;
+  --muted: #9C8E95;
+  --muted-tint: #272025;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
+  --shadow: 0 2px 10px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.55);
+}
+
 * { box-sizing: border-box; }
 
 html, body {
@@ -97,6 +143,22 @@ h1, h2, h3 { letter-spacing: -0.015em; font-weight: 650; }
   border-radius: 999px; padding: 1px 7px; line-height: 16px;
 }
 
+/* ---------------- Theme toggle ---------------- */
+/* Lives inside .brand, at the right edge next to the clinic name — icon
+   only, no label (the sun/moon glyph + aria-label carry the meaning). */
+.theme-toggle-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(255,255,255,0.12); color: var(--sidebar-ink); cursor: pointer; padding: 0;
+  transition: background 0.15s ease;
+  flex: none; margin-left: auto;
+}
+.theme-toggle-btn:hover { background: rgba(255,255,255,0.22); }
+.theme-toggle-btn svg { width: 16px; height: 16px; display: block; }
+.theme-toggle-btn .icon-moon { display: none; }
+html[data-theme="dark"] .theme-toggle-btn .icon-sun { display: none; }
+html[data-theme="dark"] .theme-toggle-btn .icon-moon { display: block; }
+
 /* ---------------- Main ---------------- */
 .main { padding: 28px 36px 64px; max-width: 1200px; }
 .main.main-wide { max-width: 1520px; }
@@ -126,6 +188,19 @@ h1, h2, h3 { letter-spacing: -0.015em; font-weight: 650; }
 .btn.danger:hover { background: var(--danger-dark); }
 .btn.ok { background: var(--ok); }
 .btn.ok:hover { opacity: 0.9; }
+
+/* ---- Filled controls in dark mode ----
+   The palette's accent colours are lifted in dark mode so they read as TEXT
+   against a dark background — which is exactly what makes white text on top
+   of them fail (2.0–2.8:1 across every palette). Flipping the label to the
+   page colour fixes it everywhere at once (6.5–9.2:1) and keeps the fills
+   vivid, instead of deepening every accent and breaking its text use.
+   .secondary is excluded: it is not a filled control — it sits on --paper
+   and keeps --ink. */
+html[data-theme="dark"] .btn:not(.secondary),
+html[data-theme="dark"] .nav-badge,
+html[data-theme="dark"] .chip.active { color: var(--bg); }
+
 .actions-cell { max-width: 300px; }
 .action-btns { display: flex; flex-direction: column; align-items: stretch; width: fit-content; gap: 6px; }
 .action-btns form { display: contents; }
