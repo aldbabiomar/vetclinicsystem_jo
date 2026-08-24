@@ -1,4 +1,9 @@
 :root {
+  /* Light-palette accents darkened to WCAG AA 2026-08-24: these carry white
+     button text AND are used as badge text on their own tint, and both uses
+     were failing (2.2-3.6:1). Hue and saturation are unchanged — only
+     lightness — and each -dark hover was re-derived to stay deeper than its
+     new base. See COMPARISON.md §13. */
   --bg: #FAF5F1;
   --paper: #FFFFFF;
   --ink: #2B1620;
@@ -15,12 +20,12 @@
   --sidebar-muted: #8892B0;
   --sidebar-active: #122253;
 
-  --ok: #4B8F6B;
+  --ok: #3F7759;
   --ok-tint: #E7F2EC;
-  --warn: #B5791F;
+  --warn: #956319;
   --warn-tint: #FAF0DF;
-  --danger: #B8452E;
-  --danger-dark: #903624;
+  --danger: #B5442D;
+  --danger-dark: #943825;
   --danger-tint: #F8E7E2;
   --muted: #A79AA0;
   --muted-tint: #F3EDEF;
