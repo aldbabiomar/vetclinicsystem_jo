@@ -81,6 +81,7 @@
     <form method="post" id="paymentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field" style="margin-bottom:10px;"><label>Amount (JOD)</label><input type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label>Discount (max {{ discount_cap }}%)</label><input type="number" step="0.01" min="0" max="{{ discount_cap }}" name="discount_percent" id="paymentDiscountInput" value="{{ fv(form, 'discount_percent') if payment_error_id else '0' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label>Clean Up (max {{ CLEANUP_CAP }} JOD)</label><input type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error_id else '0' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label>Method</label>
         <select name="method">
@@ -121,7 +122,7 @@
         <div class="action-btns">
           <button class="btn small danger" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" onclick="openIncident(this)">Something's Wrong!</button>
           <div class="action-btns-row">
-            <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" onclick="openPayment(this)">Payment</button>
+            <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-discount="{{ s.discount_percent or 0 }}" onclick="openPayment(this)">Payment</button>
             <button class="btn small secondary" type="button" onclick="toggleEdit({{ s.id }})">Edit</button>
           </div>
           <a class="btn small secondary" href="{{ url_for('boarding_export_pdf', boarding_id=s.id) }}">Export (PDF)</a>
@@ -232,9 +233,14 @@ function openIncident(btn) {
   document.getElementById('incidentModal').style.display = 'flex';
 }
 function openPayment(btn) {
-  const { id, name } = btn.dataset;
+  const { id, name, discount } = btn.dataset;
   document.getElementById('paymentForm').action = `/boarding/${id}/payment`;
   document.getElementById('paymentPatientLabel').textContent = name;
+  // Show the discount already on this stay. The field posts with every
+  // payment, so leaving it at 0 here would quietly wipe an existing discount
+  // the next time someone recorded one.
+  const d = document.getElementById('paymentDiscountInput');
+  if (d) d.value = discount || '0';
   document.getElementById('paymentModal').style.display = 'flex';
 }
 function toggleEdit(id) {

@@ -137,6 +137,14 @@ def apply_schema():
 INCREMENTAL_SCHEMA_STATEMENTS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE sales ADD COLUMN IF NOT EXISTS idempotency_key TEXT",
+    # Boarding gained a discount, matching what visits and inpatient cases
+    # already had. Postgres has no ADD CONSTRAINT IF NOT EXISTS, hence the
+    # DROP/ADD pair using its own default FK naming.
+    "ALTER TABLE boarding_sessions ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0",
+    "ALTER TABLE boarding_sessions ADD COLUMN IF NOT EXISTS discount_applied_by TEXT",
+    "ALTER TABLE boarding_sessions DROP CONSTRAINT IF EXISTS boarding_sessions_discount_applied_by_fkey",
+    "ALTER TABLE boarding_sessions ADD CONSTRAINT boarding_sessions_discount_applied_by_fkey "
+    "FOREIGN KEY (discount_applied_by) REFERENCES users(id) ON DELETE RESTRICT",
     # backup_log has always accepted a triggered_by argument but had nowhere
     # to put it, so every existing row records NULL. Older rows stay NULL.
     "ALTER TABLE backup_log ADD COLUMN IF NOT EXISTS triggered_by TEXT",

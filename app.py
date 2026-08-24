@@ -4599,7 +4599,8 @@ def _boarding_page_context(show_all):
         r["billing"] = logic.boarding_billing_summary_from_fields(r, paid_by_id.get(r["id"], 0))
         r["incident_count"] = incidents_by_id.get(r["id"], 0)
     return dict(sessions=rows, show_all=show_all, today=date.today().isoformat(),
-                page=page, total_pages=page_count(total), total_count=total)
+                page=page, total_pages=page_count(total), total_count=total,
+                discount_cap=auth.discount_cap_for())
 
 
 @app.route("/boarding")
@@ -4831,9 +4832,14 @@ def boarding_payment(boarding_id):
         flash("Payment amount must be greater than 0.", "error")
         return redisplay()
     summary = logic.boarding_billing_summary(db, boarding_id)
-    balance = summary["balance"]
-    if amount > balance:
-        flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this stay.", "error")
+    try:
+        discount_percent = parse_money(f.get("discount_percent")) or 0
+    except BadNumber:
+        flash("Discount must be a valid number.", "error")
+        return redisplay()
+    cap = auth.discount_cap_for()
+    if discount_percent > cap or discount_percent < 0:
+        flash(f"Discount must be between 0% and {cap}% for your role.", "error")
         return redisplay()
     try:
         cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
@@ -4846,8 +4852,22 @@ def boarding_payment(boarding_id):
     if summary["cleanup_amount"] + cleanup_amount > CLEANUP_CAP:
         flash(f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill.", "error")
         return redisplay()
-    if cleanup_amount > balance:
+
+    # The discount and the Clean Up both change the balance this payment is
+    # being checked against, and all three arrive in the same submission — so
+    # validate against the bill as this submission would leave it, not as it
+    # stands now. Checking the payment against the pre-submission balance
+    # would let a discount-and-pay-in-full click overpay the discounted bill.
+    _, _, balance_after_discount, _ = logic.compute_bill_totals(
+        summary["subtotal"], discount_percent, summary["paid"], summary["cleanup_amount"])
+    if cleanup_amount > balance_after_discount:
         flash("Clean Up can't exceed the remaining balance.", "error")
+        return redisplay()
+    _, _, balance, _ = logic.compute_bill_totals(
+        summary["subtotal"], discount_percent, summary["paid"],
+        summary["cleanup_amount"] + cleanup_amount)
+    if amount > balance:
+        flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this stay.", "error")
         return redisplay()
     cur = db.execute(
         "INSERT INTO payments (boarding_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?) RETURNING id",
@@ -4856,6 +4876,13 @@ def boarding_payment(boarding_id):
     )
     payment_id = cur.fetchone()["id"]
     auth.log_change(db, "payments", str(payment_id), "create")
+    if discount_percent != summary["discount_percent"]:
+        db.execute(
+            "UPDATE boarding_sessions SET discount_percent = ?, discount_applied_by = ? WHERE id = ?",
+            (discount_percent, session["user_id"], boarding_id),
+        )
+        auth.log_change(db, "boarding_sessions", str(boarding_id), "update", changes={
+            "discount_percent": (summary["discount_percent"], discount_percent)})
     if cleanup_amount > 0:
         db.execute(
             "UPDATE boarding_sessions SET cleanup_amount = cleanup_amount + ?, cleanup_applied_by = ? WHERE id = ?",
@@ -4863,6 +4890,7 @@ def boarding_payment(boarding_id):
         )
         auth.log_change(db, "boarding_sessions", str(boarding_id), "update", changes={
             "cleanup_amount": (summary["cleanup_amount"], summary["cleanup_amount"] + cleanup_amount)})
+    if cleanup_amount > 0 or discount_percent != summary["discount_percent"]:
         logic.refresh_boarding_total(db, boarding_id)
     db.commit()
     flash("Payment recorded.", "success")

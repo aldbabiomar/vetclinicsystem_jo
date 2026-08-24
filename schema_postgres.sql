@@ -542,6 +542,8 @@ CREATE TABLE IF NOT EXISTS boarding_sessions (
     -- "Clean Up" write-off — see the matching comment on billing.cleanup_amount.
     cleanup_amount NUMERIC(12,3) NOT NULL DEFAULT 0,
     cleanup_applied_by TEXT,
+    discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
+    discount_applied_by TEXT,
     dismissed BOOLEAN NOT NULL DEFAULT FALSE,   -- has the animal actually left yet
     created_by TEXT,
     -- Set on every boarding_edit() save — lets the edit form detect (and
@@ -550,7 +552,8 @@ CREATE TABLE IF NOT EXISTS boarding_sessions (
     FOREIGN KEY (patient_id) REFERENCES patients(id),
     -- See F-19.
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
-    FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT
+    FOREIGN KEY (cleanup_applied_by) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (discount_applied_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 CREATE INDEX IF NOT EXISTS idx_boarding_patient ON boarding_sessions(patient_id);
 

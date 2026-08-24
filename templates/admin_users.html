@@ -131,7 +131,11 @@
 
 <!-- Add New User modal -->
 <div class="modal-overlay" id="userModal" style="display:none;">
-  <div class="modal-box">
+  <!-- Wider than the 420px default: this holds a two-column .form-grid,
+       which at the default leaves ~175px per field. width:100% is needed
+       as well as max-width — .modal-box carries min-width:0, so it sizes
+       to its content and a max-width alone never widens it. -->
+  <div class="modal-box" style="width:100%; max-width:560px;">
     <h3 style="margin-top:0;">New User</h3>
     <form method="post" action="{{ url_for('admin_user_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -163,7 +167,9 @@
 
 <!-- Add New Role modal -->
 <div class="modal-overlay" id="roleModal" style="display:none;">
-  <div class="modal-box">
+  <!-- Wider still: .perm-grid packs at minmax(200px, 1fr), so the default
+       420px renders all ~28 permissions in one very tall column. -->
+  <div class="modal-box" style="width:100%; max-width:640px;">
     <h3 style="margin-top:0;">Add Role</h3>
     <p class="small muted" style="margin-top:-6px;">New roles start with everything below unchecked — turn on only what this role needs.</p>
     <form method="post" action="{{ url_for('admin_role_new') }}">

@@ -583,7 +583,7 @@ def boarding_billing_summary_from_fields(b, paid):
     per-row payments query — see boarding_page() in app.py, which batches
     `paid` across the whole page in one query instead of one per row.
     `b` needs total, total_is_auto, price_per_day, entry_date,
-    dismissal_date, dismissed."""
+    dismissal_date, dismissed, cleanup_amount, discount_percent."""
     if not b:
         subtotal = 0
     elif b["total_is_auto"] and not b["dismissed"] and b["price_per_day"]:
@@ -599,13 +599,17 @@ def boarding_billing_summary_from_fields(b, paid):
     else:
         subtotal = b["total"] or 0
     cleanup_amount = (b["cleanup_amount"] if b else 0) or 0
-    total, paid, balance, status = compute_bill_totals(subtotal, 0, paid, cleanup_amount)
-    return {"total": total, "paid": paid, "balance": balance, "status": status, "cleanup_amount": cleanup_amount}
+    discount_percent = (b["discount_percent"] if b else 0) or 0
+    total, paid, balance, status = compute_bill_totals(subtotal, discount_percent, paid, cleanup_amount)
+    return {"total": total, "paid": paid, "balance": balance, "status": status,
+            "cleanup_amount": cleanup_amount, "discount_percent": discount_percent,
+            "subtotal": subtotal}
 
 
 def boarding_billing_summary(db, boarding_id):
     b = db.execute(
-        "SELECT total, total_is_auto, price_per_day, entry_date, dismissal_date, dismissed, cleanup_amount "
+        "SELECT total, total_is_auto, price_per_day, entry_date, dismissal_date, dismissed, cleanup_amount, "
+        "discount_percent "
         "FROM boarding_sessions WHERE id=?", (boarding_id,)
     ).fetchone()
     paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE boarding_id=?", (boarding_id,)).fetchone()
