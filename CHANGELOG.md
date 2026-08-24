@@ -3,6 +3,22 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.2.3] - 2026-08-24
+
+### Fixed
+- **A mistake in a form (an invalid phone number, a bad date) used to
+  wipe out everything else you'd typed and bounce you back to a blank
+  page.** Forms now show exactly what you entered, with the problem
+  field flagged, so you only need to fix the one thing — across Log
+  Visit, Owners, Distributors, Boarding, Appointments, Inpatient Cases,
+  billing/discount/payment, Price List, Inventory Catalog, Audit
+  History, and Reports.
+- Phone numbers are now checked as you type, before you submit, instead
+  of only after a failed save.
+- Fixed a bug where logging a new visit for a brand-new owner could
+  leave a duplicate patient behind if the visit's own date/weight/BCS
+  failed validation after the owner and pet had already been saved.
+
 ## [1.2.2] - 2026-08-23
 
 ### Fixed
