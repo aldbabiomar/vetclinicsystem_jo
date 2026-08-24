@@ -6268,6 +6268,15 @@ def settings_page():
 def settings_backup_now():
     import backup as backup_mod
 
+    # Checked here, before a job is started, rather than only inside
+    # run_backup(): otherwise clicking Back Up Now with no folder set spins up
+    # a progress panel that runs through its steps and then reports failure,
+    # which reads as "the backup broke" rather than "you haven't set this up
+    # yet". Nothing to do here is not an error worth a job.
+    if not logic.get_setting(get_db(), "backup_dir"):
+        return jsonify({"error": "No backup folder configured yet — set one above, "
+                                 "then Save Settings, before backing up."}), 400
+
     def task(update):
         # Runs in a background thread — needs its own DB connection,
         # since g.db belongs to this request and gets closed at request

@@ -43,7 +43,11 @@
 
 <form method="post" action="{{ url_for('settings_backup_now') }}" id="backupNowForm" style="margin-top:10px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <button class="btn secondary" type="submit" id="backupNowBtn" data-saving-label="Backing up…">Back Up Now</button>
+  <button class="btn secondary" type="submit" id="backupNowBtn" data-saving-label="Backing up…"
+          {{ 'disabled' if not settings.backup_dir }}>Back Up Now</button>
+  {% if not settings.backup_dir %}
+  <p class="small muted" style="margin:6px 0 0;">Set a backup folder above and save, then you can back up.</p>
+  {% endif %}
 </form>
 <div id="backupProgress" class="vz-progress-panel" style="display:none;"></div>
 
@@ -269,7 +273,7 @@ document.getElementById('backupNowForm').addEventListener('submit', async functi
       headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
     });
     const data = await res.json();
-    if (!res.ok || !data.job_id) throw new Error('Could not start the backup.');
+    if (!res.ok || !data.job_id) throw new Error(data.error || 'Could not start the backup.');
     window.VZProgress.poll(data.job_id, '/settings/job-status', {}, {
       onUpdate: (d) => window.VZProgress.render(panel, d),
       onDone: (d) => {
@@ -286,7 +290,7 @@ document.getElementById('backupNowForm').addEventListener('submit', async functi
   } catch (err) {
     resetSubmitButton(btn);
     panel.style.display = 'none';
-    window.VZToast.show('Could not start the backup.', 'error');
+    window.VZToast.show(err.message || 'Could not start the backup.', 'error');
   }
 });
 
