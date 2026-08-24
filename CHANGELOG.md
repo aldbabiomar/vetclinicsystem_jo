@@ -3,6 +3,15 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.4.1] - 2026-08-24
+
+### Fixed
+- Buttons that warn before something destructive (Restore Now, and others
+  like it) turned a slightly-off colour when hovered — one that didn't
+  belong to VetClinicSystem JO's own palette. They now darken correctly. The same
+  fix cleans up a handful of other places where a stray colour had been
+  hardcoded instead of following the app's palette, including the highlight when you hover a row in a table.
+
 ## [1.4.0] - 2026-08-24
 
 ### Added
