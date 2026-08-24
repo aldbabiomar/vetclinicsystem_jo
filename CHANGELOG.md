@@ -3,6 +3,21 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.4.0] - 2026-08-24
+
+### Added
+- **A VetClinicSystem JO icon on the Desktop.** Double-click it to start
+  the app — and if the app is already running, it just brings it up in
+  your browser instead of starting a second copy. It keeps working after
+  updates, shutdowns and restarts, so it's there as a reliable way in if
+  "start automatically when this computer starts" ever doesn't fire. It's
+  created for you during setup; if it ever gets deleted, running setup
+  again puts it back.
+- **Collapsible sidebar sections.** Inventory, Consignment, Sales &
+  Billing and Admin can now be folded away by clicking their heading, so
+  a long sidebar can be trimmed to just the parts you use. Each person's
+  choice is remembered on their own computer.
+
 ## [1.3.1] - 2026-08-24
 
 ### Fixed
