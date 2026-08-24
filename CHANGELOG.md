@@ -3,6 +3,13 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.4.4] - 2026-08-24
+
+### Fixed
+- Hardened how the database password is handed to the backup tools on
+  Docker-based installs, so it is passed privately rather than in a way
+  other users of the same computer could read.
+
 ## [1.4.3] - 2026-08-24
 
 ### Fixed
