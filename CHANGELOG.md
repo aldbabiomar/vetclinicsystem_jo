@@ -3,6 +3,20 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.7.0] - 2026-08-24
+
+### Added
+- **Boarding stays can now take a discount.** It sits in the Record
+  Payment window next to Clean Up, is capped by your role's discount
+  limit like every other discount, and shows on the boarding PDF. The
+  remaining balance updates as soon as it's applied, so a payment can't
+  accidentally be taken at the pre-discount amount.
+
+### Fixed
+- The **New User** and **Add Role** windows were too narrow for their own
+  contents — fields were cramped and the permission checkboxes ran down a
+  single long column. Both are wider now, and still fit on a phone.
+
 ## [1.6.5] - 2026-08-24
 
 ### Added
