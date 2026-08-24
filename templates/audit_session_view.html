@@ -66,7 +66,7 @@
   <div class="modal-box">
     <h2 style="margin-top:0;">Confirm This Audit?</h2>
     <p class="small">Continuing will confirm the audit and it can't be edited after. If you intend to save it for later, click Cancel and use Save instead.</p>
-    <div id="confirmSummary" class="small" style="margin:10px 0; padding:10px; border-radius:8px; background:var(--paper-alt, #f5f5f5);"></div>
+    <div id="confirmSummary" class="small" style="margin:10px 0; padding:10px; border-radius:8px; background:var(--muted-tint);"></div>
     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
       <button class="btn secondary" type="button" onclick="document.getElementById('confirmModal').style.display='none';">Cancel</button>
       <form method="post" action="{{ url_for('audit_session_confirm', session_id=sess.id) }}">

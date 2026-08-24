@@ -20,6 +20,7 @@
   --warn: #B5791F;
   --warn-tint: #FAF0DF;
   --danger: #B8452E;
+  --danger-dark: #903624;
   --danger-tint: #F8E7E2;
   --muted: #A79AA0;
   --muted-tint: #F3EDEF;
@@ -118,7 +119,7 @@ h1, h2, h3 { letter-spacing: -0.015em; font-weight: 650; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 18px 0 4px; }
 .pagination-info { font-size: 13px; color: var(--ink-soft); }
 .btn.danger { background: var(--danger); }
-.btn.danger:hover { background: #8f4a41; }
+.btn.danger:hover { background: var(--danger-dark); }
 .btn.ok { background: var(--ok); }
 .btn.ok:hover { opacity: 0.9; }
 .actions-cell { max-width: 300px; }
@@ -224,7 +225,7 @@ thead th {
 }
 tbody td { padding: 11px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover { background: #FCF6F3; }
+tbody tr:hover { background: var(--line-soft); }
 .row-dirty td { background: var(--primary-tint) !important; border-left: 3px solid var(--primary); }
 tfoot td {
   padding: 11px 14px; border-top: 2px solid var(--line); background: var(--muted-tint);
