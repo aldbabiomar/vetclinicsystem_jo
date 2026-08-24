@@ -21,7 +21,7 @@
   {% if day_filter or search %}<a class="btn secondary" href="{{ url_for('visits_list', sort=sort) }}">Clear Filters</a>{% endif %}
 </form>
 
-<div class="table-wrap">
+<div class="table-wrap sticky-scroll">
 <table>
   <thead><tr><th>Date</th><th>ID</th><th>Animal</th><th>Owner</th><th>Type</th><th>Doctor</th><th>Status</th><th>Payment</th><th class="num-col">Bill (JOD)</th></tr></thead>
   <tbody>

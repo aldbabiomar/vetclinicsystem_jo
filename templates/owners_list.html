@@ -10,7 +10,7 @@
   <button class="btn secondary" type="submit">Search</button>
   {% if search %}<a class="btn secondary" href="{{ url_for('owners_list') }}">Clear</a>{% endif %}
 </form>
-<div class="table-wrap">
+<div class="table-wrap sticky-scroll">
 <table>
   <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th class="num-col">Patients</th></tr></thead>
   <tbody>

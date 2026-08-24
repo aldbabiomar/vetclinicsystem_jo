@@ -10,7 +10,7 @@
   <a class="chip {{ 'active' if show_all and not balance_due }}" href="{{ url_for('inpatient_list', all=1) }}">All Cases</a>
   <a class="chip {{ 'active' if balance_due }}" href="{{ url_for('inpatient_list', view='balance_due') }}">Balance Due</a>
 </div>
-<div class="table-wrap">
+<div class="table-wrap sticky-scroll">
 <table>
   <thead><tr><th>Admitted</th><th>Animal</th><th>Owner</th><th>Complaint</th><th>Status</th>
     {% if balance_due %}<th class="num-col">Balance (JOD)</th>{% endif %}</tr></thead>

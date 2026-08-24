@@ -86,7 +86,7 @@
 {% if not refunds %}
 <p class="empty-note">{% if date_filter %}No refunds recorded on {{ date_filter }}.{% else %}No refunds recorded yet.{% endif %}</p>
 {% else %}
-<div class="table-wrap">
+<div class="table-wrap sticky-scroll">
 <table>
   <thead><tr><th>Date</th><th>Type</th><th>Details</th><th>Amount</th><th>Method</th><th>Reason</th><th>Processed By</th></tr></thead>
   <tbody>

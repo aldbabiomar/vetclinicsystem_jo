@@ -9,7 +9,7 @@
     {% if date_filter %}<a class="btn secondary" href="{{ url_for('pos_history') }}">Clear</a>{% endif %}
   </form>
 </div>
-<div class="table-wrap">
+<div class="table-wrap sticky-scroll">
 <table>
   <thead><tr><th>Date</th><th>Cashier</th><th class="num-col">Subtotal</th><th class="num-col">Discount</th><th class="num-col">Total (JOD)</th><th>Payment</th><th></th></tr></thead>
   <tbody>
