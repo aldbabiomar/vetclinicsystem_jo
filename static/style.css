@@ -167,7 +167,11 @@ html[data-theme="dark"] .theme-toggle-btn .icon-sun { display: none; }
 html[data-theme="dark"] .theme-toggle-btn .icon-moon { display: block; }
 
 /* ---------------- Main ---------------- */
-.main { padding: 28px 36px 64px; max-width: 1200px; }
+/* min-width:0 — .main is a grid item, and a grid item's default
+   min-width:auto lets its widest content (a table) inflate the column
+   past the viewport. Same trap as .modal-box. Inert on desktop, where
+   there is slack; it is what stops tablet portrait scrolling sideways. */
+.main { padding: 28px 36px 64px; max-width: 1200px; min-width: 0; }
 .main.main-wide { max-width: 1520px; }
 
 .page-head {
@@ -438,6 +442,21 @@ textarea { resize: vertical; min-height: 72px; }
 .sidebar-backdrop.open { display: block; }
 .sidebar-close-btn { display: none; }
 
+/* ---- Wide tables below desktop width ----
+   .sticky-scroll drops the card's own side-scroll so the header can pin
+   against the page. That only works while the table actually fits: the widest
+   one (Price List, 805px natural width) needs viewport - 240px sidebar - 72px
+   padding >= 805, i.e. about 1117px. Under that it drags the whole PAGE
+   sideways, taking the sidebar and top bar with it — much worse than losing a
+   pinned header. So below 1120px the card gets its scroll back.
+
+   This cannot be solved per-table in CSS: an element cannot scroll on one axis
+   and stay overflow-visible on the other (the visible axis computes to auto),
+   so horizontal scrolling and page-level sticky are mutually exclusive here. */
+@media (max-width: 1120px) {
+  .table-wrap.sticky-scroll { overflow: auto; }
+}
+
 @media (max-width: 760px) {
   .app-shell { grid-template-columns: 1fr; padding-top: 64px; }
   .mobile-topbar {
@@ -470,6 +489,26 @@ textarea { resize: vertical; min-height: 72px; }
   }
   .stat-grid, .panel-grid, .form-grid, .detail-grid { grid-template-columns: 1fr; }
   .main { padding: 16px 16px 48px; }
+
+  /* ---- Touch / small-screen adjustments (desktop is untouched: everything
+     here lives inside the 760px query, and .main's min-width below is inert
+     on a wide viewport). ---- */
+
+  /* iOS Safari zooms the page whenever a focused field is under 16px, and
+     does not zoom back out — so every form entry leaves the page magnified. */
+  input, select, textarea { font-size: 16px; }
+
+  /* Touch targets to ~44px (Apple HIG / WCAG 2.5.5). These are all already
+     flex or inline-flex with centred content, so min-height grows the hit
+     area without moving any text. textarea is excluded (already 72px tall)
+     and so are checkboxes/radios, which are sized deliberately. */
+  .btn, .btn.small { min-height: 44px; }
+  .nav-link, .nav-group-toggle { min-height: 44px; }
+  .hamburger-btn { width: 44px; height: 44px; }
+  .sidebar-close-btn { min-height: 44px; min-width: 44px; }
+  .theme-toggle-btn { width: 40px; height: 40px; }
+  .chip { display: inline-flex; align-items: center; min-height: 44px; }
+  input:not([type="checkbox"]):not([type="radio"]), select { min-height: 44px; }
 }
 
 /* =====================================================================
