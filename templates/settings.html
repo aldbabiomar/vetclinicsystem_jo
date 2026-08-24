@@ -376,19 +376,21 @@ document.getElementById('restoreForm').addEventListener('submit', async function
 </div>
 
 <div id="folderBrowserModal" class="modal-overlay" style="display:none;">
-  <div class="modal-box" style="max-width:560px;">
+  <div class="modal-box" style="max-width:640px;">
     <h2 id="folderBrowserTitle" style="margin-top:0;">Choose Backup Folder</h2>
     <p class="small muted" style="margin-top:-6px;">Browsing this computer's folders — the one running VetClinicSystem JO, since that's where backups are actually read and written.</p>
     <div id="folderBrowserPath" class="small" style="margin:10px 0; padding:8px 10px; border-radius:8px; background:var(--muted-tint); word-break:break-all; font-family:monospace;"></div>
     <div id="folderBrowserError" class="small" style="color:var(--danger); display:none; margin-bottom:8px; overflow-wrap:anywhere; word-break:break-word;"></div>
     <div id="folderBrowserList" style="max-height:280px; overflow-y:auto; border:1px solid var(--line-soft); border-radius:8px;"></div>
-    <div id="folderBrowserNewFolderRow" style="display:flex; gap:8px; margin-top:12px;">
-      <input type="text" id="folderBrowserNewName" placeholder="New folder name">
-      <button class="btn secondary" type="button" onclick="folderBrowserNewFolder()">+ New Folder</button>
-    </div>
-    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
-      <button class="btn secondary" type="button" onclick="window.VZSpring.present(document.getElementById('folderBrowserModal'), false, {});">Cancel</button>
-      <button class="btn" type="button" id="folderBrowserSelectBtn" onclick="folderBrowserSelect()">Select This Folder</button>
+    <div style="display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px; margin-top:14px;">
+      <div id="folderBrowserNewFolderRow" style="display:flex; gap:8px; flex:1 1 260px;">
+        <input type="text" id="folderBrowserNewName" placeholder="New folder name" style="flex:1 1 auto; min-width:120px;">
+        <button class="btn secondary" type="button" onclick="folderBrowserNewFolder()">+ New Folder</button>
+      </div>
+      <div style="display:flex; gap:8px; flex:0 0 auto;">
+        <button class="btn secondary" type="button" onclick="window.VZSpring.present(document.getElementById('folderBrowserModal'), false, {});">Cancel</button>
+        <button class="btn" type="button" id="folderBrowserSelectBtn" onclick="folderBrowserSelect()">Select This Folder</button>
+      </div>
     </div>
   </div>
 </div>
