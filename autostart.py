@@ -28,12 +28,48 @@ def is_supported():
     return platform.system() in ("Darwin", "Windows")
 
 
+def _managed_data_dir():
+    """Returns vetclinicsystemjo-data/ if this install has been switched onto
+    the versioned-release layout (setup.py --enable-updates), whether or not
+    the CURRENTLY RUNNING process happens to be using it. Autostart must
+    always target the update-aware supervisor launcher that lives in that
+    folder — never a specific release snapshot's own static launcher, or the
+    original checkout's — otherwise a reboot after the next update silently
+    keeps running whatever was pinned when autostart was enabled, since only
+    the supervisor launcher re-reads active_release.txt on every start.
+
+    Checked two ways: the env var the supervisor launcher sets when it
+    starts app.py (fast path, no filesystem walk needed), or — since
+    autostart can be toggled from a process that isn't running that way,
+    e.g. the original checkout after enable_updates() has already been run
+    elsewhere — the sibling folder structure on disk, mirroring setup.py's
+    own already_managed check."""
+    env_dir = os.environ.get("VETCLINICSYSTEMJO_DATA_DIR")
+    if env_dir and os.path.isfile(os.path.join(env_dir, "active_release.txt")):
+        return env_dir
+    # BASE_DIR is either the original checkout, or — if this process is
+    # itself running from inside a managed release — app_vX.Y.Z/ one level
+    # under vetclinicsystemjo-releases/, in which case the sibling data dir
+    # is two levels up, not one.
+    in_release_folder = (
+        os.path.basename(BASE_DIR).startswith("app_v")
+        and os.path.basename(os.path.dirname(BASE_DIR)) == "vetclinicsystemjo-releases"
+    )
+    parent = os.path.dirname(os.path.dirname(BASE_DIR)) if in_release_folder else os.path.dirname(BASE_DIR)
+    candidate = os.path.join(parent, "vetclinicsystemjo-data")
+    if os.path.isfile(os.path.join(candidate, "active_release.txt")):
+        return candidate
+    return None
+
+
 def _macos_plist_path():
     return os.path.expanduser(f"~/Library/LaunchAgents/{AGENT_LABEL}.plist")
 
 
 def _macos_launcher_path():
-    return os.path.join(BASE_DIR, "Start VetClinicSystem JO.command")
+    data_dir = _managed_data_dir()
+    base = data_dir if data_dir else BASE_DIR
+    return os.path.join(base, "Start VetClinicSystem JO.command")
 
 
 def _windows_startup_dir():
@@ -49,7 +85,9 @@ def _windows_shortcut_path():
 
 
 def _windows_launcher_path():
-    return os.path.join(BASE_DIR, "Start VetClinicSystem JO.bat")
+    data_dir = _managed_data_dir()
+    base = data_dir if data_dir else BASE_DIR
+    return os.path.join(base, "Start VetClinicSystem JO.bat")
 
 
 def is_enabled():
@@ -83,7 +121,7 @@ def disable():
 def _macos_enable():
     launcher = _macos_launcher_path()
     if not os.path.isfile(launcher):
-        return False, "Could not find “Start VetClinicSystem JO.command” next to app.py — can't set up automatic startup."
+        return False, f"Could not find “Start VetClinicSystem JO.command” at {launcher} — can't set up automatic startup."
     plist_path = _macos_plist_path()
     log_dir = os.path.join(BASE_DIR, "logs")
     os.makedirs(log_dir, exist_ok=True)
@@ -138,7 +176,7 @@ def _macos_disable():
 def _windows_enable():
     launcher = _windows_launcher_path()
     if not os.path.isfile(launcher):
-        return False, "Could not find “Start VetClinicSystem JO.bat” next to app.py — can't set up automatic startup."
+        return False, f"Could not find “Start VetClinicSystem JO.bat” at {launcher} — can't set up automatic startup."
     shortcut_path = _windows_shortcut_path()
     if not shortcut_path:
         return False, "Could not find this account's Startup folder (%APPDATA% isn't set)."
