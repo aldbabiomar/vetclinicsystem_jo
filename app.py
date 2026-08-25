@@ -2158,6 +2158,10 @@ def _parse_visit_fields(f):
     grooming_needed = f.get("grooming_needed", "N")
     weight_kg = parse_money(f.get("weight_kg"))
     bcs = parse_bcs(f.get("bcs"))
+    # A negative weight is not a real measurement. IQ has always rejected it
+    # here; JO did not, so it reached the chart and every trend built on it.
+    if has_negative(weight_kg):
+        raise BadNumber(f.get("weight_kg"))
     wellness_next_dose_date = (
         clean_date(f.get("wellness_next_dose_date"), field="wellness_next_dose_date")
         if wellness_needed == "Y" else None
@@ -3138,6 +3142,11 @@ def inventory_catalog_new():
     except BadNumber:
         flash("Cost Price must be a valid number.", "error")
         return redisplay()
+    # A negative cost makes an item look infinitely profitable everywhere
+    # margin and COGS are calculated. IQ guards this; JO did not.
+    if has_negative(cost_price):
+        flash("Cost Price can't be negative.", "error")
+        return redisplay()
     if f.get("category", "Medical") not in INVENTORY_CATEGORIES:
         flash("Category must be one of: " + ", ".join(INVENTORY_CATEGORIES) + ".", "error")
         return redisplay()
@@ -3240,6 +3249,11 @@ def inventory_catalog_bulk_edit():
             cost_price = parse_money(fields.get("cost_price"))
         except BadNumber:
             errors[item_id] = "Cost Price must be a valid number."
+            continue
+        # Same guard as inventory_catalog_new — a bulk edit is the easier
+        # way to set a negative cost, not the harder one.
+        if has_negative(cost_price):
+            errors[item_id] = "Cost Price can't be negative."
             continue
         old = db.execute("SELECT * FROM inventory_list WHERE id=?", (item_id,)).fetchone()
         if not old:
@@ -5249,6 +5263,11 @@ def inpatient_new():
             return redisplay()
         except BadDate as e:
             flash(str(e), "error")
+            return redisplay()
+        # IQ has guarded this since the fork; JO did not, so a negative
+        # admission weight reached the chart and every trend built on it.
+        if has_negative(new_weight_kg):
+            flash("Weight can't be negative.", "error")
             return redisplay()
         patient_id = (f.get("patient_id") or "").strip()
         if not patient_id or not db.execute("SELECT 1 FROM patients WHERE id=?", (patient_id,)).fetchone():
