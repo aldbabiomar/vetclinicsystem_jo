@@ -944,3 +944,192 @@ def test_boarding_rejects_a_malformed_entry_date(client, db, visit):
             "price_per_day": "10.000", "room": "R1"}, follow_redirects=False)
         assert resp.status_code != 500, f"{bad!r} must not raise"
     assert db.execute("SELECT count(*) AS c FROM boarding_sessions").fetchone()["c"] == before
+
+
+# ---------------------------------------------------------------------------
+# Discounts applied on their own, and the cash drawer
+# ---------------------------------------------------------------------------
+
+def test_visit_discount_can_be_applied(client, db, visit):
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    client.post(f"/visits/{visit['visit_id']}/discount",
+                data={"discount_percent": "10"}, follow_redirects=False)
+    row = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit["visit_id"],)).fetchone()
+    assert row["discount_percent"] == 10
+    assert row["total"] == D("90.000"), "the stored total must follow the discount"
+
+
+def test_visit_discount_above_the_role_cap_is_refused(client, db, visit):
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    resp = client.post(f"/visits/{visit['visit_id']}/discount",
+                       data={"discount_percent": "95"}, follow_redirects=False)
+    assert resp.status_code != 500
+    row = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit["visit_id"],)).fetchone()
+    assert row["discount_percent"] == 0, "an over-cap discount must not be applied"
+
+
+def test_visit_discount_rejects_a_non_numeric_value(client, db, visit):
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    resp = client.post(f"/visits/{visit['visit_id']}/discount",
+                       data={"discount_percent": "loads"}, follow_redirects=False)
+    assert resp.status_code != 500
+    row = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit["visit_id"],)).fetchone()
+    assert row["discount_percent"] == 0
+
+
+def test_a_discount_cannot_be_applied_below_what_is_already_paid(client, db, visit):
+    """Discounting after payment can push the total under what was collected,
+    which is an overpayment nothing surfaces — the same hazard the billing
+    route guards, on a different entry point."""
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    db.execute("INSERT INTO payments (visit_id, amount, method, date, user_id) VALUES (?,?,?,?,?)",
+               (visit["visit_id"], D("100.000"), "Cash", date.today().isoformat(), "U001"))
+    db.commit()
+    client.post(f"/visits/{visit['visit_id']}/discount",
+                data={"discount_percent": "50"}, follow_redirects=False)
+    summary = logic.visit_billing_summary(db, visit["visit_id"])
+    # No tolerance: in JOD an excess is real money, not rounding artifact.
+    assert summary["paid"] <= summary["total"], (
+        "a discount must not leave more paid than the bill is worth")
+
+
+# ---------------------------------------------------------------------------
+# Cash register — money leaving the drawer for something other than a refund
+# ---------------------------------------------------------------------------
+
+def _payout(client, **data):
+    payload = {"day": date.today().isoformat(), "amount": "50.000", "reason": "route test"}
+    payload.update(data)
+    return client.post("/cash-register/payout", data=payload, follow_redirects=False)
+
+
+def _payouts(db):
+    return db.execute("SELECT count(*) AS c FROM cash_register_payouts").fetchone()["c"]
+
+
+@pytest.fixture(autouse=True)
+def _drawer_is_left_as_found(db):
+    """Any payout these tests manage to create is removed again.
+
+    This is not tidiness. The drawer balance is derived from cash sales
+    minus payouts, and it is what the payout guard checks against — so a
+    stray payout left behind by one test drives the drawer negative and
+    silently changes what every later test is testing. One did exactly that
+    while this file was being written."""
+    before = {r["id"] for r in db.execute("SELECT id FROM cash_register_payouts").fetchall()}
+    yield
+    after = {r["id"] for r in db.execute("SELECT id FROM cash_register_payouts").fetchall()}
+    for pid in after - before:
+        db.execute("DELETE FROM cash_register_payouts WHERE id=?", (pid,))
+    db.commit()
+
+
+def test_a_payout_cannot_exceed_what_is_in_the_drawer(client, db):
+    """The guard that makes the cash register mean anything: you cannot pay
+    out money that was never taken in. Without it the drawer reconciles to a
+    negative figure and the shortfall looks like theft."""
+    before = _payouts(db)
+    resp = _payout(client, amount="99999999", reason="more than exists")
+    assert resp.status_code != 500
+    assert _payouts(db) == before, "a payout beyond the drawer must not be recorded"
+
+
+def test_a_payout_rejects_zero_and_negative(client, db):
+    before = _payouts(db)
+    for bad in ("0", "-50.000"):
+        resp = _payout(client, amount=bad)
+        assert resp.status_code != 500
+    assert _payouts(db) == before, "a non-positive payout must not be recorded"
+
+
+def test_a_payout_rejects_a_non_numeric_amount(client, db):
+    before = _payouts(db)
+    resp = _payout(client, amount="lots")
+    assert resp.status_code != 500
+    assert _payouts(db) == before
+
+
+def test_a_payout_needs_a_reason(client, db, sellable):
+    """An unexplained withdrawal is indistinguishable from a missing note in
+    the drawer at the end of the day.
+
+    This needs real cash in the register first. Without it the drawer-balance
+    guard refuses the payout before the reason is ever looked at, and the
+    test passes whether the reason check exists or not — which is exactly
+    what a mutation check caught it doing."""
+    _checkout(client, sellable["inv_id"], qty=4, payment_method="Cash", cash_received="50.000")
+    sale = _latest_sale(db)
+    assert sale["payment_method"] == "Cash" and sale["total"] > 0, "need cash in the drawer"
+
+    before = _payouts(db)
+    # Well within the drawer, so only the missing reason can refuse it.
+    resp = _payout(client, amount=str(sale["total"] / 2), reason="")
+    assert resp.status_code != 500
+    assert _payouts(db) == before, "a payout with no reason must not be recorded"
+
+
+def test_a_payout_within_the_drawer_and_with_a_reason_is_recorded(client, db, sellable):
+    """The control for the two guards above: with cash present and a reason
+    given, the payout must actually go through — otherwise the tests either
+    side of it prove nothing."""
+    _checkout(client, sellable["inv_id"], qty=4, payment_method="Cash", cash_received="50.000")
+    sale = _latest_sale(db)
+    before = _payouts(db)
+    amount = sale["total"] / 2
+    resp = _payout(client, amount=str(amount), reason="petty cash")
+    assert resp.status_code != 500
+    assert _payouts(db) == before + 1, "a valid payout must be recorded"
+    row = db.execute("SELECT * FROM cash_register_payouts ORDER BY id DESC LIMIT 1").fetchone()
+    assert row["amount"] == amount
+    assert row["reason"] == "petty cash"
+
+
+def test_a_payout_rejects_a_malformed_date(client, db):
+    before = _payouts(db)
+    for bad in ("not-a-date", "2026-08-25garbage"):
+        resp = _payout(client, day=bad)
+        assert resp.status_code != 500, f"{bad!r} must not raise"
+    assert _payouts(db) == before
+
+
+# ---------------------------------------------------------------------------
+# Price list bulk editor
+# ---------------------------------------------------------------------------
+
+def test_price_list_bulk_edit_applies_a_valid_change(client, db):
+    name = f"Bulk Price {uuid.uuid4().hex[:6]}"
+    client.post("/price-list/new", data={
+        "name": name, "category": "Service", "cost_price": "2.000", "sale_price": "10.000"},
+        follow_redirects=False)
+    row = db.execute("SELECT * FROM price_list WHERE name=?", (name,)).fetchone()
+    assert row is not None
+    try:
+        resp = client.post("/price-list/bulk-edit", json={"items": [
+            {"id": row["id"], "fields": {"name": name, "category": "Service",
+                                         "cost_price": "3.000", "sale_price": "14.000"}}]})
+        assert resp.get_json().get("ok"), f"control edit should succeed: {resp.get_json()}"
+        after = db.execute("SELECT * FROM price_list WHERE id=?", (row["id"],)).fetchone()
+        assert after["sale_price"] == D("14.000")
+    finally:
+        db.execute("DELETE FROM price_list WHERE id=?", (row["id"],))
+        db.commit()
+
+
+def test_price_list_bulk_edit_rejects_a_negative_price(client, db):
+    name = f"Bulk Price {uuid.uuid4().hex[:6]}"
+    client.post("/price-list/new", data={
+        "name": name, "category": "Service", "cost_price": "2.000", "sale_price": "10.000"},
+        follow_redirects=False)
+    row = db.execute("SELECT * FROM price_list WHERE name=?", (name,)).fetchone()
+    assert row is not None
+    try:
+        resp = client.post("/price-list/bulk-edit", json={"items": [
+            {"id": row["id"], "fields": {"name": name, "category": "Service",
+                                         "cost_price": "3.000", "sale_price": "-14.000"}}]})
+        assert resp.status_code < 500
+        assert not resp.get_json().get("ok"), "a negative price must be reported as an error"
+        after = db.execute("SELECT * FROM price_list WHERE id=?", (row["id"],)).fetchone()
+        assert after["sale_price"] == D("10.000"), "the original price must survive"
+    finally:
+        db.execute("DELETE FROM price_list WHERE id=?", (row["id"],))
+        db.commit()
