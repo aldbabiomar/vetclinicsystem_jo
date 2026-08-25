@@ -3,6 +3,15 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.8.2] - 2026-08-25
+
+### Changed
+- **Every date-filtered page now tells you when a date was rejected.**
+  Visits, POS History and Refunds used to quietly ignore an unusable date
+  and show you everything, which looked the same as the filter working.
+  They now say "That date wasn't valid — showing all dates instead.",
+  matching what Cash Register already did.
+
 ## [1.8.1] - 2026-08-25
 
 ### Fixed

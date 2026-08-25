@@ -504,6 +504,24 @@ def clean_date_filter(v):
     return v
 
 
+def date_filter_arg(name="date", message="That date wasn't valid — showing all dates instead."):
+    """clean_date_filter() with a heads-up for the user.
+
+    Dropping a malformed filter silently is the right default for a shared
+    context builder that several routes re-render through (see
+    _refunds_page_context) — a stray ?date= shouldn't add noise on top of a
+    real validation error. But on the page the user actually asked for,
+    silence is indistinguishable from "the filter worked and there's just a
+    lot of data". IQ has always said so on these pages; this is what brings
+    JO's list pages in line. Only speaks up when something was actually
+    thrown away — an absent or empty ?date= is not an error."""
+    raw = request.args.get(name)
+    value = clean_date_filter(raw)
+    if value is None and clean(raw) is not None:
+        flash(message, "error")
+    return value
+
+
 def has_negative(*values):
     """True if any of the given already-parsed numbers (None is fine —
     skipped, since an absent value isn't a negative one) is below zero.
@@ -2197,7 +2215,7 @@ def _create_inpatient_case(db, patient_id, visit_id, complaint, admission_date, 
 def visits_list():
     db = get_db()
     sort = request.args.get("sort", "date")
-    day_filter = clean_date_filter(request.args.get("date"))
+    day_filter = date_filter_arg()
     search = request.args.get("q", "").strip()
     page = get_page()
 
@@ -5156,7 +5174,7 @@ def pos_receipt(sale_id):
 def pos_history():
     db = get_db()
     page = get_page()
-    date_filter = clean_date_filter(request.args.get("date"))
+    date_filter = date_filter_arg()
     where = " WHERE s.sale_date LIKE ?" if date_filter else ""
     params = [date_filter + "%"] if date_filter else []
     total = db.execute(f"SELECT COUNT(*) c FROM sales s{where}", params).fetchone()["c"]
@@ -5914,6 +5932,14 @@ def _refunds_page_context():
 @app.route("/refunds")
 @auth.permission_required("manage_refunds")
 def refunds_page():
+    # Side-effect only: warns if ?date= was present but unusable.
+    # _refunds_page_context() re-reads and re-parses it, deliberately in
+    # silence — refund_retail_save()/refund_service_save() re-render through
+    # that same builder on a validation failure, and must not stack a date
+    # warning on top of the real error. IQ avoids the double-read by taking
+    # date_filter as a parameter; JO's builder takes none, so the warning
+    # lives here instead of restructuring three call sites for it.
+    date_filter_arg()
     return render_template("refunds.html", **_refunds_page_context())
 
 
