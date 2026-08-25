@@ -326,6 +326,36 @@ the IQD is rounded to a 250 note and has an anti-"looks free" floor.
 Never copy one over the other. See `COMPARISON.md` §1.1 in the shared
 workspace folder.
 
+## Running the browser checks (optional)
+
+`tests/test_browser.py` opens every page in a real browser and checks it
+isn't *broken* — no sideways scrolling, no JavaScript errors, no failed
+assets, no control rendered at zero size, touch targets big enough on a
+phone, and every page still rendering in dark mode. It does **not** compare
+screenshots, so there is nothing to review or regenerate when you change
+the design on purpose.
+
+It needs two things the rest of the suite doesn't, and skips cleanly
+without either — Playwright, and a running app:
+
+```
+venv/bin/python -m pip install playwright
+venv/bin/python -m playwright install chromium
+```
+
+Then, with the app running:
+
+```
+APP_URL=http://127.0.0.1:5092 venv/bin/python -m pytest tests/test_browser.py -q
+```
+
+(5092 for JO. Set `APP_USER`/`APP_PASS` if your login isn't the default.)
+
+Playwright is deliberately **not** in `requirements.txt`. The app itself has
+no build step and no browser dependency, which is what lets it run anywhere
+and keep running for years — that property is worth more than making these
+tests run by default. Takes about two minutes.
+
 ## Your data
 
 Everything lives in PostgreSQL (inside the `vetclinicsystemjo_pgdata` Docker volume) —

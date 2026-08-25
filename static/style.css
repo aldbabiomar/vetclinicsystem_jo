@@ -286,7 +286,14 @@ html[data-theme="dark"] .chip.active { color: var(--bg); }
 .stat-card.ok .num { color: var(--primary); }
 
 .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 900px) { .panel-grid, .stat-grid { grid-template-columns: 1fr 1fr; } }
+/* .panel-grid holds two side-by-side cards. The collapse to a single
+   column lived at 760px, but a standard tablet is 768px -- eight pixels
+   above it -- so on the most common tablet width the grid stayed at two
+   columns and the second card ran off the right edge, taking the whole
+   page into horizontal scroll (/refunds: 1046px of content in a 768px
+   window). Collapsed at 900px instead. .stat-grid stays at two columns:
+   the stat tiles are narrow and stacking them makes the page very long. */
+@media (max-width: 900px) { .panel-grid { grid-template-columns: 1fr; } .stat-grid { grid-template-columns: 1fr 1fr; } }
 
 .panel h2 { font-size: 14.5px; margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between; font-weight: 620; }
 .panel h2 .count { color: var(--ink-soft); font-weight: 480; font-size: 12.5px; }
@@ -367,7 +374,9 @@ textarea { resize: vertical; min-height: 72px; }
 .checkbox-row { display: flex; align-items: center; gap: 8px; flex-direction: row; }
 .checkbox-row input { width: auto; }
 
-.search-bar { display: flex; gap: 10px; margin-bottom: 18px; }
+/* wrap, or the buttons beside the search input push past the right edge
+   on a phone -- /visits rendered 482px of content in a 390px window. */
+.search-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
 .search-bar input[type=text] { flex: 1; max-width: 320px; }
 
 /* ---------------- Flash ---------------- */
@@ -613,6 +622,12 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 }
 .vz-toast-close:hover { color: var(--ink); }
 @media (max-width: 760px) {
+  /* Found by tests/test_browser.py driving a real 390px viewport: the
+     slot '+' button rendered 273px wide but only 20px tall, and the toast
+     dismiss 17x20 — both well under the 44px touch minimum the rest of
+     this block already applies. Width was never the problem; height was. */
+  .appt-add-btn { min-height: 44px; font-size: 14px; }
+  .vz-toast-close { min-width: 44px; min-height: 44px; }
   .vz-toast-stack { left: 12px; right: 12px; bottom: 12px; max-width: none; }
 }
 
