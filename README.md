@@ -281,6 +281,38 @@ server machine. If you ever need to move the database to its own server,
 just point `DATABASE_URL` in `.env` at that server instead of the local
 Docker container — nothing else in the app needs to change.
 
+## Running the tests
+
+The money math — totals, discounts, write-offs, and the Decimal
+discipline that keeps the JOD exact to the fils — is the part of this app
+most worth checking on every change, and the part where a mistake is
+least visible: a wrong colour is obvious, a wrong total is a bill someone
+already paid. `tests/test_money.py` covers it.
+
+The tests need no database, no Docker and no running app. From the repo
+root, with the same virtual environment you set up in Quick start:
+
+```
+venv/bin/python -m pip install pytest
+venv/bin/python -m pytest tests/ -q
+```
+
+(They import `app.py`, so they need the app's own dependencies — which is
+why they run from that venv rather than a bare Python.)
+
+Everything should pass in well under a second. If something fails,
+**read what it says before changing it**: several of these tests exist
+because the bug they describe already happened once. The tests around a
+leftover balance are the clearest example — a threshold carried over
+unchanged from the IQD original once marked bills with up to 500 fils
+still owing as "Fully Paid", quietly hiding real uncollected money.
+
+**A warning if you also work on VetClinicSystem IQ:** the two apps'
+`test_money.py` files make deliberately *opposite* assertions, because
+the IQD is rounded to a 250 note and has an anti-"looks free" floor.
+Never copy one over the other. See `COMPARISON.md` §1.1 in the shared
+workspace folder.
+
 ## Your data
 
 Everything lives in PostgreSQL (inside the `vetclinicsystemjo_pgdata` Docker volume) —
