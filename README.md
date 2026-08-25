@@ -289,6 +289,19 @@ most worth checking on every change, and the part where a mistake is
 least visible: a wrong colour is obvious, a wrong total is a bill someone
 already paid. `tests/test_money.py` covers it.
 
+`tests/test_frontend.py` covers the other half: it reads `style.css` and
+`templates/` and fails on the kinds of breakage that used to be found only
+by someone noticing them — a colour hardcoded instead of taken from the
+palette (so it stays wrong in dark mode), a `var(--token)` that no longer
+resolves (which renders as *nothing*, not as an obviously wrong colour), a
+theme missing a colour the other theme has, a layout guard being deleted,
+or an asset reference pointing at a file that isn't there.
+
+Be clear about its limits: it is static analysis, not a browser. It cannot
+tell you a page *looks* right — only that the specific things that have
+broken before have not broken again. Looking at the app on a phone is still
+the only way to know it works on a phone.
+
 The tests need no database, no Docker and no running app. From the repo
 root, with the same virtual environment you set up in Quick start:
 
