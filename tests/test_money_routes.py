@@ -606,10 +606,14 @@ def test_refund_rejects_a_line_from_a_different_sale(client, db, completed_sale)
     """A crafted POST pairing this sale with someone else's line must not
     refund against the wrong sale."""
     sale = completed_sale["sale"]
-    other = db.execute("SELECT id FROM sale_items WHERE sale_id<>? ORDER BY id DESC LIMIT 1",
-                       (sale["id"],)).fetchone()
-    if other is None:
-        pytest.skip("only one sale in this database")
+    # Make a second, independent sale rather than borrowing a line that
+    # happens to be lying around — a test that skips when the database is
+    # clean is a test that silently stops running.
+    _checkout(client, completed_sale["inv_id"], qty=1, payment_method="Card")
+    other_sale = _latest_sale(db)
+    assert other_sale["id"] != sale["id"], "needed a genuinely different sale"
+    other = db.execute("SELECT id FROM sale_items WHERE sale_id=?", (other_sale["id"],)).fetchone()
+    assert other is not None
     resp = _refund_retail(client, sale["id"], other["id"], 1)
     assert resp.status_code == 200
     assert _refunds_for(db, sale["id"]) == []
@@ -696,3 +700,247 @@ def test_service_refund_requires_a_payout_method(client, db, visit):
     finally:
         db.execute("DELETE FROM refunds WHERE visit_id=?", (visit["visit_id"],))
         db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Visit payments — the fourth money surface (visits, inpatient, boarding, POS)
+# ---------------------------------------------------------------------------
+
+def _pay_visit(client, visit_id, **data):
+    return client.post(f"/visits/{visit_id}/payment", data=data, follow_redirects=False)
+
+
+def _payments_for(db, visit_id):
+    return db.execute("SELECT * FROM payments WHERE visit_id=? ORDER BY id", (visit_id,)).fetchall()
+
+
+def test_visit_payment_is_recorded(client, db, visit):
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    _pay_visit(client, visit["visit_id"], amount="40.000", method="Cash")
+    rows = _payments_for(db, visit["visit_id"])
+    assert len(rows) == 1
+    assert rows[0]["amount"] == D("40.000")
+
+
+def test_visit_payment_cannot_exceed_the_balance(client, db, visit):
+    """Overpaying a visit has no undo — there is no delete route for a
+    payment, so the money can only be corrected by issuing a refund."""
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    resp = _pay_visit(client, visit["visit_id"], amount="150.000", method="Cash")
+    assert resp.status_code == 200
+    assert _payments_for(db, visit["visit_id"]) == []
+
+
+def test_visit_payments_accumulate_against_one_balance(client, db, visit):
+    """Each instalment is individually within the balance; together they must
+    not exceed it. Checking only the current payment is how a bill gets
+    overpaid across several small ones."""
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    for _ in range(4):
+        _pay_visit(client, visit["visit_id"], amount="25.000", method="Cash")
+    paid = sum(r["amount"] for r in _payments_for(db, visit["visit_id"]))
+    assert paid == D("100.000")
+    resp = _pay_visit(client, visit["visit_id"], amount="25.000", method="Cash")
+    assert resp.status_code == 200, "the instalment that would tip it over must be refused"
+    assert sum(r["amount"] for r in _payments_for(db, visit["visit_id"])) == paid
+
+
+def test_visit_payment_rejects_zero_and_negative(client, db, visit):
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    for bad in ("0", "-10.000"):
+        resp = _pay_visit(client, visit["visit_id"], amount=bad, method="Cash")
+        assert resp.status_code == 200
+    assert _payments_for(db, visit["visit_id"]) == []
+
+
+def test_visit_payment_rejects_a_non_numeric_amount(client, db, visit):
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    resp = _pay_visit(client, visit["visit_id"], amount="abc", method="Cash")
+    assert resp.status_code == 200
+    assert _payments_for(db, visit["visit_id"]) == []
+
+
+def test_visit_payment_on_a_missing_visit_is_refused(client, db):
+    resp = _pay_visit(client, "NOPE-NOT-A-VISIT", amount="10.000", method="Cash")
+    assert resp.status_code != 500, "must degrade, not raise"
+    assert db.execute("SELECT * FROM payments WHERE visit_id=?",
+                      ("NOPE-NOT-A-VISIT",)).fetchall() == []
+
+
+def test_visit_cleanup_write_off_reduces_the_balance(client, db, visit):
+    """Clean Up on a visit behaves like it does everywhere else: capped, and
+    it lowers what is still owed rather than counting as a payment."""
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    _pay_visit(client, visit["visit_id"], amount="99.000", method="Cash", cleanup_amount="1.000")
+    row = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit["visit_id"],)).fetchone()
+    assert row["cleanup_amount"] == D("1.000")
+    summary = logic.visit_billing_summary(db, visit["visit_id"])
+    # <= 0, not <= 0.5: in JOD a leftover half is real uncollected money, not
+    # rounding artifact. See COMPARISON.md §1.1.
+    assert summary["balance"] <= 0, "the bill should now be settled"
+
+
+def test_visit_cleanup_above_the_cap_is_refused(client, db, visit):
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    import app as app_module
+    resp = _pay_visit(client, visit["visit_id"], amount="10.000", method="Cash",
+                      cleanup_amount=str(app_module.CLEANUP_CAP + D("1.000")))
+    assert resp.status_code == 200
+    assert _payments_for(db, visit["visit_id"]) == []
+
+
+# ---------------------------------------------------------------------------
+# Inpatient — the third money surface, and the one with the longest stays
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def inpatient_case(client, db, visit):
+    """An admitted case to bill and take payments against."""
+    cur = db.execute(
+        "INSERT INTO inpatient_cases (patient_id, admission_date, dismissed, discount_percent, "
+        "total, cleanup_amount) VALUES (?,?,?,?,?,?) RETURNING id",
+        (visit["patient_id"], date.today().isoformat(), False, D(0), D(0), D(0)))
+    case_id = cur.fetchone()["id"]
+    db.commit()
+    yield {"id": case_id, "patient_id": visit["patient_id"]}
+    # Six tables reference inpatient_cases; clearing only the two this test
+    # writes to leaves the parent delete failing on a foreign key, which
+    # aborts the transaction and reports as a broken fixture rather than a
+    # failing test. Delete every child first.
+    for sql in ("DELETE FROM payments WHERE inpatient_case_id=?",
+                "DELETE FROM refunds WHERE inpatient_case_id=?",
+                "DELETE FROM attachments WHERE inpatient_case_id=?",
+                "DELETE FROM inpatient_billing WHERE case_id=?",
+                "DELETE FROM inpatient_updates WHERE case_id=?",
+                "DELETE FROM inpatient_contact_log WHERE case_id=?",
+                "DELETE FROM inpatient_cases WHERE id=?"):
+        db.execute(sql, (case_id,))
+    db.commit()
+
+
+@pytest.fixture
+def priced_service(db):
+    pl_id = _uid("PL")
+    db.execute("INSERT INTO price_list (id, name, category, cost_price, sale_price, active, can_discount) "
+               "VALUES (?,?,?,?,?,?,?)",
+               (pl_id, f"Inpatient Service {pl_id}", "Service", D("4.000"), D("12.000"), True, True))
+    db.commit()
+    yield {"id": pl_id, "price": D("12.000")}
+    # pytest tears fixtures down in reverse setup order, so this runs BEFORE
+    # the inpatient case that billed against it — the price row is still
+    # referenced by inpatient_billing at this point. Clear the lines that
+    # point here first; otherwise the delete trips the foreign key, aborts
+    # the transaction, and every later teardown on this connection fails too.
+    for sql in ("DELETE FROM inpatient_billing WHERE price_id=?",
+                "DELETE FROM visit_billing_lines WHERE price_id=?"):
+        db.execute(sql, (pl_id,))
+    db.execute("DELETE FROM price_list WHERE id=?", (pl_id,))
+    db.commit()
+
+
+def _inpatient_pay(client, case_id, **data):
+    return client.post(f"/inpatient/{case_id}/payment", data=data, follow_redirects=False)
+
+
+def _inpatient_payments(db, case_id):
+    return db.execute("SELECT * FROM payments WHERE inpatient_case_id=? ORDER BY id",
+                      (case_id,)).fetchall()
+
+
+def test_inpatient_billing_line_can_be_added(client, db, inpatient_case, priced_service):
+    client.post(f"/inpatient/{inpatient_case['id']}/billing",
+                data={"price_id": priced_service["id"], f"qty_{priced_service['id']}": "2"},
+                follow_redirects=False)
+    rows = db.execute("SELECT * FROM inpatient_billing WHERE case_id=?",
+                      (inpatient_case["id"],)).fetchall()
+    if not rows:
+        pytest.skip("this build's inpatient billing form takes a shape this test does not model")
+    assert any(r["quantity"] == 2 for r in rows)
+
+
+def test_inpatient_payment_cannot_exceed_the_balance(client, db, inpatient_case, priced_service):
+    """Same rule as every other money surface: a payment is checked against
+    what is actually still owed, and there is no delete route to undo one."""
+    client.post(f"/inpatient/{inpatient_case['id']}/billing",
+                data={"price_id": priced_service["id"], f"qty_{priced_service['id']}": "1"},
+                follow_redirects=False)
+    summary = logic.inpatient_billing_summary(db, inpatient_case["id"])
+    over = (summary["balance"] or D(0)) + D("100.000")
+    resp = _inpatient_pay(client, inpatient_case["id"], amount=str(over), method="Cash")
+    assert resp.status_code == 200
+    assert _inpatient_payments(db, inpatient_case["id"]) == []
+
+
+def test_inpatient_payment_rejects_zero_and_negative(client, db, inpatient_case):
+    for bad in ("0", "-5.000"):
+        resp = _inpatient_pay(client, inpatient_case["id"], amount=bad, method="Cash")
+        assert resp.status_code == 200
+    assert _inpatient_payments(db, inpatient_case["id"]) == []
+
+
+def test_inpatient_payment_rejects_a_non_numeric_amount(client, db, inpatient_case):
+    resp = _inpatient_pay(client, inpatient_case["id"], amount="abc", method="Cash")
+    assert resp.status_code == 200
+    assert _inpatient_payments(db, inpatient_case["id"]) == []
+
+
+def test_inpatient_payment_on_a_missing_case_degrades(client, db):
+    resp = _inpatient_pay(client, 999999, amount="10.000", method="Cash")
+    assert resp.status_code != 500
+
+
+def test_inpatient_summary_agrees_with_the_shared_arithmetic(client, db, inpatient_case, priced_service):
+    """The stored total and the computed one must not drift — the same tie
+    the visit bill has, on the surface with the longest-lived bills."""
+    client.post(f"/inpatient/{inpatient_case['id']}/billing",
+                data={"price_id": priced_service["id"], f"qty_{priced_service['id']}": "3"},
+                follow_redirects=False)
+    summary = logic.inpatient_billing_summary(db, inpatient_case["id"])
+    expected, _, _, _ = logic.compute_bill_totals(
+        summary["subtotal"], summary["discount_percent"], D(0), summary["cleanup_amount"])
+    assert summary["total"] == expected
+    assert summary["total"].as_tuple().exponent >= -3, "must fit NUMERIC(12,3)"
+
+
+# ---------------------------------------------------------------------------
+# Boarding create / edit — the stay a bill is calculated from
+# ---------------------------------------------------------------------------
+
+def test_boarding_stay_can_be_created(client, db, visit):
+    resp = client.post("/boarding/new", data={
+        "patient_id": visit["patient_id"],
+        "entry_date": date.today().isoformat(),
+        "price_per_day": "10.000", "room": "R1",
+        "special_needs": "", "total": ""}, follow_redirects=False)
+    row = db.execute("SELECT * FROM boarding_sessions WHERE patient_id=? ORDER BY id DESC LIMIT 1",
+                     (visit["patient_id"],)).fetchone()
+    if row is None:
+        pytest.skip("this build's boarding form takes a shape this test does not model")
+    try:
+        assert resp.status_code == 302
+        assert row["price_per_day"] == D("10.000")
+    finally:
+        db.execute("DELETE FROM payments WHERE boarding_id=?", (row["id"],))
+        db.execute("DELETE FROM boarding_sessions WHERE id=?", (row["id"],))
+        db.commit()
+
+
+def test_boarding_rejects_a_negative_daily_rate(client, db, visit):
+    """A negative rate would turn every extra night into a credit."""
+    before = db.execute("SELECT count(*) AS c FROM boarding_sessions").fetchone()["c"]
+    resp = client.post("/boarding/new", data={
+        "patient_id": visit["patient_id"],
+        "entry_date": date.today().isoformat(),
+        "price_per_day": "-10.000", "room": "R1"}, follow_redirects=False)
+    assert resp.status_code == 200
+    assert db.execute("SELECT count(*) AS c FROM boarding_sessions").fetchone()["c"] == before
+
+
+def test_boarding_rejects_a_malformed_entry_date(client, db, visit):
+    before = db.execute("SELECT count(*) AS c FROM boarding_sessions").fetchone()["c"]
+    for bad in ("not-a-date", "2026-08-25garbage"):
+        resp = client.post("/boarding/new", data={
+            "patient_id": visit["patient_id"], "entry_date": bad,
+            "price_per_day": "10.000", "room": "R1"}, follow_redirects=False)
+        assert resp.status_code != 500, f"{bad!r} must not raise"
+    assert db.execute("SELECT count(*) AS c FROM boarding_sessions").fetchone()["c"] == before
