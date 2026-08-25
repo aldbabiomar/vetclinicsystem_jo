@@ -3,6 +3,18 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.8.6] - 2026-08-25
+
+### Fixed
+- **A minus sign in the monthly operating costs no longer inflates your
+  profit figures.** A negative cost was being subtracted the wrong way in
+  the yearly report, making the clinic look more profitable than it was.
+  Negative costs are now refused.
+- **A boarding stay can no longer be saved as ending before it started.**
+- **A distributor's lead time can no longer be set to a negative number**,
+  which made the ordering sheet ask for stock to arrive before it was
+  ordered.
+
 ## [1.8.5] - 2026-08-25
 
 ### Fixed
