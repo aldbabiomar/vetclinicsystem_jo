@@ -18,7 +18,23 @@ def parse_date(v):
         return None
     if isinstance(v, date):
         return v
-    return datetime.strptime(str(v)[:10], "%Y-%m-%d").date()
+    # Accepts a bare YYYY-MM-DD, or the date half of a full ISO timestamp --
+    # a few TEXT columns (backup_log.started_at, visits.case_status_changed_at)
+    # store an isoformat() stamp rather than a real DATE, and callers pass
+    # those straight in.
+    #
+    # This used to be a blind str(v)[:10]: it truncated *before* validating,
+    # so anything with a valid 10-character prefix parsed clean.
+    # "2026-08-25garbage" came back as a real date, which meant a route
+    # guarding a ?date= filter with try/except ValueError saw no error and
+    # passed the untruncated string on to the query, where a DATE column
+    # raised a raw Postgres cast error (a 500) instead of degrading to
+    # "showing all dates". Validate the whole string, never a prefix.
+    s = str(v).strip()
+    try:
+        return date.fromisoformat(s)
+    except ValueError:
+        return datetime.fromisoformat(s).date()
 
 
 def fmt_date(d):

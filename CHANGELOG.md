@@ -3,6 +3,15 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.8.1] - 2026-08-25
+
+### Fixed
+- **A malformed date in a page's web address is now handled properly.**
+  Hand-editing the `?date=` part of the address to something that started
+  with a real date but had extra characters after it was accepted as if
+  it were valid; it now tells you the date wasn't valid and falls back,
+  the same as any other bad date.
+
 ## [1.8.0] - 2026-08-25
 
 ### Added
