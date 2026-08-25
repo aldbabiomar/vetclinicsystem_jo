@@ -933,6 +933,17 @@ def handle_http_exception(e):
     return e
 
 
+@app.errorhandler(dbmod.NumericValueOutOfRange)
+def handle_numeric_out_of_range(e):
+    """An absurdly large integer reached a numeric database column — a
+    crafted `<int:...>` URL segment, a huge quantity/amount, an id nobody
+    would legitimately have — instead of a bad-but-plausible value
+    BadNumber's validation would have already caught client-side. Same
+    friendly-degrade pattern as BadNumber/BadPhone above."""
+    flash("That number is too large to be a valid value here.", "error")
+    return _fallback_redirect()
+
+
 @app.errorhandler(dbmod.PoolTimeout)
 def handle_pool_timeout(e):
     """The connection pool caps at a fixed size and require_login() calls

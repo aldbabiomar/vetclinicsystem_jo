@@ -2014,10 +2014,28 @@ def slot_conflict(db, appt_date, slot_label, resource_type, resource_id):
 # ---------------------------------------------------------------------------
 REVENUE_CATEGORIES = ["Service", "Medicine", "Retail", "Boarding"]
 
-# Jordan's work week is Sunday-Thursday (Friday/Saturday is the weekend).
 # Postgres EXTRACT(DOW) already returns 0=Sunday..6=Saturday, i.e. this order.
 WEEKDAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-WEEKDAY_IS_WEEKEND = [False, False, False, False, False, True, True]
+# Default matches Jordan's work week (Sunday-Thursday, so Friday/Saturday is
+# the weekend) — overridable per-deployment via the settings.weekend_days row
+# (comma-separated 0-6 indices, same numbering as EXTRACT(DOW) above) for a
+# clinic running this app outside Jordan. See weekday_is_weekend().
+DEFAULT_WEEKEND_DAYS = {5, 6}
+
+
+def weekday_is_weekend(db):
+    """Returns a 7-element bool list (index 0=Sunday..6=Saturday) — which
+    days count as "weekend" for the Insights scheduling-demand chart.
+    Reads settings.weekend_days if set, otherwise DEFAULT_WEEKEND_DAYS."""
+    raw = get_setting(db, "weekend_days")
+    if raw:
+        try:
+            weekend_set = {int(d) for d in raw.split(",") if d.strip() != ""}
+        except ValueError:
+            weekend_set = DEFAULT_WEEKEND_DAYS
+    else:
+        weekend_set = DEFAULT_WEEKEND_DAYS
+    return [dow in weekend_set for dow in range(7)]
 
 
 def month_list(months_back):
@@ -2205,12 +2223,13 @@ def appointment_weekday_load(db, months_back=12):
     ).fetchall()
     appt_by_dow = {r["dow"]: r["c"] for r in appt_rows}
     visit_by_dow = {r["dow"]: r["c"] for r in visit_rows}
+    is_weekend = weekday_is_weekend(db)
     out = []
     for dow in range(7):
         appts = appt_by_dow.get(dow, 0)
         visits = visit_by_dow.get(dow, 0)
         out.append({
-            "day": WEEKDAY_LABELS[dow], "is_weekend": WEEKDAY_IS_WEEKEND[dow],
+            "day": WEEKDAY_LABELS[dow], "is_weekend": is_weekend[dow],
             "appointments": appts, "visits_same_weekday": visits,
             "fulfillment_ratio": round(visits / appts, 2) if appts else None,
         })

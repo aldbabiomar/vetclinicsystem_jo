@@ -302,6 +302,14 @@ html[data-theme="dark"] .chip.active { color: var(--bg); }
 .list-line .who { font-weight: 600; }
 .list-line .meta { color: var(--ink-soft); font-size: 12.5px; }
 
+/* Clickable rows in the backup-folder browser (Settings). The rows are built
+   by settings.html with the same class and inline cursor/padding as IQ, but
+   the separators and hover feedback live here — they were missed when the
+   folder browser was ported, leaving the rows visually undivided. */
+.folder-browser-row { border-bottom: 1px solid var(--line-soft); transition: background 0.1s ease; }
+.folder-browser-row:last-child { border-bottom: none; }
+.folder-browser-row:hover { background: var(--line-soft); }
+
 /* ---------------- Tables ---------------- */
 .table-wrap {
   background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
@@ -551,6 +559,28 @@ textarea { resize: vertical; min-height: 72px; }
 .nav-group.collapsed .nav-group-toggle .chevron { transform: rotate(-90deg); }
 .nav-group-links { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
 .nav-group.collapsed .nav-group-links { display: none; }
+
+/* ---------------- Accessibility baseline: visible focus rings ----------------
+   Keyboard users had no focus indicator anywhere in this app. Uses --primary,
+   so it themes itself in both light and dark. tr[tabindex="0"] insets its
+   outline because a table row's outline would otherwise be clipped by the
+   scroll container. */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+.chip:focus-visible,
+.nav-link:focus-visible,
+.theme-toggle-btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+tr[tabindex="0"]:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 
 /* ---------------- Toast component ---------------- */
 .vz-toast-stack {

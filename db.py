@@ -25,6 +25,11 @@ IntegrityError = psycopg.IntegrityError
 # (dbmod.PoolTimeout) and show a friendly "server is busy" message instead
 # of a generic 500.
 PoolTimeout = PoolTimeout
+# Re-exported so app.py can catch "a numeric value didn't fit its column"
+# specifically — an absurdly large id/quantity/etc. (a crafted URL, a huge
+# ?page=, ...) raises this instead of a generic DB error; caught globally
+# for a clean message instead of a raw 500 (see app.py's errorhandler).
+NumericValueOutOfRange = psycopg.errors.NumericValueOutOfRange
 
 # Matches every bare '?' unconditionally — this is NOT quote-aware (a
 # previous version of this comment claimed it was; it isn't). Safe today

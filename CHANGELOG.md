@@ -3,6 +3,23 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.8.0] - 2026-08-25
+
+### Added
+- **Keyboard focus is now visible everywhere.** Tabbing through the app
+  outlines whichever button, link, field or table row you've landed on,
+  so it's possible to work through a screen without the mouse.
+- **The weekend can be set per clinic.** The Insights scheduling chart
+  still treats Friday and Saturday as the weekend by default — nothing
+  changes unless you change it — but a clinic running this app on a
+  different work week is no longer stuck with Jordan's.
+
+### Fixed
+- Entering an impossibly large number now shows a clear message instead
+  of an error page.
+- The Browse-for-folder window in Settings lists folders as separated,
+  highlight-on-hover rows instead of one unbroken block of text.
+
 ## [1.7.0] - 2026-08-24
 
 ### Added
