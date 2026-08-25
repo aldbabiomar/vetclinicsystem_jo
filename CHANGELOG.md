@@ -3,6 +3,15 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.8.9] - 2026-08-26
+
+### Fixed
+- **Refunds no longer runs off the side of the screen on a tablet**, and
+  **Visits no longer does on a phone.**
+- **The "+" buttons on the appointment grid are now big enough to tap**,
+  along with the dismiss button on pop-up messages. Both were about 20
+  pixels tall, which is fine with a mouse and awkward with a thumb.
+
 ## [1.8.8] - 2026-08-26
 
 ### Fixed
