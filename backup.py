@@ -535,6 +535,12 @@ def _run_backup_locked(db, dest_dir=None, retention=None, triggered_by=None, on_
 
 
 def _apply_retention(dest_dir, retention):
+    # Never fewer than one. `retention or int(get_setting(...) or 30)` yields
+    # 0 if backup_retention is stored as "0", and files[0:] is every file --
+    # one bad setting would delete every backup the clinic has. The Settings
+    # form clamps the value to 1-3650, so this is the second line of defence,
+    # placed at the point of deletion so no caller can route around it.
+    retention = max(1, int(retention or 1))
     files = sorted(
         (f for f in os.listdir(dest_dir) if f.startswith(FILENAME_PREFIX) and f.endswith(FILENAME_SUFFIX)),
         reverse=True,
