@@ -3,6 +3,14 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.8.8] - 2026-08-26
+
+### Fixed
+- **A backup retention setting of 0 would have deleted every backup.** The
+  Settings page already refuses that value, so this protects installs
+  carrying it from an earlier version. Retention now always keeps at
+  least one.
+
 ## [1.8.7] - 2026-08-26
 
 ### Fixed
