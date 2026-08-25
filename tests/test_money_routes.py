@@ -456,3 +456,243 @@ def test_boarding_payment_rejects_a_discount_above_the_cap(client, db, boarding)
     assert resp.status_code == 200
     after = db.execute("SELECT count(*) AS c FROM payments WHERE boarding_id=?", (boarding["id"],)).fetchone()["c"]
     assert after == before
+
+
+# ---------------------------------------------------------------------------
+# Refunds — money leaving the clinic, and the only path that does
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def completed_sale(client, db, sellable):
+    """A real sale, made through the real checkout, to refund against."""
+    _checkout(client, sellable["inv_id"], qty=4, payment_method="Cash", cash_received="50.000")
+    sale = _latest_sale(db)
+    line = db.execute("SELECT * FROM sale_items WHERE sale_id=?", (sale["id"],)).fetchone()
+    yield {"sale": sale, "line": line, "inv_id": sellable["inv_id"]}
+    db.execute("DELETE FROM refund_items WHERE refund_id IN (SELECT id FROM refunds WHERE sale_id=?)",
+               (sale["id"],))
+    db.execute("DELETE FROM refunds WHERE sale_id=?", (sale["id"],))
+    db.commit()
+
+
+def _refund_retail(client, sale_id, sale_item_id, qty, **extra):
+    data = {"sale_id": str(sale_id), "sale_item_id": str(sale_item_id),
+            "quantity": str(qty), "refund_method": "Cash", "reason": "route test"}
+    data.update({k: str(v) for k, v in extra.items()})
+    return client.post("/refunds/retail", data=data, follow_redirects=False)
+
+
+def _refunds_for(db, sale_id):
+    return db.execute("SELECT * FROM refunds WHERE sale_id=? ORDER BY id", (sale_id,)).fetchall()
+
+
+def test_retail_refund_is_recorded_against_the_sale(client, db, completed_sale):
+    sale, line = completed_sale["sale"], completed_sale["line"]
+    resp = _refund_retail(client, sale["id"], line["id"], 1)
+    assert resp.status_code == 302
+    rows = _refunds_for(db, sale["id"])
+    assert len(rows) == 1
+    assert rows[0]["amount"] == D("10.000")
+
+
+def test_refund_is_exact_to_the_fils_not_rounded(client, db, sellable):
+    """The mirror of IQ, and deliberately so. IQ floors a refund to a whole
+    250 note so it never pays out more than the lines came to. JOD has no
+    note to floor to, so the refund is the exact line total — flooring it
+    here would quietly keep a few fils of the customer's money on every
+    refund, in the clinic's favour, permanently."""
+    db.execute("UPDATE price_list SET sale_price=? WHERE id=?", (D("10.505"), sellable["pl_id"]))
+    db.commit()
+    _checkout(client, sellable["inv_id"], qty=1, payment_method="Cash", cash_received="20.000")
+    sale = _latest_sale(db)
+    line = db.execute("SELECT * FROM sale_items WHERE sale_id=?", (sale["id"],)).fetchone()
+    try:
+        _refund_retail(client, sale["id"], line["id"], 1)
+        row = _refunds_for(db, sale["id"])[0]
+        assert row["amount"] == D("10.505"), "exact, not rounded to anything"
+        assert row["amount"] == line["line_total"]
+    finally:
+        db.execute("DELETE FROM refund_items WHERE refund_id IN (SELECT id FROM refunds WHERE sale_id=?)",
+                   (sale["id"],))
+        db.execute("DELETE FROM refunds WHERE sale_id=?", (sale["id"],))
+        db.commit()
+
+
+def test_refund_cannot_exceed_what_the_sale_collected(client, db, completed_sale):
+    """The aggregate cap. Per-line pricing is untouched; this stops the SUM
+    of every refund against one sale from exceeding what the sale took."""
+    sale, line = completed_sale["sale"], completed_sale["line"]
+    resp = _refund_retail(client, sale["id"], line["id"], line["quantity"] + 1)
+    assert resp.status_code == 200, "refunding more than was sold must be refused"
+    assert _refunds_for(db, sale["id"]) == []
+
+
+def test_repeated_partial_refunds_cannot_together_exceed_the_sale(client, db, completed_sale):
+    """Each refund is individually valid; together they must not exceed the
+    sale. Checking only the current refund is how a sale gets over-refunded
+    across several small ones."""
+    sale, line = completed_sale["sale"], completed_sale["line"]
+    for _ in range(int(line["quantity"])):
+        _refund_retail(client, sale["id"], line["id"], 1)
+    total_refunded = sum(r["amount"] for r in _refunds_for(db, sale["id"]))
+    # No epsilon: JOD amounts are exact Decimals, so a tolerance here would
+    # both be meaningless and raise TypeError on Decimal + float.
+    assert total_refunded <= sale["total"]
+    resp = _refund_retail(client, sale["id"], line["id"], 1)
+    assert resp.status_code == 200, "the one that would tip it over must be refused"
+    assert sum(r["amount"] for r in _refunds_for(db, sale["id"])) == total_refunded
+
+
+def test_aggregate_cap_bites_when_clean_up_shrank_what_was_collected(client, db, sellable):
+    """The case the per-line check cannot catch, and the reason the aggregate
+    cap exists separately from it.
+
+    Note it is Clean Up, not a discount, that creates this gap. Refund lines
+    are priced from refundable_sale_items(), whose unit_price is already
+    discount-adjusted — so a discount can never make the lines sum to more
+    than the sale collected. A Clean Up write-off is different: it comes off
+    the sale total *after* the lines, so every line stays individually
+    refundable in full while their sum exceeds what the clinic actually took.
+    Only the aggregate cap sees that."""
+    _checkout(client, sellable["inv_id"], qty=4, payment_method="Card", cleanup_amount="1.000")
+    sale = _latest_sale(db)
+    line = db.execute("SELECT * FROM sale_items WHERE sale_id=?", (sale["id"],)).fetchone()
+    assert line is not None, "the checkout did not produce a sale"
+    try:
+        assert sale["cleanup_amount"] == D("1.000"), "fixture must actually apply a write-off"
+        assert line["line_total"] > sale["total"], (
+            "fixture must produce lines worth more than the sale collected")
+        resp = _refund_retail(client, sale["id"], line["id"], line["quantity"])
+        assert resp.status_code == 200, "refunding every line in full must be refused"
+        assert _refunds_for(db, sale["id"]) == [], "nothing may be paid out"
+    finally:
+        db.execute("DELETE FROM refund_items WHERE refund_id IN (SELECT id FROM refunds WHERE sale_id=?)",
+                   (sale["id"],))
+        db.execute("DELETE FROM refunds WHERE sale_id=?", (sale["id"],))
+        db.commit()
+
+
+def test_refund_with_restock_returns_stock(client, db, completed_sale):
+    sale, line = completed_sale["sale"], completed_sale["line"]
+    before = _stock_now(db, completed_sale["inv_id"])
+    _refund_retail(client, sale["id"], line["id"], 2, restock="on")
+    assert _stock_now(db, completed_sale["inv_id"]) == before + 2
+
+
+def test_refund_without_restock_leaves_stock_alone(client, db, completed_sale):
+    """Refunding a damaged item returns the money but not the stock."""
+    sale, line = completed_sale["sale"], completed_sale["line"]
+    before = _stock_now(db, completed_sale["inv_id"])
+    _refund_retail(client, sale["id"], line["id"], 2)
+    assert _stock_now(db, completed_sale["inv_id"]) == before
+
+
+def test_refund_requires_a_payout_method(client, db, completed_sale):
+    sale, line = completed_sale["sale"], completed_sale["line"]
+    resp = client.post("/refunds/retail", data={
+        "sale_id": str(sale["id"]), "sale_item_id": str(line["id"]),
+        "quantity": "1", "reason": "no method"}, follow_redirects=False)
+    assert resp.status_code == 200
+    assert _refunds_for(db, sale["id"]) == []
+
+
+def test_refund_requires_a_sale(client, db):
+    resp = client.post("/refunds/retail", data={
+        "sale_id": "", "quantity": "1", "refund_method": "Cash"}, follow_redirects=False)
+    assert resp.status_code == 200
+
+
+def test_refund_rejects_a_line_from_a_different_sale(client, db, completed_sale):
+    """A crafted POST pairing this sale with someone else's line must not
+    refund against the wrong sale."""
+    sale = completed_sale["sale"]
+    other = db.execute("SELECT id FROM sale_items WHERE sale_id<>? ORDER BY id DESC LIMIT 1",
+                       (sale["id"],)).fetchone()
+    if other is None:
+        pytest.skip("only one sale in this database")
+    resp = _refund_retail(client, sale["id"], other["id"], 1)
+    assert resp.status_code == 200
+    assert _refunds_for(db, sale["id"]) == []
+
+
+def test_refund_rejects_a_non_numeric_quantity(client, db, completed_sale):
+    sale, line = completed_sale["sale"], completed_sale["line"]
+    resp = _refund_retail(client, sale["id"], line["id"], "abc")
+    assert resp.status_code == 200
+    assert _refunds_for(db, sale["id"]) == []
+
+
+def test_service_refund_cannot_exceed_what_the_visit_paid(client, db, visit):
+    """A service refund is capped by what was actually collected on that
+    visit — otherwise it is a way to pay money out against nothing."""
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    db.execute("INSERT INTO payments (visit_id, amount, method, date, user_id) VALUES (?,?,?,?,?)",
+               (visit["visit_id"], D("50.000"), "Cash", date.today().isoformat(), "U001"))
+    db.commit()
+    resp = client.post("/refunds/service", data={
+        "visit_id": visit["visit_id"], "amount": "90.000",
+        "refund_method": "Cash", "reason": "over-refund attempt"}, follow_redirects=False)
+    assert resp.status_code == 200, "refunding more than was paid must be refused"
+    rows = db.execute("SELECT * FROM refunds WHERE visit_id=?", (visit["visit_id"],)).fetchall()
+    assert rows == []
+
+
+def test_service_refund_within_what_was_paid_is_recorded(client, db, visit):
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    db.execute("INSERT INTO payments (visit_id, amount, method, date, user_id) VALUES (?,?,?,?,?)",
+               (visit["visit_id"], D("50.000"), "Cash", date.today().isoformat(), "U001"))
+    db.commit()
+    try:
+        resp = client.post("/refunds/service", data={
+            "visit_id": visit["visit_id"], "amount": "25.000",
+            "refund_method": "Cash", "reason": "partial"}, follow_redirects=False)
+        assert resp.status_code == 302
+        rows = db.execute("SELECT * FROM refunds WHERE visit_id=?", (visit["visit_id"],)).fetchall()
+        assert len(rows) == 1
+        assert rows[0]["amount"] == D("25.000")
+    finally:
+        db.execute("DELETE FROM refunds WHERE visit_id=?", (visit["visit_id"],))
+        db.commit()
+
+
+def test_service_refund_needs_exactly_one_target(client, db, visit):
+    """Linked to a visit OR an inpatient case, never both and never neither —
+    otherwise the refund is attributed to nothing and escapes both caps."""
+    resp = client.post("/refunds/service", data={
+        "amount": "10.000", "refund_method": "Cash", "reason": "no target"},
+        follow_redirects=False)
+    assert resp.status_code == 200
+
+
+def test_service_refund_rejects_zero_and_negative(client, db, visit):
+    for bad in ("0", "-10.000"):
+        resp = client.post("/refunds/service", data={
+            "visit_id": visit["visit_id"], "amount": bad,
+            "refund_method": "Cash", "reason": "bad"}, follow_redirects=False)
+        assert resp.status_code == 200
+    assert db.execute("SELECT * FROM refunds WHERE visit_id=?", (visit["visit_id"],)).fetchall() == []
+
+
+def test_service_refund_requires_a_payout_method(client, db, visit):
+    """The retail route has its own version of this test; the service route
+    needs its own, because they are separate code paths and a mutation check
+    showed removing the guard from one left every existing test passing.
+
+    A refund recorded with no payout method leaves no trace of how the money
+    physically left the clinic, which is exactly what cash reconciliation
+    reads."""
+    _bill(client, visit["visit_id"], billing_type="Manual", manual_amount="100.000")
+    db.execute("INSERT INTO payments (visit_id, amount, method, date, user_id) VALUES (?,?,?,?,?)",
+               (visit["visit_id"], D("50.000"), "Cash", date.today().isoformat(), "U001"))
+    db.commit()
+    try:
+        for bad in ("", "Bitcoin", "cash"):
+            resp = client.post("/refunds/service", data={
+                "visit_id": visit["visit_id"], "amount": "25.000",
+                "refund_method": bad, "reason": "bad method"}, follow_redirects=False)
+            assert resp.status_code == 200, f"method {bad!r} must be refused"
+        assert db.execute("SELECT * FROM refunds WHERE visit_id=?",
+                          (visit["visit_id"],)).fetchall() == []
+    finally:
+        db.execute("DELETE FROM refunds WHERE visit_id=?", (visit["visit_id"],))
+        db.commit()

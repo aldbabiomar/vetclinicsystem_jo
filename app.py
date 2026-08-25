@@ -5929,6 +5929,12 @@ def _refunds_page_context():
                 page=page, total_pages=page_count(total), total_count=total)
 
 
+# The payout methods a refund may record. Mirrors IQ, and matches exactly
+# what refunds.html already offers in its dropdown -- the list was only ever
+# in the template here, so the server accepted anything (including nothing).
+PAYMENT_METHODS = ["Cash", "Card", "Transfer"]
+
+
 @app.route("/refunds")
 @auth.permission_required("manage_refunds")
 def refunds_page():
@@ -5969,6 +5975,14 @@ def refund_retail_save():
     sale_item_ids_raw = f.getlist("sale_item_id")
     quantities = f.getlist("quantity")
     restock = f.get("restock") == "on"
+    # Without this the refund is recorded but how the money physically left
+    # the clinic is not -- which is precisely what cash reconciliation reads.
+    # The dropdown's default option is empty, so this was reachable straight
+    # from the UI, not just from a crafted POST. IQ has always validated it.
+    refund_method = f.get("refund_method")
+    if refund_method not in PAYMENT_METHODS:
+        flash("Pick how this refund was actually paid out: " + ", ".join(PAYMENT_METHODS) + ".", "error")
+        return redisplay()
     reason = (f.get("reason") or "").strip()
     try:
         refund_date = clean_date(f.get("refund_date"), field="refund_date") or date.today().isoformat()
@@ -6048,7 +6062,7 @@ def refund_retail_save():
     cur = db.execute(
         "INSERT INTO refunds (refund_type, refund_date, amount, restocked, sale_id, reason, refund_method, "
         "processed_by, created_at, cleanup_amount_at_refund) VALUES ('retail',?,?,?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, rounded_total, restock, sale_id, reason, f.get("refund_method"), session["user_id"], now,
+        (refund_date, rounded_total, restock, sale_id, reason, refund_method, session["user_id"], now,
          sale["cleanup_amount"] or 0),
     )
     refund_id = cur.fetchone()["id"]
@@ -6090,6 +6104,12 @@ def refund_service_save():
         flash("Refund amount must be a valid number.", "error")
         return redisplay()
     reason = (f.get("reason") or "").strip()
+    # Same reasoning as the retail refund above: a recorded refund with no
+    # payout method leaves no trace of how the money left the clinic.
+    refund_method = f.get("refund_method")
+    if refund_method not in PAYMENT_METHODS:
+        flash("Pick how this refund was actually paid out: " + ", ".join(PAYMENT_METHODS) + ".", "error")
+        return redisplay()
     try:
         refund_date = clean_date(f.get("refund_date"), field="refund_date") or date.today().isoformat()
     except BadDate as e:
@@ -6159,7 +6179,7 @@ def refund_service_save():
     cur = db.execute(
         "INSERT INTO refunds (refund_type, refund_date, amount, visit_id, inpatient_case_id, reason, refund_method, "
         "processed_by, created_at, cleanup_amount_at_refund) VALUES ('service',?,?,?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(amount, 3), visit_id, case_id, reason, f.get("refund_method"), session["user_id"], now,
+        (refund_date, round(amount, 3), visit_id, case_id, reason, refund_method, session["user_id"], now,
          cleanup_amount_at_refund),
     )
     refund_id = cur.fetchone()["id"]
