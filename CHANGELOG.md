@@ -3,6 +3,16 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.8.4] - 2026-08-25
+
+### Fixed
+- **Negative costs and weights are now refused where they were being
+  accepted.** A minus sign typed into an inventory item's Cost Price — in
+  the catalog form or the bulk editor — was saved as-is, which made the
+  item look infinitely profitable in every margin and profit figure. A
+  negative weight on a new patient visit or an inpatient admission was
+  likewise saved and charted. All four now show a clear message instead.
+
 ## [1.8.3] - 2026-08-25
 
 ### Fixed
