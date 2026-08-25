@@ -374,3 +374,120 @@ def test_a_cash_count_rejects_a_non_numeric_figure(client, db):
         "day": date.today().isoformat(), "counted_cash": "loads"}, follow_redirects=False)
     assert resp.status_code != 500
     assert _audits(db) == before
+
+
+# ---------------------------------------------------------------------------
+# Consignment settlement — paying the distributor for what was sold
+# ---------------------------------------------------------------------------
+
+def _settlements(db, dist_id):
+    return db.execute("SELECT count(*) AS c FROM consignment_settlements WHERE distributor_id=?",
+                      (dist_id,)).fetchone()["c"]
+
+
+def test_a_settlement_cannot_pay_more_than_is_owed(client, db, consignment_item):
+    """Settling above the outstanding balance pays a distributor twice for
+    the same stock. There is no delete route for a settlement."""
+    client.post("/consignment/receiving/new", data={
+        "item_id": consignment_item["id"], "quantity": "5", "unit_cost": "2.000",
+        "received_date": date.today().isoformat()}, follow_redirects=False)
+    dist = consignment_item["distributor_id"]
+    before = _settlements(db, dist)
+    resp = client.post(f"/consignment/settlements/{dist}/new",
+                       data={"amount_paid": "999999.000"}, follow_redirects=False)
+    assert resp.status_code != 500
+    assert _settlements(db, dist) == before, "an over-settlement must not be recorded"
+
+
+def test_settling_a_distributor_with_no_activity_is_refused(client, db, distributor):
+    """Regression guard. consignment_balance() returns period_start=None for
+    a distributor with no consignment activity and no prior settlement. A
+    zero amount passed the "not more than is owed" check, reached the INSERT,
+    and violated consignment_settlements.period_start's NOT NULL constraint
+    — an error page rather than a message. Found by these tests; the same
+    shape was present in both apps."""
+    before = _settlements(db, distributor["id"])
+    resp = client.post(f"/consignment/settlements/{distributor['id']}/new",
+                       data={"amount_paid": "0"}, follow_redirects=False)
+    assert resp.status_code != 500, "must degrade with a message, not raise"
+    assert _settlements(db, distributor["id"]) == before
+
+
+def test_a_settlement_rejects_zero_and_negative(client, db, consignment_item):
+    dist = consignment_item["distributor_id"]
+    before = _settlements(db, dist)
+    for bad in ("0", "-50.000"):
+        resp = client.post(f"/consignment/settlements/{dist}/new",
+                           data={"amount_paid": bad}, follow_redirects=False)
+        assert resp.status_code != 500
+    assert _settlements(db, dist) == before
+
+
+def test_a_settlement_rejects_a_non_numeric_amount(client, db, consignment_item):
+    dist = consignment_item["distributor_id"]
+    before = _settlements(db, dist)
+    resp = client.post(f"/consignment/settlements/{dist}/new",
+                       data={"amount_paid": "loads"}, follow_redirects=False)
+    assert resp.status_code != 500
+    assert _settlements(db, dist) == before
+
+
+# ---------------------------------------------------------------------------
+# Inventory catalog edit, and confirming a stock count
+# ---------------------------------------------------------------------------
+
+def test_inventory_item_edit_rejects_a_negative_cost(client, db, consignment_item):
+    """The edit form is the third way to set a cost, after the create form
+    and the bulk editor. All three need the same guard."""
+    before = db.execute("SELECT cost_price FROM inventory_list WHERE id=?",
+                        (consignment_item["id"],)).fetchone()["cost_price"]
+    resp = client.post(f"/inventory-catalog/{consignment_item['id']}/edit", data={
+        "name": f"Consign {consignment_item['id']}", "category": "Retail",
+        "unit": "unit", "cost_price": "-5.000"}, follow_redirects=False)
+    assert resp.status_code != 500
+    after = db.execute("SELECT cost_price FROM inventory_list WHERE id=?",
+                       (consignment_item["id"],)).fetchone()["cost_price"]
+    assert after == before, "a rejected edit must leave the cost as it was"
+
+
+def test_confirming_a_stock_count_is_what_makes_it_binding(client, db, distributor):
+    """An open count is a draft — it must not affect stock until confirmed.
+    That is the whole basis of the "never-audited items cannot be sold"
+    rule, so it is worth pinning rather than assuming."""
+    import logic
+    inv_id = _uid("INV")
+    db.execute("INSERT INTO inventory_list (id, name, category, unit, track_expiry, cost_price, "
+               "ownership_type, active) VALUES (?,?,?,?,?,?,?,?)",
+               (inv_id, f"Count {inv_id}", "Retail", "unit", False, 1000.0, "Owned", True))
+    cur = db.execute("INSERT INTO audit_sessions (audit_date, performed_by, status, created_at) "
+                     "VALUES (?,?,?,?) RETURNING id",
+                     # 'Draft', not 'Open' — audit_sessions_status_check
+                     # allows only Draft and Confirmed.
+                     (date.today().isoformat(), "U001", "Draft",
+                      datetime.now().isoformat(timespec="seconds")))
+    sid = cur.fetchone()["id"]
+    db.execute("INSERT INTO audit_session_lines (session_id, item_id, stock_counted, received_since_prior) "
+               "VALUES (?,?,?,?)", (sid, inv_id, D("30.000"), D(0)))
+    db.commit()
+    try:
+        draft_status = logic.inventory_status_by_id(db, inv_id)
+        assert draft_status is None or draft_status["current_stock"] is None, (
+            "an unconfirmed count must not establish a stock figure")
+
+        resp = client.post(f"/audit-history/session/{sid}/confirm", data={},
+                           follow_redirects=False)
+        assert resp.status_code != 500
+        row = db.execute("SELECT status, confirmed_at FROM audit_sessions WHERE id=?",
+                         (sid,)).fetchone()
+        if row["status"] == "Confirmed":
+            assert row["confirmed_at"], "a confirmed count must be stamped"
+            after = logic.inventory_status_by_id(db, inv_id)
+            assert after is not None and after["current_stock"] == D("30.000"), (
+                "confirming must establish the counted figure")
+    finally:
+        for sql in ("DELETE FROM inventory_transactions WHERE item_id=?",
+                    "DELETE FROM audit_session_lines WHERE item_id=?",
+                    "DELETE FROM inventory_list WHERE id=?"):
+            db.execute(sql, (inv_id,))
+        db.execute("DELETE FROM audit_sessions WHERE id=?", (sid,))
+        db.commit()

@@ -4199,6 +4199,15 @@ def consignment_settlement_new(distributor_id):
     if amount_paid < 0:
         flash("Amount Paid can't be negative.", "error")
         return redisplay()
+    # Nothing to settle: either this distributor has had no consignment
+    # activity at all (in which case balance["period_start"] is None and the
+    # INSERT below would violate consignment_settlements.period_start's NOT
+    # NULL constraint, surfacing as an error page), or the period is already
+    # settled and this would record a no-op row. Both are refused here rather
+    # than reaching the database.
+    if balance["period_start"] is None or balance["amount_owed"] <= 0:
+        flash("There's nothing to settle for this distributor yet.", "error")
+        return redisplay()
     if amount_paid > balance["amount_owed"]:
         flash(f"That's more than the {logic.fmt_money(balance['amount_owed'])} JOD owed this period.", "error")
         return redisplay()
