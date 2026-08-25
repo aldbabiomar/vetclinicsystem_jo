@@ -3,6 +3,15 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.8.3] - 2026-08-25
+
+### Fixed
+- **A refund now requires you to say how it was paid out.** The Refund
+  Method dropdown starts empty, and leaving it that way used to save the
+  refund anyway — with no record of whether the money left as cash, card
+  or transfer, which is exactly what the Cash Register relies on. It now
+  asks you to pick one before saving.
+
 ## [1.8.2] - 2026-08-25
 
 ### Changed
