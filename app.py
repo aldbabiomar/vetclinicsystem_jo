@@ -3514,6 +3514,12 @@ def distributor_new():
     except BadNumber:
         flash("Lead Time (Days) must be a whole number.", "error")
         return redisplay()
+    # Lead time drives the reorder point in the ordering sheet: a negative
+    # one asks for stock to arrive before it was ordered. IQ and JO both
+    # parsed it without a sign check.
+    if lead_time_days is not None and lead_time_days < 0:
+        flash("Lead Time (Days) can't be negative.", "error")
+        return redisplay()
     name = required_field(f, "name", "Name")
     if name is None:
         return redisplay()
@@ -3555,6 +3561,12 @@ def distributor_edit(dist_id):
         lead_time_days = parse_int(f.get("lead_time_days"))
     except BadNumber:
         flash("Lead Time (Days) must be a whole number.", "error")
+        return redisplay()
+    # Lead time drives the reorder point in the ordering sheet: a negative
+    # one asks for stock to arrive before it was ordered. IQ and JO both
+    # parsed it without a sign check.
+    if lead_time_days is not None and lead_time_days < 0:
+        flash("Lead Time (Days) can't be negative.", "error")
         return redisplay()
     old = db.execute("SELECT * FROM distributors WHERE id=?", (dist_id,)).fetchone()
     name = required_field(f, "name", "Name")
@@ -4759,6 +4771,13 @@ def boarding_edit(boarding_id):
         dismissal_date = clean_date(f.get("dismissal_date"), field="dismissal_date")
     except BadDate as e:
         flash(str(e), "error")
+        return redisplay()
+    # A stay cannot end before it began. boarding_suggested_total() floors the
+    # night count at one, so this does not produce a negative bill — but it
+    # does leave a nonsensical stay in the occupancy and boarding reports,
+    # billed for a night it was never here.
+    if dismissal_date and entry_date and str(dismissal_date) < str(entry_date):
+        flash("A stay can't end before it starts — check the dates.", "error")
         return redisplay()
     total_is_auto = total is None
     if total_is_auto:
@@ -6242,6 +6261,14 @@ def reports_opex_save():
         other = parse_money(f.get("other")) or 0
     except BadNumber:
         flash("Operating costs must be valid numbers.", "error")
+        return redisplay()
+    # A negative operating cost does not reduce spending, it reads as income:
+    # yearly_pl() computes net_profit = gross_profit - total_opex, so a
+    # negative column makes total_opex smaller and the reported profit LARGER.
+    # A single mistyped "-100,000" rent moved the annual net profit figure by
+    # +200,000 in testing.
+    if has_negative(rent, salaries, utilities, marketing, other):
+        flash("Operating costs can't be negative.", "error")
         return redisplay()
     db.execute(
         """INSERT INTO monthly_opex (month, rent, salaries, utilities, marketing, other) VALUES (?,?,?,?,?,?)
