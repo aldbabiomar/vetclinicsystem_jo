@@ -7,10 +7,16 @@ Starts the background jobs that run on a schedule:
   judges the backup that just ran rather than the previous night's;
 * one self-check shortly after startup, which is what catches a machine
   that has been switched off for a week — the daily job alone cannot,
-  because it never fired while the machine was off.
+  because it never fired while the machine was off;
+* the restore verification (selfverify.py), 45 minutes after the backup —
+  the job runs daily, the actual test-restore roughly monthly.
 
-Both scheduled jobs re-read the configured time each day, so a change in
+Every scheduled job re-reads the configured time each day, so a change in
 Settings takes effect the next night without restarting the app.
+
+A theme worth carrying: a cron that fires while the machine is off does not
+happen, and is not run late. Anything that must eventually happen is either
+checked daily and gated on being due, or run at startup as well.
 """
 from datetime import datetime, timedelta
 
@@ -27,11 +33,11 @@ _scheduler = None
 # the check itself takes milliseconds.
 SELF_CHECK_AFTER_BACKUP_MINUTES = 20
 SELF_CHECK_STARTUP_DELAY_SECONDS = 30
-# The monthly restore verification. Later than the self-check so the two never
-# contend, and on the 1st because a monthly cadence is what makes a real
-# test-restore affordable — it copies the whole database.
+# The restore verification. Later than the self-check so the two never
+# contend. The JOB runs daily; the WORK inside it runs roughly monthly, gated
+# by selfverify.is_due — see _do_verify_restore for why a monthly trigger was
+# the wrong shape.
 VERIFY_AFTER_BACKUP_MINUTES = 45
-VERIFY_DAY_OF_MONTH = 1
 
 
 def _do_nightly_backup(get_db, close_db):
@@ -78,16 +84,27 @@ def _do_self_check(get_db, close_db, send_heartbeat=True):
 
 
 def _do_verify_restore(get_db, close_db):
-    """Monthly: restore the newest backup into a throwaway database and check
-    what came back (selfverify.py), then re-run the self-check so the
+    """Restores the newest backup into a throwaway database and checks what
+    came back (selfverify.py), then re-runs the self-check so the
     restore_unverified finding clears in the same pass rather than waiting
     until tomorrow night. Swallows everything, for the same reason
-    _do_self_check does."""
+    _do_self_check does.
+
+    Runs DAILY but does the work only when due (selfverify.is_due — roughly
+    monthly). A monthly CronTrigger was the obvious shape and the wrong one:
+    "the 1st at 02:45" does not happen on a machine that is switched off that
+    night, and it is never run late, so a clinic that powers down overnight
+    would never verify a backup at all — and would then warn about it forever
+    once 45 days passed. Checking daily survives any single night being
+    missed, and lets a fresh install verify as soon as it has a backup instead
+    of warning every day until the 1st.
+    """
     db = None
     try:
         db = get_db()
         import selfverify
-        selfverify.run_and_record(db)
+        if selfverify.run_if_due(db) is None:
+            return  # not due; the daily self-check has already run
         import selfcheck
         selfcheck.record(db, selfcheck.run_self_check(db))
     except Exception:
@@ -163,9 +180,9 @@ def start(get_db, close_db):
     v_hour, v_minute = _verify_time(hour, minute)
     sched.add_job(
         _do_verify_restore,
-        trigger=CronTrigger(day=VERIFY_DAY_OF_MONTH, hour=v_hour, minute=v_minute),
+        trigger=CronTrigger(hour=v_hour, minute=v_minute),
         args=[get_db, close_db],
-        id="monthly_verify_restore",
+        id="verify_restore",
         replace_existing=True,
     )
     # The startup run. A machine that was off for a week never fired the
@@ -211,6 +228,6 @@ def reschedule(time_str):
     )
     v_hour, v_minute = _verify_time(hour, minute)
     _scheduler.reschedule_job(
-        "monthly_verify_restore",
-        trigger=CronTrigger(day=VERIFY_DAY_OF_MONTH, hour=v_hour, minute=v_minute),
+        "verify_restore",
+        trigger=CronTrigger(hour=v_hour, minute=v_minute),
     )

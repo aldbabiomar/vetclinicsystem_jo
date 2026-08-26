@@ -54,9 +54,16 @@ from urllib.parse import quote
 import psycopg
 
 import backup as backup_mod
+import logic
 
 RESTORE_TIMEOUT_SECONDS = 600
 SETTING_KEY = "last_verified_restore"
+
+# How often the verification should actually run. Deliberately shorter than
+# selfcheck.RESTORE_VERIFY_MAX_AGE_DAYS (45), so a couple of missed runs — a
+# machine switched off, a clinic closed for a week — do not trip the
+# restore_unverified warning. The gap between the two IS the tolerance.
+VERIFY_INTERVAL_DAYS = 30
 
 # --- JO's money model. See the module docstring. ---
 MONEY_EXPECTED_TYPE = "numeric"
@@ -331,7 +338,50 @@ def record(db, result):
         return False
 
 
+def is_due(db, max_age_days=VERIFY_INTERVAL_DAYS):
+    """True when a verification should run now: never run, unreadable, or
+    older than max_age_days. Never raises — when in doubt, say yes.
+
+    This exists because a monthly CRON is the wrong shape for this job. A
+    trigger set to "the 1st at 02:45" simply does not happen on a machine that
+    is switched off that night, and APScheduler will not run it late — so a
+    clinic that closes on the 1st, or powers its machine down overnight at all,
+    would never verify a backup and would then warn about it forever. Checking
+    daily and doing the work only when due is robust to any single night being
+    missed, and it also means a FRESH install verifies as soon as it has its
+    first backup instead of warning every day until the 1st comes around.
+    """
+    try:
+        raw = logic.get_setting(db, SETTING_KEY)
+    except Exception:
+        return True
+    if not raw:
+        return True
+    try:
+        data = json.loads(raw)
+        when = datetime.fromisoformat(str(data.get("at")))
+    except (TypeError, ValueError):
+        return True
+    if data.get("result") != "pass":
+        # A previous failure is worth re-testing on the normal cadence rather
+        # than being retried every single day: the likely fix is a new backup,
+        # and re-restoring a broken one daily is just noise. The daily
+        # self-check keeps reporting it in the meantime.
+        return (datetime.now() - when).days >= 1
+    return (datetime.now() - when).days >= max_age_days
+
+
 def run_and_record(db):
     result = verify_latest_backup(db)
     record(db, result)
     return result
+
+
+def run_if_due(db):
+    """What the scheduler calls. Returns the result, or None if not due."""
+    try:
+        if not is_due(db):
+            return None
+    except Exception:
+        pass
+    return run_and_record(db)

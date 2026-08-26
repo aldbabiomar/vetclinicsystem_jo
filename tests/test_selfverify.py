@@ -23,7 +23,7 @@ import json
 import os
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -330,6 +330,116 @@ def test_record_writes_where_selfcheck_reads_it(clean_backup_log):
     # The contract between the two layers: a fresh pass clears the finding.
     sc = selfcheck.run_self_check(db)
     assert "restore_unverified" not in {f["code"] for f in sc["findings"]}
+
+
+# --- when it runs ---------------------------------------------------------
+# The job fires daily; the work is gated on is_due. A monthly CronTrigger was
+# the wrong shape: it does not fire on a machine that is off that night and is
+# never run late, so a clinic that powers down overnight would never verify a
+# backup at all -- and a fresh install would warn every day until the 1st.
+
+def _record_verification(db, days_ago, result="pass"):
+    from datetime import datetime as dt
+    payload = json.dumps({
+        "at": (dt.now() - timedelta(days=days_ago)).isoformat(timespec="seconds"),
+        "result": result, "detail": "test",
+    })
+    db.execute(
+        "INSERT INTO settings (key,value) VALUES (?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        ("last_verified_restore", payload),
+    )
+    db.commit()
+
+
+def test_never_verified_is_due(clean_backup_log):
+    import selfverify
+    clean_backup_log.execute("DELETE FROM settings WHERE key='last_verified_restore'")
+    clean_backup_log.commit()
+    assert selfverify.is_due(clean_backup_log) is True
+
+
+def test_a_recent_pass_is_not_due(clean_backup_log):
+    import selfverify
+    _record_verification(clean_backup_log, days_ago=0)
+    assert selfverify.is_due(clean_backup_log) is False
+
+
+def test_an_old_pass_is_due_again(clean_backup_log):
+    import selfverify
+    _record_verification(clean_backup_log, days_ago=selfverify.VERIFY_INTERVAL_DAYS + 1)
+    assert selfverify.is_due(clean_backup_log) is True
+
+
+def test_the_reverify_interval_leaves_slack_before_the_warning(clean_backup_log):
+    """The gap between these two numbers IS the tolerance for missed runs. If
+    they ever meet, a single skipped night starts warning the clinic."""
+    import selfverify
+    import selfcheck
+    assert selfverify.VERIFY_INTERVAL_DAYS < selfcheck.RESTORE_VERIFY_MAX_AGE_DAYS
+
+
+def test_an_unreadable_record_is_due(clean_backup_log):
+    import selfverify
+    clean_backup_log.execute(
+        "INSERT INTO settings (key,value) VALUES (?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        ("last_verified_restore", "not json at all"),
+    )
+    clean_backup_log.commit()
+    assert selfverify.is_due(clean_backup_log) is True
+
+
+def test_a_failure_is_retried_tomorrow_not_today(clean_backup_log):
+    """Re-restoring a known-broken backup every day is noise — the daily
+    self-check keeps reporting it meanwhile — but it should be retried, since
+    the likely fix is simply the next night's backup."""
+    import selfverify
+    _record_verification(clean_backup_log, days_ago=0, result="fail")
+    assert selfverify.is_due(clean_backup_log) is False
+    _record_verification(clean_backup_log, days_ago=2, result="fail")
+    assert selfverify.is_due(clean_backup_log) is True
+
+
+def test_run_if_due_does_nothing_when_not_due(clean_backup_log, monkeypatch):
+    import selfverify
+    _record_verification(clean_backup_log, days_ago=0)
+    called = []
+    monkeypatch.setattr(selfverify, "verify_latest_backup",
+                        lambda db: called.append(1) or {})
+    assert selfverify.run_if_due(clean_backup_log) is None
+    assert called == [], "a full test-restore ran when it was not due"
+
+
+@pg_tools
+def test_a_fresh_install_verifies_on_the_first_daily_run(clean_backup_log, tmp_path):
+    """The regression guard for the bug this scheduling change fixed.
+
+    A brand-new install has never verified anything, so it warns. Under the
+    old monthly trigger it kept warning EVERY DAY until the 1st came around --
+    up to a month of a permanent warning on a perfectly healthy clinic, which
+    is exactly how a monitoring feature gets switched off and never switched
+    back on. It must clear on the first daily run after a backup exists.
+    """
+    import selfverify
+    import selfcheck
+    db = clean_backup_log
+    db.execute("DELETE FROM settings WHERE key='last_verified_restore'")
+    db.commit()
+
+    before = {f["code"] for f in selfcheck.run_self_check(db)["findings"]}
+    assert "restore_unverified" in before, "a never-verified install should warn"
+
+    _log_backup(db, _real_dump(tmp_path, "fresh.dump"))
+    result = selfverify.run_if_due(db)
+    assert result is not None, "a never-verified install must be due immediately"
+    assert result["result"] == "pass", result["detail"]
+
+    after = {f["code"] for f in selfcheck.run_self_check(db)["findings"]}
+    assert "restore_unverified" not in after, (
+        "the warning survived a successful verification — a healthy install "
+        "would keep nagging"
+    )
 
 
 def test_a_failed_verification_is_recorded_and_reported_by_selfcheck(clean_backup_log):
