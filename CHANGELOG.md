@@ -3,6 +3,14 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.8.10] - 2026-08-26
+
+### Fixed
+- **Complete Sale in Point of Sale now works.** The button did nothing at
+  all — no sale was recorded and no error was shown, so it looked like the
+  screen had frozen. Every sale was affected. If you have been unable to
+  ring anything up, this is why.
+
 ## [1.8.9] - 2026-08-26
 
 ### Fixed
