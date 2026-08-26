@@ -38,6 +38,32 @@
     <div class="field"><label>Keep Last N Backups</label><input type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
   </div>
 
+  <div class="section-title">Health Check</div>
+  <p class="small muted" style="margin-top:-6px;">
+    Once a day, shortly after the nightly backup, this app checks itself — that backups are
+    running and restorable, that the backup folder is writable, and that the disk isn't full —
+    and shows a warning on the Dashboard if something needs attention.
+  </p>
+  <div class="form-grid">
+    <div class="field">
+      <label>Warn If No Backup For (Days)</label>
+      <input type="number" name="selfcheck_backup_max_age_days"
+             value="{{ settings.selfcheck_backup_max_age_days or 2 }}" min="1" max="30" step="1">
+    </div>
+    <div class="field">
+      <label>Daily Health Check</label>
+      <!-- An unchecked box submits nothing, so this hidden field is what tells
+           the server the form was submitted with the box clear, rather than
+           that the field wasn't on the page at all. -->
+      <input type="hidden" name="selfcheck_present" value="1">
+      <label class="small" style="display:flex; align-items:center; gap:8px; font-weight:400;">
+        <input type="checkbox" name="selfcheck_enabled" value="1"
+               {% if settings.selfcheck_enabled != '0' %}checked{% endif %}>
+        Run the daily health check and show its warnings
+      </label>
+    </div>
+  </div>
+
   <div class="form-actions"><button class="btn" type="submit">Save Settings</button></div>
 </form>
 

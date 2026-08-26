@@ -1551,6 +1551,8 @@ def dashboard():
         ).fetchone()["c"]
     backup_alert = None
     migration_failures = None
+    self_check = None
+    self_check_modal = False
     if auth.has_permission("manage_settings"):
         import backup as backup_mod
         backup_alert = logic.backup_alert_message(backup_mod.last_backup(db))
@@ -1559,9 +1561,30 @@ def dashboard():
         # every later one (see setup.py), but it's still worth an admin's
         # attention. See ORPHANED_RECORDS_AUDIT.md F-22.
         migration_failures = logic.get_setting(db, "migration_failures")
+        # Layer 1 of operational monitoring. Reads the last *recorded* result
+        # rather than running a fresh check: run_self_check() probes the disk
+        # and write-tests the backup folder, neither of which has any business
+        # happening on every dashboard load. scheduler.py runs it daily (20
+        # minutes after the backup) and once at startup.
+        if logic.get_setting(db, "selfcheck_enabled", "1") != "0":
+            import selfcheck
+            row = selfcheck.latest(db)
+            if row and row["status"] != "ok":
+                try:
+                    findings = json.loads(row["findings"] or "[]")
+                except (TypeError, ValueError):
+                    findings = []
+                self_check = {"status": row["status"], "ran_at": row["ran_at"],
+                              "findings": findings}
+                # The modal, not the banner, is the point: a dismissible
+                # banner is what is already being scrolled past. Three
+                # consecutive failing days, holders of manage_settings only.
+                self_check_modal = (row["status"] == "fail"
+                                    and selfcheck.consecutive_fail_days(db) >= 3)
     return render_template("dashboard.html", snap=snap, lan_address=lan_address(), missed=missed,
                             is_overseer=is_overseer, opex_due=opex_due, backup_alert=backup_alert,
                             unbilled_count=unbilled_count, migration_failures=migration_failures,
+                            self_check=self_check, self_check_modal=self_check_modal,
                             missed_page=missed_page, missed_total_pages=page_count(missed_total),
                             missed_total=missed_total)
 
@@ -6310,6 +6333,11 @@ def settings_page():
             "expiry_soon_days": (1, 3650),
             "appt_slot_minutes": (5, 240),
             "backup_retention": (1, 3650),
+            # Backups are nightly, so one missed night is noise and two is a
+            # pattern. Capped at 30: a threshold beyond that is indistinguishable
+            # from switching the check off, which selfcheck_enabled already does
+            # honestly.
+            "selfcheck_backup_max_age_days": (1, 30),
         }
         for key, (lo, hi) in NUMERIC_RANGES.items():
             val = request.form.get(key)
@@ -6362,7 +6390,8 @@ def settings_page():
         orphaned_before = len(logic.orphaned_appointments(db))
         for key in ["clinic_name", "clinic_location", "audit_overdue_days", "expiry_soon_days", "opening_date",
                     "appt_start_time", "appt_end_time", "appt_slot_minutes",
-                    "backup_dir", "backup_time", "backup_retention"]:
+                    "backup_dir", "backup_time", "backup_retention",
+                    "selfcheck_backup_max_age_days"]:
             val = request.form.get(key)
             if val is not None:
                 old = logic.get_setting(db, key)
@@ -6372,6 +6401,22 @@ def settings_page():
                 )
                 if old != val:
                     auth.log_change(db, "settings", key, "update", {key: (old, val)})
+        # selfcheck_enabled is a checkbox, and an unchecked box submits
+        # nothing at all — so it cannot go through the loop above, where a
+        # missing key means "left alone". It would switch on and never off.
+        # The hidden companion field is what distinguishes "this form was
+        # submitted and the box was clear" from "this form doesn't have the
+        # field", e.g. a POST from an older cached page.
+        if request.form.get("selfcheck_present"):
+            val = "1" if request.form.get("selfcheck_enabled") else "0"
+            old = logic.get_setting(db, "selfcheck_enabled")
+            db.execute(
+                "INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                ("selfcheck_enabled", val),
+            )
+            if old != val:
+                auth.log_change(db, "settings", "selfcheck_enabled", "update",
+                                {"selfcheck_enabled": (old, val)})
         db.commit()
         if request.form.get("backup_time"):
             import scheduler

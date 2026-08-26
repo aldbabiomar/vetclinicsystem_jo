@@ -1,17 +1,32 @@
 """
-Starts one background job that runs the nightly backup at whatever time is
-configured in Settings (default 02:00). Re-reads the configured time each
-day so a change in Settings takes effect the next night without restarting
-the app.
+Starts the background jobs that run on a schedule:
+
+* the nightly backup, at whatever time is configured in Settings
+  (default 02:00);
+* the daily self-check (selfcheck.py), 20 minutes after the backup, so it
+  judges the backup that just ran rather than the previous night's;
+* one self-check shortly after startup, which is what catches a machine
+  that has been switched off for a week — the daily job alone cannot,
+  because it never fired while the machine was off.
+
+Both scheduled jobs re-read the configured time each day, so a change in
+Settings takes effect the next night without restarting the app.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.date import DateTrigger
 
 import logic
 
 _scheduler = None
+
+# How long after the backup the self-check runs, and how long after boot the
+# startup self-check runs. The startup delay just keeps boot responsive —
+# the check itself takes milliseconds.
+SELF_CHECK_AFTER_BACKUP_MINUTES = 20
+SELF_CHECK_STARTUP_DELAY_SECONDS = 30
 
 
 def _do_nightly_backup(get_db, close_db):
@@ -21,6 +36,33 @@ def _do_nightly_backup(get_db, close_db):
         backup.run_backup(db, triggered_by="nightly")
     finally:
         close_db(db)
+
+
+def _do_self_check(get_db, close_db):
+    """Runs the self-check and records it. Deliberately swallows everything:
+    this runs in a scheduler thread, where an escaping exception is logged
+    somewhere nobody reads and kills the job silently — the exact failure
+    mode this feature exists to prevent."""
+    db = None
+    try:
+        db = get_db()
+        import selfcheck
+        result = selfcheck.run_self_check(db)
+        selfcheck.record(db, result)
+    except Exception:
+        pass
+    finally:
+        if db is not None:
+            try:
+                close_db(db)
+            except Exception:
+                pass
+
+
+def _self_check_time(hour, minute):
+    """Backup time + 20 minutes, wrapping past midnight."""
+    total = (hour * 60 + minute + SELF_CHECK_AFTER_BACKUP_MINUTES) % (24 * 60)
+    return divmod(total, 60)
 
 
 def _parse_hour_minute(time_str):
@@ -62,17 +104,47 @@ def start(get_db, close_db):
         id="nightly_backup",
         replace_existing=True,
     )
+    sc_hour, sc_minute = _self_check_time(hour, minute)
+    sched.add_job(
+        _do_self_check,
+        trigger=CronTrigger(hour=sc_hour, minute=sc_minute),
+        args=[get_db, close_db],
+        id="daily_self_check",
+        replace_existing=True,
+    )
+    # The startup run. A machine that was off for a week never fired the
+    # daily job at all, so without this the first news of a week-old backup
+    # would wait for the next scheduled run.
+    sched.add_job(
+        _do_self_check,
+        trigger=DateTrigger(
+            run_date=datetime.now() + timedelta(seconds=SELF_CHECK_STARTUP_DELAY_SECONDS)
+        ),
+        args=[get_db, close_db],
+        id="startup_self_check",
+        replace_existing=True,
+    )
     sched.start()
     _scheduler = sched
     return sched
 
 
 def reschedule(time_str):
-    """Called after Settings saves a new backup_time so it applies immediately."""
+    """Called after Settings saves a new backup_time so it applies immediately.
+
+    Moves BOTH scheduled jobs — the self-check is defined relative to the
+    backup time, so moving only the backup would leave it judging a backup
+    that has not run yet.
+    """
     if _scheduler is None:
         return
     hour, minute = _parse_hour_minute(time_str)
     _scheduler.reschedule_job(
         "nightly_backup",
         trigger=CronTrigger(hour=hour, minute=minute),
+    )
+    sc_hour, sc_minute = _self_check_time(hour, minute)
+    _scheduler.reschedule_job(
+        "daily_self_check",
+        trigger=CronTrigger(hour=sc_hour, minute=sc_minute),
     )

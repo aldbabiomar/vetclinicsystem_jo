@@ -35,6 +35,55 @@
 </div>
 {% endif %}
 
+{% if self_check %}
+<div class="flash {{ 'error' if self_check.status == 'fail' else 'warn' }}"
+     style="{% if self_check.status == 'fail' %}background:var(--danger-tint); color:var(--danger);{% else %}background:var(--warn-tint); color:var(--warn-ink);{% endif %} margin-bottom:16px;">
+  <strong>{{ 'This install needs attention' if self_check.status == 'fail' else 'Health check warning' }}</strong>
+  <ul style="margin:6px 0 0; padding-left:20px;">
+    {% for f in self_check.findings %}<li>{{ f.message }}</li>{% endfor %}
+  </ul>
+  <div class="small" style="margin-top:6px;">
+    Last checked {{ self_check.ran_at.replace('T', ' ') }} —
+    <a href="{{ url_for('settings_page') }}" style="color:inherit; text-decoration:underline;">Open Settings →</a>
+  </div>
+</div>
+{% endif %}
+
+{% if self_check_modal %}
+<div id="selfCheckModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:560px;">
+    <h2 style="margin-top:0; color:var(--danger);">This install has failed its health check for 3 days running</h2>
+    <p class="small muted" style="margin-top:-4px;">
+      You're seeing this because you can change Settings. It will come back next time you sign in,
+      until the problem below is fixed.
+    </p>
+    <ul style="margin:10px 0 14px; padding-left:20px;">
+      {% for f in self_check.findings %}<li>{{ f.message }}</li>{% endfor %}
+    </ul>
+    <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+      <button class="btn secondary" type="button" onclick="dismissSelfCheckModal()">Not now</button>
+      <a class="btn" href="{{ url_for('settings_page') }}">Open Settings</a>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  // Session-only dismissal, deliberately: a day-long "don't show again" means
+  // a machine rebooted every morning never shows it again. sessionStorage
+  // clears when the browser session ends, so a reboot re-surfaces it.
+  var KEY = 'vetclinicsystemjo-selfcheck-dismissed';
+  var el = document.getElementById('selfCheckModal');
+  window.dismissSelfCheckModal = function () {
+    try { sessionStorage.setItem(KEY, '1'); } catch (e) { /* private mode */ }
+    if (el) el.style.display = 'none';
+  };
+  var dismissed = false;
+  try { dismissed = sessionStorage.getItem(KEY) === '1'; } catch (e) { dismissed = false; }
+  if (el && !dismissed) el.style.display = 'flex';
+})();
+</script>
+{% endif %}
+
 <div class="stat-grid">
   <div class="stat-card"><div class="num">{{ snap.total_patients }}</div><div class="label">Total Patients on File</div></div>
   <div class="stat-card ok"><div class="num">{{ snap.active_cases }}</div><div class="label">Active / Ongoing Cases</div></div>
