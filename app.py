@@ -47,6 +47,11 @@ import pdf_export
 BASE_DIR = os.path.dirname(__file__)
 _version_path = os.path.join(BASE_DIR, "VERSION")
 VERSION = open(_version_path).read().strip() if os.path.exists(_version_path) else "unknown"
+# Read by heartbeat.py for the payload's uptime figure. Set here rather than in
+# heartbeat itself because that module is imported lazily inside a scheduler
+# job, which would make "uptime" mean "time since the first heartbeat".
+APP_STARTED_AT = datetime.now()
+
 
 class _DecimalJSONProvider(DefaultJSONProvider):
     """Flask's default JSON provider has no idea what a Decimal is (it only
@@ -6380,6 +6385,16 @@ def settings_page():
         if start and end and start >= end:
             flash("Day Ends At must be after Day Starts At.", "error")
             return redirect(url_for("settings_page"))
+
+        # The heartbeat URL is a credential — for a healthchecks.io-style
+        # receiver, anyone holding it can send a fake ping and so SUPPRESS a
+        # real alert. Plain http would put it in the clear on the clinic LAN,
+        # so it is https or nothing. Empty is valid and means "disabled",
+        # which is the default.
+        hb_url = request.form.get("heartbeat_url")
+        if hb_url is not None and hb_url.strip() and not hb_url.strip().lower().startswith("https://"):
+            flash("The monitoring ping URL must start with https://", "error")
+            return redirect(url_for("settings_page"))
         # Snapshot before the change — appt_start_time/appt_end_time/
         # appt_slot_minutes feed generate_slots(), which day_grid() (and
         # logic.orphaned_appointments()) key every appointment's slot_label
@@ -6391,7 +6406,7 @@ def settings_page():
         for key in ["clinic_name", "clinic_location", "audit_overdue_days", "expiry_soon_days", "opening_date",
                     "appt_start_time", "appt_end_time", "appt_slot_minutes",
                     "backup_dir", "backup_time", "backup_retention",
-                    "selfcheck_backup_max_age_days"]:
+                    "selfcheck_backup_max_age_days", "heartbeat_url"]:
             val = request.form.get(key)
             if val is not None:
                 old = logic.get_setting(db, key)

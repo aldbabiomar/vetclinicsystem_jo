@@ -43,17 +43,30 @@ def _do_nightly_backup(get_db, close_db):
         close_db(db)
 
 
-def _do_self_check(get_db, close_db):
-    """Runs the self-check and records it. Deliberately swallows everything:
-    this runs in a scheduler thread, where an escaping exception is logged
-    somewhere nobody reads and kills the job silently — the exact failure
-    mode this feature exists to prevent."""
+def _do_self_check(get_db, close_db, send_heartbeat=True):
+    """Runs the self-check, records it, and sends the heartbeat carrying that
+    fresh verdict. Deliberately swallows everything: this runs in a scheduler
+    thread, where an escaping exception is logged somewhere nobody reads and
+    kills the job silently — the exact failure mode this feature exists to
+    prevent.
+
+    The heartbeat is sent from HERE, in the same job, rather than on its own
+    schedule, so the payload can never carry yesterday's verdict. It is a
+    no-op unless an admin has set a heartbeat URL, and its failure is never
+    escalated to the clinic — see heartbeat.py.
+    """
     db = None
     try:
         db = get_db()
         import selfcheck
         result = selfcheck.run_self_check(db)
         selfcheck.record(db, result)
+        if send_heartbeat:
+            try:
+                import heartbeat
+                heartbeat.send_for(db, result)
+            except Exception:
+                pass
     except Exception:
         pass
     finally:
@@ -158,6 +171,11 @@ def start(get_db, close_db):
     # The startup run. A machine that was off for a week never fired the
     # daily job at all, so without this the first news of a week-old backup
     # would wait for the next scheduled run.
+    #
+    # It heartbeats too, and that matters more than it looks: a clinic that
+    # powers its machine on at 8am and off at 6pm is asleep when the 02:20 job
+    # is due, so the startup ping is the ONLY ping it ever sends. Without it
+    # every such clinic would look permanently dead to the receiver.
     sched.add_job(
         _do_self_check,
         trigger=DateTrigger(

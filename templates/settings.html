@@ -64,6 +64,33 @@
     </div>
   </div>
 
+  <div class="section-title">Remote Monitoring (optional)</div>
+  <p class="small muted" style="margin-top:-6px;">
+    Off unless you fill this in. When set, this clinic sends a short daily status ping —
+    counts and statuses only, never patient, owner or staff details, and never any amounts.
+    The point is the <em>missing</em> ping: if this machine stops sending, whoever maintains
+    the system gets told, which is the one thing the app cannot report while it is switched off.
+  </p>
+  <div class="form-grid">
+    <div class="field" style="grid-column:1 / -1;">
+      <label>Monitoring Ping URL</label>
+      <input name="heartbeat_url" type="url" placeholder="https://… (leave blank to disable)"
+             value="{{ settings.heartbeat_url or '' }}" autocomplete="off" spellcheck="false">
+      <p class="small muted" style="margin:6px 0 0;">
+        Must start with <code>https://</code>. Use a different URL for each clinic, so an alert
+        can say which one went quiet. <strong>Treat it like a password</strong> — anyone who has
+        it can send a fake ping and stop a real alert from ever reaching you.
+      </p>
+    </div>
+    {% if settings.heartbeat_install_id %}
+    <div class="field" style="grid-column:1 / -1;">
+      <label>This Install's ID</label>
+      <div class="small" style="font-family:monospace; padding:8px 10px; background:var(--muted-tint); border-radius:6px;">{{ settings.heartbeat_install_id }}</div>
+      <p class="small muted" style="margin:6px 0 0;">Included in every ping so one monitoring account can watch several clinics.</p>
+    </div>
+    {% endif %}
+  </div>
+
   <div class="form-actions"><button class="btn" type="submit">Save Settings</button></div>
 </form>
 
