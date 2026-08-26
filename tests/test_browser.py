@@ -241,3 +241,68 @@ def test_every_page_still_renders_in_dark_mode(signed_in, browser):
         assert not problems, "dark mode problem(s):\n  " + "\n  ".join(problems)
     finally:
         ctx.close()
+
+# ---------------------------------------------------------------------------
+# Interaction, not just rendering
+#
+# Everything above loads pages. That is not enough: POS "Complete Sale" was
+# silently broken from IQ v1.5.0 / JO v1.1.0 — the button disabled itself
+# inside its own onclick, and a disabled submitter cannot submit its form, so
+# the click produced no request, no navigation and no error. Every page-load
+# test passed the whole time, and so did every server-side route test, because
+# they POST to /pos/checkout directly and never touch the button.
+# ---------------------------------------------------------------------------
+
+def _add_first_search_result(page):
+    page.fill("#posSearch", "a")
+    page.wait_for_timeout(1200)
+    hit = page.locator("div[onclick*=addToCart]").first
+    if hit.count() == 0:
+        return False
+    hit.click()
+    page.wait_for_timeout(300)
+    return page.evaluate("() => (typeof cart !== 'undefined') && cart.length > 0")
+
+
+def test_completing_a_sale_actually_submits(signed_in):
+    """The end-to-end journey a cashier performs dozens of times a day.
+
+    Asserts the click produces a real POST and leaves the page. Anything less
+    — checking the button exists, or that the route works when posted to
+    directly — passes while the button does nothing at all.
+    """
+    page = signed_in["laptop"]
+    page.goto(f"{APP_URL}/pos", wait_until="networkidle")
+    if not _add_first_search_result(page):
+        pytest.skip("no sellable item in this database to put in the cart")
+
+    posts = []
+    page.on("request", lambda r: posts.append(r.url) if r.method == "POST" else None)
+    before = page.url
+    page.click("#completeSaleBtn")
+    page.wait_for_timeout(2500)
+
+    assert posts, (
+        "clicking Complete Sale sent no request at all — the form did not submit. "
+        "Check nothing disables the submit button inside its own click handler.")
+    assert any("checkout" in u for u in posts), f"posted somewhere unexpected: {posts}"
+    assert page.url != before, "the page never left /pos after completing a sale"
+
+
+def test_a_double_click_still_only_makes_one_sale(signed_in):
+    """The protection the broken line was trying to provide. Fixing the submit
+    must not reintroduce the double-charge it was guarding against."""
+    page = signed_in["laptop"]
+    page.goto(f"{APP_URL}/pos", wait_until="networkidle")
+    if not _add_first_search_result(page):
+        pytest.skip("no sellable item in this database to put in the cart")
+
+    posts = []
+    page.on("request", lambda r: posts.append(r.url) if r.method == "POST" else None)
+    page.evaluate("""() => { const b = document.getElementById('completeSaleBtn');
+                             b.click(); b.click(); b.click(); }""")
+    page.wait_for_timeout(2500)
+    checkouts = [u for u in posts if "checkout" in u]
+    assert len(checkouts) == 1, (
+        f"{len(checkouts)} checkout requests from one triple-click — a customer could be "
+        "charged more than once")

@@ -185,9 +185,22 @@ function prepareSubmit() {
   // a second sale even if it does.
   const btn = document.getElementById('completeSaleBtn');
   if (btn.disabled) return false;
-  btn.disabled = true;
+  // The disabling MUST NOT happen here. A submit button that is disabled
+  // during its own click handler cannot submit its form: the browser checks
+  // the submitter's disabled state when it processes the submit, by which
+  // point this handler has already set it. Doing it here made Complete Sale
+  // silently do nothing at all -- no request, no navigation, no error --
+  // from IQ v1.5.0 / JO v1.1.0 until this fix. It is disabled from the
+  // form's own submit handler below instead, which runs once the
+  // submission is already under way.
   return true;
 }
+
+  document.getElementById('checkoutForm').addEventListener('submit', function () {
+    // Runs after the submit is committed, so the first click goes through
+    // and any second click is refused by the btn.disabled guard above.
+    document.getElementById('completeSaleBtn').disabled = true;
+  });
 {% if form %}
 // Redisplaying a rejected checkout — the cart itself isn't restored (see
 // pos_checkout()'s redisplay()), but sync the cash-fields visibility and
