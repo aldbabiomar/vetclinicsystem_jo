@@ -27,6 +27,11 @@ _scheduler = None
 # the check itself takes milliseconds.
 SELF_CHECK_AFTER_BACKUP_MINUTES = 20
 SELF_CHECK_STARTUP_DELAY_SECONDS = 30
+# The monthly restore verification. Later than the self-check so the two never
+# contend, and on the 1st because a monthly cadence is what makes a real
+# test-restore affordable — it copies the whole database.
+VERIFY_AFTER_BACKUP_MINUTES = 45
+VERIFY_DAY_OF_MONTH = 1
 
 
 def _do_nightly_backup(get_db, close_db):
@@ -59,9 +64,39 @@ def _do_self_check(get_db, close_db):
                 pass
 
 
+def _do_verify_restore(get_db, close_db):
+    """Monthly: restore the newest backup into a throwaway database and check
+    what came back (selfverify.py), then re-run the self-check so the
+    restore_unverified finding clears in the same pass rather than waiting
+    until tomorrow night. Swallows everything, for the same reason
+    _do_self_check does."""
+    db = None
+    try:
+        db = get_db()
+        import selfverify
+        selfverify.run_and_record(db)
+        import selfcheck
+        selfcheck.record(db, selfcheck.run_self_check(db))
+    except Exception:
+        pass
+    finally:
+        if db is not None:
+            try:
+                close_db(db)
+            except Exception:
+                pass
+
+
 def _self_check_time(hour, minute):
     """Backup time + 20 minutes, wrapping past midnight."""
     total = (hour * 60 + minute + SELF_CHECK_AFTER_BACKUP_MINUTES) % (24 * 60)
+    return divmod(total, 60)
+
+
+def _verify_time(hour, minute):
+    """Backup time + 45 minutes — after the self-check, so the two never
+    contend for the same connection."""
+    total = (hour * 60 + minute + VERIFY_AFTER_BACKUP_MINUTES) % (24 * 60)
     return divmod(total, 60)
 
 
@@ -112,6 +147,14 @@ def start(get_db, close_db):
         id="daily_self_check",
         replace_existing=True,
     )
+    v_hour, v_minute = _verify_time(hour, minute)
+    sched.add_job(
+        _do_verify_restore,
+        trigger=CronTrigger(day=VERIFY_DAY_OF_MONTH, hour=v_hour, minute=v_minute),
+        args=[get_db, close_db],
+        id="monthly_verify_restore",
+        replace_existing=True,
+    )
     # The startup run. A machine that was off for a week never fired the
     # daily job at all, so without this the first news of a week-old backup
     # would wait for the next scheduled run.
@@ -147,4 +190,9 @@ def reschedule(time_str):
     _scheduler.reschedule_job(
         "daily_self_check",
         trigger=CronTrigger(hour=sc_hour, minute=sc_minute),
+    )
+    v_hour, v_minute = _verify_time(hour, minute)
+    _scheduler.reschedule_job(
+        "monthly_verify_restore",
+        trigger=CronTrigger(day=VERIFY_DAY_OF_MONTH, hour=v_hour, minute=v_minute),
     )
