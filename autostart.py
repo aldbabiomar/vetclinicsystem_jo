@@ -76,6 +76,69 @@ def _macos_launcher_path():
     return os.path.join(base, "Start VetClinicSystem JO.command")
 
 
+# --- Windows: Task Scheduler ------------------------------------------------
+#
+# The Startup folder runs a program at USER LOGON, not at boot. That is a real
+# gap for a clinic PC, and the common case is the worst one: Windows Update
+# reboots the machine at 3am, it then sits at the lock screen until someone
+# arrives at 8am, and in the meantime nothing runs — no app, no nightly backup,
+# no heartbeat. A Scheduled Task set to ONSTART runs without anyone logging in.
+#
+# Creating a boot task requires Administrator. When that is not available this
+# falls back to the Startup folder and SAYS SO, rather than reporting success
+# for a weaker guarantee than the user asked for.
+#
+# **A caveat that matters more than this module does:** the app needs its
+# database. If PostgreSQL is installed as a Windows service it starts at boot
+# too and all of this works. If it is running under Docker Desktop, Docker
+# Desktop itself starts at user logon — so the database will not be there
+# either, and starting the app earlier achieves nothing. Deploy Postgres as a
+# service, or accept that backups happen after the first logon.
+TASK_NAME = "VetClinicSystemJO Autostart"
+
+# Give Postgres a moment after boot before the app tries to connect. Not
+# load-bearing — the launcher script's supervisor loop restarts the app if it
+# exits — but it avoids a burst of failed starts in the log every boot.
+TASK_BOOT_DELAY = "0001:00"  # HHHH:MM, one minute
+
+
+def _run_schtasks(args):
+    """Returns (ok, output). Never raises, including when schtasks is absent."""
+    import subprocess
+    try:
+        p = subprocess.run(["schtasks"] + args, capture_output=True, text=True, timeout=30)
+        return p.returncode == 0, ((p.stdout or "") + (p.stderr or "")).strip()
+    except Exception as e:
+        return False, str(e)
+
+
+def _windows_task_exists():
+    ok, _ = _run_schtasks(["/Query", "/TN", TASK_NAME])
+    return ok
+
+
+def _windows_task_create():
+    """Create the boot task. Returns (ok, message)."""
+    launcher = _windows_launcher_path()
+    if not os.path.isfile(launcher):
+        return False, "launcher not found"
+    # /TR is parsed by schtasks itself, so the path is quoted INSIDE the
+    # argument; passing argv as a list only protects it from the shell.
+    target = f'"{launcher}"'
+    base = ["/Create", "/TN", TASK_NAME, "/TR", target,
+            "/SC", "ONSTART", "/RU", "SYSTEM", "/RL", "HIGHEST", "/F"]
+    ok, out = _run_schtasks(base + ["/DELAY", TASK_BOOT_DELAY])
+    if ok:
+        return True, out
+    # /DELAY is not accepted by every Windows build's schtasks. Losing the
+    # delay is worth far less than losing the task, so try again without it.
+    return _run_schtasks(base)
+
+
+def _windows_task_delete():
+    return _run_schtasks(["/Delete", "/TN", TASK_NAME, "/F"])
+
+
 def _windows_startup_dir():
     appdata = os.environ.get("APPDATA")
     if not appdata:
@@ -99,8 +162,13 @@ def is_enabled():
     if system == "Darwin":
         return os.path.isfile(_macos_plist_path())
     if system == "Windows":
+        # Either mechanism counts as on, so the Settings checkbox reflects
+        # reality after an admin-created boot task as well as after a
+        # Startup-folder fallback.
         path = _windows_shortcut_path()
-        return bool(path and os.path.isfile(path))
+        if path and os.path.isfile(path):
+            return True
+        return _windows_task_exists()
     return False
 
 
@@ -177,10 +245,8 @@ def _macos_disable():
     return True, "Automatic startup turned off."
 
 
-def _windows_enable():
-    launcher = _windows_launcher_path()
-    if not os.path.isfile(launcher):
-        return False, f"Could not find “Start VetClinicSystem JO.bat” at {launcher} — can't set up automatic startup."
+def _windows_startup_folder_enable(launcher):
+    """The fallback: runs at user logon. Returns (ok, message)."""
     shortcut_path = _windows_shortcut_path()
     if not shortcut_path:
         return False, "Could not find this account's Startup folder (%APPDATA% isn't set)."
@@ -192,17 +258,61 @@ def _windows_enable():
         # exactly the same way it runs shortcuts placed there.
         with open(shortcut_path, "w") as f:
             f.write(f'@echo off\r\ncall "{launcher}"\r\n')
-        return True, "VetClinicSystem JO will now start automatically when you log in."
+        return True, ""
     except OSError as e:
         return False, f"Could not set up automatic startup: {e}"
 
 
+def _windows_enable():
+    """Prefers a boot-time Scheduled Task; falls back to the Startup folder.
+
+    Both are written when the task succeeds — the Startup entry is harmless
+    (the launcher is a supervisor loop, and a second copy exits immediately
+    because the port is taken) and it means turning the feature off later
+    cannot leave a stray boot task behind that nobody remembers.
+    """
+    launcher = _windows_launcher_path()
+    if not os.path.isfile(launcher):
+        return False, f"Could not find “Start VetClinicSystem JO.bat” at {launcher} — can't set up automatic startup."
+
+    task_ok, task_out = _windows_task_create()
+    folder_ok, folder_err = _windows_startup_folder_enable(launcher)
+
+    if task_ok:
+        return True, ("VetClinicSystem JO will now start automatically when this "
+                      "computer starts up, even before anyone signs in.")
+    if folder_ok:
+        # Say plainly what was and was not achieved. Reporting plain success
+        # here would leave someone believing the clinic is covered overnight
+        # when it is only covered from the first sign-in.
+        return True, ("VetClinicSystem JO will now start automatically when you sign in. "
+                      "It could not be set to start at boot as well, which needs "
+                      "Administrator — so if this computer restarts overnight, the app "
+                      "won't run (and no backup will be taken) until someone signs in. "
+                      "To fix that, run this app as an administrator once and turn this "
+                      "setting on again.")
+    return False, folder_err or f"Could not set up automatic startup. {task_out}".strip()
+
+
 def _windows_disable():
+    """Removes both mechanisms. Succeeds if neither is left behind."""
+    task_removed, task_out = (True, "")
+    if _windows_task_exists():
+        task_removed, task_out = _windows_task_delete()
+
     shortcut_path = _windows_shortcut_path()
-    if not shortcut_path or not os.path.isfile(shortcut_path):
-        return True, "Automatic startup is already off."
-    try:
-        os.remove(shortcut_path)
-    except OSError as e:
-        return False, f"Could not remove automatic startup: {e}"
-    return True, "Automatic startup turned off."
+    folder_removed = True
+    folder_err = ""
+    if shortcut_path and os.path.isfile(shortcut_path):
+        try:
+            os.remove(shortcut_path)
+        except OSError as e:
+            folder_removed = False
+            folder_err = str(e)
+
+    if task_removed and folder_removed:
+        return True, "Automatic startup turned off."
+    if not task_removed:
+        return False, ("Could not remove the startup task — it may need Administrator. "
+                       f"{task_out}").strip()
+    return False, f"Could not remove automatic startup: {folder_err}"
