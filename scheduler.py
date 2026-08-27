@@ -5,18 +5,26 @@ Starts the background jobs that run on a schedule:
   (default 02:00);
 * the daily self-check (selfcheck.py), 20 minutes after the backup, so it
   judges the backup that just ran rather than the previous night's;
-* one self-check shortly after startup, which is what catches a machine
-  that has been switched off for a week — the daily job alone cannot,
-  because it never fired while the machine was off;
+* one startup catch-up shortly after boot: it takes the backup the machine
+  missed while it was off, then runs the self-check — which is what catches a
+  machine that has been switched off for a week, since the daily job never
+  fired while it was off;
 * the restore verification (selfverify.py), 45 minutes after the backup —
   the job runs daily, the actual test-restore roughly monthly.
 
 Every scheduled job re-reads the configured time each day, so a change in
 Settings takes effect the next night without restarting the app.
 
-A theme worth carrying: a cron that fires while the machine is off does not
-happen, and is not run late. Anything that must eventually happen is either
-checked daily and gated on being due, or run at startup as well.
+A theme worth carrying, learned the hard way three times now: **a scheduled
+time that passes while the machine is unavailable does not happen by itself.**
+There are two distinct ways to be unavailable and they need different fixes:
+
+* ASLEEP — the process is suspended and resumes later. APScheduler drops the
+  missed run unless misfire_grace_time allows it (the default is 1 second).
+  Hence MISFIRE_GRACE_SECONDS below.
+* OFF — the process is gone and restarts with no memory of what it missed.
+  No grace time can help. Hence the startup catch-up, and hence the
+  verification being a daily due-check rather than a monthly cron.
 """
 from datetime import datetime, timedelta
 
@@ -33,6 +41,22 @@ _scheduler = None
 # the check itself takes milliseconds.
 SELF_CHECK_AFTER_BACKUP_MINUTES = 20
 SELF_CHECK_STARTUP_DELAY_SECONDS = 30
+
+# APScheduler discards a job whose scheduled time has passed by more than
+# misfire_grace_time — which DEFAULTS TO ONE SECOND. That default silently
+# broke the nightly backup on a real install (2026-08-27): the Mac slept from
+# 01:01 to 03:10, the process was suspended straight through the 02:00 backup
+# and the 02:20 self-check, and on wake both were dropped rather than run
+# late. No backup, no ping, and nothing anywhere said so.
+#
+# None means "run it however late we are". A backup at 09:00 is worth
+# enormously more than no backup, and coalesce=True (the default) means
+# several missed runs still produce exactly one.
+#
+# **This only covers a SUSPENDED process, not a stopped one.** The scheduler
+# is in-memory, so a machine that was switched off entirely comes back with no
+# memory of what it missed — that case is what _do_startup_catchup handles.
+MISFIRE_GRACE_SECONDS = None
 # The restore verification. Later than the self-check so the two never
 # contend. The JOB runs daily; the WORK inside it runs roughly monthly, gated
 # by selfverify.is_due — see _do_verify_restore for why a monthly trigger was
@@ -117,6 +141,69 @@ def _do_verify_restore(get_db, close_db):
                 pass
 
 
+def _backup_catchup_due(db, hour, minute):
+    """True when today's scheduled backup should have run and did not.
+
+    Covers the case misfire_grace_time cannot: the machine was switched OFF
+    over its backup time. The scheduler holds no state across a restart, so
+    nothing else would ever notice that the 02:00 run never happened.
+    """
+    now = datetime.now()
+    scheduled = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if now < scheduled:
+        return False  # today's run is still ahead of us; the cron will fire
+    try:
+        row = db.execute(
+            "SELECT started_at FROM backup_log WHERE status='success' "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    except Exception:
+        return False
+    if row is None:
+        return True
+    try:
+        last = datetime.fromisoformat(str(row["started_at"]))
+    except (TypeError, ValueError):
+        return True
+    return last < scheduled
+
+
+def _do_startup_catchup(get_db, close_db):
+    """Runs once, shortly after boot.
+
+    Two jobs in one, in this order on purpose:
+
+    1. Take the backup this machine missed while it was off, if it missed one.
+    2. Run the self-check and heartbeat — AFTER the catch-up, so the verdict
+       and the ping describe the state including that backup rather than
+       reporting a stale-backup problem this job just fixed.
+
+    Swallows everything, like every other scheduled job here.
+    """
+    db = None
+    try:
+        db = get_db()
+        try:
+            time_str = logic.get_setting(db, "backup_time", "02:00") or "02:00"
+            hour, minute = _parse_hour_minute(time_str)
+            if _backup_catchup_due(db, hour, minute):
+                import backup
+                backup.run_backup(db, triggered_by="nightly")
+        except Exception:
+            pass
+    except Exception:
+        pass
+    finally:
+        if db is not None:
+            try:
+                close_db(db)
+            except Exception:
+                pass
+    # Separate connection, so a failed catch-up cannot leave the self-check
+    # running inside an aborted transaction.
+    _do_self_check(get_db, close_db)
+
+
 def _self_check_time(hour, minute):
     """Backup time + 20 minutes, wrapping past midnight."""
     total = (hour * 60 + minute + SELF_CHECK_AFTER_BACKUP_MINUTES) % (24 * 60)
@@ -168,6 +255,8 @@ def start(get_db, close_db):
         args=[get_db, close_db],
         id="nightly_backup",
         replace_existing=True,
+        misfire_grace_time=MISFIRE_GRACE_SECONDS,
+        coalesce=True,
     )
     sc_hour, sc_minute = _self_check_time(hour, minute)
     sched.add_job(
@@ -176,6 +265,8 @@ def start(get_db, close_db):
         args=[get_db, close_db],
         id="daily_self_check",
         replace_existing=True,
+        misfire_grace_time=MISFIRE_GRACE_SECONDS,
+        coalesce=True,
     )
     v_hour, v_minute = _verify_time(hour, minute)
     sched.add_job(
@@ -184,6 +275,8 @@ def start(get_db, close_db):
         args=[get_db, close_db],
         id="verify_restore",
         replace_existing=True,
+        misfire_grace_time=MISFIRE_GRACE_SECONDS,
+        coalesce=True,
     )
     # The startup run. A machine that was off for a week never fired the
     # daily job at all, so without this the first news of a week-old backup
@@ -194,12 +287,12 @@ def start(get_db, close_db):
     # is due, so the startup ping is the ONLY ping it ever sends. Without it
     # every such clinic would look permanently dead to the receiver.
     sched.add_job(
-        _do_self_check,
+        _do_startup_catchup,
         trigger=DateTrigger(
             run_date=datetime.now() + timedelta(seconds=SELF_CHECK_STARTUP_DELAY_SECONDS)
         ),
         args=[get_db, close_db],
-        id="startup_self_check",
+        id="startup_catchup",
         replace_existing=True,
     )
     sched.start()
