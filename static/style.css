@@ -354,7 +354,14 @@ tfoot tr:first-child td { border-top: 2px solid var(--line); }
 .badge.primary { background: var(--primary-tint); color: var(--primary); }
 
 /* ---------------- Forms ---------------- */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 18px; }
+/* Column count follows the space actually available, not a fixed number plus
+   a breakpoint. The old `1fr 1fr` + `max-width: 760px` meant a 768px iPad --
+   8px on the wrong side of the breakpoint -- kept BOTH the expanded sidebar
+   and two columns, leaving 196px per column and a backup-path field of 182px.
+   With auto-fit the same viewport gets one 410px column, and a wide desktop
+   gets three, so three-field sections stop orphaning one onto a second row.
+   Anything long (a filesystem path, a URL) still opts out with .full. */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px 18px; }
 .form-grid.full, .field.full { grid-column: 1 / -1; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field label {
@@ -504,7 +511,7 @@ textarea { resize: vertical; min-height: 72px; }
     display: block; align-self: flex-end; background: none; border: none; color: var(--sidebar-ink);
     font-size: 22px; line-height: 1; cursor: pointer; padding: 4px 8px; margin-bottom: 4px;
   }
-  .stat-grid, .panel-grid, .form-grid, .detail-grid { grid-template-columns: 1fr; }
+  .stat-grid, .panel-grid, .detail-grid { grid-template-columns: 1fr; }
   .main { padding: 16px 16px 48px; }
 
   /* ---- Touch / small-screen adjustments (desktop is untouched: everything
@@ -692,3 +699,27 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 }
 .role-card.is-dirty .role-card-save { display: flex; }
 .role-card-dirty-note { font-size: 12px; color: var(--warn-ink); font-weight: 650; }
+
+
+/* ---------------- Settings page grouping ----------------
+   The whole page used to be one card, so nothing signalled which fields the
+   single "Save Settings" button actually wrote. Now: one card per group, and
+   a card whose contents are saved ends in a save bar that says so. */
+.settings-tag {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+  padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+}
+.settings-tag.saved { background: var(--primary-tint); color: var(--primary-dark); }
+.settings-tag.now { background: var(--warn-tint); color: var(--warn-ink); }
+.settings-card-head {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.settings-card-head h2 { margin: 0; font-size: 15.5px; letter-spacing: -0.01em; }
+.settings-save-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin: 20px -22px 0; padding: 14px 22px;
+  border-top: 1px solid var(--line); background: var(--line-soft);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.settings-save-bar .what { font-size: 12.5px; color: var(--ink-soft); }
+.card.has-save-bar { padding-bottom: 0; }
