@@ -239,6 +239,42 @@ def test_a_connection_error_does_not_raise_and_never_leaks_the_url(hb, monkeypat
     assert "hc-ping.example" not in msg
 
 
+def test_saving_the_url_does_not_write_it_to_the_audit_log(hb, db, client):
+    """The credential must not escape through Settings either.
+
+    The other tests here guard heartbeat.send()'s return value. Saving the
+    setting is a SECOND boundary, and it was leaking: the generic settings
+    loop routes every changed key through auth.log_change(), which writes the
+    value into audit_log — rendered on the Logins & Changes page to anyone
+    holding view_logins_changes, a broader permission than manage_settings,
+    and included in audit exports. A user who cannot open Settings could read
+    the ping URL and use it to fake pings, suppressing the alert that fires
+    when the clinic machine goes dark.
+    """
+    marker = "https://hc-ping.example/SECRET-AUDIT-MARKER-0001"
+    db.execute("DELETE FROM audit_log WHERE field='heartbeat_url'")
+    db.commit()
+
+    resp = client.post("/settings", data={"heartbeat_url": marker},
+                       follow_redirects=True)
+    assert resp.status_code == 200
+
+    stored = db.execute(
+        "SELECT value FROM settings WHERE key='heartbeat_url'").fetchone()
+    assert stored and stored["value"] == marker, (
+        "the setting must still save — this is about what gets LOGGED"
+    )
+
+    rows = db.execute(
+        "SELECT old_value, new_value FROM audit_log WHERE field='heartbeat_url'"
+    ).fetchall()
+    assert rows, "the change should still be audited, just without the value"
+    blob = " ".join(f"{r['old_value']} {r['new_value']}" for r in rows)
+    assert marker not in blob, "the ping URL was written to the audit log"
+    assert "hc-ping.example" not in blob
+    assert "set" in blob, "the audit entry should record THAT it changed"
+
+
 def test_the_url_is_never_written_to_a_log(hb, monkeypatch, caplog):
     import heartbeat
     monkeypatch.setattr(heartbeat, "RETRY_DELAY_SECONDS", 0)

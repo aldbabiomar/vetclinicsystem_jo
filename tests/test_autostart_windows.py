@@ -122,13 +122,43 @@ def test_a_missing_launcher_is_refused_before_anything_is_created(on_windows, mo
 
 # --- turning it off removes BOTH ------------------------------------------
 
+def test_a_successful_boot_task_leaves_no_startup_entry(on_windows, monkeypatch):
+    """Both at once is not redundancy, it is a respawn loop.
+
+    The boot task holds the port, so the copy the Startup entry launches at
+    sign-in cannot bind and exits — and the launcher is a supervisor loop with
+    no port check and no exit condition, so it relaunches every 2 seconds for
+    the whole session.
+    """
+    monkeypatch.setattr(autostart, "_run_schtasks", _fake_schtasks([], ok=True))
+    ok, msg = autostart.enable()
+    assert ok is True
+    assert not on_windows["shortcut"].is_file(), (
+        "a Startup entry alongside the boot task respawns the app every 2s"
+    )
+
+
+def test_a_stale_startup_entry_is_removed_once_the_task_succeeds(on_windows, monkeypatch):
+    """Enable without admin, then again with it: the logon entry must go."""
+    monkeypatch.setattr(autostart, "_run_schtasks", _fake_schtasks([], ok=False))
+    autostart.enable()
+    assert on_windows["shortcut"].is_file(), "fallback should have written it"
+
+    monkeypatch.setattr(autostart, "_run_schtasks", _fake_schtasks([], ok=True))
+    autostart.enable()
+    assert not on_windows["shortcut"].is_file(), (
+        "the earlier fallback entry survived and now collides with the task"
+    )
+
+
 def test_disable_removes_the_task_and_the_startup_entry(on_windows, monkeypatch):
     calls = []
-    monkeypatch.setattr(autostart, "_run_schtasks", _fake_schtasks(calls))
-    autostart.enable()
+    monkeypatch.setattr(autostart, "_run_schtasks", _fake_schtasks(calls, ok=False))
+    autostart.enable()  # no admin -> Startup-folder fallback
     assert on_windows["shortcut"].is_file()
     calls.clear()
 
+    monkeypatch.setattr(autostart, "_run_schtasks", _fake_schtasks(calls, ok=True))
     monkeypatch.setattr(autostart, "_windows_task_exists", lambda: True)
     ok, msg = autostart.disable()
     assert ok is True

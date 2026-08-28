@@ -99,7 +99,10 @@ TASK_NAME = "VetClinicSystemJO Autostart"
 # Give Postgres a moment after boot before the app tries to connect. Not
 # load-bearing — the launcher script's supervisor loop restarts the app if it
 # exits — but it avoids a burst of failed starts in the log every boot.
-TASK_BOOT_DELAY = "0001:00"  # HHHH:MM, one minute
+# schtasks parses /DELAY as mmmm:ss (MINUTES:seconds), not hours:minutes.
+# "0001:00" is one minute. Widening this to five minutes is "0005:00";
+# "0000:05" would be five SECONDS.
+TASK_BOOT_DELAY = "0001:00"
 
 
 def _run_schtasks(args):
@@ -263,24 +266,44 @@ def _windows_startup_folder_enable(launcher):
         return False, f"Could not set up automatic startup: {e}"
 
 
+def _windows_startup_folder_remove():
+    """Remove the logon-time entry, if present. Returns (ok, error)."""
+    path = _windows_shortcut_path()
+    if not path or not os.path.isfile(path):
+        return True, ""
+    try:
+        os.remove(path)
+        return True, ""
+    except OSError as e:
+        return False, str(e)
+
+
 def _windows_enable():
     """Prefers a boot-time Scheduled Task; falls back to the Startup folder.
 
-    Both are written when the task succeeds — the Startup entry is harmless
-    (the launcher is a supervisor loop, and a second copy exits immediately
-    because the port is taken) and it means turning the feature off later
-    cannot leave a stray boot task behind that nobody remembers.
+    Exactly one of the two is ever active — see the comment below for why
+    writing both is actively harmful. _windows_disable() removes both
+    regardless, so turning the feature off cannot strand a boot task.
     """
     launcher = _windows_launcher_path()
     if not os.path.isfile(launcher):
         return False, f"Could not find “Start VetClinicSystem JO.bat” at {launcher} — can't set up automatic startup."
 
     task_ok, task_out = _windows_task_create()
-    folder_ok, folder_err = _windows_startup_folder_enable(launcher)
 
     if task_ok:
+        # Exactly ONE mechanism must be active. Writing both makes the app
+        # fight itself: the boot task already holds the port, so the copy the
+        # Startup entry launches at sign-in cannot bind and exits — and the
+        # launcher is a SUPERVISOR LOOP with no port check and no exit
+        # condition, so it relaunches every 2 seconds for the whole logon
+        # session, console window and browser tab included. Remove any entry
+        # left by an earlier non-elevated enable.
+        _windows_startup_folder_remove()
         return True, ("VetClinicSystem JO will now start automatically when this "
                       "computer starts up, even before anyone signs in.")
+
+    folder_ok, folder_err = _windows_startup_folder_enable(launcher)
     if folder_ok:
         # Say plainly what was and was not achieved. Reporting plain success
         # here would leave someone believing the clinic is covered overnight

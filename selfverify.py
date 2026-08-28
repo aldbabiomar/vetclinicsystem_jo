@@ -171,8 +171,14 @@ def _run_checks(con):
         orphans = scalar(
             "SELECT count(*) FROM patients p LEFT JOIN owners o ON o.id=p.owner_id "
             "WHERE p.owner_id IS NOT NULL AND o.id IS NULL")
-    checks.append(_check("no orphaned patients", orphans == 0,
-                         "none" if orphans == 0 else f"{orphans} orphaned"))
+    if orphans is None:
+        # The table is absent, so the question could not be asked. Saying
+        # "None orphaned" would render a FAILING check as a clean result.
+        checks.append(_check("no orphaned patients", False,
+                             "the patients table is missing from this backup"))
+    else:
+        checks.append(_check("no orphaned patients", orphans == 0,
+                             "none" if orphans == 0 else f"{orphans} orphaned"))
 
     # --- money ---
     # A missing billing table is a FINDING, not a reason to skip quietly: a
@@ -363,10 +369,12 @@ def is_due(db, max_age_days=VERIFY_INTERVAL_DAYS):
     except (TypeError, ValueError):
         return True
     if data.get("result") != "pass":
-        # A previous failure is worth re-testing on the normal cadence rather
-        # than being retried every single day: the likely fix is a new backup,
-        # and re-restoring a broken one daily is just noise. The daily
-        # self-check keeps reporting it in the meantime.
+        # A previous failure retries DAILY rather than waiting for the full
+        # interval: the likely fix is simply the next night's backup, and
+        # waiting 30 days to re-test would blow past
+        # selfcheck.RESTORE_VERIFY_MAX_AGE_DAYS (45) with the clinic warned
+        # the whole time. Bounded to once a day so a persistently broken
+        # backup is not re-restored every tick.
         return (datetime.now() - when).days >= 1
     return (datetime.now() - when).days >= max_age_days
 

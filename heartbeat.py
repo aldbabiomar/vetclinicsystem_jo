@@ -80,10 +80,17 @@ def install_id(db):
         )
         db.commit()
     except Exception:
+        # The write failed, so this id will not be here tomorrow. Returning it
+        # anyway would emit a DIFFERENT id every night: the receiver keys
+        # "which clinic went quiet" on install_id, so it would report the old
+        # id as dead while a new, unrecognised install appeared each day and
+        # never accumulated enough history to alert on. No id is better than a
+        # id that lies about being stable.
         try:
             db.rollback()
         except Exception:
             pass
+        return None
     return new
 
 
@@ -134,7 +141,13 @@ def _backup_section(db):
             data = json.loads(raw)
             out["verified_at"] = data.get("at")
             out["verified_result"] = data.get("result")
-    except (TypeError, ValueError):
+    except Exception:
+        # Deliberately broad, matching the block above. A stale connection or
+        # an aborted transaction raises psycopg errors that are neither
+        # TypeError nor ValueError; letting one escape kills the whole
+        # heartbeat, and the receiver cannot tell a silent night from a
+        # machine that never came back. A missing verification field is a far
+        # smaller loss than a false dead-machine alert.
         pass
     return out
 

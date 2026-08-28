@@ -421,6 +421,13 @@ def start(get_db, close_db):
         args=[get_db, close_db],
         id="startup_catchup",
         replace_existing=True,
+        # Without this it keeps APScheduler's 1-second default — the very
+        # default that broke the nightly backup. At boot (antivirus, Postgres
+        # starting, disk contention) the scheduler thread can easily wake more
+        # than a second late, and this run would be discarded. For a clinic
+        # that powers on at 8am and off at 6pm it is the ONLY ping of the day.
+        misfire_grace_time=MISFIRE_GRACE_SECONDS,
+        coalesce=True,
     )
     sched.start()
     _scheduler = sched

@@ -6333,6 +6333,13 @@ def settings_page():
     db = get_db()
     if request.method == "POST":
         # (field, min, max) — keeps schedule generation and alert windows sane.
+        # Settings whose VALUE must never be written to the audit log. The
+        # fact that they changed is the auditable part.
+        SECRET_SETTING_KEYS = {"heartbeat_url"}
+
+        def _secret_state(v):
+            return "set" if (v or "").strip() else "not set"
+
         NUMERIC_RANGES = {
             "audit_overdue_days": (1, 3650),
             "expiry_soon_days": (1, 3650),
@@ -6415,7 +6422,17 @@ def settings_page():
                     (key, val),
                 )
                 if old != val:
-                    auth.log_change(db, "settings", key, "update", {key: (old, val)})
+                    # heartbeat_url is a credential: anyone holding it can send
+                    # a fake ping and suppress the alert that fires when this
+                    # machine goes dark. log_change writes values into
+                    # audit_log, which is readable by view_logins_changes — a
+                    # broader permission than manage_settings — and appears in
+                    # audit exports. Record THAT it changed, never the value.
+                    if key in SECRET_SETTING_KEYS:
+                        auth.log_change(db, "settings", key, "update",
+                                        {key: (_secret_state(old), _secret_state(val))})
+                    else:
+                        auth.log_change(db, "settings", key, "update", {key: (old, val)})
         # selfcheck_enabled is a checkbox, and an unchecked box submits
         # nothing at all — so it cannot go through the loop above, where a
         # missing key means "left alone". It would switch on and never off.
