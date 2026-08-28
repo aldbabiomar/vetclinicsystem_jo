@@ -482,6 +482,10 @@ textarea { resize: vertical; min-height: 72px; }
 }
 
 @media (max-width: 760px) {
+  .stat-grid, .panel-grid, .detail-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
   .app-shell { grid-template-columns: 1fr; padding-top: 64px; }
   .mobile-topbar {
     display: flex; align-items: center; gap: 12px;
@@ -511,12 +515,25 @@ textarea { resize: vertical; min-height: 72px; }
     display: block; align-self: flex-end; background: none; border: none; color: var(--sidebar-ink);
     font-size: 22px; line-height: 1; cursor: pointer; padding: 4px 8px; margin-bottom: 4px;
   }
-  .stat-grid, .panel-grid, .detail-grid { grid-template-columns: 1fr; }
   .main { padding: 16px 16px 48px; }
+}
 
-  /* ---- Touch / small-screen adjustments (desktop is untouched: everything
-     here lives inside the 760px query, and .main's min-width below is inert
-     on a wide viewport). ---- */
+/* ---------------------------------------------------------------------
+   Touch / iOS accommodations.
+
+   Keyed off the INPUT DEVICE, not the viewport width. These lived inside a
+   `max-width: 760px` query, so an iPad in portrait -- 768px, 8px on the wrong
+   side -- got none of them. Measured on the running app at 768px: every form
+   field 14px (so iOS Safari zoomed on focus and never zoomed back), buttons
+   34-37px, 36 nav links under 44px, and the appointment "+" button 21px --
+   the very bug IQ 1.10.8 / JO 1.8.9 shipped a fix for, still live on tablets
+   because that fix was inside the same 760px query.
+
+   `pointer: coarse` covers a touch device at ANY width, which is the real
+   condition; the width half is a fallback for narrow mouse-driven windows.
+   Neither affects a desktop with a mouse at any size.
+   --------------------------------------------------------------------- */
+@media (pointer: coarse), (max-width: 900px) {
 
   /* iOS Safari zooms the page whenever a focused field is under 16px, and
      does not zoom back out — so every form entry leaves the page magnified. */
@@ -628,7 +645,7 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
   font-size: 16px; line-height: 1; padding: 2px 4px;
 }
 .vz-toast-close:hover { color: var(--ink); }
-@media (max-width: 760px) {
+@media (pointer: coarse), (max-width: 900px) {
   /* Found by tests/test_browser.py driving a real 390px viewport: the
      slot '+' button rendered 273px wide but only 20px tall, and the toast
      dismiss 17x20 — both well under the 44px touch minimum the rest of

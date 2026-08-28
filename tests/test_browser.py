@@ -194,11 +194,22 @@ def test_no_interactive_element_is_rendered_invisible(signed_in):
     assert not offenders, "collapsed control(s):\n  " + "\n  ".join(offenders)
 
 
-def test_touch_targets_are_big_enough_on_a_phone(signed_in):
+@pytest.mark.parametrize("viewport", ["phone", "tablet"])
+def test_touch_targets_are_big_enough_on_touch_screens(signed_in, viewport):
     """44px is the accessibility floor. A control smaller than that is
     genuinely hard to hit with a thumb, and invisible as a problem on a
-    laptop with a mouse."""
-    page = signed_in["phone"]
+    laptop with a mouse.
+
+    PARAMETRIZED OVER TABLET AS WELL, and that is the point of this edit.
+    This test previously ran on the phone alone, so it stood on the one
+    viewport where the CSS already worked. Every touch rule lived inside a
+    `max-width: 760px` query, and a tablet is 768 -- 8px on the wrong side --
+    so at tablet size buttons measured 34-37px, 36 nav links were under 44,
+    and the appointment "+" button was 21px tall: the same bug IQ 1.10.8 /
+    JO 1.8.9 had already shipped a fix for, still live because the fix was
+    inside that same query. The test named the right property and simply
+    never looked where it was violated."""
+    page = signed_in[viewport]
     offenders = []
     for path in PAGES[:12]:
         page.goto(f"{APP_URL}{path}", wait_until="networkidle")
@@ -219,8 +230,37 @@ def test_touch_targets_are_big_enough_on_a_phone(signed_in):
         for s in small:
             offenders.append(f"{path}: {s}")
     assert not offenders, (
-        f"{len(offenders)} touch target(s) under 40x40 on a phone:\n  "
+        f"{len(offenders)} touch target(s) under 40x40 at {viewport} size:\n  "
         + "\n  ".join(offenders[:20]))
+
+@pytest.mark.parametrize("viewport", ["phone", "tablet"])
+def test_form_fields_are_16px_so_ios_does_not_zoom(signed_in, viewport):
+    """iOS Safari zooms the page whenever a focused field is under 16px, and
+    does not zoom back out -- so every form entry leaves the page magnified.
+    style.css carries that exact comment; the rule that fixes it was inside
+    the 760px query, so on an iPad every field was 14px and the fix the
+    comment describes never applied to the device it describes."""
+    page = signed_in[viewport]
+    offenders = []
+    for path in ("/settings", "/owners/new", "/patients"):
+        page.goto(f"{APP_URL}{path}", wait_until="networkidle")
+        small = page.evaluate("""() => {
+            const out = [];
+            const sel = 'input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea';
+            for (const el of document.querySelectorAll(sel)) {
+                const cs = getComputedStyle(el);
+                if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+                if (parseFloat(cs.fontSize) < 16) {
+                    out.push((el.name || el.id || el.className || 'field') + ' ' + cs.fontSize);
+                }
+            }
+            return out;
+        }""")
+        for s in small:
+            offenders.append(f"{path}: {s}")
+    assert not offenders, (
+        f"{len(offenders)} field(s) under 16px at {viewport} size -- iOS will "
+        f"zoom on focus and stay zoomed:\n  " + "\n  ".join(offenders[:20]))
 
 
 def test_every_page_still_renders_in_dark_mode(signed_in, browser):
