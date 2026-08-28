@@ -1,22 +1,29 @@
 """
-The scheduler's two defences against a machine that was not available when a
-job was due. Both were written after a real install silently skipped its
-nightly backup (2026-08-27).
+The scheduler's three defences against a machine that was not available when
+a job was due. All three were written after real production failures, on
+consecutive nights, each found after the previous fix was declared done.
 
-There are two distinct ways to be unavailable, and each needs its own fix:
+Three distinct ways for a scheduled time to pass without the job happening:
 
-* ASLEEP — the process is suspended and resumes later. APScheduler drops the
-  missed run unless `misfire_grace_time` permits it, and the DEFAULT IS ONE
-  SECOND. That default is what silently broke the backup: the Mac slept
-  01:01 to 03:10, straight through the 02:00 backup and the 02:20 self-check,
-  and on wake both were discarded rather than run late.
 * OFF — the process is gone and comes back with no memory of what it missed.
   No grace time can help; only a catch-up at startup can.
+* ASLEEP, noticed late — the process is suspended and resumes. APScheduler
+  drops the missed run unless `misfire_grace_time` permits it, and the
+  DEFAULT IS ONE SECOND. That is what broke the backup on 2026-08-27: the Mac
+  slept 01:01 to 03:10, through the 02:00 backup and the 02:20 self-check,
+  and on wake both were discarded rather than run late.
+* ASLEEP, never noticed — and this is the one that survived the first fix.
+  On macOS `time.monotonic()` does not advance during sleep (measured
+  2026-08-28: 93.64h wall clock since boot versus 48.08h monotonic).
+  APScheduler waits on a MONOTONIC timeout, so the countdown to a job 22
+  hours out simply freezes. Nothing is ever "missed", so misfire grace is
+  irrelevant — the job just never becomes due. Only a short interval plus a
+  WALL-CLOCK due check recovers.
 
-The tests below are why the fix is not just "set a flag": a job configured
-with the wrong misfire setting looks identical to a correct one until a
-machine sleeps, which is exactly the condition no test suite naturally
-reproduces.
+The tests below are why none of this is "just set a flag": a job configured
+with the wrong misfire setting, or trusting a frozen timer, looks identical
+to a correct one until a machine sleeps — which is exactly the condition no
+test suite naturally reproduces.
 """
 from datetime import datetime, timedelta
 
@@ -73,7 +80,10 @@ def test_the_scheduler_actually_applies_it_to_every_recurring_job(monkeypatch):
     monkeypatch.setattr(scheduler, "_scheduler", None)
 
     recurring = [k for k in captured if k.get("id") != "startup_catchup"]
-    assert len(recurring) == 3, f"expected 3 recurring jobs, saw {[k.get('id') for k in captured]}"
+    ids = {k.get("id") for k in recurring}
+    assert ids == {"nightly_backup", "daily_self_check", "verify_restore", "tick"}, (
+        f"unexpected set of recurring jobs: {ids}"
+    )
     for kw in recurring:
         assert kw.get("misfire_grace_time", "MISSING") is None, (
             f"job {kw.get('id')!r} would be discarded when it runs late"
@@ -191,6 +201,148 @@ def test_a_failed_backup_does_not_count_as_todays_run(blog):
         pytest.skip("run before 01:00; today's 00:30 slot has not passed yet")
     _log_backup(blog, now - timedelta(minutes=1), status="failed")
     assert scheduler._backup_catchup_due(blog, 0, 30) is True
+
+
+# --- ASLEEP with a FROZEN TIMER: the wall-clock tick ----------------------
+# The second production failure, found after the first was declared fixed.
+# On macOS time.monotonic() does not advance during sleep (measured: 93.64h
+# wall vs 48.08h monotonic since boot), so APScheduler's countdown to a job
+# 22 hours out simply freezes. The job is never "missed" — it never becomes
+# due — so misfire_grace_time is irrelevant. Only something that compares the
+# WALL CLOCK against what actually happened can recover.
+
+def test_a_tick_job_exists_and_runs_often(monkeypatch):
+    """A long interval would reintroduce the bug: whatever the interval is, it
+    is also the maximum time the machine can be awake with an overdue backup
+    still not taken."""
+    import scheduler
+    assert scheduler.TICK_MINUTES <= 15, (
+        "the tick must be frequent enough that waking from sleep recovers "
+        "promptly; it is the only mechanism that does not trust a timer"
+    )
+
+
+def test_the_tick_is_registered_with_the_scheduler(monkeypatch):
+    import scheduler
+    captured = []
+
+    class FakeSched:
+        def add_job(self, func, **kw):
+            captured.append((func, kw))
+
+        def start(self):
+            pass
+
+    class FakeDB:
+        def execute(self, *a, **k):
+            return self
+
+        def fetchone(self):
+            return {"value": "02:00"}
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(scheduler, "_scheduler", None)
+    monkeypatch.setattr(scheduler, "BackgroundScheduler", lambda **kw: FakeSched())
+    scheduler.start(lambda: FakeDB(), lambda c: None)
+    monkeypatch.setattr(scheduler, "_scheduler", None)
+
+    ticks = [(f, k) for f, k in captured if k.get("id") == "tick"]
+    assert len(ticks) == 1, f"no tick job: {[k.get('id') for _, k in captured]}"
+    assert ticks[0][0] is scheduler._do_tick
+    trigger = ticks[0][1]["trigger"]
+    assert "interval" in repr(trigger).lower(), (
+        "the tick must be an interval trigger — a cron trigger has the same "
+        "frozen-countdown problem it exists to work around"
+    )
+
+
+def test_self_check_due_uses_the_wall_clock(blog, db):
+    """The tick's decision for the self-check half."""
+    import scheduler
+    now = datetime.now()
+    if now.hour < 1:
+        pytest.skip("run before 01:00; today's 00:30 slot has not passed yet")
+    db.execute("DELETE FROM self_check_log")
+    db.commit()
+    assert scheduler._self_check_due(db, 0, 30) is True, "never run today"
+
+    db.execute(
+        "INSERT INTO self_check_log (ran_at, status, findings) VALUES (?,?,?)",
+        (now.isoformat(timespec="seconds"), "ok", "[]"),
+    )
+    db.commit()
+    assert scheduler._self_check_due(db, 0, 30) is False, "already ran today"
+
+
+def test_self_check_not_due_before_its_time(blog, db):
+    import scheduler
+    db.execute("DELETE FROM self_check_log")
+    db.commit()
+    assert scheduler._self_check_due(db, 23, 59) is False
+
+
+def test_the_tick_takes_an_overdue_backup(blog, monkeypatch):
+    """End to end: the machine woke, the backup never happened, the tick
+    notices by wall clock and runs it."""
+    import scheduler
+    now = datetime.now()
+    if now.hour < 1:
+        pytest.skip("run before 01:00; today's 00:30 slot has not passed yet")
+    _log_backup(blog, now - timedelta(days=2))
+    monkeypatch.setattr(scheduler, "_parse_hour_minute", lambda s: (0, 30))
+
+    ran = []
+    import backup as backup_mod
+    monkeypatch.setattr(backup_mod, "run_backup",
+                        lambda db, **kw: ran.append(kw.get("triggered_by")) or (True, "ok"))
+    monkeypatch.setattr(scheduler, "_do_self_check", lambda *a, **k: None)
+
+    scheduler._do_tick(lambda: blog, lambda c: None)
+    assert ran == ["nightly"], "the tick did not take the overdue backup"
+
+
+def test_the_tick_does_nothing_when_everything_is_current(blog, monkeypatch):
+    """The control. A tick that always acted would take a backup every five
+    minutes forever."""
+    import scheduler
+    now = datetime.now()
+    if now.hour < 1:
+        pytest.skip("run before 01:00; today's 00:30 slot has not passed yet")
+    _log_backup(blog, now - timedelta(minutes=1))
+    blog.execute(
+        "INSERT INTO self_check_log (ran_at, status, findings) VALUES (?,?,?)",
+        (now.isoformat(timespec="seconds"), "ok", "[]"),
+    )
+    blog.commit()
+    monkeypatch.setattr(scheduler, "_parse_hour_minute", lambda s: (0, 30))
+
+    ran = []
+    import backup as backup_mod
+    monkeypatch.setattr(backup_mod, "run_backup",
+                        lambda db, **kw: ran.append(1) or (True, "ok"))
+    checked = []
+    monkeypatch.setattr(scheduler, "_do_self_check", lambda *a, **k: checked.append(1))
+
+    scheduler._do_tick(lambda: blog, lambda c: None)
+    assert ran == [], "the tick took a redundant backup"
+    assert checked == [], "the tick re-ran a self-check that had already run"
+
+
+def test_the_tick_never_raises_on_a_broken_database():
+    """It runs every few minutes forever. Raising would spam and could kill
+    the job."""
+    import scheduler
+
+    class Broken:
+        def execute(self, *a, **k):
+            raise RuntimeError("no database")
+
+        def close(self):
+            pass
+
+    scheduler._do_tick(lambda: Broken(), lambda c: None)
 
 
 def test_catchup_never_raises_on_a_broken_database():

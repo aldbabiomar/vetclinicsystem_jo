@@ -10,27 +10,39 @@ Starts the background jobs that run on a schedule:
   machine that has been switched off for a week, since the daily job never
   fired while it was off;
 * the restore verification (selfverify.py), 45 minutes after the backup —
-  the job runs daily, the actual test-restore roughly monthly.
+  the job runs daily, the actual test-restore roughly monthly;
+* a TICK every few minutes that runs anything the wall clock says is overdue.
 
 Every scheduled job re-reads the configured time each day, so a change in
 Settings takes effect the next night without restarting the app.
 
-A theme worth carrying, learned the hard way three times now: **a scheduled
-time that passes while the machine is unavailable does not happen by itself.**
-There are two distinct ways to be unavailable and they need different fixes:
+THE THEME, learned the hard way four times now: **a scheduled time that
+passes while the machine is unavailable does not happen by itself.** There are
+three distinct ways for that to happen and they need three different fixes —
+each of the first two was found in production after the previous one was
+declared fixed:
 
-* ASLEEP — the process is suspended and resumes later. APScheduler drops the
-  missed run unless misfire_grace_time allows it (the default is 1 second).
-  Hence MISFIRE_GRACE_SECONDS below.
 * OFF — the process is gone and restarts with no memory of what it missed.
-  No grace time can help. Hence the startup catch-up, and hence the
+  No grace time can help. Hence _do_startup_catchup, and hence the
   verification being a daily due-check rather than a monthly cron.
+* ASLEEP, and the scheduler notices late — APScheduler drops a run whose time
+  passed by more than misfire_grace_time, default ONE SECOND.
+  Hence MISFIRE_GRACE_SECONDS.
+* ASLEEP, and the scheduler never notices at all — on macOS time.monotonic()
+  does not advance during sleep, so a long timer's countdown simply freezes
+  and the job never becomes due. Nothing was "missed", so misfire grace is
+  irrelevant. Hence TICK_MINUTES.
+
+The tick is the one that does not depend on believing any timer. If you
+change anything in this module, keep that property: **decide what to run by
+comparing the wall clock against what the database says already happened.**
 """
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 import logic
 
@@ -57,6 +69,27 @@ SELF_CHECK_STARTUP_DELAY_SECONDS = 30
 # is in-memory, so a machine that was switched off entirely comes back with no
 # memory of what it missed — that case is what _do_startup_catchup handles.
 MISFIRE_GRACE_SECONDS = None
+
+# How often the wall-clock tick runs. This is the belt to the cron jobs'
+# braces, and on macOS it is the ONLY thing that works.
+#
+# Measured on the dev Mac 2026-08-28: 93.64 h of wall clock since boot versus
+# 48.08 h of time.monotonic() — the monotonic clock does not advance while the
+# machine sleeps. APScheduler waits on an event with a MONOTONIC timeout, so a
+# job scheduled 22 hours out has its countdown frozen every time the machine
+# sleeps. It does not fire late; from the scheduler's point of view it is not
+# due yet. misfire_grace_time cannot help, because nothing was ever missed.
+#
+# (Windows' monotonic is GetTickCount64, which does include suspend time, so
+# the cron jobs probably do fire there. "Probably" is not good enough for a
+# clinic's backups, hence this.)
+#
+# A SHORT interval bounds the damage: however long the machine sleeps, the
+# tick fires within TICK_MINUTES of waking, and then decides what to run by
+# WALL CLOCK rather than by any timer. Everything it calls is gated on a
+# "has today's X actually happened?" check, so the tick and the cron jobs
+# cannot double-run.
+TICK_MINUTES = 5
 # The restore verification. Later than the self-check so the two never
 # contend. The JOB runs daily; the WORK inside it runs roughly monthly, gated
 # by selfverify.is_due — see _do_verify_restore for why a monthly trigger was
@@ -168,6 +201,91 @@ def _backup_catchup_due(db, hour, minute):
     return last < scheduled
 
 
+def _self_check_due(db, hour, minute):
+    """True when today's scheduled self-check should have run and did not.
+
+    The self-check's own scheduled time is the backup time + 20 minutes; the
+    caller passes that, already resolved.
+    """
+    now = datetime.now()
+    scheduled = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if now < scheduled:
+        return False
+    try:
+        row = db.execute(
+            "SELECT ran_at FROM self_check_log ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    except Exception:
+        return False
+    if row is None:
+        return True
+    try:
+        last = datetime.fromisoformat(str(row["ran_at"]))
+    except (TypeError, ValueError):
+        return True
+    return last < scheduled
+
+
+def _do_tick(get_db, close_db):
+    """Every TICK_MINUTES: run anything today's wall clock says is overdue.
+
+    This exists because the cron triggers cannot be trusted to fire on a
+    machine that sleeps — see TICK_MINUTES above. It asks only "should this
+    have happened by now, and did it?", so it is correct regardless of what
+    any timer believes, and it is a no-op on a machine that never sleeps
+    because the cron jobs will already have done the work.
+
+    Swallows everything, like every other scheduled job here.
+    """
+    db = None
+    backup_due = check_due = False
+    try:
+        db = get_db()
+        time_str = logic.get_setting(db, "backup_time", "02:00") or "02:00"
+        hour, minute = _parse_hour_minute(time_str)
+        backup_due = _backup_catchup_due(db, hour, minute)
+        if backup_due:
+            import backup
+            backup.run_backup(db, triggered_by="nightly")
+        sc_hour, sc_minute = _self_check_time(hour, minute)
+        check_due = _self_check_due(db, sc_hour, sc_minute)
+    except Exception:
+        pass
+    finally:
+        if db is not None:
+            try:
+                close_db(db)
+            except Exception:
+                pass
+
+    # Each on its own connection, so one failure cannot leave the next
+    # running inside an aborted transaction.
+    if check_due:
+        _do_self_check(get_db, close_db)
+    try:
+        db2 = get_db()
+        try:
+            import selfverify
+            if selfverify.is_due(db2):
+                _do_verify_restore_on(db2)
+        finally:
+            close_db(db2)
+    except Exception:
+        pass
+
+
+def _do_verify_restore_on(db):
+    """The verification body, given an open connection."""
+    try:
+        import selfverify
+        if selfverify.run_if_due(db) is None:
+            return
+        import selfcheck
+        selfcheck.record(db, selfcheck.run_self_check(db))
+    except Exception:
+        pass
+
+
 def _do_startup_catchup(get_db, close_db):
     """Runs once, shortly after boot.
 
@@ -274,6 +392,15 @@ def start(get_db, close_db):
         trigger=CronTrigger(hour=v_hour, minute=v_minute),
         args=[get_db, close_db],
         id="verify_restore",
+        replace_existing=True,
+        misfire_grace_time=MISFIRE_GRACE_SECONDS,
+        coalesce=True,
+    )
+    sched.add_job(
+        _do_tick,
+        trigger=IntervalTrigger(minutes=TICK_MINUTES),
+        args=[get_db, close_db],
+        id="tick",
         replace_existing=True,
         misfire_grace_time=MISFIRE_GRACE_SECONDS,
         coalesce=True,
