@@ -37,6 +37,7 @@ The tick is the one that does not depend on believing any timer. If you
 change anything in this module, keep that property: **decide what to run by
 comparing the wall clock against what the database says already happened.**
 """
+import threading
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -47,6 +48,20 @@ from apscheduler.triggers.interval import IntervalTrigger
 import logic
 
 _scheduler = None
+
+# Serialises every scheduled job that writes. The cron triggers and the tick
+# deliberately overlap -- that redundancy is the point -- but on 2026-08-29 a
+# real install woke up and fired both in the SAME SECOND: two backups (one
+# failed with "Another backup ... is already running") and two self-checks
+# (one of them pinging twice). The due-checks alone cannot prevent that,
+# because both paths read "not done yet" before either has committed.
+#
+# Holding this lock across check-and-run makes the second arrival see the
+# first's committed row and do nothing. It matters beyond tidiness:
+# logic.backup_alert_message() reads the NEWEST backup_log row, so had the
+# failed row landed with the higher id, the Dashboard would have announced
+# "the last database backup failed" in the same second one succeeded.
+_JOB_LOCK = threading.Lock()
 
 # How long after the backup the self-check runs, and how long after boot the
 # startup self-check runs. The startup delay just keeps boot responsive —
@@ -87,8 +102,9 @@ MISFIRE_GRACE_SECONDS = None
 # A SHORT interval bounds the damage: however long the machine sleeps, the
 # tick fires within TICK_MINUTES of waking, and then decides what to run by
 # WALL CLOCK rather than by any timer. Everything it calls is gated on a
-# "has today's X actually happened?" check, so the tick and the cron jobs
-# cannot double-run.
+# "has today's X actually happened?" check AND serialised by _JOB_LOCK --
+# the check alone is not enough, because both paths can read "not done yet"
+# before either commits, which is exactly what happened on 2026-08-29.
 TICK_MINUTES = 5
 # The restore verification. Later than the self-check so the two never
 # contend. The JOB runs daily; the WORK inside it runs roughly monthly, gated
@@ -97,13 +113,60 @@ TICK_MINUTES = 5
 VERIFY_AFTER_BACKUP_MINUTES = 45
 
 
-def _do_nightly_backup(get_db, close_db):
-    db = get_db()
-    try:
-        import backup
-        backup.run_backup(db, triggered_by="nightly")
-    finally:
-        close_db(db)
+def _run_backup_if_due(get_db, close_db):
+    """Take tonight's backup, unless it has already been taken.
+
+    THE single place a scheduled backup is started -- the cron trigger, the
+    tick and the startup catch-up all call this. Check and run happen together
+    under _JOB_LOCK so two of them arriving at once cannot both decide it is
+    due; see the lock's comment for the failure that prompted this.
+    """
+    with _JOB_LOCK:
+        db = None
+        try:
+            db = get_db()
+            time_str = logic.get_setting(db, "backup_time", "02:00") or "02:00"
+            hour, minute = _parse_hour_minute(time_str)
+            if not _backup_catchup_due(db, hour, minute):
+                return False
+            import backup
+            backup.run_backup(db, triggered_by="nightly")
+            return True
+        except Exception:
+            return False
+        finally:
+            if db is not None:
+                try:
+                    close_db(db)
+                except Exception:
+                    pass
+
+
+def _run_self_check_if_due(get_db, close_db):
+    """Run today's self-check, unless it has already run. Same contract, and
+    the same lock, as _run_backup_if_due: without it a wake-up fired the cron
+    job and the tick together and the install pinged twice."""
+    with _JOB_LOCK:
+        db = None
+        due = False
+        try:
+            db = get_db()
+            time_str = logic.get_setting(db, "backup_time", "02:00") or "02:00"
+            hour, minute = _parse_hour_minute(time_str)
+            sc_hour, sc_minute = _self_check_time(hour, minute)
+            due = _self_check_due(db, sc_hour, sc_minute)
+        except Exception:
+            due = False
+        finally:
+            if db is not None:
+                try:
+                    close_db(db)
+                except Exception:
+                    pass
+        if not due:
+            return False
+        _do_self_check(get_db, close_db)
+        return True
 
 
 def _do_self_check(get_db, close_db, send_heartbeat=True):
@@ -207,18 +270,21 @@ def _self_check_due(db, hour, minute):
     The self-check's own scheduled time is the backup time + 20 minutes; the
     caller passes that, already resolved.
     """
-    now = datetime.now()
-    scheduled = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    if now < scheduled:
-        return False
     try:
         row = db.execute(
             "SELECT ran_at FROM self_check_log ORDER BY id DESC LIMIT 1"
         ).fetchone()
     except Exception:
         return False
+    # An install that has never self-checked should do so now, whatever the
+    # hour -- otherwise a fresh install started at 01:00 sends no heartbeat
+    # until its first scheduled run, and looks dead to the receiver meanwhile.
     if row is None:
         return True
+    now = datetime.now()
+    scheduled = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if now < scheduled:
+        return False
     try:
         last = datetime.fromisoformat(str(row["ran_at"]))
     except (TypeError, ValueError):
@@ -230,46 +296,22 @@ def _do_tick(get_db, close_db):
     """Every TICK_MINUTES: run anything today's wall clock says is overdue.
 
     This exists because the cron triggers cannot be trusted to fire on a
-    machine that sleeps — see TICK_MINUTES above. It asks only "should this
-    have happened by now, and did it?", so it is correct regardless of what
-    any timer believes, and it is a no-op on a machine that never sleeps
-    because the cron jobs will already have done the work.
+    machine that sleeps -- see TICK_MINUTES above. It delegates to the same
+    guarded entry points the cron jobs use, so the two firing together is a
+    no-op for whichever arrives second rather than a duplicate backup.
 
     Swallows everything, like every other scheduled job here.
     """
-    db = None
-    backup_due = check_due = False
+    _run_backup_if_due(get_db, close_db)
+    _run_self_check_if_due(get_db, close_db)
     try:
         db = get_db()
-        time_str = logic.get_setting(db, "backup_time", "02:00") or "02:00"
-        hour, minute = _parse_hour_minute(time_str)
-        backup_due = _backup_catchup_due(db, hour, minute)
-        if backup_due:
-            import backup
-            backup.run_backup(db, triggered_by="nightly")
-        sc_hour, sc_minute = _self_check_time(hour, minute)
-        check_due = _self_check_due(db, sc_hour, sc_minute)
-    except Exception:
-        pass
-    finally:
-        if db is not None:
-            try:
-                close_db(db)
-            except Exception:
-                pass
-
-    # Each on its own connection, so one failure cannot leave the next
-    # running inside an aborted transaction.
-    if check_due:
-        _do_self_check(get_db, close_db)
-    try:
-        db2 = get_db()
         try:
             import selfverify
-            if selfverify.is_due(db2):
-                _do_verify_restore_on(db2)
+            if selfverify.is_due(db):
+                _do_verify_restore_on(db)
         finally:
-            close_db(db2)
+            close_db(db)
     except Exception:
         pass
 
@@ -289,37 +331,16 @@ def _do_verify_restore_on(db):
 def _do_startup_catchup(get_db, close_db):
     """Runs once, shortly after boot.
 
-    Two jobs in one, in this order on purpose:
+    Takes the backup this machine missed while it was OFF, then runs the
+    self-check and heartbeat -- in that order, so the verdict and the ping
+    describe the state including that backup rather than reporting a
+    stale-backup problem this job just fixed.
 
-    1. Take the backup this machine missed while it was off, if it missed one.
-    2. Run the self-check and heartbeat — AFTER the catch-up, so the verdict
-       and the ping describe the state including that backup rather than
-       reporting a stale-backup problem this job just fixed.
-
-    Swallows everything, like every other scheduled job here.
+    Both calls are the shared guarded entry points, so a startup that races
+    the tick or a cron trigger does the work exactly once.
     """
-    db = None
-    try:
-        db = get_db()
-        try:
-            time_str = logic.get_setting(db, "backup_time", "02:00") or "02:00"
-            hour, minute = _parse_hour_minute(time_str)
-            if _backup_catchup_due(db, hour, minute):
-                import backup
-                backup.run_backup(db, triggered_by="nightly")
-        except Exception:
-            pass
-    except Exception:
-        pass
-    finally:
-        if db is not None:
-            try:
-                close_db(db)
-            except Exception:
-                pass
-    # Separate connection, so a failed catch-up cannot leave the self-check
-    # running inside an aborted transaction.
-    _do_self_check(get_db, close_db)
+    _run_backup_if_due(get_db, close_db)
+    _run_self_check_if_due(get_db, close_db)
 
 
 def _self_check_time(hour, minute):
@@ -368,7 +389,7 @@ def start(get_db, close_db):
 
     sched = BackgroundScheduler(daemon=True)
     sched.add_job(
-        _do_nightly_backup,
+        _run_backup_if_due,
         trigger=CronTrigger(hour=hour, minute=minute),
         args=[get_db, close_db],
         id="nightly_backup",
@@ -378,7 +399,7 @@ def start(get_db, close_db):
     )
     sc_hour, sc_minute = _self_check_time(hour, minute)
     sched.add_job(
-        _do_self_check,
+        _run_self_check_if_due,
         trigger=CronTrigger(hour=sc_hour, minute=sc_minute),
         args=[get_db, close_db],
         id="daily_self_check",

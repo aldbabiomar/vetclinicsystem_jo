@@ -277,10 +277,28 @@ def test_self_check_due_uses_the_wall_clock(blog, db):
 
 
 def test_self_check_not_due_before_its_time(blog, db):
+    """Once an install has checked at least once, a later slot that has not
+    come round yet is not overdue."""
+    import scheduler
+    db.execute("DELETE FROM self_check_log")
+    db.execute(
+        "INSERT INTO self_check_log (ran_at, status, findings) VALUES (?,?,?)",
+        (datetime.now().isoformat(timespec="seconds"), "ok", "[]"),
+    )
+    db.commit()
+    assert scheduler._self_check_due(db, 23, 59) is False
+
+
+def test_an_install_that_has_never_checked_is_due_whatever_the_hour(blog, db):
+    """Deliberately different from the backup catch-up, which waits for its
+    scheduled time. A self-check is read-only and cheap, and it carries the
+    first heartbeat: a fresh install started at 01:00 with a 23:59 slot would
+    otherwise send nothing for 22 hours and look dead to the receiver, while
+    showing the admin none of the problems it can already see."""
     import scheduler
     db.execute("DELETE FROM self_check_log")
     db.commit()
-    assert scheduler._self_check_due(db, 23, 59) is False
+    assert scheduler._self_check_due(db, 23, 59) is True
 
 
 def test_the_tick_takes_an_overdue_backup(blog, monkeypatch):
@@ -354,3 +372,94 @@ def test_catchup_never_raises_on_a_broken_database():
             raise RuntimeError("no database")
 
     assert scheduler._backup_catchup_due(Broken(), 0, 0) is False
+
+
+# --- the wake-up race: two paths, one backup ------------------------------
+# Found on a real install 2026-08-29. The machine woke, the cron trigger and
+# the tick both fired in the SAME SECOND, and the log recorded two backups
+# (one failed with "Another backup ... is already running") and two
+# self-checks, one of which pinged twice. Both paths had read "not done yet"
+# before either committed, so the due-checks alone could not prevent it.
+
+def test_two_paths_firing_together_produce_exactly_one_backup(blog, monkeypatch):
+    """The regression guard for that night.
+
+    Runs the cron entry point and the tick entry point concurrently, which is
+    what a wake-up does, and requires exactly one backup to result.
+    """
+    import threading
+    import scheduler
+    now = datetime.now()
+    if now.hour < 1:
+        pytest.skip("run before 01:00; today's 00:30 slot has not passed yet")
+    _log_backup(blog, now - timedelta(days=2))
+    monkeypatch.setattr(scheduler, "_parse_hour_minute", lambda s: (0, 30))
+
+    started = []
+    import backup as backup_mod
+
+    def fake_backup(db, **kw):
+        started.append(kw.get("triggered_by"))
+        # Long enough that a genuinely concurrent caller would overlap.
+        import time as _t
+        _t.sleep(0.25)
+        _log_backup(db, datetime.now())
+        return True, "ok"
+
+    monkeypatch.setattr(backup_mod, "run_backup", fake_backup)
+
+    threads = [threading.Thread(target=scheduler._run_backup_if_due,
+                                args=(lambda: blog, lambda c: None))
+               for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(started) == 1, (
+        f"{len(started)} backups started concurrently — the second should have "
+        "seen the first's committed row and done nothing. A duplicate leaves a "
+        "'failed: another backup is already running' row in the history, and "
+        "backup_alert_message() reads the NEWEST row, so it can announce that "
+        "the last backup failed in the same second one succeeded."
+    )
+
+
+def test_two_paths_firing_together_produce_exactly_one_self_check(blog, db, monkeypatch):
+    """Same race, the self-check half — a duplicate here pings twice."""
+    import threading
+    import scheduler
+    now = datetime.now()
+    if now.hour < 1:
+        pytest.skip("run before 01:00; today's 00:30 slot has not passed yet")
+    db.execute("DELETE FROM self_check_log")
+    db.commit()
+    monkeypatch.setattr(scheduler, "_parse_hour_minute", lambda s: (0, 30))
+    monkeypatch.setattr(scheduler, "_self_check_time", lambda h, m: (0, 30))
+
+    ran = []
+
+    def fake_self_check(get_db, close_db, send_heartbeat=True):
+        ran.append(1)
+        import time as _t
+        _t.sleep(0.25)
+        db.execute(
+            "INSERT INTO self_check_log (ran_at, status, findings) VALUES (?,?,?)",
+            (datetime.now().isoformat(timespec="seconds"), "ok", "[]"),
+        )
+        db.commit()
+
+    monkeypatch.setattr(scheduler, "_do_self_check", fake_self_check)
+
+    threads = [threading.Thread(target=scheduler._run_self_check_if_due,
+                                args=(lambda: db, lambda c: None))
+               for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(ran) == 1, (
+        f"{len(ran)} self-checks ran concurrently — each sends a heartbeat, so "
+        "a duplicate pings the receiver twice for one night"
+    )
