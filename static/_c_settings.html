@@ -1,44 +1,215 @@
-{% extends "base.html" %}
-{% block title %}Settings — {{ clinic_name }}{% endblock %}
-{% block content %}
-<div class="page-head"><div><h1>Settings</h1><p class="page-sub">Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.</p></div></div>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings — VetClinicSystem JO</title>
+<meta name="csrf-token" content="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/style.css">
+<script>
+// Applied before first paint so switching themes never shows a flash of the other theme.
+(function() {
+  try {
+    var saved = localStorage.getItem('vetclinicsystemjo-theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
+<script src="/static/vendor/htmx.min.js"></script>
+<script src="/static/motion.js"></script>
+<script src="/static/toast.js"></script>
+</head>
+<body>
+
+<div class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="mobile-topbar-brand">VetClinicSystem JO</span>
+</div>
+<div class="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="app-shell">
+  <nav class="sidebar">
+    <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">&times;</button>
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11.5L12 4l9 7.5"/>
+          <path d="M4.5 10.5V21h15V10.5"/>
+          <path d="M12 6.5v3M10.5 8h3"/>
+        </svg>
+      </span>
+      <span class="brand-name">VetClinicSystem JO</span>
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="brand-sub">Amman, Jordan</div>
+
+    <div class="nav-group">
+      <a class="nav-link " href="/">
+        Dashboard <span class="nav-badge">1</span>
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Patients &amp; Visits</div>
+      <a class="nav-link " href="/owners">Owners</a>
+      <a class="nav-link " href="/patients">Patients</a>
+      <a class="nav-link " href="/visits">Visits</a>
+      <a class="nav-link " href="/followups">Follow-Ups</a>
+      <a class="nav-link " href="/wellness">Wellness</a>
+      <a class="nav-link " href="/grooming">Grooming</a>
+      <a class="nav-link " href="/boarding">Boarding</a>
+      <a class="nav-link " href="/appointments">Appointments</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Inpatient</div>
+      <a class="nav-link " href="/inpatient">Inpatient Cases</a>
+    </div>
+
+    <div class="nav-group" data-collapsible="inventory">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Inventory</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link " href="/inventory-status">Inventory Status</a>
+        <a class="nav-link " href="/ordering-sheet">Ordering Sheet</a>
+        <a class="nav-link " href="/audit-history">Audit History</a>
+        <a class="nav-link " href="/inventory-catalog">Inventory Catalog</a>
+        <a class="nav-link " href="/distributors">Distributors</a>
+      </div>
+    </div>
+
+    
+    
+    <div class="nav-group" data-collapsible="consignment">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Consignment</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/consignment">Overview</a>
+        <a class="nav-link " href="/consignment/items">Items</a>
+        <a class="nav-link " href="/consignment/receiving">Receiving</a>
+        <a class="nav-link " href="/consignment/shrinkage">Shrinkage</a>
+        <a class="nav-link " href="/consignment/returns">Returns</a>
+        <a class="nav-link " href="/consignment/sales">Sales by Distributor</a>
+        
+        
+        <a class="nav-link " href="/consignment">Settlements</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" data-collapsible="sales">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Sales &amp; Billing</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link " href="/pos">Point of Sale</a>
+        <a class="nav-link " href="/pos/history">Sales History</a>
+        
+        <a class="nav-link " href="/price-list">Price List</a>
+        
+        
+        <a class="nav-link " href="/refunds">Refunds</a>
+        
+        
+        <a class="nav-link " href="/cash-register">Cash Register</a>
+        
+        
+        <a class="nav-link " href="/reports">Monthly P&amp;L</a>
+        <a class="nav-link " href="/reports/yearly">Yearly P&amp;L</a>
+        
+        
+        <a class="nav-link " href="/insights">Insights</a>
+        <a class="nav-link " href="/retention">Retention</a>
+        
+      </div>
+    </div>
+
+    
+    <div class="nav-group" data-collapsible="admin">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Admin</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/admin/users">Users &amp; Roles</a>
+        
+        
+        <a class="nav-link " href="/admin/logs">Logins and Changes</a>
+        
+        
+        <a class="nav-link active" href="/settings">Settings</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" style="margin-top:auto;">
+      <a class="nav-link " href="/change-password">Test Admin · Admin</a>
+      <a class="nav-link" href="/logout">Log Out</a>
+    </div>
+  </nav>
+
+  <main class="main ">
+    
+      
+    
+    
+<div class="page-head"><div><h1>Settings</h1><p class="page-sub">Staff on the clinic network can reach this app at <strong>http://192.168.1.169:5092</strong>.</p></div></div>
 
 <div class="settings-stack">
 <div class="card has-save-bar">
 <div class="settings-card-head"><h2>Clinic Settings</h2><span class="settings-tag saved">Saved with the button below</span></div>
 <p class="small muted" style="margin:2px 0 0;">Nothing here takes effect until you press Save Settings.</p>
 <form method="post" data-track-unsaved>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
   <div class="section-title">Clinic</div>
   <div class="form-grid">
-    <div class="field"><label>Clinic Name</label><input name="clinic_name" value="{{ settings.clinic_name }}"></div>
-    <div class="field"><label>Location</label><input name="clinic_location" value="{{ settings.clinic_location }}"></div>
-    <div class="field"><label>Clinic Opening Date</label><input type="date" name="opening_date" value="{{ settings.opening_date }}"></div>
+    <div class="field"><label>Clinic Name</label><input name="clinic_name" value=""></div>
+    <div class="field"><label>Location</label><input name="clinic_location" value=""></div>
+    <div class="field"><label>Clinic Opening Date</label><input type="date" name="opening_date" value=""></div>
   </div>
 
   <div class="section-title">Inventory Alerts</div>
   <div class="form-grid">
-    <div class="field"><label>Audit Overdue After (Days)</label><input type="number" name="audit_overdue_days" value="{{ settings.audit_overdue_days }}" min="1" max="3650" step="1"></div>
-    <div class="field"><label>Expiry Warning Window (Days)</label><input type="number" name="expiry_soon_days" value="{{ settings.expiry_soon_days }}" min="1" max="3650" step="1"></div>
+    <div class="field"><label>Audit Overdue After (Days)</label><input type="number" name="audit_overdue_days" value="" min="1" max="3650" step="1"></div>
+    <div class="field"><label>Expiry Warning Window (Days)</label><input type="number" name="expiry_soon_days" value="" min="1" max="3650" step="1"></div>
   </div>
 
   <div class="section-title">Appointments</div>
   <div class="form-grid">
-    <div class="field"><label>Day Starts At</label><input type="time" name="appt_start_time" value="{{ settings.appt_start_time }}"></div>
-    <div class="field"><label>Day Ends At</label><input type="time" name="appt_end_time" value="{{ settings.appt_end_time }}"></div>
-    <div class="field"><label>Slot Length (Minutes)</label><input type="number" name="appt_slot_minutes" value="{{ settings.appt_slot_minutes }}" min="5" max="240" step="1"></div>
+    <div class="field"><label>Day Starts At</label><input type="time" name="appt_start_time" value=""></div>
+    <div class="field"><label>Day Ends At</label><input type="time" name="appt_end_time" value=""></div>
+    <div class="field"><label>Slot Length (Minutes)</label><input type="number" name="appt_slot_minutes" value="" min="5" max="240" step="1"></div>
   </div>
 
   <div class="section-title">Backups</div>
   <div class="form-grid">
     <div class="field full"><label>Backup Folder (on this computer)</label>
       <div style="display:flex; gap:8px;">
-        <input name="backup_dir" id="backupDirInput" placeholder="e.g. /Users/you/VetClinicSystemJOBackups or D:\VetClinicSystemJOBackups" value="{{ settings.backup_dir }}" style="flex:1;">
+        <input name="backup_dir" id="backupDirInput" placeholder="e.g. /Users/you/VetClinicSystemJOBackups or D:\VetClinicSystemJOBackups" value="" style="flex:1;">
         <button class="btn secondary" type="button" onclick="openFolderBrowser('backupDirInput', {filePicker:false})">Browse…</button>
       </div>
     </div>
-    <div class="field"><label>Nightly Backup Time</label><input type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
-    <div class="field"><label>Keep Last N Backups</label><input type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
+    <div class="field"><label>Nightly Backup Time</label><input type="time" name="backup_time" value="02:00"></div>
+    <div class="field"><label>Keep Last N Backups</label><input type="number" name="backup_retention" value="30" min="1" max="3650" step="1"></div>
   </div>
 
   <div class="section-title">Health Check</div>
@@ -51,7 +222,7 @@
     <div class="field">
       <label>Warn If No Backup For (Days)</label>
       <input type="number" name="selfcheck_backup_max_age_days"
-             value="{{ settings.selfcheck_backup_max_age_days or 2 }}" min="1" max="30" step="1">
+             value="2" min="1" max="30" step="1">
     </div>
     <div class="field">
       <label>Daily Health Check</label>
@@ -61,7 +232,7 @@
       <input type="hidden" name="selfcheck_present" value="1">
       <label class="small" style="display:flex; align-items:center; gap:8px; font-weight:400;">
         <input type="checkbox" name="selfcheck_enabled" value="1"
-               {% if settings.selfcheck_enabled != '0' %}checked{% endif %}>
+               checked>
         Run the daily health check and show its warnings
       </label>
     </div>
@@ -78,20 +249,20 @@
     <div class="field full">
       <label>Monitoring Ping URL</label>
       <input name="heartbeat_url" type="url" placeholder="https://… (leave blank to disable)"
-             value="{{ settings.heartbeat_url or '' }}" autocomplete="off" spellcheck="false">
+             value="" autocomplete="off" spellcheck="false">
       <p class="small muted" style="margin:6px 0 0;">
         Must start with <code>https://</code>. Use a different URL for each clinic, so an alert
         can say which one went quiet. <strong>Treat it like a password</strong> — anyone who has
         it can send a fake ping and stop a real alert from ever reaching you.
       </p>
     </div>
-    {% if settings.heartbeat_install_id %}
+    
     <div class="field full">
       <label>This Install's ID</label>
-      <div class="small" style="font-family:monospace; padding:8px 10px; background:var(--muted-tint); border-radius:6px;">{{ settings.heartbeat_install_id }}</div>
+      <div class="small" style="font-family:monospace; padding:8px 10px; background:var(--muted-tint); border-radius:6px;">0241E81E</div>
       <p class="small muted" style="margin:6px 0 0;">Included in every ping so one monitoring account can watch several clinics.</p>
     </div>
-    {% endif %}
+    
   </div>
 
   <div class="settings-save-bar">
@@ -105,45 +276,22 @@
 <div class="card">
 <div class="settings-card-head"><h2>Backups &amp; Restore</h2><span class="settings-tag now">Runs when you click</span></div>
 <p class="small muted" style="margin:2px 0 0;">The backup history and the restore that reads it, beside the folder they use.</p>
-<form method="post" action="{{ url_for('settings_backup_now') }}" id="backupNowForm" style="margin-top:10px;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<form method="post" action="/settings/backup-now" id="backupNowForm" style="margin-top:10px;">
+      <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
   <button class="btn secondary" type="submit" id="backupNowBtn" data-saving-label="Backing up…"
-          {{ 'disabled' if not settings.backup_dir }}>Back Up Now</button>
-  {% if not settings.backup_dir %}
+          disabled>Back Up Now</button>
+  
   <p class="small muted" style="margin:6px 0 0;">Set a backup folder above and save, then you can back up.</p>
-  {% endif %}
+  
 </form>
 <div id="backupProgress" class="vz-progress-panel" style="display:none;"></div>
 
 
-{% if recent_backups %}
-<div class="section-title">Recent Backups</div>
-<div class="table-wrap">
-<table>
-  <thead><tr><th>Started</th><th>Triggered By</th><th>Status</th><th>Size</th><th>File</th></tr></thead>
-  <tbody>
-    {% for b in recent_backups %}
-    <tr>
-      <td>{{ b.started_at }}</td>
-      <td class="muted">{{ (b.triggered_by or "—") | title }}</td>
-      <td>{% if b.status == 'success' %}<span class="badge">Success</span>{% elif b.status == 'failed' %}<span class="badge danger">Failed — {{ b.error }}</span>{% else %}<span class="badge warn">Running</span>{% endif %}</td>
-      <td>{{ (b.filesize_bytes / 1024 / 1024) | round(1) if b.filesize_bytes else "—" }}{% if b.filesize_bytes %} MB{% endif %}</td>
-      <td class="muted">{{ b.filepath or "—" }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-</div>
-{% endif %}
+
 
 
 <div class="section-title">Restore From Backup</div>
-{% if incomplete_restore %}
-<div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:12px;">
-  A restore may not have completed — the app was stopped or crashed partway through the last one.
-  Check the database carefully before continuing to use the app.
-</div>
-{% endif %}
+
 <p class="small muted" style="margin-top:-6px;">
   Replaces <strong>all</strong> current data in VetClinicSystem JO with the contents of a backup file. This can't be undone —
   take a fresh backup first if you're not sure. Uploaded files (X-rays, lab results) aren't part of the backup
@@ -159,40 +307,23 @@
     </div>
   </div>
 </div>
-<form method="post" action="{{ url_for('settings_restore_now') }}" id="restoreForm" style="margin-top:10px;"
+<form method="post" action="/settings/restore-now" id="restoreForm" style="margin-top:10px;"
       data-confirm="This replaces ALL current data in VetClinicSystem JO with the contents of this backup file, and cannot be undone. Everything added or changed since that backup was taken will be lost. Continue?">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
   <input type="hidden" name="source_file" id="restoreSourceFile">
   <button class="btn danger" type="submit" id="restoreSubmitBtn" data-saving-label="Restoring…" disabled>Restore Now</button>
 </form>
 <div id="restoreProgress" class="vz-progress-panel" style="display:none;"></div>
 
 
-{% if recent_restores %}
-<div class="section-title">Recent Restores</div>
-<div class="table-wrap">
-<table>
-  <thead><tr><th>Started</th><th>Triggered By</th><th>Status</th><th>Source File</th></tr></thead>
-  <tbody>
-    {% for r in recent_restores %}
-    <tr>
-      <td>{{ r.started_at }}</td>
-      <td class="muted">{{ (r.triggered_by or "—") | title }}</td>
-      <td>{% if r.status == 'success' %}<span class="badge">Success</span>{% else %}<span class="badge danger">Failed — {{ r.error }}</span>{% endif %}</td>
-      <td class="muted">{{ r.source_file or "—" }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-</div>
-{% endif %}
+
 </div>
 
 <div class="card">
 <div class="settings-card-head"><h2>Updates</h2><span class="settings-tag now">Runs when you click</span></div>
 <div class="section-title">Updates</div>
 <div id="updatesConfigured" style="display:none;">
-  <div class="detail-item"><div class="k">Current Version</div><div class="v" id="updCurrentVersion">VetClinicSystem JO v{{ app_version }}</div></div>
+  <div class="detail-item"><div class="k">Current Version</div><div class="v" id="updCurrentVersion">VetClinicSystem JO v1.8.10</div></div>
   <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
     <button class="btn secondary" type="button" id="updCheckBtn" onclick="checkForUpdates()">Check for Updates</button>
     <span id="updCheckStatus" class="small muted"></span>
@@ -219,36 +350,25 @@
 
 <div class="card">
 <div class="settings-card-head"><h2>Startup &amp; Shutdown</h2><span class="settings-tag now">Applies immediately</span></div>
-{# This section is deliberately its own <form>, separate from the tracked
-   settings form above (data-track-unsaved marks that whole form "dirty"
-   on ANY field change inside it, which would make submitting this
-   checkbox's own form get caught by that same form's "you have unsaved
-   changes elsewhere" guard the instant the checkbox was touched). It's
-   also a genuinely different kind of action anyway: an OS-level toggle
-   (installing/removing a login item) that applies immediately, not a
-   settings-table field waiting on a general Save Settings click. #}
+
 <div class="section-title">Startup &amp; Shutdown</div>
-<form method="post" action="{{ url_for('settings_autostart') }}" id="autostartForm">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<form method="post" action="/settings/autostart" id="autostartForm">
+  <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
   <div class="form-grid">
     <div class="field full">
       <label class="radio-row" style="font-weight:600;">
         <input type="checkbox" name="autostart_enabled" id="autostartCheckbox"
-               {% if autostart_enabled %}checked{% endif %}
-               {% if not autostart_supported %}disabled{% endif %}
+               checked
+               
                onchange="document.getElementById('autostartForm').requestSubmit();">
         Start VetClinicSystem JO automatically when this computer starts
       </label>
-      {% if autostart_supported %}
+      
       <p class="small muted" style="margin:4px 0 0;">
         On shutdown or restart, the app closes its database connections cleanly before the
         computer powers off, so nothing is left mid-write.
       </p>
-      {% else %}
-      <p class="small muted" style="margin:4px 0 0;">
-        Not available on this operating system — start VetClinicSystem JO manually using the launcher.
-      </p>
-      {% endif %}
+      
     </div>
   </div>
 </form>
@@ -452,7 +572,7 @@ document.getElementById('restoreForm').addEventListener('submit', async function
   }
 });
 </script>
-<script src="{{ url_for('static', filename='progress.js') }}"></script>
+<script src="/static/progress.js"></script>
 
 
 </div>
@@ -627,5 +747,66 @@ function folderBrowserSelectFile(fullPath) {
   window.VZSpring.present(document.getElementById('folderBrowserModal'), false, {});
 }
 </script>
-<script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
-{% endblock %}
+<script src="/static/unsaved-changes-form.js"></script>
+
+  </main>
+</div>
+<script>
+function toggleSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.toggle('open');
+  backdrop.classList.toggle('open');
+}
+function closeSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.remove('open');
+  backdrop.classList.remove('open');
+}
+function toggleTheme() {
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  try { localStorage.setItem('vetclinicsystemjo-theme', isDark ? 'light' : 'dark'); } catch (e) {}
+}
+document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
+  link.addEventListener('click', closeSidebar);
+});
+</script>
+<script src="/static/ui.js"></script>
+
+<script>
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+</script>
+<script>
+(function() {
+  var token = document.querySelector('meta[name="csrf-token"]').content;
+  document.querySelectorAll('form').forEach(function(form) {
+    var method = (form.getAttribute('method') || 'get').toLowerCase();
+    if (method !== 'post') return;
+    if (form.querySelector('input[name="csrf_token"]')) return;
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'csrf_token';
+    input.value = token;
+    form.appendChild(input);
+  });
+})();
+</script>
+<script src="/static/upload-progress.js"></script>
+</body>
+</html>

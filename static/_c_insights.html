@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loading Insights — VetClinicSystem JO</title>
+<meta name="csrf-token" content="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/style.css">
+<script>
+// Applied before first paint so switching themes never shows a flash of the other theme.
+(function() {
+  try {
+    var saved = localStorage.getItem('vetclinicsystemjo-theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
+<script src="/static/vendor/htmx.min.js"></script>
+<script src="/static/motion.js"></script>
+<script src="/static/toast.js"></script>
+</head>
+<body>
+
+<div class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="mobile-topbar-brand">VetClinicSystem JO</span>
+</div>
+<div class="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="app-shell">
+  <nav class="sidebar">
+    <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">&times;</button>
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11.5L12 4l9 7.5"/>
+          <path d="M4.5 10.5V21h15V10.5"/>
+          <path d="M12 6.5v3M10.5 8h3"/>
+        </svg>
+      </span>
+      <span class="brand-name">VetClinicSystem JO</span>
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="brand-sub">Amman, Jordan</div>
+
+    <div class="nav-group">
+      <a class="nav-link " href="/">
+        Dashboard <span class="nav-badge">1</span>
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Patients &amp; Visits</div>
+      <a class="nav-link " href="/owners">Owners</a>
+      <a class="nav-link " href="/patients">Patients</a>
+      <a class="nav-link " href="/visits">Visits</a>
+      <a class="nav-link " href="/followups">Follow-Ups</a>
+      <a class="nav-link " href="/wellness">Wellness</a>
+      <a class="nav-link " href="/grooming">Grooming</a>
+      <a class="nav-link " href="/boarding">Boarding</a>
+      <a class="nav-link " href="/appointments">Appointments</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Inpatient</div>
+      <a class="nav-link " href="/inpatient">Inpatient Cases</a>
+    </div>
+
+    <div class="nav-group" data-collapsible="inventory">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Inventory</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link " href="/inventory-status">Inventory Status</a>
+        <a class="nav-link " href="/ordering-sheet">Ordering Sheet</a>
+        <a class="nav-link " href="/audit-history">Audit History</a>
+        <a class="nav-link " href="/inventory-catalog">Inventory Catalog</a>
+        <a class="nav-link " href="/distributors">Distributors</a>
+      </div>
+    </div>
+
+    
+    
+    <div class="nav-group" data-collapsible="consignment">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Consignment</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/consignment">Overview</a>
+        <a class="nav-link " href="/consignment/items">Items</a>
+        <a class="nav-link " href="/consignment/receiving">Receiving</a>
+        <a class="nav-link " href="/consignment/shrinkage">Shrinkage</a>
+        <a class="nav-link " href="/consignment/returns">Returns</a>
+        <a class="nav-link " href="/consignment/sales">Sales by Distributor</a>
+        
+        
+        <a class="nav-link " href="/consignment">Settlements</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" data-collapsible="sales">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Sales &amp; Billing</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link " href="/pos">Point of Sale</a>
+        <a class="nav-link " href="/pos/history">Sales History</a>
+        
+        <a class="nav-link " href="/price-list">Price List</a>
+        
+        
+        <a class="nav-link " href="/refunds">Refunds</a>
+        
+        
+        <a class="nav-link " href="/cash-register">Cash Register</a>
+        
+        
+        <a class="nav-link " href="/reports">Monthly P&amp;L</a>
+        <a class="nav-link " href="/reports/yearly">Yearly P&amp;L</a>
+        
+        
+        <a class="nav-link active" href="/insights">Insights</a>
+        <a class="nav-link " href="/retention">Retention</a>
+        
+      </div>
+    </div>
+
+    
+    <div class="nav-group" data-collapsible="admin">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Admin</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/admin/users">Users &amp; Roles</a>
+        
+        
+        <a class="nav-link " href="/admin/logs">Logins and Changes</a>
+        
+        
+        <a class="nav-link " href="/settings">Settings</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" style="margin-top:auto;">
+      <a class="nav-link " href="/change-password">Test Admin · Admin</a>
+      <a class="nav-link" href="/logout">Log Out</a>
+    </div>
+  </nav>
+
+  <main class="main ">
+    
+      
+    
+    
+<div class="vz-progress-shell">
+  <h2 style="margin:0;">Loading Insights</h2>
+  <p class="small muted" style="margin:0;">Running six report queries in parallel.</p>
+  <div id="loadingProgress" class="vz-progress-panel"></div>
+</div>
+<script src="/static/progress.js"></script>
+<script>
+(function () {
+  const panel = document.getElementById('loadingProgress');
+  window.VZProgress.poll("c0531892546a", '/jobs/status', {}, {
+    onUpdate: (d) => window.VZProgress.render(panel, d),
+    onDone: () => { window.location = "/insights?job_id=c0531892546a"; },
+    onError: (d) => {
+      window.VZProgress.render(panel, { status: 'error', steps: ['Loading'], current: 0, message: d.message });
+      window.VZToast.show(d.message || 'Something went wrong loading this page.', 'error');
+    },
+  });
+})();
+</script>
+
+  </main>
+</div>
+<script>
+function toggleSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.toggle('open');
+  backdrop.classList.toggle('open');
+}
+function closeSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.remove('open');
+  backdrop.classList.remove('open');
+}
+function toggleTheme() {
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  try { localStorage.setItem('vetclinicsystemjo-theme', isDark ? 'light' : 'dark'); } catch (e) {}
+}
+document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
+  link.addEventListener('click', closeSidebar);
+});
+</script>
+<script src="/static/ui.js"></script>
+
+<script>
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+</script>
+<script>
+(function() {
+  var token = document.querySelector('meta[name="csrf-token"]').content;
+  document.querySelectorAll('form').forEach(function(form) {
+    var method = (form.getAttribute('method') || 'get').toLowerCase();
+    if (method !== 'post') return;
+    if (form.querySelector('input[name="csrf_token"]')) return;
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'csrf_token';
+    input.value = token;
+    form.appendChild(input);
+  });
+})();
+</script>
+<script src="/static/upload-progress.js"></script>
+</body>
+</html>

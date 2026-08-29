@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Point of Sale — VetClinicSystem JO</title>
+<meta name="csrf-token" content="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/style.css">
+<script>
+// Applied before first paint so switching themes never shows a flash of the other theme.
+(function() {
+  try {
+    var saved = localStorage.getItem('vetclinicsystemjo-theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
+<script src="/static/vendor/htmx.min.js"></script>
+<script src="/static/motion.js"></script>
+<script src="/static/toast.js"></script>
+</head>
+<body>
+
+<div class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="mobile-topbar-brand">VetClinicSystem JO</span>
+</div>
+<div class="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="app-shell">
+  <nav class="sidebar">
+    <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">&times;</button>
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11.5L12 4l9 7.5"/>
+          <path d="M4.5 10.5V21h15V10.5"/>
+          <path d="M12 6.5v3M10.5 8h3"/>
+        </svg>
+      </span>
+      <span class="brand-name">VetClinicSystem JO</span>
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="brand-sub">Amman, Jordan</div>
+
+    <div class="nav-group">
+      <a class="nav-link " href="/">
+        Dashboard <span class="nav-badge">1</span>
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Patients &amp; Visits</div>
+      <a class="nav-link " href="/owners">Owners</a>
+      <a class="nav-link " href="/patients">Patients</a>
+      <a class="nav-link " href="/visits">Visits</a>
+      <a class="nav-link " href="/followups">Follow-Ups</a>
+      <a class="nav-link " href="/wellness">Wellness</a>
+      <a class="nav-link " href="/grooming">Grooming</a>
+      <a class="nav-link " href="/boarding">Boarding</a>
+      <a class="nav-link " href="/appointments">Appointments</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Inpatient</div>
+      <a class="nav-link " href="/inpatient">Inpatient Cases</a>
+    </div>
+
+    <div class="nav-group" data-collapsible="inventory">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Inventory</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link " href="/inventory-status">Inventory Status</a>
+        <a class="nav-link " href="/ordering-sheet">Ordering Sheet</a>
+        <a class="nav-link " href="/audit-history">Audit History</a>
+        <a class="nav-link " href="/inventory-catalog">Inventory Catalog</a>
+        <a class="nav-link " href="/distributors">Distributors</a>
+      </div>
+    </div>
+
+    
+    
+    <div class="nav-group" data-collapsible="consignment">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Consignment</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/consignment">Overview</a>
+        <a class="nav-link " href="/consignment/items">Items</a>
+        <a class="nav-link " href="/consignment/receiving">Receiving</a>
+        <a class="nav-link " href="/consignment/shrinkage">Shrinkage</a>
+        <a class="nav-link " href="/consignment/returns">Returns</a>
+        <a class="nav-link " href="/consignment/sales">Sales by Distributor</a>
+        
+        
+        <a class="nav-link " href="/consignment">Settlements</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" data-collapsible="sales">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Sales &amp; Billing</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link active" href="/pos">Point of Sale</a>
+        <a class="nav-link " href="/pos/history">Sales History</a>
+        
+        <a class="nav-link " href="/price-list">Price List</a>
+        
+        
+        <a class="nav-link " href="/refunds">Refunds</a>
+        
+        
+        <a class="nav-link " href="/cash-register">Cash Register</a>
+        
+        
+        <a class="nav-link " href="/reports">Monthly P&amp;L</a>
+        <a class="nav-link " href="/reports/yearly">Yearly P&amp;L</a>
+        
+        
+        <a class="nav-link " href="/insights">Insights</a>
+        <a class="nav-link " href="/retention">Retention</a>
+        
+      </div>
+    </div>
+
+    
+    <div class="nav-group" data-collapsible="admin">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Admin</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/admin/users">Users &amp; Roles</a>
+        
+        
+        <a class="nav-link " href="/admin/logs">Logins and Changes</a>
+        
+        
+        <a class="nav-link " href="/settings">Settings</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" style="margin-top:auto;">
+      <a class="nav-link " href="/change-password">Test Admin · Admin</a>
+      <a class="nav-link" href="/logout">Log Out</a>
+    </div>
+  </nav>
+
+  <main class="main ">
+    
+      
+    
+    
+<div class="page-head"><div><h1>Point of Sale</h1><p class="page-sub">Scan or search a Retail item to add it to the sale.</p></div></div>
+
+<div class="pos-grid">
+  <div class="card">
+    <div class="field" style="margin-bottom:14px;">
+      <label>Scan Barcode or Search Item Name</label>
+      <input type="text" id="posSearch" autocomplete="off" placeholder="Scan Barcode or Type Item Name…" autofocus>
+    </div>
+    <div id="posResults"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Current Sale</div>
+    <div id="cartLines"><div class="empty-note" id="emptyCart">Cart is empty.</div></div>
+    <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
+      <div class="detail-item"><div class="k">Subtotal</div><div class="v" id="cartSubtotal">0 JOD</div></div>
+      <div class="field" style="margin:10px 0;">
+        <label>Discount % (Max 25%)</label>
+        <input type="number" id="discountInput" min="0" max="25" value="0" oninput="renderCart()">
+      </div>
+      <div class="field" style="margin:10px 0;">
+        <label>Clean Up (max 1.000 JOD)</label>
+        <input type="number" id="cleanupInput" step="0.001" min="0" value="0" oninput="renderCart()">
+      </div>
+      <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 JOD</div></div>
+      <div class="field" style="margin:10px 0;">
+        <label>Payment Method</label>
+        <select id="paymentMethod" onchange="toggleCashFields()">
+          <option selected>Cash</option>
+          <option >Card</option>
+          <option >Transfer</option>
+        </select>
+      </div>
+      <div id="cashFields" style="display:;">
+        <div class="field" style="margin:10px 0;">
+          <label>Cash Received (JOD)</label>
+          <input type="number" id="cashReceivedInput" step="0.001" min="0" value="" oninput="renderCart()">
+        </div>
+        <div class="detail-item"><div class="k">Change Due</div><div class="v" style="font-size:18px; font-weight:700;" id="changeDue">—</div></div>
+        <div class="meta small" id="changeNote" style="margin-top:2px;"></div>
+      </div>
+      <form method="post" action="/pos/checkout" id="checkoutForm">
+      <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
+        <input type="hidden" name="idempotency_key" value="66ca905d823c45d8ac725b4faf61da64">
+        <input type="hidden" name="discount_percent" id="discountHidden">
+        <input type="hidden" name="cleanup_amount" id="cleanupHidden">
+        <input type="hidden" name="payment_method" id="paymentHidden">
+        <input type="hidden" name="cash_received" id="cashReceivedHidden">
+        <div id="cartFieldsHidden"></div>
+        <button class="btn" type="submit" id="completeSaleBtn" style="width:100%; justify-content:center;" onclick="return prepareSubmit()">Complete Sale</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+let cart = []; // {id, name, price, qty, stock}
+
+const searchInput = document.getElementById('posSearch');
+const resultsDiv = document.getElementById('posResults');
+let debounceTimer;
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  const q = searchInput.value.trim();
+  if (!q) { resultsDiv.innerHTML = ''; return; }
+  debounceTimer = setTimeout(() => {
+    fetch(`/api/inventory/lookup?barcode=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.id) { addToCart(data); searchInput.value = ''; resultsDiv.innerHTML=''; return; }
+        fetch(`/api/inventory/lookup?q=${encodeURIComponent(q)}`)
+          .then(r => r.json())
+          .then(list => {
+            if (!list.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
+            window.__posSearchResults = list;
+            resultsDiv.innerHTML = list.map((i, idx) =>
+              `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" onclick="addToCart(window.__posSearchResults[this.dataset.idx])">
+                 <div class="who">${escapeHtml(i.name)}</div><div class="meta">${i.price != null ? i.price + ' JOD' : 'no price set'} · stock: ${i.stock ?? '—'}</div>
+               </div>`
+            ).join('');
+          })
+          .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">Could not search inventory; check server connection.</div>'; });
+      })
+      .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">Could not search inventory; check server connection.</div>'; });
+  }, 200);
+});
+
+function addToCart(item) {
+  if (item.price == null) { window.VZToast.show(item.name + ' has no sale price set in the Price List.', 'error'); return; }
+  const existing = cart.find(c => c.id === item.id);
+  if (existing) {
+    if (item.stock != null && existing.qty + 1 > item.stock) { window.VZToast.show(`Only ${item.stock} in stock.`, 'warn'); return; }
+    existing.qty += 1;
+  } else {
+    cart.push({id: item.id, name: item.name, price: item.price, qty: 1, stock: item.stock});
+  }
+  renderCart();
+}
+function changeQty(id, delta) {
+  const line = cart.find(c => c.id === id);
+  const next = line.qty + delta;
+  if (delta > 0 && line.stock != null && next > line.stock) { window.VZToast.show(`Only ${line.stock} in stock.`, 'warn'); return; }
+  line.qty = Math.max(1, next);
+  renderCart();
+}
+function setQty(id, value) {
+  const line = cart.find(c => c.id === id);
+  let qty = parseInt(value, 10);
+  if (!Number.isFinite(qty) || qty < 1) qty = 1;
+  if (line.stock != null && qty > line.stock) { window.VZToast.show(`Only ${line.stock} in stock.`, 'warn'); qty = line.stock; }
+  line.qty = qty;
+  renderCart();
+}
+function removeLine(id) {
+  cart = cart.filter(c => c.id !== id);
+  renderCart();
+}
+function renderCart() {
+  const linesDiv = document.getElementById('cartLines');
+  if (!cart.length) { linesDiv.innerHTML = '<div class="empty-note">Cart is empty.</div>'; }
+  else {
+    linesDiv.innerHTML = cart.map(c => `
+      <div class="pos-cart-line">
+        <div>${escapeHtml(c.name)}<div class="meta small">${c.price} JOD each</div></div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="btn small secondary" type="button" onclick="changeQty('${c.id}',-1)">-</button>
+          <input type="number" min="1" ${c.stock != null ? `max="${c.stock}"` : ''} value="${c.qty}" style="width:56px; text-align:center;" onchange="setQty('${c.id}', this.value)">
+          <button class="btn small secondary" type="button" onclick="changeQty('${c.id}',1)">+</button>
+          <button class="btn small danger" type="button" onclick="removeLine('${c.id}')">×</button>
+        </div>
+      </div>`).join('');
+  }
+  const subtotal = cart.reduce((s,c) => s + c.price * c.qty, 0);
+  const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+  const preCleanupTotal = subtotal * (1 - discount/100);
+  const cleanup = parseFloat(document.getElementById('cleanupInput').value) || 0;
+  // Preview only — pos_checkout() recomputes and validates the
+  // authoritative total (and the Clean Up cap) server-side regardless of
+  // what this hidden field carries, same trust boundary as discount today.
+  const total = Math.max(preCleanupTotal - cleanup, 0);
+  document.getElementById('cartSubtotal').textContent = subtotal.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' JOD';
+  document.getElementById('cartTotal').textContent = total.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' JOD';
+  renderChange(total);
+}
+function toggleCashFields() {
+  const isCash = document.getElementById('paymentMethod').value === 'Cash';
+  document.getElementById('cashFields').style.display = isCash ? '' : 'none';
+  if (!isCash) document.getElementById('cashReceivedInput').value = '';
+  renderCart();
+}
+function renderChange(total) {
+  const changeDueEl = document.getElementById('changeDue');
+  const noteEl = document.getElementById('changeNote');
+  const cashReceived = parseFloat(document.getElementById('cashReceivedInput').value);
+  if (!Number.isFinite(cashReceived) || cashReceived <= 0) {
+    changeDueEl.textContent = '—';
+    noteEl.textContent = '';
+    return;
+  }
+  const change = Math.max(cashReceived - total, 0);
+  changeDueEl.textContent = change.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' JOD';
+  noteEl.textContent = cashReceived < total
+    ? `Cash received is ${(total - cashReceived).toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})} JOD short of the total.`
+    : '';
+}
+function prepareSubmit() {
+  if (!cart.length) { window.VZToast.show('Cart is empty.', 'error'); return false; }
+  document.getElementById('discountHidden').value = document.getElementById('discountInput').value;
+  document.getElementById('cleanupHidden').value = document.getElementById('cleanupInput').value;
+  document.getElementById('paymentHidden').value = document.getElementById('paymentMethod').value;
+  document.getElementById('cashReceivedHidden').value =
+    document.getElementById('paymentMethod').value === 'Cash' ? document.getElementById('cashReceivedInput').value : '';
+  const container = document.getElementById('cartFieldsHidden');
+  container.innerHTML = '';
+  cart.forEach(c => {
+    container.innerHTML += `<input type="hidden" name="item_id" value="${c.id}"><input type="hidden" name="quantity" value="${c.qty}">`;
+  });
+  // Belt-and-suspenders alongside the server-side idempotency check
+  // (pos_checkout()) — stops a double-click from ever firing a second
+  // request in the first place, on top of the server refusing to create
+  // a second sale even if it does.
+  const btn = document.getElementById('completeSaleBtn');
+  if (btn.disabled) return false;
+  // The disabling MUST NOT happen here. A submit button that is disabled
+  // during its own click handler cannot submit its form: the browser checks
+  // the submitter's disabled state when it processes the submit, by which
+  // point this handler has already set it. Doing it here made Complete Sale
+  // silently do nothing at all -- no request, no navigation, no error --
+  // from IQ v1.5.0 / JO v1.1.0 until this fix. It is disabled from the
+  // form's own submit handler below instead, which runs once the
+  // submission is already under way.
+  return true;
+}
+
+  document.getElementById('checkoutForm').addEventListener('submit', function () {
+    // Runs after the submit is committed, so the first click goes through
+    // and any second click is refused by the btn.disabled guard above.
+    document.getElementById('completeSaleBtn').disabled = true;
+  });
+
+</script>
+
+  </main>
+</div>
+<script>
+function toggleSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.toggle('open');
+  backdrop.classList.toggle('open');
+}
+function closeSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.remove('open');
+  backdrop.classList.remove('open');
+}
+function toggleTheme() {
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  try { localStorage.setItem('vetclinicsystemjo-theme', isDark ? 'light' : 'dark'); } catch (e) {}
+}
+document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
+  link.addEventListener('click', closeSidebar);
+});
+</script>
+<script src="/static/ui.js"></script>
+
+<script>
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+</script>
+<script>
+(function() {
+  var token = document.querySelector('meta[name="csrf-token"]').content;
+  document.querySelectorAll('form').forEach(function(form) {
+    var method = (form.getAttribute('method') || 'get').toLowerCase();
+    if (method !== 'post') return;
+    if (form.querySelector('input[name="csrf_token"]')) return;
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'csrf_token';
+    input.value = token;
+    form.appendChild(input);
+  });
+})();
+</script>
+<script src="/static/upload-progress.js"></script>
+</body>
+</html>

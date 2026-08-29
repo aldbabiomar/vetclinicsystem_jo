@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Refunds — VetClinicSystem JO</title>
+<meta name="csrf-token" content="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EQ.dkMvN_6iPsIPzf1F6b5zmfxuTgI">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/style.css">
+<script>
+// Applied before first paint so switching themes never shows a flash of the other theme.
+(function() {
+  try {
+    var saved = localStorage.getItem('vetclinicsystemjo-theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
+<script src="/static/vendor/htmx.min.js"></script>
+<script src="/static/motion.js"></script>
+<script src="/static/toast.js"></script>
+</head>
+<body>
+
+<div class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="mobile-topbar-brand">VetClinicSystem JO</span>
+</div>
+<div class="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="app-shell">
+  <nav class="sidebar">
+    <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">&times;</button>
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11.5L12 4l9 7.5"/>
+          <path d="M4.5 10.5V21h15V10.5"/>
+          <path d="M12 6.5v3M10.5 8h3"/>
+        </svg>
+      </span>
+      <span class="brand-name">VetClinicSystem JO</span>
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="brand-sub">Amman, Jordan</div>
+
+    <div class="nav-group">
+      <a class="nav-link " href="/">
+        Dashboard <span class="nav-badge">1</span>
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Patients &amp; Visits</div>
+      <a class="nav-link " href="/owners">Owners</a>
+      <a class="nav-link " href="/patients">Patients</a>
+      <a class="nav-link " href="/visits">Visits</a>
+      <a class="nav-link " href="/followups">Follow-Ups</a>
+      <a class="nav-link " href="/wellness">Wellness</a>
+      <a class="nav-link " href="/grooming">Grooming</a>
+      <a class="nav-link " href="/boarding">Boarding</a>
+      <a class="nav-link " href="/appointments">Appointments</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Inpatient</div>
+      <a class="nav-link " href="/inpatient">Inpatient Cases</a>
+    </div>
+
+    <div class="nav-group" data-collapsible="inventory">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Inventory</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link " href="/inventory-status">Inventory Status</a>
+        <a class="nav-link " href="/ordering-sheet">Ordering Sheet</a>
+        <a class="nav-link " href="/audit-history">Audit History</a>
+        <a class="nav-link " href="/inventory-catalog">Inventory Catalog</a>
+        <a class="nav-link " href="/distributors">Distributors</a>
+      </div>
+    </div>
+
+    
+    
+    <div class="nav-group" data-collapsible="consignment">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Consignment</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/consignment">Overview</a>
+        <a class="nav-link " href="/consignment/items">Items</a>
+        <a class="nav-link " href="/consignment/receiving">Receiving</a>
+        <a class="nav-link " href="/consignment/shrinkage">Shrinkage</a>
+        <a class="nav-link " href="/consignment/returns">Returns</a>
+        <a class="nav-link " href="/consignment/sales">Sales by Distributor</a>
+        
+        
+        <a class="nav-link " href="/consignment">Settlements</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" data-collapsible="sales">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Sales &amp; Billing</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link " href="/pos">Point of Sale</a>
+        <a class="nav-link " href="/pos/history">Sales History</a>
+        
+        <a class="nav-link " href="/price-list">Price List</a>
+        
+        
+        <a class="nav-link active" href="/refunds">Refunds</a>
+        
+        
+        <a class="nav-link " href="/cash-register">Cash Register</a>
+        
+        
+        <a class="nav-link " href="/reports">Monthly P&amp;L</a>
+        <a class="nav-link " href="/reports/yearly">Yearly P&amp;L</a>
+        
+        
+        <a class="nav-link " href="/insights">Insights</a>
+        <a class="nav-link " href="/retention">Retention</a>
+        
+      </div>
+    </div>
+
+    
+    <div class="nav-group" data-collapsible="admin">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Admin</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/admin/users">Users &amp; Roles</a>
+        
+        
+        <a class="nav-link " href="/admin/logs">Logins and Changes</a>
+        
+        
+        <a class="nav-link " href="/settings">Settings</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" style="margin-top:auto;">
+      <a class="nav-link " href="/change-password">Test Admin · Admin</a>
+      <a class="nav-link" href="/logout">Log Out</a>
+    </div>
+  </nav>
+
+  <main class="main ">
+    
+      
+    
+    
+<div class="page-head"><div><h1>Refunds</h1><p class="page-sub">Refund a retail sale (restores stock, optional) or reduce revenue for a service. Both remove the amount from Monthly &amp; Yearly P&amp;L, in the month the refund is processed.</p></div></div>
+
+<div class="panel-grid">
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Retail Refund</div>
+    <p class="small muted">Look up the original sale by ID, then choose which items and quantities to refund. Stock is only put back if you check "Return to stock".</p>
+
+    <div class="field" style="margin-bottom:14px;">
+      <label>Sale ID</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="refundSaleId" autocomplete="off" placeholder="e.g. 1042" style="flex:1;">
+        <button type="button" class="btn secondary" onclick="lookupRefundSale()">Find Sale</button>
+      </div>
+    </div>
+    <div id="refundSaleCleanupNote" class="small" style="display:none; margin-bottom:8px;"></div>
+    <div id="refundSaleLines"><div class="empty-note">Look up a sale to see its refundable items.</div></div>
+
+    <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
+      <div class="detail-item"><div class="k">Refund Total</div><div class="v" id="refundCartTotal" style="font-size:20px; font-weight:700;">0 JOD</div></div>
+
+      <label class="checkbox-row small" style="margin:12px 0; font-weight:500; text-transform:none;">
+        <input type="checkbox" id="restockCheck" checked> Return item(s) to stock
+      </label>
+
+      <form method="post" action="/refunds/retail" id="retailRefundForm">
+      <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EQ.dkMvN_6iPsIPzf1F6b5zmfxuTgI">
+        <input type="hidden" name="sale_id" id="refundSaleIdHidden">
+        <div class="form-grid">
+          <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="2026-08-29"></div>
+          <div class="field"><label>Method</label>
+            <select name="refund_method">
+              <option value="" selected>—</option>
+              <option >Cash</option>
+              <option >Card</option>
+              <option >Transfer</option>
+            </select>
+          </div>
+          <div class="field"><label>Reason (optional)</label><input type="text" name="reason" value="" placeholder="e.g. wrong item, customer changed mind"></div>
+        </div>
+        <input type="hidden" name="restock" id="restockHidden">
+        <div id="refundFieldsHidden"></div>
+        <div class="form-actions">
+          <button class="btn" type="submit" onclick="return prepareRefundSubmit()">Process Retail Refund</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Service Refund</div>
+    <p class="small muted">Removes a revenue amount only — no stock is touched. Link it to a Visit or Inpatient case ID for your own records, if relevant (optional).</p>
+    <form method="post" action="/refunds/service">
+      <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EQ.dkMvN_6iPsIPzf1F6b5zmfxuTgI">
+      <div class="form-grid">
+        <div class="field"><label>Refund Amount (JOD)</label><input type="number" name="amount" min="1" step="0.001" required value=""></div>
+        <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="2026-08-29"></div>
+        <div class="field"><label>Method</label>
+          <select name="refund_method">
+            <option value="" selected>—</option>
+            <option >Cash</option>
+            <option >Card</option>
+            <option >Transfer</option>
+          </select>
+        </div>
+        <div class="field"><label>Visit ID (required — or Inpatient Case ID below)</label><input type="text" name="visit_id" value="" placeholder="e.g. V001"></div>
+        <div class="field"><label>Inpatient Case ID (required — or Visit ID above)</label><input type="text" name="inpatient_case_id" value="" placeholder="e.g. 12"></div>
+        <div class="field" style="grid-column:1/-1;"><label>Reason (optional)</label><input type="text" name="reason" value="" placeholder="e.g. service not completed"></div>
+      </div>
+      <div class="form-actions"><button class="btn" type="submit">Process Service Refund</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="page-head" style="margin-top:6px; align-items:flex-end;">
+  <div class="section-title" style="margin:0;">Recent Refunds</div>
+  <form class="search-bar" method="get" style="margin:0;">
+    <input type="date" name="date" value="">
+    <button class="btn secondary" type="submit">View by Date</button>
+    
+  </form>
+</div>
+
+
+<p class="empty-note">No refunds recorded yet.</p>
+
+
+
+
+<script>
+let refundSaleId = null;
+let refundLines = []; // {sale_item_id, item_id, name, unit_price, quantity, remaining, refundQty}
+
+function lookupRefundSale() {
+  const input = document.getElementById('refundSaleId');
+  const saleId = input.value.trim();
+  const linesDiv = document.getElementById('refundSaleLines');
+  if (!saleId) { window.VZToast.show('Enter a sale ID first.', 'error'); return; }
+  fetch(`/api/sales/${encodeURIComponent(saleId)}/refundable-items`)
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok) { window.VZToast.show(data.error || 'Sale not found.', 'error'); refundSaleId = null; refundLines = []; linesDiv.innerHTML = '<div class="empty-note">Look up a sale to see its refundable items.</div>'; document.getElementById('refundSaleCleanupNote').style.display = 'none'; renderRefundTotal(); return; }
+      refundSaleId = data.sale_id;
+      refundLines = data.lines.map(l => ({ ...l, refundQty: 0 }));
+      const cleanupNote = document.getElementById('refundSaleCleanupNote');
+      if (data.cleanup_amount) {
+        cleanupNote.textContent = `This sale had a ${data.cleanup_amount} JOD Clean Up applied — total refunds against it can't exceed what was actually collected (${data.sale_total} JOD).`;
+        cleanupNote.style.display = 'block';
+      } else {
+        cleanupNote.style.display = 'none';
+      }
+      renderRefundLines();
+    })
+    .catch(() => { window.VZToast.show('Could not look up that sale; check server connection.', 'error'); });
+}
+
+function renderRefundLines() {
+  const linesDiv = document.getElementById('refundSaleLines');
+  if (!refundLines.length) { linesDiv.innerHTML = '<div class="empty-note">This sale has nothing left to refund.</div>'; renderRefundTotal(); return; }
+  linesDiv.innerHTML = `<p class="small muted" style="margin:6px 0;">Sale #${refundSaleId} — set the quantity to refund for each line:</p>` + refundLines.map((l, idx) => `
+    <div class="pos-cart-line">
+      <div>${escapeHtml(l.name)}<div class="meta small">${l.unit_price} JOD each — ${l.remaining} left refundable</div></div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <input type="number" min="0" max="${l.remaining}" step="any" value="${l.refundQty}" style="width:70px;" onchange="setRefundQty(${idx}, this.value)">
+      </div>
+    </div>`).join('');
+  renderRefundTotal();
+}
+
+function setRefundQty(idx, value) {
+  let qty = parseFloat(value);
+  if (isNaN(qty) || qty < 0) qty = 0;
+  if (qty > refundLines[idx].remaining) { window.VZToast.show(`Only ${refundLines[idx].remaining} left refundable for ${refundLines[idx].name}.`, 'warn'); qty = refundLines[idx].remaining; }
+  refundLines[idx].refundQty = qty;
+  renderRefundLines();
+}
+
+function renderRefundTotal() {
+  const total = refundLines.reduce((s, l) => s + l.unit_price * l.refundQty, 0);
+  document.getElementById('refundCartTotal').textContent = total.toLocaleString() + ' JOD';
+}
+
+function prepareRefundSubmit() {
+  const selected = refundLines.filter(l => l.refundQty > 0);
+  if (!refundSaleId || !selected.length) { window.VZToast.show('Look up a sale and enter at least one refund quantity.', 'error'); return false; }
+  document.getElementById('refundSaleIdHidden').value = refundSaleId;
+  document.getElementById('restockHidden').value = document.getElementById('restockCheck').checked ? 'on' : '';
+  const container = document.getElementById('refundFieldsHidden');
+  container.innerHTML = '';
+  selected.forEach(l => {
+    container.innerHTML += `<input type="hidden" name="sale_item_id" value="${l.sale_item_id}"><input type="hidden" name="quantity" value="${l.refundQty}">`;
+  });
+  return true;
+}
+</script>
+
+  </main>
+</div>
+<script>
+function toggleSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.toggle('open');
+  backdrop.classList.toggle('open');
+}
+function closeSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.remove('open');
+  backdrop.classList.remove('open');
+}
+function toggleTheme() {
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  try { localStorage.setItem('vetclinicsystemjo-theme', isDark ? 'light' : 'dark'); } catch (e) {}
+}
+document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
+  link.addEventListener('click', closeSidebar);
+});
+</script>
+<script src="/static/ui.js"></script>
+
+<script>
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+</script>
+<script>
+(function() {
+  var token = document.querySelector('meta[name="csrf-token"]').content;
+  document.querySelectorAll('form').forEach(function(form) {
+    var method = (form.getAttribute('method') || 'get').toLowerCase();
+    if (method !== 'post') return;
+    if (form.querySelector('input[name="csrf_token"]')) return;
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'csrf_token';
+    input.value = token;
+    form.appendChild(input);
+  });
+})();
+</script>
+<script src="/static/upload-progress.js"></script>
+</body>
+</html>

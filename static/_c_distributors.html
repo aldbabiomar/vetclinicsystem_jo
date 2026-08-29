@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Distributors — VetClinicSystem JO</title>
+<meta name="csrf-token" content="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/style.css">
+<script>
+// Applied before first paint so switching themes never shows a flash of the other theme.
+(function() {
+  try {
+    var saved = localStorage.getItem('vetclinicsystemjo-theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
+<script src="/static/vendor/htmx.min.js"></script>
+<script src="/static/motion.js"></script>
+<script src="/static/toast.js"></script>
+</head>
+<body>
+
+<div class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="mobile-topbar-brand">VetClinicSystem JO</span>
+</div>
+<div class="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="app-shell">
+  <nav class="sidebar">
+    <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">&times;</button>
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 11.5L12 4l9 7.5"/>
+          <path d="M4.5 10.5V21h15V10.5"/>
+          <path d="M12 6.5v3M10.5 8h3"/>
+        </svg>
+      </span>
+      <span class="brand-name">VetClinicSystem JO</span>
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="brand-sub">Amman, Jordan</div>
+
+    <div class="nav-group">
+      <a class="nav-link " href="/">
+        Dashboard <span class="nav-badge">1</span>
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Patients &amp; Visits</div>
+      <a class="nav-link " href="/owners">Owners</a>
+      <a class="nav-link " href="/patients">Patients</a>
+      <a class="nav-link " href="/visits">Visits</a>
+      <a class="nav-link " href="/followups">Follow-Ups</a>
+      <a class="nav-link " href="/wellness">Wellness</a>
+      <a class="nav-link " href="/grooming">Grooming</a>
+      <a class="nav-link " href="/boarding">Boarding</a>
+      <a class="nav-link " href="/appointments">Appointments</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Inpatient</div>
+      <a class="nav-link " href="/inpatient">Inpatient Cases</a>
+    </div>
+
+    <div class="nav-group" data-collapsible="inventory">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Inventory</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link " href="/inventory-status">Inventory Status</a>
+        <a class="nav-link " href="/ordering-sheet">Ordering Sheet</a>
+        <a class="nav-link " href="/audit-history">Audit History</a>
+        <a class="nav-link " href="/inventory-catalog">Inventory Catalog</a>
+        <a class="nav-link active" href="/distributors">Distributors</a>
+      </div>
+    </div>
+
+    
+    
+    <div class="nav-group" data-collapsible="consignment">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Consignment</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/consignment">Overview</a>
+        <a class="nav-link " href="/consignment/items">Items</a>
+        <a class="nav-link " href="/consignment/receiving">Receiving</a>
+        <a class="nav-link " href="/consignment/shrinkage">Shrinkage</a>
+        <a class="nav-link " href="/consignment/returns">Returns</a>
+        <a class="nav-link " href="/consignment/sales">Sales by Distributor</a>
+        
+        
+        <a class="nav-link " href="/consignment">Settlements</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" data-collapsible="sales">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Sales &amp; Billing</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        <a class="nav-link " href="/pos">Point of Sale</a>
+        <a class="nav-link " href="/pos/history">Sales History</a>
+        
+        <a class="nav-link " href="/price-list">Price List</a>
+        
+        
+        <a class="nav-link " href="/refunds">Refunds</a>
+        
+        
+        <a class="nav-link " href="/cash-register">Cash Register</a>
+        
+        
+        <a class="nav-link " href="/reports">Monthly P&amp;L</a>
+        <a class="nav-link " href="/reports/yearly">Yearly P&amp;L</a>
+        
+        
+        <a class="nav-link " href="/insights">Insights</a>
+        <a class="nav-link " href="/retention">Retention</a>
+        
+      </div>
+    </div>
+
+    
+    <div class="nav-group" data-collapsible="admin">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">
+        <span>Admin</span>
+        <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="nav-group-links">
+        
+        <a class="nav-link " href="/admin/users">Users &amp; Roles</a>
+        
+        
+        <a class="nav-link " href="/admin/logs">Logins and Changes</a>
+        
+        
+        <a class="nav-link " href="/settings">Settings</a>
+        
+      </div>
+    </div>
+    
+
+    <div class="nav-group" style="margin-top:auto;">
+      <a class="nav-link " href="/change-password">Test Admin · Admin</a>
+      <a class="nav-link" href="/logout">Log Out</a>
+    </div>
+  </nav>
+
+  <main class="main ">
+    
+      
+    
+    
+<div class="page-head">
+  <div>
+    <h1>Distributors</h1>
+    <p class="page-sub">1 on file.</p>
+  </div>
+  <button class="btn" id="newItemBtn" style="display:inline-flex;" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Distributor</button>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card ok">
+    <div class="num">0.000</div>
+    <div class="label">Total Outstanding (JOD)</div>
+  </div>
+  <div class="stat-card"><div class="num">0</div><div class="label">Distributors With a Balance</div></div>
+  <div class="stat-card ">
+    <div class="num">0</div>
+    <div class="label">Fully Unpaid Bills</div>
+  </div>
+</div>
+
+
+
+<form class="search-bar" method="get">
+  <input type="text" name="q" value="" placeholder="Search by Distributor Name…">
+  <button class="btn secondary" type="submit">Search</button>
+  
+</form>
+
+<div class="card" id="newForm" style="display:none; margin-bottom:20px;">
+  <form method="post" action="/distributors/new">
+      <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
+    
+    <div class="form-grid">
+      <div class="field"><label>Distributor Name</label><input required name="name" value=""></div>
+      <div class="field"><label>Contact Person</label><input name="contact_person" value=""></div>
+      <div class="field"><label>Phone</label><input name="phone" value="" data-phone-field></div>
+      <div class="field"><label>Email</label><input type="email" name="email" value=""></div>
+      <div class="field"><label>Product Catalog Link</label><input name="catalog_link" value=""></div>
+      <div class="field"><label>Lead Time (Days)</label><input type="number" name="lead_time_days" value=""></div>
+      <div class="field"><label>Payment Terms</label><input name="payment_terms" value="" placeholder="E.g. Net 30"></div>
+      <div class="field full"><label>Notes</label><input name="notes" value=""></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Add Distributor</button>
+      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>ID</th><th>Name</th><th>Contact</th><th>Phone</th><th>Email</th><th class="num-col">Lead Time</th><th>Terms</th><th class="num-col">Outstanding (JOD)</th><th></th>
+  </tr></thead>
+  <tbody>
+    
+    
+    <form id="edit-D7F478106" method="post" action="/distributors/D7F478106/edit">
+      <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38"></form>
+    <tr>
+      <td class="muted">D7F478106</td>
+      <td><input form="edit-D7F478106" name="name" value="Test Dist D7F478106" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td><input form="edit-D7F478106" name="contact_person" value="" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td><input form="edit-D7F478106" name="phone" value="" style="border:none; background:transparent; padding:2px; width:110px;" data-phone-field></td>
+      <td><input form="edit-D7F478106" name="email" value="" style="border:none; background:transparent; padding:2px; width:100%;"></td>
+      <td class="num-col"><input form="edit-D7F478106" type="number" name="lead_time_days" value="" style="border:none; background:transparent; padding:2px; width:50px; text-align:right;"></td>
+      <td><input form="edit-D7F478106" name="payment_terms" value="" style="border:none; background:transparent; padding:2px; width:80px;"></td>
+      <td class="num-col">—</td>
+      <td style="white-space:nowrap;">
+        <a class="btn small secondary" href="/distributors/D7F478106">Ledger</a>
+        <button class="btn small secondary" form="edit-D7F478106" type="submit">Save</button>
+        <form method="post" action="/distributors/D7F478106/delete" style="display:inline;" data-confirm="Delete Test Dist D7F478106?">
+      <input type="hidden" name="csrf_token" value="ImVmY2IzMGE5YWM5YzM4ZjU1NGQ2NzY4YmQxYTM1N2Q3YjEzZWYyNzki.apI5EA._FcoJjw5u8uDb4xWdVbBkzfia38">
+          <button class="btn small danger" type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    
+  </tbody>
+</table>
+</div>
+<script src="/static/phone-validate.js"></script>
+
+  </main>
+</div>
+<script>
+function toggleSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.toggle('open');
+  backdrop.classList.toggle('open');
+}
+function closeSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.remove('open');
+  backdrop.classList.remove('open');
+}
+function toggleTheme() {
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  try { localStorage.setItem('vetclinicsystemjo-theme', isDark ? 'light' : 'dark'); } catch (e) {}
+}
+document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
+  link.addEventListener('click', closeSidebar);
+});
+</script>
+<script src="/static/ui.js"></script>
+
+<script>
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+</script>
+<script>
+(function() {
+  var token = document.querySelector('meta[name="csrf-token"]').content;
+  document.querySelectorAll('form').forEach(function(form) {
+    var method = (form.getAttribute('method') || 'get').toLowerCase();
+    if (method !== 'post') return;
+    if (form.querySelector('input[name="csrf_token"]')) return;
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'csrf_token';
+    input.value = token;
+    form.appendChild(input);
+  });
+})();
+</script>
+<script src="/static/upload-progress.js"></script>
+</body>
+</html>
