@@ -26,7 +26,7 @@
   {% if search %}<a class="btn secondary" href="{{ url_for('price_list', category=active_cat) }}">Clear</a>{% endif %}
 </form>
 
-<div class="card" id="newForm" style="display:{{ 'block' if show_new_form else 'none' }}; margin-bottom:20px;">
+<div class="card" id="newForm" style="display:{{ 'block' if show_new_form else 'none' }}; margin-bottom:16px;">
   <form method="post" action="{{ url_for('price_list_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if show_new_form else None %}

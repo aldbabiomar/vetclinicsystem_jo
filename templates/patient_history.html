@@ -7,7 +7,7 @@
 </div>
 
 {% for e in events %}
-<div class="card" style="margin-bottom:14px;">
+<div class="card" style="margin-bottom:16px;">
   <div style="display:flex; justify-content:space-between; align-items:baseline;">
     <div><span class="badge {{ 'primary' if e.kind=='Visit' else 'warn' }}">{{ e.kind }}</span> <strong style="margin-left:8px;">{{ e.date or "—" }}</strong></div>
     {% if e.kind == 'Visit' %}<a href="{{ url_for('visit_detail', visit_id=e.record.id) }}">Open visit →</a>

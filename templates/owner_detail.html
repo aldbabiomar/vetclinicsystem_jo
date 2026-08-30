@@ -5,7 +5,7 @@
   <div><h1>{{ owner.name }}</h1><p class="page-sub">{{ owner.id }} · {{ owner.phone or "no phone on file" }}</p></div>
   <a class="btn secondary" href="{{ url_for('owner_edit', owner_id=owner.id) }}">Edit Owner</a>
 </div>
-<div class="card" style="margin-bottom:20px;">
+<div class="card" style="margin-bottom:16px;">
   <div class="detail-grid">
     <div class="detail-item"><div class="k">Address</div><div class="v">{{ owner.address or "—" }}</div></div>
     <div class="detail-item"><div class="k">Notes</div><div class="v">{{ owner.notes or "—" }}</div></div>

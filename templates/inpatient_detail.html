@@ -57,7 +57,7 @@
   </div>
   <div class="section-title">Last 3 Days</div>
   {% for u in recent_updates %}
-  <div class="card" style="margin-bottom:10px;">
+  <div class="card" style="margin-bottom:16px;">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
       <div style="flex:1;">
         <div class="small muted">{{ u.timestamp[:16] }} · {{ u.full_name or "—" }}</div>
@@ -81,7 +81,7 @@
     <div id="fullDailyLog" style="display:none; margin-top:14px;">
       <div class="section-title">Earlier Entries</div>
       {% for u in updates[3:] %}
-      <div class="card" style="margin-bottom:10px;">
+      <div class="card" style="margin-bottom:16px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
           <div style="flex:1;">
             <div class="small muted">{{ u.timestamp[:16] }} · {{ u.full_name or "—" }}</div>

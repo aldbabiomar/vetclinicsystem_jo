@@ -44,7 +44,7 @@
   {% if search %}<a class="btn secondary" href="{{ url_for('distributors_list') }}">Clear</a>{% endif %}
 </form>
 
-<div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:20px;">
+<div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:16px;">
   <form method="post" action="{{ url_for('distributor_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if open_new_form else None %}
