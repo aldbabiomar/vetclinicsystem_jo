@@ -146,6 +146,22 @@ def _check_backup_dir(ctx):
             "No backup folder is configured — set one on the Settings page.",
         )
     if not os.path.isdir(backup_dir):
+        # Creating it is right on a FIRST run -- the admin set a path and no
+        # backup has been written there yet. It is wrong once backups have
+        # been written there, because then the folder going missing means the
+        # destination went away, and silently recreating it papers over
+        # exactly the fault worth reporting: a synced folder (Drive/OneDrive)
+        # that unlinked, or a folder someone moved. Backups would keep
+        # "succeeding" into a fabricated local directory while the off-site
+        # copy the clinic believes in quietly stopped.
+        if ctx.get("backups_written_here"):
+            return _finding(
+                "backup_dir_missing", "fail",
+                "The backup folder is gone. Backups were being written there, "
+                "so this is a folder that disappeared rather than one not set "
+                "up yet — check whether the drive or synced folder is still "
+                "connected before anything writes a new one.",
+            )
         try:
             os.makedirs(backup_dir, exist_ok=True)
         except OSError as e:
@@ -267,9 +283,35 @@ def _check_restore_unverified(ctx):
     return None
 
 
+def _check_backup_file_missing(ctx):
+    """The newest successful backup must still exist on disk.
+
+    Everything else here trusts backup_log, which lives in the database -- so
+    every .dump file could be deleted and this feature would report `ok`.
+    Layer 4 would catch it eventually, but its cadence is monthly, which is a
+    long time to believe in backups that are not there. This is one
+    os.path.isfile.
+    """
+    row = ctx["last_success"]
+    if row is None:
+        return None
+    path = row["filepath"]
+    if not path:
+        return None
+    if os.path.isfile(path):
+        return None
+    return _finding(
+        "backup_file_missing", "fail",
+        "The most recent backup is recorded as successful but its file is no "
+        "longer on disk. Something removed it, or the folder it was written "
+        "to is no longer the same folder.",
+    )
+
+
 _CHECKS = (
     _check_backup_never,
     _check_backup_stale,
+    _check_backup_file_missing,
     _check_backup_failing,
     _check_backup_stranded,
     _check_backup_dir,
@@ -278,6 +320,23 @@ _CHECKS = (
     _check_update_rolled_back,
     _check_restore_unverified,
 )
+
+
+def _backups_written_here(recent, backup_dir):
+    """True when a successful backup has been recorded inside backup_dir --
+    i.e. the folder is an established destination, not one just configured."""
+    if not backup_dir:
+        return False
+    try:
+        target = os.path.abspath(backup_dir)
+        for r in recent:
+            if r["status"] != "success" or not r["filepath"]:
+                continue
+            if os.path.abspath(os.path.dirname(r["filepath"])) == target:
+                return True
+    except Exception:
+        return False
+    return False
 
 
 def _gather(db):
@@ -293,6 +352,8 @@ def _gather(db):
         "last_success": last_success,
         "recent_backups": recent,
         "backup_dir": logic.get_setting(db, "backup_dir"),
+        "backups_written_here": _backups_written_here(
+            recent, logic.get_setting(db, "backup_dir")),
         "backup_max_age_days": logic.int_setting(
             db, "selfcheck_backup_max_age_days", BACKUP_MAX_AGE_DEFAULT
         ),

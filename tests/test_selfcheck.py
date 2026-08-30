@@ -434,3 +434,85 @@ def test_the_streak_is_broken_by_the_latest_result_of_that_day(env):
     _record(db, 0, "fail", minute=5)
     _record(db, 0, "ok", minute=30)
     assert selfcheck.consecutive_fail_days(db) == 0
+
+
+# --- a destination that went away must not be papered over ----------------
+# Found 2026-08-30 while setting up soak Test C: renaming the backup folder
+# away produced status "ok". os.makedirs recreated it one minute later and the
+# write probe then passed. The README recommends a synced folder (Drive /
+# OneDrive) as the off-site strategy, so the realistic case is that folder
+# unlinking -- after which backups keep "succeeding" into a fabricated local
+# directory while the off-site copy silently stops.
+
+def test_a_folder_that_held_backups_is_not_silently_recreated(env, tmp_path):
+    import selfcheck
+    db = env["db"]
+    gone = tmp_path / "was_on_a_synced_drive"
+    gone.mkdir()
+    _set(db, "backup_dir", str(gone))
+    # a backup was written there, so this folder is an established destination
+    db.execute(
+        "INSERT INTO backup_log (started_at, finished_at, status, filepath) VALUES (?,?,?,?)",
+        (datetime.now().isoformat(timespec="seconds"),
+         datetime.now().isoformat(timespec="seconds"), "success",
+         str(gone / "vetclinicsystem_backup.dump")),
+    )
+    db.commit()
+    gone.rmdir()
+
+    result = selfcheck.run_self_check(db)
+    assert "backup_dir_missing" in codes(result), (
+        "a folder that held backups vanished and was not reported"
+    )
+    assert not gone.exists(), (
+        "the check RECREATED the destination -- backups would keep succeeding "
+        "into a fabricated local folder while the real one stayed gone"
+    )
+
+
+def test_a_brand_new_folder_is_still_created(env, tmp_path):
+    """The control. Creating the folder on a first run is the helpful
+    behaviour and must survive the fix above."""
+    import selfcheck
+    db = env["db"]
+    fresh = tmp_path / "not_made_yet"
+    _set(db, "backup_dir", str(fresh))
+    db.execute("DELETE FROM backup_log")
+    db.commit()
+
+    selfcheck.run_self_check(db)
+    assert fresh.is_dir(), "a first-run folder should still be created"
+
+
+def test_the_newest_backup_file_must_still_exist(env, tmp_path):
+    """Everything else trusts backup_log, which is in the database -- so every
+    .dump could be deleted and this feature would report ok until the monthly
+    verification noticed."""
+    import selfcheck
+    db = env["db"]
+    db.execute(
+        "INSERT INTO backup_log (started_at, finished_at, status, filepath) VALUES (?,?,?,?)",
+        (datetime.now().isoformat(timespec="seconds"),
+         datetime.now().isoformat(timespec="seconds"), "success",
+         str(tmp_path / "deleted_by_someone.dump")),
+    )
+    db.commit()
+    result = selfcheck.run_self_check(db)
+    assert "backup_file_missing" in codes(result)
+    assert severity_of(result, "backup_file_missing") == "fail"
+
+
+def test_a_backup_file_that_is_there_is_not_reported(env, tmp_path):
+    """The control -- otherwise 'file missing' and 'always fires' look the same."""
+    import selfcheck
+    db = env["db"]
+    real = tmp_path / "really_there.dump"
+    real.write_text("x")
+    db.execute(
+        "INSERT INTO backup_log (started_at, finished_at, status, filepath) VALUES (?,?,?,?)",
+        (datetime.now().isoformat(timespec="seconds"),
+         datetime.now().isoformat(timespec="seconds"), "success", str(real)),
+    )
+    db.commit()
+    result = selfcheck.run_self_check(db)
+    assert "backup_file_missing" not in codes(result)
