@@ -598,3 +598,90 @@ def test_the_older_backup_alert_survives_the_self_check_being_switched_off(env, 
         "with the self-check switched off, this alert is the only backup "
         "warning the app has left — it must still appear"
     )
+
+
+# ---------------------------------------------------------------------------
+# One fault must not be printed twice (2026-08-31)
+# ---------------------------------------------------------------------------
+#
+# backup_failing quotes the last attempt's error. When the folder is what
+# vanished, that quote is backup.py's dir-gone paragraph and backup_dir_missing
+# is the same news in its own words, so the banner listed it twice. See
+# _drop_duplicated_cause().
+
+DIR_GONE_ERROR = (
+    "The backup folder is gone. Backups were being written there, so this "
+    "looks like a drive or synced folder that is no longer connected."
+)
+
+
+def _message_of(result, code):
+    for f in result["findings"]:
+        if f["code"] == code:
+            return f["message"]
+    return None
+
+
+def test_backup_failing_drops_its_quote_when_the_folder_finding_explains_it(env, tmp_path):
+    import selfcheck
+    db = env["db"]
+    gone = tmp_path / "was_on_a_synced_drive"
+    gone.mkdir()
+    _set(db, "backup_dir", str(gone))
+    db.execute("DELETE FROM backup_log")
+    # a success inside the folder makes it an established destination, so
+    # _check_backup_dir reports it as vanished rather than recreating it
+    db.execute(
+        "INSERT INTO backup_log (started_at, finished_at, status, filepath) VALUES (?,?,?,?)",
+        (datetime.now().isoformat(timespec="seconds"),
+         datetime.now().isoformat(timespec="seconds"), "success",
+         str(gone / "vetclinicsystem_backup.dump")),
+    )
+    db.commit()
+    for i in range(3):
+        add_backup(db, "failed", hours_ago=i + 1, error=DIR_GONE_ERROR)
+    gone.rmdir()
+
+    result = selfcheck.run_self_check(db)
+
+    assert "backup_dir_missing" in codes(result), (
+        "the folder finding is not present, so this test is not exercising "
+        "the overlap it names"
+    )
+    assert "backup_failing" in codes(result), (
+        "the finding was dropped entirely — the repeat count is the part that "
+        "says this is ongoing, and the 3-day modal escalates on it"
+    )
+    assert DIR_GONE_ERROR not in _message_of(result, "backup_failing"), (
+        "backup_failing still quotes the folder error that the very next "
+        "finding states in full — one fault printed twice"
+    )
+    # Deliberately not DIR_GONE_ERROR: this finding states the same fact in
+    # its OWN wording, which is what made the two read as a repetition. What
+    # matters is that the cause survives somewhere on the banner.
+    assert "backup folder is gone" in _message_of(result, "backup_dir_missing"), (
+        "the cause was dropped from BOTH findings, so nothing on the banner "
+        "now says why backups are failing"
+    )
+
+
+def test_backup_failing_keeps_its_quote_when_it_stands_alone(env):
+    """Control. With no folder finding to explain it, the quoted error is the
+    only reason the admin gets — dropping it would trade a repetition for a
+    mystery."""
+    import selfcheck
+    db = env["db"]
+    db.execute("DELETE FROM backup_log")
+    db.commit()
+    for i in range(3):
+        add_backup(db, "failed", hours_ago=i + 1, error="pg_dump: connection refused")
+
+    result = selfcheck.run_self_check(db)
+
+    assert "backup_dir_missing" not in codes(result), (
+        "the backup folder is fine here — if this fails the control is not "
+        "isolating what it claims to"
+    )
+    assert "pg_dump: connection refused" in _message_of(result, "backup_failing"), (
+        "the error was stripped even though nothing else explains the failure"
+    )

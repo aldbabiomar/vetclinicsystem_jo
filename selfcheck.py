@@ -23,8 +23,14 @@ Design rules, from features/MONITORING_FEATURE_PLAN.md §1:
 * No "row counts look wrong" check. There is no baseline to compare against
   and it would fire on a quiet clinic.
 
-This file is currently identical to IQ's, and that is a verified result
-rather than a copy-paste (CLAUDE.md §1, §2). Every API it touches was
+This file is ALMOST identical to IQ's, and that is a verified result rather
+than a copy-paste (CLAUDE.md §1, §2). **The exception is
+consecutive_fail_days()**, which diverged in the original feature commit and
+was only noticed on 2026-08-31: IQ picks each day's verdict by ran_at
+timestamp, this version by insert order (the rows arrive id DESC). The two
+agree whenever id order and ran_at order agree, which is always in normal
+operation — so this is a robustness gap, not a live bug. IQ's version is the
+better one and should be ported here; see COMPARISON.md §40.5. Every API it touches was
 checked against JO's own code on 2026-08-26: logic.get_setting/int_setting,
 backup.last_backup/recent_backups, the backup_log columns, and
 updater.DATA_DIR all match IQ's exactly — DATA_DIR reads
@@ -363,6 +369,35 @@ def _gather(db):
     }
 
 
+def _drop_duplicated_cause(findings):
+    """backup_failing quotes the error from the most recent attempt, so that
+    on its own it says WHY backups are failing. When the cause is the backup
+    folder itself, that quoted text and _check_backup_dir's own finding are
+    the same paragraph in two wordings, and the banner printed both -- one
+    fault, read twice. Reported 2026-08-31 off a real failing install.
+
+    Only the quote is dropped, never the finding. "All three of the last
+    attempts failed" is information the folder check does not carry: it is
+    what says this is ongoing rather than a one-off, and it is what the
+    3-day modal escalates on.
+
+    Left untouched when backup_failing stands alone -- then the quoted error
+    is the only explanation the admin gets, and dropping it would trade a
+    repetition for a mystery. Same reasoning as _check_backup_dir's, which
+    reports backup_dir_missing or backup_dir_unwritable but never both.
+    """
+    codes = {f["code"] for f in findings}
+    if "backup_failing" not in codes:
+        return findings
+    if not codes & {"backup_dir_missing", "backup_dir_unwritable"}:
+        return findings
+    return [
+        dict(f, message="The last 3 backup attempts all failed.")
+        if f["code"] == "backup_failing" else f
+        for f in findings
+    ]
+
+
 def run_self_check(db):
     """Returns {"status", "ran_at", "findings"[, "disk_free_bytes"]}.
 
@@ -406,6 +441,8 @@ def run_self_check(db):
             )
         if result:
             findings.append(result)
+
+    findings = _drop_duplicated_cause(findings)
 
     status = "ok"
     for f in findings:
