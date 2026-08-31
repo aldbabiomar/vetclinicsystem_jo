@@ -256,3 +256,49 @@ def test_page_templates_extend_the_base_layout():
 def test_templates_are_not_empty():
     empty = [t.name for t in TEMPLATES if not t.read_text().strip()]
     assert not empty, f"empty template(s): {empty}"
+
+
+def test_the_health_banner_is_not_a_flash():
+    """toast.js converts every `main .flash` into a toast and REMOVES it from
+    the page. A health warning must not be one.
+
+    Found 2026-08-31 on a real failing install: the banner used
+    class="flash error", so it was a transient notification that
+    auto-dismissed -- and the class mapping meant the `error` (fail) banner
+    dismissed itself while the milder `warn` one persisted as a "status"
+    toast, i.e. the worse the problem the sooner it disappeared.
+
+    That defeats the feature's premise: the three-day modal exists because "a
+    banner is what is currently being ignored", which requires the banner to
+    still be on the page to ignore. It passed a 2026-08-26 check that asserted
+    on the SERVER-rendered HTML, which the JS then undid.
+
+    This is a static check on purpose. The runtime version can only see a
+    banner when the install happens to be unhealthy, so on a healthy test
+    install it passes while checking nothing.
+    """
+    html = (ROOT / "templates" / "dashboard.html").read_text()
+    start = html.index("{% if self_check %}")
+    end = html.index("{% endif %}", start)
+    block = html[start:end]
+
+    assert "selfcheck-banner" in block, "the health banner lost its own class"
+    assert 'class="flash' not in block and "class='flash" not in block, (
+        "the health banner is a .flash again — toast.js will convert it to a "
+        "toast and remove it from the page, so nobody will see it for more "
+        "than a few seconds"
+    )
+
+
+def test_toast_js_still_only_sweeps_flash_elements():
+    """The control for the test above, and the assumption it rests on.
+
+    If toast.js is ever broadened to sweep more than `main .flash`, the
+    health banner silently becomes a toast again and the guard above stops
+    meaning anything.
+    """
+    js = (ROOT / "static" / "toast.js").read_text()
+    assert 'querySelectorAll("main .flash, .auth-flash-wrap .flash")' in js, (
+        "toast.js's sweep selector changed — recheck that .selfcheck-banner "
+        "is still outside it"
+    )

@@ -36,8 +36,7 @@
 {% endif %}
 
 {% if self_check %}
-<div class="flash {{ 'error' if self_check.status == 'fail' else 'warn' }}"
-     style="{% if self_check.status == 'fail' %}background:var(--danger-tint); color:var(--danger);{% else %}background:var(--warn-tint); color:var(--warn-ink);{% endif %} margin-bottom:16px;">
+<div class="selfcheck-banner {{ 'fail' if self_check.status == 'fail' else 'warn' }}">
   <strong>{{ 'This install needs attention' if self_check.status == 'fail' else 'Health check warning' }}</strong>
   <ul style="margin:6px 0 0; padding-left:20px;">
     {% for f in self_check.findings %}<li>{{ f.message }}</li>{% endfor %}

@@ -752,4 +752,31 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
    comes from the layout, matching .panel-grid's 16px on the Dashboard --
    not a margin on .card, which would double up with the gap wherever cards
    DO sit in a grid. */
-.settings-stack { display: grid; gap: 16px; }
+/* A grid item defaults to min-width:auto, i.e. it refuses to shrink below its
+   own max-content width. Without the minmax(0, 1fr) below, each .card here
+   resolved to max-content, which let the auto-fit .form-grid inside lay out
+   ALL its columns (4 x 260px + gaps = 1056px) instead of collapsing to one --
+   so the redesigned Settings page scrolled sideways at every phone and tablet
+   width. Caught 2026-08-31, once IQ's browser tier could actually run. */
+.settings-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+
+/* ---------------- Health-check banner ----------------
+   Deliberately NOT class="flash". toast.js converts every `main .flash` into
+   a toast and then REMOVES it from the page, so a .flash health warning is a
+   transient notification that auto-dismisses -- and the `error` kind
+   auto-dismisses faster than the milder `status` one, so the worse the
+   problem the sooner it vanished. This must persist until the underlying
+   fault is fixed: the whole reason the 3-day modal exists is that a banner
+   sitting there is the thing being ignored, which requires it to sit there. */
+.selfcheck-banner {
+  padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 16px;
+  font-size: 13.5px; line-height: 1.5;
+  background: var(--warn-tint); color: var(--warn-ink);
+  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+}
+.selfcheck-banner.fail {
+  background: var(--danger-tint); color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 32%, transparent);
+}
+.selfcheck-banner ul { margin: 6px 0 0; padding-left: 20px; }
+.selfcheck-banner a { color: inherit; }
