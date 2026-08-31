@@ -472,6 +472,28 @@ def run_backup(db, dest_dir=None, retention=None, triggered_by=None, on_progress
         maintenance_lock.release()
 
 
+def _backups_written_here(db, dest_dir):
+    """True when backup_log records a successful backup written INTO dest_dir.
+
+    Distinguishes "the admin set a path and nothing has been written there
+    yet" from "the destination this clinic has been backing up to is gone".
+    """
+    if not dest_dir:
+        return False
+    try:
+        target = os.path.abspath(dest_dir)
+        rows = db.execute(
+            "SELECT filepath FROM backup_log WHERE status='success' "
+            "AND filepath IS NOT NULL ORDER BY id DESC LIMIT 50"
+        ).fetchall()
+        for r in rows:
+            if os.path.abspath(os.path.dirname(r["filepath"])) == target:
+                return True
+    except Exception:
+        return False
+    return False
+
+
 def _run_backup_locked(db, dest_dir=None, retention=None, triggered_by=None, on_progress=None):
     """
     Performs one backup, applies retention, and logs the outcome to
@@ -497,6 +519,24 @@ def _run_backup_locked(db, dest_dir=None, retention=None, triggered_by=None, on_
         return False, msg
 
     retention = retention or int(logic.get_setting(db, "backup_retention", "30") or 30)
+
+    # A destination that has held backups and is now missing means the drive
+    # or synced folder went away -- NOT that it needs creating. Recreating it
+    # writes tonight's backup into a fabricated local directory while the
+    # off-site copy the clinic believes in has silently stopped, and every
+    # check downstream then sees a fresh successful backup in a writable
+    # folder and reports healthy. A loud failure is worth far more than a
+    # backup nobody can find. (selfcheck.py makes the same distinction; this
+    # is the copy that matters, because the backup runs first and would
+    # otherwise recreate the folder before the check ever looks.)
+    if not os.path.isdir(dest_dir) and _backups_written_here(db, dest_dir):
+        msg = ("The backup folder is gone. Backups were being written there, "
+               "so this looks like a drive or synced folder that is no longer "
+               "connected — reconnect it, or set a new folder on the Settings "
+               "page. Nothing was written, deliberately: a backup saved "
+               "somewhere unexpected is worse than one that failed loudly.")
+        _log(db, "failed", None, None, msg, triggered_by=triggered_by)
+        return False, msg
 
     step(0)  # Checking backup folder
     try:

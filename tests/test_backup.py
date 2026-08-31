@@ -17,6 +17,8 @@ import os
 import shutil
 import subprocess
 
+from datetime import datetime
+
 import pytest
 
 from conftest import needs_db
@@ -341,3 +343,51 @@ def test_a_stale_running_backup_is_reaped(db, backup_dir, clean_backup_log):
     stuck = db.execute("SELECT count(*) AS c FROM backup_log "
                        "WHERE status='running' AND started_at='2020-01-01T00:00:00'").fetchone()["c"]
     assert stuck == 0, "an old stranded 'running' row was not reaped"
+
+
+# --- the destination the backup itself must not fabricate -----------------
+# Found on soak night 2 (2026-08-31): selfcheck.py had been taught not to
+# recreate a vanished destination, but backup.py had its own os.makedirs and
+# runs FIRST (02:00 backup, 02:20 check). The nightly backup recreated the
+# folder, wrote into it, and the check then saw a fresh successful backup in a
+# writable folder and reported ok. The staged fault healed itself overnight.
+
+def test_backup_refuses_to_recreate_a_destination_that_held_backups(db, tmp_path):
+    """A backup written somewhere nobody expects is worse than one that failed
+    loudly, because everything downstream then reports healthy."""
+    import backup as backup_mod
+    gone = tmp_path / "was_a_synced_folder"
+    gone.mkdir()
+    db.execute("DELETE FROM backup_log")
+    db.execute(
+        "INSERT INTO backup_log (started_at, finished_at, status, filepath) VALUES (?,?,?,?)",
+        (datetime.now().isoformat(timespec="seconds"),
+         datetime.now().isoformat(timespec="seconds"), "success",
+         str(gone / "old.dump")),
+    )
+    db.commit()
+    gone.rmdir()
+
+    ok, msg = backup_mod.run_backup(db, dest_dir=str(gone), triggered_by="nightly")
+    assert ok is False, "the backup silently recreated a destination that vanished"
+    assert not gone.exists(), "the folder was fabricated anyway"
+    assert "gone" in msg.lower() or "no longer connected" in msg.lower()
+
+    row = db.execute(
+        "SELECT status, error FROM backup_log ORDER BY id DESC LIMIT 1").fetchone()
+    assert row["status"] == "failed", (
+        "the refusal must be recorded as a failed backup, or nothing downstream "
+        "ever surfaces it"
+    )
+
+
+def test_backup_still_creates_a_brand_new_folder(db, tmp_path):
+    """The control. A first run must still create the folder it was given --
+    otherwise the fix above just breaks setup."""
+    import backup as backup_mod
+    fresh = tmp_path / "never_used_before"
+    db.execute("DELETE FROM backup_log")
+    db.commit()
+
+    ok, msg = backup_mod.run_backup(db, dest_dir=str(fresh), triggered_by="manual")
+    assert fresh.is_dir(), f"a first-run folder was not created: {msg}"
