@@ -32,6 +32,7 @@ SETTING_KEYS = (
     "migration_failures",
     "last_verified_restore",
     "selfcheck_backup_max_age_days",
+    "selfcheck_enabled",
 )
 
 
@@ -516,3 +517,84 @@ def test_a_backup_file_that_is_there_is_not_reported(env, tmp_path):
     db.commit()
     result = selfcheck.run_self_check(db)
     assert "backup_file_missing" not in codes(result)
+
+
+# ---------------------------------------------------------------------------
+# The health banner and the older backup alert must not say the same thing
+# twice (2026-08-31)
+# ---------------------------------------------------------------------------
+#
+# logic.backup_alert_message() predates Layer 1 and reports the same four
+# situations the backup_* findings do. On a real failing install both fired at
+# once, and because toast.js converts a .flash into a toast, the admin was
+# told the same thing twice in two different shapes on one screen.
+#
+# The suppression is deliberately narrow, so two controls below assert the
+# older alert still appears when the banner is NOT covering backups. Without
+# them, "suppressed correctly" and "deleted entirely" look identical -- and
+# deleting it entirely would mean switching the self-check off silently
+# removes every backup warning in the app.
+
+# Wording unique to backup_alert_message(); nothing in selfcheck.py produces
+# it, so finding it in the HTML identifies that specific alert.
+OLD_ALERT_TEXT = "The last database backup failed"
+
+
+def _record_check(db, *codes, status="fail"):
+    db.execute(
+        "INSERT INTO self_check_log (ran_at, status, findings) VALUES (?,?,?)",
+        (datetime.now().isoformat(timespec="seconds"), status,
+         json.dumps([{"code": c, "severity": "fail",
+                      "message": f"finding {c} needs attention"} for c in codes])),
+    )
+    db.commit()
+
+
+def test_the_older_backup_alert_is_suppressed_when_the_banner_covers_it(env, db, client):
+    db_ = env["db"]
+    add_backup(db_, "failed", hours_ago=1, error="the backup folder is gone")
+    _record_check(db_, "backup_failing")
+
+    html = client.get("/").get_data(as_text=True)
+
+    assert "finding backup_failing needs attention" in html, (
+        "the health banner is not on the page at all — this test would pass "
+        "for the wrong reason"
+    )
+    assert OLD_ALERT_TEXT not in html, (
+        "the pre-Layer-1 backup alert is still rendered alongside the health "
+        "banner, so the admin is told the same thing twice"
+    )
+
+
+def test_the_older_backup_alert_survives_a_banner_about_something_else(env, db, client):
+    """Control. A banner about a non-backup problem must not silence it."""
+    db_ = env["db"]
+    add_backup(db_, "failed", hours_ago=1, error="the backup folder is gone")
+    _record_check(db_, "disk_low")
+
+    html = client.get("/").get_data(as_text=True)
+
+    assert "finding disk_low needs attention" in html, "the banner should be showing"
+    assert OLD_ALERT_TEXT in html, (
+        "the backup alert was suppressed by a banner that says nothing about "
+        "backups — the suppression is too broad"
+    )
+
+
+def test_the_older_backup_alert_survives_the_self_check_being_switched_off(env, db, client):
+    """Control. Turning the self-check off must not remove backup warnings."""
+    db_ = env["db"]
+    add_backup(db_, "failed", hours_ago=1, error="the backup folder is gone")
+    _record_check(db_, "backup_failing")
+    _set(db_, "selfcheck_enabled", "0")
+
+    html = client.get("/").get_data(as_text=True)
+
+    assert "finding backup_failing needs attention" not in html, (
+        "the banner rendered despite selfcheck_enabled=0"
+    )
+    assert OLD_ALERT_TEXT in html, (
+        "with the self-check switched off, this alert is the only backup "
+        "warning the app has left — it must still appear"
+    )

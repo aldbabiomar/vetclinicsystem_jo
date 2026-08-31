@@ -1586,6 +1586,24 @@ def dashboard():
                 # consecutive failing days, holders of manage_settings only.
                 self_check_modal = (row["status"] == "fail"
                                     and selfcheck.consecutive_fail_days(db) >= 3)
+        # backup_alert_message() predates the self-check and every case it
+        # reports (never run / failed / stranded / stale) is now covered by a
+        # backup_* finding, in more detail. With both on screen the admin got
+        # the same news twice in two different shapes -- once in the health
+        # banner and once as a toast, since toast.js converts a .flash into
+        # one. Reported 2026-08-31 off a real Test C dashboard.
+        #
+        # Suppressed only when the banner is actually carrying a backup
+        # finding. If the self-check is switched off, has never run, or is
+        # reporting something unrelated (a low disk, a rolled-back update),
+        # this older alert is the only backup warning there is and must
+        # survive -- the two also disagree by design, because the self-check's
+        # staleness threshold is configurable (selfcheck_backup_max_age_days)
+        # while this one is fixed at 2 days.
+        if self_check and backup_alert and any(
+                str(f.get("code", "")).startswith("backup_")
+                for f in self_check["findings"]):
+            backup_alert = None
     return render_template("dashboard.html", snap=snap, lan_address=lan_address(), missed=missed,
                             is_overseer=is_overseer, opex_due=opex_due, backup_alert=backup_alert,
                             unbilled_count=unbilled_count, migration_failures=migration_failures,
