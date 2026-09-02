@@ -3,6 +3,62 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.9.0] - 2026-09-02
+
+### Added
+- **The app now checks its own health once a day** — that backups are
+  actually running and landing where they should, that there is disk space
+  left, and that the database is reachable. If something is wrong, a warning
+  appears at the top of the Dashboard for anyone who can change Settings. If
+  it is still wrong three days running, a pop-up appears at sign-in until it
+  is dealt with. Nothing is sent anywhere; this is entirely local.
+- **Optional daily status ping, for a clinic you are not sitting in.** Under
+  Settings → Remote Monitoring, paste the URL a monitoring service gives you
+  (healthchecks.io or similar) and the app pings it once a day with a short
+  status. If the machine is switched off, asleep, or the app is not running,
+  the ping does not arrive and the service emails you. That is the point: it
+  notices the failure the app itself cannot report. Off unless you set a URL,
+  and the ping carries no patient, staff or financial data.
+- **A monthly proof that a backup can actually be restored.** Once a month the
+  app restores its own most recent backup into a temporary database and checks
+  what came back — the tables, the records, and that the money column survived
+  with the right type. A backup file that looks perfectly fine on disk can
+  restore to nothing, and this is the only way to find that out before you
+  need it.
+- **Start at boot on Windows.** Under Settings → Startup & Shutdown, the app
+  can now start when the PC powers on rather than waiting for someone to sign
+  in — so an unattended machine still takes its nightly backup.
+
+### Changed
+- **The Settings page has been reorganised.** It is now four cards — Clinic
+  Settings, Backups & Restore, Updates, and Startup & Shutdown — with related
+  fields side by side instead of one per row, so the page is far shorter and
+  things are easier to find. Each card's Save button now says what it covers.
+- **Phones and tablets are properly supported.** Buttons and form fields are
+  now sized for a fingertip on any touch device rather than only below a fixed
+  screen width — an iPad in portrait previously got the desktop layout, with
+  fields small enough that iOS zoomed in on every tap and did not zoom back
+  out.
+- **Consistent spacing** between cards on the Dashboard, Insights, Settings
+  and every other page that shows them.
+
+### Fixed
+- **Nightly backups are no longer skipped when the computer was asleep or
+  switched off at the scheduled time.** Previously that backup was silently
+  abandoned and nothing ran until the next night — so a machine shut down each
+  evening could go a long time between backups without any sign. Missed
+  backups now run at the next opportunity.
+- **A backup folder that disappears is now reported instead of quietly
+  recreated.** If the folder your backups are written to goes away — an
+  unplugged external drive, a synced folder that unlinked, a folder someone
+  moved — the app used to create a new empty one in its place and carry on
+  reporting success, while the copy you were relying on had stopped being
+  updated. It now refuses to write and tells you on the Dashboard, and keeps
+  telling you for as long as the folder is missing. It also now notices when
+  the most recent backup file is missing from disk.
+- **The Settings page and several list pages no longer run off the side of the
+  screen** on smaller displays.
+
 ## [1.8.10] - 2026-08-26
 
 ### Fixed
