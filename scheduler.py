@@ -106,6 +106,9 @@ MISFIRE_GRACE_SECONDS = None
 # the check alone is not enough, because both paths can read "not done yet"
 # before either commits, which is exactly what happened on 2026-08-29.
 TICK_MINUTES = 5
+# Smallest gap between two scheduled backup ATTEMPTS, so a permanently
+# failing destination cannot retry every tick forever. See _backup_catchup_due.
+BACKUP_RETRY_MIN_MINUTES = 60
 # The restore verification. Later than the self-check so the two never
 # contend. The JOB runs daily; the WORK inside it runs roughly monthly, gated
 # by selfverify.is_due — see _do_verify_restore for why a monthly trigger was
@@ -256,12 +259,48 @@ def _backup_catchup_due(db, hour, minute):
     except Exception:
         return False
     if row is None:
-        return True
+        due = True
+    else:
+        try:
+            last = datetime.fromisoformat(str(row["started_at"]))
+        except (TypeError, ValueError):
+            due = True
+        else:
+            due = last < scheduled
+    if not due:
+        return False
+
+    # Due, but not necessarily now. The question above is "has a backup
+    # SUCCEEDED since the scheduled time?" -- so a destination that is broken
+    # never satisfies it, and the 5-minute tick would retry for as long as the
+    # fault lasts: ~288 rows a day.
+    #
+    # That is not merely noisy. On 2026-09-02 a staged install accumulated 70
+    # failure rows behind its last success, which buried that success deep
+    # enough that the self-check's folder guard stopped recognising the
+    # destination as established and recreated it -- after which backups
+    # "succeeded" into a fabricated local folder and the Dashboard went green.
+    # The guard has since been made robust on its own (selfcheck.py), but the
+    # flood was the trigger, so it is bounded here too. Two independent
+    # reasons, both fixed: see COMPARISON.md §41.
+    #
+    # An hour still recovers a transient fault quickly while capping the day
+    # at ~24 attempts and keeping the backup history readable.
     try:
-        last = datetime.fromisoformat(str(row["started_at"]))
-    except (TypeError, ValueError):
-        return True
-    return last < scheduled
+        recent = db.execute(
+            "SELECT started_at FROM backup_log ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    except Exception:
+        return False
+    if recent is not None:
+        try:
+            attempted = datetime.fromisoformat(str(recent["started_at"]))
+        except (TypeError, ValueError):
+            attempted = None
+        if attempted is not None and \
+                (now - attempted).total_seconds() < BACKUP_RETRY_MIN_MINUTES * 60:
+            return False
+    return True
 
 
 def _self_check_due(db, hour, minute):

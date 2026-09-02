@@ -685,3 +685,67 @@ def test_backup_failing_keeps_its_quote_when_it_stands_alone(env):
     assert "pg_dump: connection refused" in _message_of(result, "backup_failing"), (
         "the error was stripped even though nothing else explains the failure"
     )
+
+
+# ---------------------------------------------------------------------------
+# A failure storm must not bury the evidence that a folder was established
+# (2026-09-02)
+# ---------------------------------------------------------------------------
+#
+# selfcheck used to carry its own _backups_written_here that scanned the last
+# 20 backup_log rows of ANY status. A broken destination retries, so failures
+# push the last success out of that window; the check then decided the folder
+# had never been established, took its os.makedirs branch, and RECREATED the
+# destination it should have reported as gone. Backups then succeeded into a
+# fabricated local folder and the Dashboard went green -- exactly the failure
+# COMPARISON.md §39's guard exists to prevent. Now both modules share
+# backup.py's success-filtered implementation.
+
+
+def test_a_flood_of_failures_does_not_bury_an_established_destination(env, db, tmp_path):
+    import selfcheck
+    gone = tmp_path / "was_on_a_synced_drive"
+    gone.mkdir()
+    _set(db, "backup_dir", str(gone))
+    db.execute("DELETE FROM backup_log")
+    db.execute(
+        "INSERT INTO backup_log (started_at, finished_at, status, filepath) VALUES (?,?,?,?)",
+        (datetime.now().isoformat(timespec="seconds"),
+         datetime.now().isoformat(timespec="seconds"), "success",
+         str(gone / "vetclinicsystemjo_backup.dump")),
+    )
+    # bury it far deeper than any fixed lookback window
+    for i in range(40):
+        add_backup(db, "failed", hours_ago=1, error="the backup folder is gone")
+    db.commit()
+    gone.rmdir()
+
+    result = selfcheck.run_self_check(db)
+
+    assert "backup_dir_missing" in codes(result), (
+        "40 failures buried the last success and the check stopped recognising "
+        "the destination as established"
+    )
+    assert not gone.exists(), (
+        "the check RECREATED the vanished destination -- backups would resume "
+        "succeeding into a fabricated local folder and the Dashboard would go "
+        "green while the real copy stayed gone"
+    )
+
+
+def test_a_folder_never_backed_up_to_is_still_created(env, db, tmp_path):
+    """Control. The recreate branch is correct on a FIRST run -- an admin set
+    a path and nothing has been written there yet. Without this, the test
+    above passes against a check that simply never creates anything."""
+    import selfcheck
+    fresh = tmp_path / "brand_new_folder"
+    _set(db, "backup_dir", str(fresh))
+    db.execute("DELETE FROM backup_log")
+    db.commit()
+
+    selfcheck.run_self_check(db)
+
+    assert fresh.exists(), (
+        "a newly configured folder that nothing has been written to should be "
+        "created, not reported as a vanished drive"
+    )

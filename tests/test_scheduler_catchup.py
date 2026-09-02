@@ -193,13 +193,26 @@ def test_catchup_is_due_when_no_backup_has_ever_run(blog):
 
 
 def test_a_failed_backup_does_not_count_as_todays_run(blog):
-    """Only a SUCCESSFUL backup satisfies the catch-up. A failed attempt an
-    hour ago means this machine still has no backup from today."""
+    """Only a SUCCESSFUL backup satisfies the catch-up. A failed attempt
+    earlier today means this machine still has no backup from today.
+
+    Updated 2026-09-02: the arrangement used a failure ONE MINUTE old while
+    this docstring said "an hour ago", and the two had quietly drifted apart.
+    A one-minute-old failure is now throttled by BACKUP_RETRY_MIN_MINUTES --
+    deliberately, since retrying every tick is what buried the last success on
+    a real install (COMPARISON.md §41) -- so that arrangement was asserting
+    the behaviour we just removed. The property this test actually names, that
+    a failure is not mistaken for a success, is unchanged and is what it now
+    checks. The throttle itself is covered by
+    test_a_failed_backup_is_not_retried_on_the_very_next_tick."""
     import scheduler
     now = datetime.now()
     if now.hour < 1:
         pytest.skip("run before 01:00; today's 00:30 slot has not passed yet")
-    _log_backup(blog, now - timedelta(minutes=1), status="failed")
+    older_than_the_bound = now - timedelta(minutes=scheduler.BACKUP_RETRY_MIN_MINUTES + 5)
+    if older_than_the_bound.date() != now.date():
+        pytest.skip("too early in the day for a same-day failure past the retry bound")
+    _log_backup(blog, older_than_the_bound, status="failed")
     assert scheduler._backup_catchup_due(blog, 0, 30) is True
 
 
@@ -462,4 +475,63 @@ def test_two_paths_firing_together_produce_exactly_one_self_check(blog, db, monk
     assert len(ran) == 1, (
         f"{len(ran)} self-checks ran concurrently — each sends a heartbeat, so "
         "a duplicate pings the receiver twice for one night"
+    )
+
+
+# ---------------------------------------------------------------------------
+# A failing backup must not retry every tick forever (2026-09-02)
+# ---------------------------------------------------------------------------
+
+def test_a_failed_backup_is_not_retried_on_the_very_next_tick(blog, db):
+    """_backup_catchup_due asks whether a backup SUCCEEDED today, so a broken
+    destination leaves it due forever and the 5-minute tick retried ~288 times
+    a day. See COMPARISON.md §41."""
+    import scheduler
+    db.execute("DELETE FROM backup_log")
+    db.execute(
+        "INSERT INTO backup_log (started_at, finished_at, status, error) VALUES (?,?,?,?)",
+        (datetime.now().isoformat(timespec="seconds"),
+         datetime.now().isoformat(timespec="seconds"), "failed", "folder gone"),
+    )
+    db.commit()
+
+    assert scheduler._backup_catchup_due(db, 0, 1) is False, (
+        "a backup that failed moments ago is due again immediately — the tick "
+        "will retry it every 5 minutes for as long as the fault lasts"
+    )
+
+
+def test_a_failure_older_than_the_bound_is_retried(blog, db):
+    """Control. The bound must delay a retry, never cancel it — otherwise a
+    destination that comes back stays un-backed-up until tomorrow."""
+    import scheduler
+    db.execute("DELETE FROM backup_log")
+    stale = (datetime.now() - timedelta(minutes=scheduler.BACKUP_RETRY_MIN_MINUTES + 5))
+    db.execute(
+        "INSERT INTO backup_log (started_at, finished_at, status, error) VALUES (?,?,?,?)",
+        (stale.isoformat(timespec="seconds"), stale.isoformat(timespec="seconds"),
+         "failed", "folder gone"),
+    )
+    db.commit()
+
+    assert scheduler._backup_catchup_due(db, 0, 1) is True, (
+        "a failure older than the retry bound was not retried at all"
+    )
+
+
+def test_the_bound_does_not_delay_the_first_attempt_of_the_day(blog, db):
+    """Control. Yesterday's SUCCESS is recent in wall-clock terms on an
+    early-morning schedule; it must not throttle today's first run."""
+    import scheduler
+    db.execute("DELETE FROM backup_log")
+    yesterday = datetime.now() - timedelta(days=1)
+    db.execute(
+        "INSERT INTO backup_log (started_at, finished_at, status, filepath) VALUES (?,?,?,?)",
+        (yesterday.isoformat(timespec="seconds"), yesterday.isoformat(timespec="seconds"),
+         "success", "/tmp/x.dump"),
+    )
+    db.commit()
+
+    assert scheduler._backup_catchup_due(db, 0, 1) is True, (
+        "today's backup was throttled by yesterday's successful one"
     )

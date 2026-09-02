@@ -328,23 +328,6 @@ _CHECKS = (
 )
 
 
-def _backups_written_here(recent, backup_dir):
-    """True when a successful backup has been recorded inside backup_dir --
-    i.e. the folder is an established destination, not one just configured."""
-    if not backup_dir:
-        return False
-    try:
-        target = os.path.abspath(backup_dir)
-        for r in recent:
-            if r["status"] != "success" or not r["filepath"]:
-                continue
-            if os.path.abspath(os.path.dirname(r["filepath"])) == target:
-                return True
-    except Exception:
-        return False
-    return False
-
-
 def _gather(db):
     """One pass over everything the checks read."""
     import backup as backup_mod
@@ -358,8 +341,19 @@ def _gather(db):
         "last_success": last_success,
         "recent_backups": recent,
         "backup_dir": logic.get_setting(db, "backup_dir"),
-        "backups_written_here": _backups_written_here(
-            recent, logic.get_setting(db, "backup_dir")),
+        # Deliberately backup.py's implementation, not a local one. This
+        # module used to carry its own copy that scanned recent_backups(20) --
+        # the last 20 rows of ANY status. A failing destination retries, so a
+        # run of failures pushes the last success out of that window; the copy
+        # then returned False, _check_backup_dir took its "never established"
+        # branch and RECREATED the folder it should have been reporting as
+        # gone. Backups then succeeded into a fabricated local directory and
+        # the Dashboard went green. Observed on a staged install 2026-09-02
+        # with 70 failure rows behind the last success. backup.py's version
+        # filters to successes first, so failures cannot bury the evidence.
+        # One implementation, on purpose -- see COMPARISON.md §41.
+        "backups_written_here": backup_mod.backups_written_here(
+            db, logic.get_setting(db, "backup_dir")),
         "backup_max_age_days": logic.int_setting(
             db, "selfcheck_backup_max_age_days", BACKUP_MAX_AGE_DEFAULT
         ),

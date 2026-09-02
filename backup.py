@@ -472,7 +472,7 @@ def run_backup(db, dest_dir=None, retention=None, triggered_by=None, on_progress
         maintenance_lock.release()
 
 
-def _backups_written_here(db, dest_dir):
+def backups_written_here(db, dest_dir):
     """True when backup_log records a successful backup written INTO dest_dir.
 
     Distinguishes "the admin set a path and nothing has been written there
@@ -529,7 +529,7 @@ def _run_backup_locked(db, dest_dir=None, retention=None, triggered_by=None, on_
     # backup nobody can find. (selfcheck.py makes the same distinction; this
     # is the copy that matters, because the backup runs first and would
     # otherwise recreate the folder before the check ever looks.)
-    if not os.path.isdir(dest_dir) and _backups_written_here(db, dest_dir):
+    if not os.path.isdir(dest_dir) and backups_written_here(db, dest_dir):
         msg = ("The backup folder is gone. Backups were being written there, "
                "so this looks like a drive or synced folder that is no longer "
                "connected — reconnect it, or set a new folder on the Settings "
