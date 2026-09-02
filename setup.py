@@ -442,6 +442,32 @@ while true; do
     exit 1
   fi
   RELEASE_DIR="$RELEASES_DIR/$ACTIVE"
+
+  # Is this release's Python still usable? A Python upgrade (on macOS,
+  # `brew upgrade` deleting the versioned Cellar directory this venv was
+  # built against) leaves venv/bin/python3 dangling. Without this check the
+  # app never starts and the loop below respawns a missing interpreter every
+  # two seconds, forever, with nothing on screen explaining why.
+  #
+  # Rebuilding is safe: a venv holds only dependencies. All data lives in
+  # Postgres and the data folder.
+  if ! "$RELEASE_DIR/venv/bin/python3" -c "" >/dev/null 2>&1; then
+    echo "The Python environment for this release is not working."
+    echo "This usually means Python was upgraded or reinstalled."
+    echo "Rebuilding it now — this takes about a minute..."
+    rm -rf "$RELEASE_DIR/venv"
+    if python3 -m venv "$RELEASE_DIR/venv" >/dev/null 2>&1 && \
+       "$RELEASE_DIR/venv/bin/python3" -m pip install -q -r "$RELEASE_DIR/requirements.txt"; then
+      echo "Rebuilt successfully."
+    else
+      echo ""
+      echo "Could not rebuild it. Check that Python 3 is installed:"
+      echo "  python3 --version"
+      read -p "Press Return to close this window..."
+      exit 1
+    fi
+  fi
+
   echo "Starting $ACTIVE..."
   VETCLINICSYSTEMJO_DATA_DIR="$DATA_DIR" VETCLINICSYSTEMJO_RELEASES_DIR="$RELEASES_DIR" VETCLINICSYSTEMJO_PORT="$PORT" \\
     "$RELEASE_DIR/venv/bin/python3" "$RELEASE_DIR/app.py" &
@@ -479,6 +505,24 @@ if not exist "%RELEASES_DIR%\\%ACTIVE%" (
   exit /b 1
 )
 set "RELEASE_DIR=%RELEASES_DIR%\\%ACTIVE%"
+
+REM Is this release's Python still usable? If Python was uninstalled, moved
+REM or replaced, the venv's python.exe stops working and the app never
+REM starts -- the loop below would otherwise respawn it every two seconds
+REM forever with nothing explaining why. Rebuilding is safe: a venv holds
+REM only dependencies; all data lives in Postgres and the data folder.
+"%RELEASE_DIR%\\venv\\Scripts\\python.exe" -c "" >nul 2>&1
+if errorlevel 1 (
+  echo The Python environment for this release is not working.
+  echo This usually means Python was upgraded, moved or reinstalled.
+  echo Rebuilding it now - this takes about a minute...
+  rmdir /s /q "%RELEASE_DIR%\\venv" 2>nul
+  python -m venv "%RELEASE_DIR%\\venv" >nul 2>&1
+  if errorlevel 1 goto rebuildfailed
+  "%RELEASE_DIR%\\venv\\Scripts\\python.exe" -m pip install -q -r "%RELEASE_DIR%\\requirements.txt"
+  if errorlevel 1 goto rebuildfailed
+  echo Rebuilt successfully.
+)
 echo Starting %ACTIVE%...
 set "VETCLINICSYSTEMJO_DATA_DIR=%DATA_DIR%"
 set "VETCLINICSYSTEMJO_RELEASES_DIR=%RELEASES_DIR%"
@@ -490,7 +534,41 @@ if "%OPENED_BROWSER%"=="0" (
 echo VetClinicSystem JO exited — restarting in 2 seconds...
 timeout /t 2 /nobreak >nul
 goto loop
+
+:rebuildfailed
+echo.
+echo Could not rebuild the Python environment. Check that Python 3 is
+echo installed and on PATH:  python --version
+pause
+exit /b 1
 """
+
+
+def _base_interpreter():
+    """The interpreter to build a release venv from.
+
+    NOT sys.executable. When setup.py itself runs inside a venv, that is the
+    venv's own python, and the new venv inherits whatever path the parent
+    resolved to. On Homebrew that path is often a VERSIONED one
+    (/opt/homebrew/Cellar/python@3.14/3.14.6/...), which `brew upgrade`
+    deletes -- so every release built from it is one upgrade away from a
+    dangling symlink and an app that cannot start at all. Observed on a real
+    install 2026-09-02: two releases, both unstartable, with the supervisor
+    loop respawning a missing interpreter every two seconds forever.
+
+    sys._base_executable is the underlying interpreter, which on Homebrew
+    resolves through the stable /opt/homebrew/opt/... symlink that brew
+    repoints on upgrade. Falls back to sys.executable where it is missing or
+    not a real file, so this can never make venv creation fail.
+
+    This narrows the window; it does not close it. A Python that is
+    uninstalled or moved breaks the venv regardless, which is why the
+    launcher also rebuilds a broken venv on startup.
+    """
+    base = getattr(sys, "_base_executable", None)
+    if base and os.path.isfile(base):
+        return base
+    return sys.executable
 
 
 def _copy_release_snapshot(dest):
@@ -543,7 +621,8 @@ def enable_updates(data_dir=None, releases_dir=None):
     _copy_release_snapshot(release_path)
 
     print("  Creating this release's own virtual environment...")
-    subprocess.run([sys.executable, "-m", "venv", os.path.join(release_path, "venv")], check=True)
+    subprocess.run([_base_interpreter(), "-m", "venv", os.path.join(release_path, "venv")],
+                   check=True)
     venv_py = os.path.join(release_path, "venv", "Scripts" if sys.platform == "win32" else "bin",
                             "python.exe" if sys.platform == "win32" else "python3")
     subprocess.run([venv_py, "-m", "pip", "install", "-q", "-r", "requirements.txt"],

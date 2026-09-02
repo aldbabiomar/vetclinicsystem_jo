@@ -3,6 +3,16 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.9.1] - 2026-09-02
+
+### Fixed
+- **The app could stop starting altogether after Python was upgraded on the
+  computer**, with no error to explain it — the window would just keep saying
+  it was restarting, every couple of seconds, indefinitely, and nightly
+  backups stopped with it. The launcher now checks its Python environment
+  before starting and rebuilds it automatically if it has been broken, which
+  takes about a minute and happens once.
+
 ## [1.9.0] - 2026-09-02
 
 ### Added
