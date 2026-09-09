@@ -6738,6 +6738,33 @@ def settings_autostart():
     return redirect(url_for("settings_page"))
 
 
+@app.route("/settings/updates/status")
+@auth.permission_required("manage_settings")
+def settings_updates_status():
+    """Everything the Settings page needs to DRAW the updates card, and
+    nothing that needs the network.
+
+    This exists because the page used to call /settings/updates/check on
+    load, which asks GitHub for the latest release — to render two facts
+    that are both local: whether updates are set up, and which version is
+    running. GitHub allows 60 unauthenticated API calls per hour per IP
+    address, shared by every install behind it, so opening Settings often
+    enough silently spent the clinic's quota. The cost landed on the "Check
+    for Updates" button, the one place the call is actually wanted, which
+    then reported the clinic as offline. COMPARISON.md §46.
+
+    Keep this route free of network calls. If it ever needs to know
+    something only GitHub can answer, that is a sign the answer belongs
+    behind the button instead.
+    """
+    import updater
+    configured = updater.is_configured()
+    return jsonify({
+        "configured": configured,
+        "current_version": updater.current_version() if configured else VERSION,
+    })
+
+
 @app.route("/settings/updates/check")
 @auth.permission_required("manage_settings")
 def settings_updates_check():
@@ -6746,9 +6773,9 @@ def settings_updates_check():
         return jsonify({"configured": False, "current_version": VERSION})
     try:
         available, latest = updater.is_update_available()
-    except Exception:
+    except Exception as exc:
         return jsonify({"configured": True, "current_version": updater.current_version(),
-                         "error": "Couldn't check for updates — offline, or GitHub is unreachable."}), 502
+                         "error": updater.describe_check_failure(exc)}), 502
     return jsonify({
         "configured": True,
         "current_version": updater.current_version(),
@@ -6766,8 +6793,8 @@ def settings_updates_apply():
         return jsonify({"error": "Updates aren't set up on this install yet."}), 400
     try:
         available, latest = updater.is_update_available()
-    except Exception:
-        return jsonify({"error": "Couldn't check for updates — offline, or GitHub is unreachable."}), 502
+    except Exception as exc:
+        return jsonify({"error": updater.describe_check_failure(exc)}), 502
     if not available:
         return jsonify({"error": "Already on the latest version."}), 400
     tag_name, tarball_url = latest.get("tag_name"), latest.get("tarball_url")

@@ -256,8 +256,11 @@
 
 <script>
 async function loadUpdatesStatus() {
+  // /status, not /check — this runs on every Settings page load, and /check
+  // spends one of the 60 unauthenticated GitHub calls this network gets per
+  // hour. Nothing drawn below needs GitHub. See COMPARISON.md §46.
   try {
-    const res = await fetch('/settings/updates/check');
+    const res = await fetch('/settings/updates/status');
     const data = await res.json();
     document.getElementById('updatesConfigured').style.display = data.configured ? '' : 'none';
     document.getElementById('updatesNotConfigured').style.display = data.configured ? 'none' : '';

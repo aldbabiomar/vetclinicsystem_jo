@@ -16,6 +16,7 @@ the update UI.
 """
 import os
 import io
+from datetime import datetime
 import json
 import shutil
 import socket
@@ -119,6 +120,55 @@ def check_latest_release():
 def is_update_available():
     latest = check_latest_release()
     return latest["tag_name"].lstrip("v") != current_version(), latest
+
+
+# What went wrong is not always "offline". Until 2026-09-10 every failure here
+# -- rate limit, 404, bad token, a real network outage -- was reported to the
+# admin as "offline, or GitHub is unreachable", because the caller caught a
+# bare Exception and printed one fixed sentence. The message that actually
+# shipped was the one cause the admin could have acted on: GitHub allows 60
+# unauthenticated API calls per hour PER IP, the clinic had spent them, and the
+# app told them to check their internet connection. COMPARISON.md §46.
+def describe_check_failure(exc):
+    """A sentence the admin can act on, given whatever check_latest_release()
+    raised. Never raises itself -- this runs on the error path."""
+    try:
+        response = getattr(exc, "response", None)
+        if response is not None:
+            status = response.status_code
+            headers = response.headers or {}
+            # GitHub signals both the hourly cap and secondary (abuse) limits
+            # with 403/429; remaining == 0 is what separates a cap from a
+            # permissions problem sharing the same status code.
+            if status in (403, 429) and str(headers.get("x-ratelimit-remaining", "")).strip() == "0":
+                return ("GitHub's hourly limit for this network has been reached"
+                        f"{_reset_clause(headers)}. Nothing is wrong with this "
+                        "computer or the internet connection.")
+            if status == 401:
+                return ("GitHub rejected the access token for this install — it may "
+                        "have expired or been revoked.")
+            if status == 404:
+                return ("GitHub has no published release to compare against, or the "
+                        "configured repository name is wrong.")
+            if status:
+                return f"GitHub returned an error (HTTP {status}) when asked for the latest release."
+        if isinstance(exc, (requests.ConnectionError, requests.Timeout)):
+            return "Couldn't reach GitHub — this computer appears to be offline."
+    except Exception:
+        pass
+    return "Couldn't check for updates — GitHub could not be reached."
+
+
+def _reset_clause(headers):
+    """' — try again after 14:05', when GitHub tells us when the cap lifts."""
+    raw = headers.get("x-ratelimit-reset")
+    if not raw:
+        return ""
+    try:
+        when = datetime.fromtimestamp(int(raw))
+    except (TypeError, ValueError, OSError, OverflowError):
+        return ""
+    return f" — try again after {when.strftime('%H:%M')}"
 
 
 def _run_backup():

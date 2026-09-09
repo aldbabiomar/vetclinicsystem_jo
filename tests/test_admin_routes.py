@@ -46,6 +46,117 @@ def _save_settings(client, **data):
     return client.post("/settings", data=payload, follow_redirects=False)
 
 
+# ---------------------------------------------------------------------------
+# The updates card — what may and may not touch the network
+# ---------------------------------------------------------------------------
+# GitHub allows 60 unauthenticated API calls per hour PER IP ADDRESS, shared by
+# every install behind it. Until 2026-09-10 the Settings page spent one of them
+# on every single page load, calling /settings/updates/check just to render two
+# facts that are both local — whether updates are configured, and which version
+# is running. The cost landed on the "Check for Updates" button, which then
+# reported a perfectly online clinic as offline. COMPARISON.md §46.
+
+
+@pytest.fixture
+def updates_configured(monkeypatch, tmp_path):
+    """An install that looks like it is on the versioned-release layout.
+
+    The real is_configured() is left alone and made to answer True by giving
+    it what it actually checks — two real directories and a repo name. Stubbing
+    is_configured() itself would be quicker and wrong: it reports True while
+    DATA_DIR is still None, a combination no real install can be in, and
+    current_version() then dies on os.path.join(None, ...) inside a route that
+    would never fail that way in production.
+    """
+    data_dir = tmp_path / "data"
+    releases_dir = tmp_path / "releases"
+    data_dir.mkdir()
+    releases_dir.mkdir()
+    import updater
+    monkeypatch.setattr(updater, "DATA_DIR", str(data_dir))
+    monkeypatch.setattr(updater, "RELEASES_DIR", str(releases_dir))
+    monkeypatch.setattr(updater, "GITHUB_REPO", "aldbabiomar/example")
+    assert updater.is_configured(), "the fixture must produce a configured install"
+    return updater
+
+
+@pytest.fixture
+def github_is_a_trap(monkeypatch, updates_configured):
+    """Any GitHub call becomes a recorded, loud failure."""
+    calls = []
+
+    def boom(*args, **kwargs):
+        calls.append(("check_latest_release", args, kwargs))
+        raise AssertionError("this route asked GitHub for the latest release")
+
+    monkeypatch.setattr(updates_configured, "check_latest_release", boom)
+    return calls
+
+
+def test_the_settings_page_load_path_never_calls_github(client, github_is_a_trap):
+    """The guard. /settings/updates/status is what the page calls on load."""
+    resp = client.get("/settings/updates/status")
+    assert resp.status_code == 200, resp.status_code
+    assert github_is_a_trap == [], (
+        "the page-load route called GitHub — every Settings visit would spend "
+        "one of the 60 requests this network gets per hour")
+    body = resp.get_json()
+    assert body["configured"] is True
+    assert body["current_version"], "the card cannot render without a version"
+
+
+def test_the_check_button_DOES_call_github(client, github_is_a_trap):
+    """The control, and it is not optional. Without it the test above passes
+    just as happily against a trap that was never installed, or against a
+    route that returns 200 while doing nothing at all."""
+    resp = client.get("/settings/updates/check")
+    assert github_is_a_trap, (
+        "the trap never fired — so the test above proves nothing about "
+        "whether /status avoids the network")
+    assert resp.status_code == 502, "a failed check reports 502, not a fake success"
+
+
+def test_a_rate_limited_check_does_not_tell_the_clinic_it_is_offline(client, monkeypatch, updates_configured):
+    """End to end through the route: the 403 GitHub actually sends when the
+    hourly cap is spent must reach the admin as a rate limit."""
+    import updater
+    import requests
+
+    class _Resp:
+        status_code = 403
+        headers = {"x-ratelimit-remaining": "0"}
+
+    def rate_limited(*args, **kwargs):
+        err = requests.HTTPError("403")
+        err.response = _Resp()
+        raise err
+
+    monkeypatch.setattr(updater, "is_update_available", rate_limited)
+
+    resp = client.get("/settings/updates/check")
+    assert resp.status_code == 502
+    error = resp.get_json()["error"]
+    assert "limit" in error.lower(), error
+    assert "offline" not in error.lower(), (
+        f"reported a rate limit as being offline, which is the bug: {error}")
+
+
+def test_a_real_outage_is_still_reported_as_being_offline(client, monkeypatch, updates_configured):
+    """The other control. Over-correcting would be its own bug — when the
+    clinic genuinely has no internet, saying so is the useful answer."""
+    import updater
+    import requests
+
+    def offline(*args, **kwargs):
+        raise requests.ConnectionError("no route to host")
+
+    monkeypatch.setattr(updater, "is_update_available", offline)
+
+    resp = client.get("/settings/updates/check")
+    assert resp.status_code == 502
+    assert "offline" in resp.get_json()["error"].lower()
+
+
 def test_a_setting_can_be_saved(client, db, settings_snapshot):
     _save_settings(client, clinic_name="Renamed Clinic")
     assert _setting(db, "clinic_name") == "Renamed Clinic"
