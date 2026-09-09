@@ -3,6 +3,7 @@ VetClinicSystem JO — computation engine (v3).
 Pure computation over Postgres tables; no Flask imports.
 """
 import calendar
+import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from collections import defaultdict
@@ -1268,14 +1269,36 @@ def recent_refunds(db, limit=100, offset=0, date_filter=None):
 # ---------------------------------------------------------------------------
 # Owners / Patients
 # ---------------------------------------------------------------------------
+# The one definition of what counts as noise inside a microchip number:
+# spaces, hyphens (including the en/em dashes a paste can carry) and dots.
+# app.py's normalize_microchip() strips exactly this before storing, and
+# search_patients() strips exactly this before matching -- the two must agree
+# or a chip typed the way it is printed would not find the record it is on.
+_MICROCHIP_SEPARATORS = re.compile(r"[\s\-\u2013\u2014.]")
+
+
+def strip_microchip_separators(raw):
+    if raw is None:
+        return ""
+    return _MICROCHIP_SEPARATORS.sub("", str(raw)).upper()
+
+
 def search_patients(db, term):
+    # Microchip numbers are stored normalized, so the term has to be
+    # normalized too before it can match one: staff type a chip the way it is
+    # grouped on the scanner ("985 141 000 123456") and that string appears
+    # nowhere in the database. Every other field is matched on the term as
+    # typed, which is why this is a second parameter rather than a change to
+    # the first.
+    chip_term = f"%{strip_microchip_separators(term)}%"
     term = f"%{term}%"
     return db.execute(
         "SELECT p.*, o.name as owner_name, o.phone as owner_phone FROM patients p "
         "JOIN owners o ON o.id = p.owner_id "
-        "WHERE p.animal_name ILIKE ? OR p.id ILIKE ? OR o.name ILIKE ? OR o.phone ILIKE ? "
+        "WHERE p.animal_name ILIKE ? OR p.id ILIKE ? OR p.microchip ILIKE ? "
+        "OR o.name ILIKE ? OR o.phone ILIKE ? "
         "ORDER BY p.animal_name LIMIT 25",
-        (term, term, term, term),
+        (term, term, chip_term, term, term),
     ).fetchall()
 
 

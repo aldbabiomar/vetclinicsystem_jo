@@ -157,6 +157,19 @@ INCREMENTAL_SCHEMA_STATEMENTS = [
     # phone IS NOT NULL GROUP BY phone HAVING COUNT(*) > 1`), then re-run
     # setup.py.
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_owners_phone_unique ON owners(phone) WHERE phone IS NOT NULL",
+
+    # Optional microchip number on a patient, plus the index that keeps one
+    # chip on one animal. No backfill: the column arrives empty on every
+    # install, so nothing existing can violate the index and there is no
+    # legacy value to normalize. Both statements are idempotent.
+    #
+    # The index lives here rather than in schema_postgres.sql because
+    # apply_schema() runs first — see the comment beside the column there.
+    # Partial (WHERE microchip IS NOT NULL) so that any number of patients
+    # may have no chip on file.
+    "ALTER TABLE patients ADD COLUMN IF NOT EXISTS microchip TEXT",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_microchip_unique "
+    "ON patients(microchip) WHERE microchip IS NOT NULL",
     "ALTER TABLE inventory_list ADD COLUMN IF NOT EXISTS barcode_source TEXT CHECK (barcode_source IN ('manual','generated'))",
     # Every barcode on an existing install was created exclusively via the
     # old auto-generate-only route (manual entry didn't exist before this),

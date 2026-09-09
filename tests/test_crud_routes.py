@@ -128,6 +128,149 @@ def test_editing_a_missing_owner_degrades(client, db):
 
 
 # ---------------------------------------------------------------------------
+# Patients — microchip number
+# ---------------------------------------------------------------------------
+# Optional, unique when present, and searchable however it was typed. Each
+# guard below is paired with a control, because "refused" and "refused for
+# the right reason" are otherwise indistinguishable (CLAUDE.md §7.3): a field
+# that had silently become required, or an index that rejected everything,
+# would pass a suite made only of the negative cases.
+
+
+def _chip(suffix):
+    """A unique 15-digit chip. Uniqueness is enforced by a real index, so a
+    hardcoded number would make these tests fail the second time they run
+    against the same database."""
+    return ("9851" + uuid.uuid4().int.__str__())[:15 - len(suffix)] + suffix
+
+
+@pytest.fixture
+def chip_patient(db):
+    """One owner + one patient, removed afterwards. Created directly rather
+    than through the visit form: these tests are about the microchip field,
+    not about visit creation."""
+    oid, pid = _uid("OW"), _uid("PT")
+    db.execute("INSERT INTO owners (id,name) VALUES (?,?)", (oid, "Chip Test Owner"))
+    db.execute("INSERT INTO patients (id,owner_id,animal_name,species) VALUES (?,?,?,?)",
+               (pid, oid, "Chip Test Pet", "Dog"))
+    db.commit()
+    yield pid
+    db.execute("DELETE FROM patients WHERE owner_id=?", (oid,))
+    db.execute("DELETE FROM owners WHERE id=?", (oid,))
+    db.commit()
+
+
+def _edit(client, pid, **extra):
+    data = {"animal_name": "Chip Test Pet", "species": "Dog", "notes": ""}
+    data.update(extra)
+    return client.post(f"/patients/{pid}/edit", data=data, follow_redirects=False)
+
+
+def test_a_microchip_is_stored_normalized_not_as_typed(client, db, chip_patient):
+    """Staff type a chip the way it is grouped on the scanner. Stored
+    verbatim, two spellings of one chip are two different values — the
+    search misses them and the unique index cannot see them as duplicates."""
+    chip = _chip("11")
+    spaced = f"{chip[:3]} {chip[3:6]}-{chip[6:9]} {chip[9:]}"
+    resp = _edit(client, chip_patient, microchip=spaced)
+    assert resp.status_code == 302, "a valid save redirects"
+    stored = db.execute("SELECT microchip FROM patients WHERE id=?", (chip_patient,)).fetchone()["microchip"]
+    assert stored == chip, f"expected the separators stripped, stored {stored!r}"
+
+
+def test_a_patient_saves_with_no_microchip_at_all(client, db, chip_patient):
+    """The control for every rejection test below: the field is OPTIONAL.
+    Without this, a change that made it required would still pass all of
+    them."""
+    resp = _edit(client, chip_patient, microchip="", age_note="no chip on this one")
+    assert resp.status_code == 302, "a patient with no microchip must still save"
+    row = db.execute("SELECT microchip, age_note FROM patients WHERE id=?", (chip_patient,)).fetchone()
+    assert row["microchip"] is None, "blank must store NULL, not an empty string"
+    assert row["age_note"] == "no chip on this one", "the rest of the form must have saved"
+
+
+def test_an_existing_microchip_can_be_cleared(client, db, chip_patient):
+    """Recorded against the wrong animal, or simply mistyped — staff have to
+    be able to take it off again. Blank must land as NULL rather than an empty
+    string: idx_patients_microchip_unique ignores NULLs but treats two empty
+    strings as the same value, so storing '' would mean the SECOND patient
+    anyone cleared could not be saved."""
+    chip = _chip("77")
+    assert _edit(client, chip_patient, microchip=chip).status_code == 302
+    assert db.execute("SELECT microchip FROM patients WHERE id=?",
+                      (chip_patient,)).fetchone()["microchip"] == chip
+
+    assert _edit(client, chip_patient, microchip="").status_code == 302
+    assert db.execute("SELECT microchip FROM patients WHERE id=?",
+                      (chip_patient,)).fetchone()["microchip"] is None, (
+        "clearing the field must remove the chip, not store a blank")
+
+
+def test_a_malformed_microchip_is_refused_and_nothing_is_written(client, db, chip_patient):
+    _edit(client, chip_patient, microchip=_chip("22"))
+    before = db.execute("SELECT * FROM patients WHERE id=?", (chip_patient,)).fetchone()
+
+    resp = _edit(client, chip_patient, microchip="12", animal_name="Renamed By A Bad Save")
+    assert resp.status_code == 200, "should redisplay the form, not save"
+    after = db.execute("SELECT * FROM patients WHERE id=?", (chip_patient,)).fetchone()
+    assert after["microchip"] == before["microchip"], "the old chip must survive a rejected save"
+    assert after["animal_name"] == before["animal_name"], (
+        "a rejected save must not write ANY field — not just the invalid one")
+
+
+def test_resaving_a_patient_does_not_report_it_as_its_own_duplicate(client, db, chip_patient):
+    """The exclude-self case. Without it, opening a chipped patient's form and
+    pressing Save — changing nothing — reports the animal as a duplicate of
+    itself and refuses, which is the shape this kind of check usually fails
+    in."""
+    chip = _chip("33")
+    assert _edit(client, chip_patient, microchip=chip).status_code == 302
+    resp = _edit(client, chip_patient, microchip=chip, age_note="second save")
+    assert resp.status_code == 302, "re-saving a patient's own chip must be allowed"
+    assert db.execute("SELECT age_note FROM patients WHERE id=?",
+                      (chip_patient,)).fetchone()["age_note"] == "second save"
+
+
+def test_a_duplicate_microchip_is_refused_and_leaves_nothing_behind(client, db, chip_patient):
+    """One chip, one animal. This goes through the new-patient form rather
+    than the edit form because that path writes an OWNER before it writes the
+    patient — so a duplicate chip caught at the patient INSERT has to roll the
+    owner back too, or every rejected attempt leaves an ownerless-pet-shaped
+    orphan behind (ORPHANED_RECORDS_AUDIT.md F-03)."""
+    chip = _chip("44")
+    assert _edit(client, chip_patient, microchip=chip).status_code == 302
+
+    owners_before = db.execute("SELECT count(*) AS c FROM owners").fetchone()["c"]
+    patients_before = db.execute("SELECT count(*) AS c FROM patients").fetchone()["c"]
+
+    resp = client.post("/visits/new/new-patient", data={
+        "owner_name": f"Duplicate Chip Owner {uuid.uuid4().hex[:6]}", "owner_phone": _phone(),
+        "animal_name": "Second Pet", "species": "Dog", "microchip": chip,
+        "complaint": "checkup"}, follow_redirects=False)
+
+    assert resp.status_code == 200, "should redisplay the form, not create the visit"
+    assert db.execute("SELECT count(*) AS c FROM patients").fetchone()["c"] == patients_before, (
+        "a second patient must not be created for a chip already on file")
+    assert db.execute("SELECT count(*) AS c FROM owners").fetchone()["c"] == owners_before, (
+        "the owner written before the patient must be rolled back with it")
+
+
+def test_a_patient_is_found_by_microchip_however_it_is_typed(client, db, chip_patient):
+    import logic
+    chip = _chip("55")
+    assert _edit(client, chip_patient, microchip=chip).status_code == 302
+
+    def ids(term):
+        return {r["id"] for r in logic.search_patients(db, term)}
+
+    assert chip_patient in ids(chip), "searching the stored chip must find the patient"
+    spaced = f"{chip[:3]} {chip[3:9]}-{chip[9:]}"
+    assert chip_patient in ids(spaced), (
+        "a chip typed the way it is printed must find the record it is on")
+    # The control: the search is not simply returning everything.
+    assert chip_patient not in ids(_chip("66")), "a different chip must not match"
+
+# ---------------------------------------------------------------------------
 # Appointments
 # ---------------------------------------------------------------------------
 

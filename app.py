@@ -618,6 +618,74 @@ def normalize_phone(raw):
     raise BadPhone(raw)
 
 
+class BadMicrochip(ValueError):
+    """Raised by normalize_microchip() when a submitted microchip number
+    isn't blank but doesn't resemble a chip number at all — lets the route
+    redisplay the form with a friendly message rather than saving a typo
+    that a scanner lookup will never match."""
+
+
+# 9-15 rather than a flat 15: ISO 11784/11785 (FDX-B) chips are 15 digits and
+# are what a clinic implants today, but animals already carrying an older
+# 9-digit (AVID Euro) or 10-digit (AVID / trovan, which can be alphanumeric)
+# chip still walk in, and a strict 15-digit rule would make those simply
+# unrecordable. The range is wide enough to accept every real chip and narrow
+# enough to catch the failure this exists for: a truncated paste or a few
+# digits typed by hand.
+MICROCHIP_MIN_LENGTH = 9
+MICROCHIP_MAX_LENGTH = 15
+
+
+def normalize_microchip(raw):
+    """
+    Normalizes a microchip number to bare uppercase alphanumerics. Returns
+    None for a blank/optional field, or raises BadMicrochip.
+
+    Normalizing on the way in is what makes the field searchable at all.
+    Staff read a 15-digit number off a scanner and type it however it is
+    grouped on the screen -- "985 141 000 123456", "985-141-000123456" --
+    and each of those stored verbatim is a different string, so searching
+    one would not find the others, and the unique index would not see two
+    spellings of the same chip as a duplicate. Store one canonical form and
+    both problems disappear.
+    """
+    if raw is None or not str(raw).strip():
+        return None
+    cleaned = logic.strip_microchip_separators(raw)
+    if not re.fullmatch(rf"[A-Z0-9]{{{MICROCHIP_MIN_LENGTH},{MICROCHIP_MAX_LENGTH}}}", cleaned):
+        raise BadMicrochip(raw)
+    return cleaned
+
+
+def patient_with_microchip(db, microchip, exclude_patient_id=None):
+    """The patient already carrying this chip, or None.
+
+    Checked before writing so staff get "that chip is on Luna's record"
+    instead of an IntegrityError from idx_patients_microchip_unique -- but
+    the index is what actually enforces it, and the callers still catch the
+    violation for the concurrent case this lookup cannot see. Defence in
+    depth, the same shape as owners.phone (ERROR_500_AUDIT.md E-12).
+    """
+    if not microchip:
+        return None
+    if exclude_patient_id:
+        return db.execute(
+            "SELECT id, animal_name FROM patients WHERE microchip=? AND id<>?",
+            (microchip, exclude_patient_id),
+        ).fetchone()
+    return db.execute(
+        "SELECT id, animal_name FROM patients WHERE microchip=?", (microchip,)
+    ).fetchone()
+
+
+def microchip_taken_message(microchip, row):
+    """One wording for both write paths, naming the animal that already holds
+    the chip -- "it's taken" alone leaves staff no way to tell a genuine
+    duplicate from a mistyped digit."""
+    return (f"Microchip {microchip} is already on file for "
+            f"{row['animal_name'] or 'another patient'} ({row['id']}).")
+
+
 @app.template_filter("money")
 def money_filter(v):
     return logic.fmt_money(v)
@@ -1624,7 +1692,8 @@ def api_patients_search():
         return jsonify([])
     rows = logic.search_patients(db, term)
     return jsonify([{"id": r["id"], "animal_name": r["animal_name"], "species": r["species"],
-                      "owner_name": r["owner_name"], "owner_phone": r["owner_phone"]} for r in rows])
+                      "owner_name": r["owner_name"], "owner_phone": r["owner_phone"],
+                      "microchip": r["microchip"]} for r in rows])
 
 
 @app.route("/api/inventory/lookup")
@@ -1970,14 +2039,34 @@ def patient_edit(patient_id):
         species = required_field(f, "species", "Species")
         if species is None:
             return redisplay()
+        try:
+            microchip = normalize_microchip(f.get("microchip"))
+        except BadMicrochip:
+            flash("That microchip number doesn't look valid — check the digits and try again.", "error")
+            return redisplay()
+        # Excluding this patient matters: re-saving the form without touching
+        # the chip would otherwise report the animal as a duplicate of itself.
+        held_by = patient_with_microchip(db, microchip, exclude_patient_id=patient_id)
+        if held_by:
+            flash(microchip_taken_message(microchip, held_by), "error")
+            return redisplay()
         new_vals = {"animal_name": animal_name, "species": species, "sex": f.get("sex"),
                     "age_note": f.get("age_note"), "repro_status": f.get("repro_status"),
-                    "housing": f.get("housing"), "notes": f.get("notes")}
+                    "housing": f.get("housing"), "microchip": microchip, "notes": f.get("notes")}
         changes = auth.diff_dict(patient, new_vals)
-        db.execute(
-            "UPDATE patients SET animal_name=?, species=?, sex=?, age_note=?, repro_status=?, housing=?, notes=? WHERE id=?",
-            (*new_vals.values(), patient_id),
-        )
+        try:
+            db.execute(
+                "UPDATE patients SET animal_name=?, species=?, sex=?, age_note=?, repro_status=?, "
+                "housing=?, microchip=?, notes=? WHERE id=?",
+                (*new_vals.values(), patient_id),
+            )
+        except dbmod.IntegrityError:
+            # idx_patients_microchip_unique is what actually enforces this;
+            # the check above is not atomic and a concurrent save can win the
+            # race. Without this the update 500s on a duplicate chip.
+            db.rollback()
+            flash("That microchip number is already on another patient's record.", "error")
+            return redisplay()
         auth.log_change(db, "patients", patient_id, "update", changes)
         db.commit()
         flash("Patient updated.", "success")
@@ -2123,6 +2212,20 @@ def visit_new_patient():
         species = required_field(f, "species", "Species")
         if species is None:
             return redisplay()
+        # Validated here, with the other fields, rather than at the INSERT
+        # below: everything from this point on writes: the owner row, the
+        # patient row and the visit. Failing on the chip afterwards would mean
+        # rolling all of that back after the fact, and this form carries a
+        # whole visit's worth of typing.
+        try:
+            microchip = normalize_microchip(f.get("microchip"))
+        except BadMicrochip:
+            flash("That microchip number doesn't look valid — check the digits and try again.", "error")
+            return redisplay()
+        held_by = patient_with_microchip(db, microchip)
+        if held_by:
+            flash(microchip_taken_message(microchip, held_by), "error")
+            return redisplay()
 
         # This form is meant for a genuinely new owner+pet — but nothing
         # stopped staff from re-entering an existing owner's exact
@@ -2168,10 +2271,22 @@ def visit_new_patient():
                 flash(f"Owner {oid} already has this phone number on file — the new pet was added to their existing profile.", "success")
 
         pid = dbmod.next_id(db, "PT")
-        db.execute(
-            "INSERT INTO patients (id,owner_id,animal_name,species,sex,age_note,repro_status,housing) VALUES (?,?,?,?,?,?,?,?)",
-            (pid, oid, animal_name, species, f.get("sex"), f.get("age_note"), f.get("repro_status"), f.get("housing")),
-        )
+        try:
+            db.execute(
+                "INSERT INTO patients (id,owner_id,animal_name,species,sex,age_note,repro_status,housing,microchip) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (pid, oid, animal_name, species, f.get("sex"), f.get("age_note"),
+                 f.get("repro_status"), f.get("housing"), microchip),
+            )
+        except dbmod.IntegrityError:
+            # The pre-check above is not atomic; idx_patients_microchip_unique
+            # is. Rolling back also undoes the owner INSERT a few lines up and
+            # returns the PT id counter, so a retry leaves nothing behind —
+            # which is the point: a half-written owner with no patient is
+            # exactly the orphan shape ORPHANED_RECORDS_AUDIT.md F-03 covers.
+            db.rollback()
+            flash("That microchip number is already on another patient's record.", "error")
+            return redisplay()
         auth.log_change(db, "patients", pid, "create")
         db.commit()
 

@@ -7,7 +7,7 @@
 </div>
 
 <form class="search-bar" method="get">
-  <input type="text" name="q" placeholder="Search ID, Animal, Owner, or Phone…" value="{{ search }}">
+  <input type="text" name="q" placeholder="Search ID, Animal, Microchip, Owner, or Phone…" value="{{ search }}">
   <button class="btn secondary" type="submit">Search</button>
   {% if search %}<a class="btn secondary" href="{{ url_for('patients_list') }}">Clear</a>{% endif %}
 </form>

@@ -43,7 +43,7 @@ searchInput.addEventListener('input', () => {
         resultsDiv.innerHTML = data.map((p, idx) =>
           `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" onclick="selectPatient(window.__searchResults[this.dataset.idx])">
              <div><div class="who">${escapeHtml(p.animal_name)} <span class="meta">(${escapeHtml(p.species || '')})</span></div>
-             <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || 'no phone')} · ${escapeHtml(p.id)}</div></div>
+             <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || 'no phone')} · ${escapeHtml(p.id)}${p.microchip ? ' · Chip: ' + escapeHtml(p.microchip) : ''}</div></div>
            </div>`
         ).join('');
       })

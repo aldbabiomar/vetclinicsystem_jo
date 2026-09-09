@@ -97,7 +97,9 @@ def export_patient_file(db, patient_id):
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
         Paragraph(f"Patient file — {X(patient['animal_name'])}", ss["H1"]),
-        Paragraph(f"{X(patient_id)} \u00b7 {X(patient['species'] or '')} \u00b7 Owner: {X(patient['owner_name'])}"
+        Paragraph(f"{X(patient_id)} \u00b7 {X(patient['species'] or '')}"
+                  f"{' \u00b7 Chip: ' + X(patient['microchip']) if patient['microchip'] else ''}"
+                  f" \u00b7 Owner: {X(patient['owner_name'])}"
                   f"{' (' + X(patient['owner_phone']) + ')' if patient['owner_phone'] else ''}", ss["Small"]),
         Spacer(1, 10),
     ]
@@ -264,7 +266,7 @@ def export_visit_pdf(db, visit_id):
     to show in this level of detail."""
     ss = _styles()
     v = db.execute(
-        "SELECT vi.*, p.animal_name, p.species, p.sex, p.age_note, o.name AS owner_name, o.phone AS owner_phone, "
+        "SELECT vi.*, p.animal_name, p.species, p.sex, p.age_note, p.microchip, o.name AS owner_name, o.phone AS owner_phone, "
         "o.address AS owner_address FROM visits vi JOIN patients p ON p.id=vi.patient_id "
         "JOIN owners o ON o.id=p.owner_id WHERE vi.id=?",
         (visit_id,),
@@ -277,7 +279,9 @@ def export_visit_pdf(db, visit_id):
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
         Paragraph(f"Visit record \u2014 {X(v['animal_name'])}", ss["H1"]),
-        Paragraph(f"{X(visit_id)} \u00b7 {X(v['species'] or '')} \u00b7 Owner: {X(v['owner_name'])}"
+        Paragraph(f"{X(visit_id)} \u00b7 {X(v['species'] or '')}"
+                  f"{' \u00b7 Chip: ' + X(v['microchip']) if v['microchip'] else ''}"
+                  f" \u00b7 Owner: {X(v['owner_name'])}"
                   f"{' (' + X(v['owner_phone']) + ')' if v['owner_phone'] else ''}"
                   f"{' \u00b7 ' + X(v['owner_address']) if v['owner_address'] else ''}", ss["Small"]),
         Spacer(1, 10),
@@ -355,7 +359,7 @@ def export_inpatient_pdf(db, case_id):
     """Full inpatient export, styled to match Patient File / Visit exports."""
     ss = _styles()
     c = db.execute(
-        "SELECT ic.*, p.animal_name, p.species, p.sex, p.age_note, o.name AS owner_name, o.phone AS owner_phone, "
+        "SELECT ic.*, p.animal_name, p.species, p.sex, p.age_note, p.microchip, o.name AS owner_name, o.phone AS owner_phone, "
         "o.address AS owner_address, uatt.full_name AS attending_name, usup.full_name AS supervising_name "
         "FROM inpatient_cases ic JOIN patients p ON p.id=ic.patient_id JOIN owners o ON o.id=p.owner_id "
         "LEFT JOIN users uatt ON uatt.id=ic.attending_vet_id LEFT JOIN users usup ON usup.id=ic.supervising_vet_id "
@@ -372,7 +376,9 @@ def export_inpatient_pdf(db, case_id):
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
         Paragraph(f"Inpatient record \u2014 {X(c['animal_name'])}", ss["H1"]),
-        Paragraph(f"Case #{X(case_id)} \u00b7 {X(c['species'] or '')} \u00b7 Owner: {X(c['owner_name'])}"
+        Paragraph(f"Case #{X(case_id)} \u00b7 {X(c['species'] or '')}"
+                  f"{' \u00b7 Chip: ' + X(c['microchip']) if c['microchip'] else ''}"
+                  f" \u00b7 Owner: {X(c['owner_name'])}"
                   f"{' (' + X(c['owner_phone']) + ')' if c['owner_phone'] else ''}"
                   f"{' \u00b7 ' + X(c['owner_address']) if c['owner_address'] else ''}", ss["Small"]),
         Spacer(1, 10),
@@ -440,7 +446,7 @@ def export_boarding_pdf(db, boarding_id):
     """Full boarding export: patient, owner, stay details, incident log, and billing."""
     ss = _styles()
     b = db.execute(
-        "SELECT bs.*, p.animal_name, p.species, p.sex, p.age_note, o.name AS owner_name, "
+        "SELECT bs.*, p.animal_name, p.species, p.sex, p.age_note, p.microchip, o.name AS owner_name, "
         "o.phone AS owner_phone, o.address AS owner_address FROM boarding_sessions bs "
         "JOIN patients p ON p.id=bs.patient_id JOIN owners o ON o.id=p.owner_id WHERE bs.id=?",
         (boarding_id,),
@@ -457,7 +463,9 @@ def export_boarding_pdf(db, boarding_id):
                              leftMargin=18 * mm, rightMargin=18 * mm)
     story = [
         Paragraph(f"Boarding record \u2014 {X(b['animal_name'])}", ss["H1"]),
-        Paragraph(f"Booking #{X(boarding_id)} \u00b7 {X(b['species'] or '')} \u00b7 Owner: {X(b['owner_name'])}"
+        Paragraph(f"Booking #{X(boarding_id)} \u00b7 {X(b['species'] or '')}"
+                  f"{' \u00b7 Chip: ' + X(b['microchip']) if b['microchip'] else ''}"
+                  f" \u00b7 Owner: {X(b['owner_name'])}"
                   f"{' (' + X(b['owner_phone']) + ')' if b['owner_phone'] else ''}"
                   f"{' \u00b7 ' + X(b['owner_address']) if b['owner_address'] else ''}", ss["Small"]),
         Spacer(1, 10),

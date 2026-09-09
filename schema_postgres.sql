@@ -163,9 +163,24 @@ CREATE TABLE IF NOT EXISTS patients (
     repro_status TEXT,
     housing TEXT,
     notes TEXT,
+    -- Optional. Appended deliberately: setup.py's ALTER TABLE adds it at the
+    -- end on an upgrade, so keeping it last here means a fresh install and an
+    -- upgraded one have the same column order.
+    microchip TEXT,
     FOREIGN KEY (owner_id) REFERENCES owners(id)
 );
 CREATE INDEX IF NOT EXISTS idx_patients_owner ON patients(owner_id);
+-- idx_patients_microchip_unique is created by setup.py's
+-- INCREMENTAL_SCHEMA_STATEMENTS, not here, for the same reason as
+-- idx_sales_idempotency_key below: apply_schema() runs BEFORE
+-- apply_incremental_migrations(), so an index over a column that only
+-- arrives via ALTER TABLE works on a fresh install and raises on every
+-- upgrade, aborting the whole schema apply.
+-- A plain unique index would make the column effectively single-valued
+-- (every NULL distinct in Postgres, but every blank string equal), so it is
+-- partial: any number of patients may have no chip on file, while a second
+-- patient carrying a chip already recorded is rejected outright. app.py
+-- checks first and catches the IntegrityError for the concurrent case.
 
 -- ============================================================ DISTRIBUTORS / PRICE LIST / INVENTORY
 CREATE TABLE IF NOT EXISTS distributors (

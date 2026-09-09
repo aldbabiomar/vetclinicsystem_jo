@@ -20,6 +20,7 @@
     <div class="field"><label>Housing</label>
       <select name="housing"><option value="">—</option>{% for h in ['Indoor','Outdoor','Stray'] %}<option {{ 'selected' if patient.housing==h }}>{{ h }}</option>{% endfor %}</select>
     </div>
+    <div class="field"><label>Microchip Number (optional)</label><input name="microchip" autocomplete="off" placeholder="e.g. 985141000123456" value="{{ fv(form, 'microchip', patient.microchip or '') }}"></div>
     <div class="field full"><label>Notes</label><textarea name="notes">{{ patient.notes or '' }}</textarea></div>
   </div>
   <div class="form-actions">

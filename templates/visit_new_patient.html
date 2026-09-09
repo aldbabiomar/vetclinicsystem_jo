@@ -24,6 +24,7 @@
     </div>
     <div class="field"><label>Age / DOB Note</label><input name="age_note" value="{{ fv(form, 'age_note') }}"></div>
     <div class="field"><label>Housing</label><select name="housing"><option value="" {{ 'selected' if not fv(form, 'housing') }}>—</option><option {{ 'selected' if fv(form, 'housing')=='Indoor' }}>Indoor</option><option {{ 'selected' if fv(form, 'housing')=='Outdoor' }}>Outdoor</option><option {{ 'selected' if fv(form, 'housing')=='Stray' }}>Stray</option></select></div>
+    <div class="field"><label>Microchip Number (optional)</label><input name="microchip" autocomplete="off" placeholder="e.g. 985141000123456" value="{{ fv(form, 'microchip') }}"></div>
   </div>
 
   <div class="field full" style="margin-top:14px;"><label>Presenting Complaint / Reason for Visit</label><input name="complaint" value="{{ fv(form, 'complaint') }}"></div>
