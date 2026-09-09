@@ -23,14 +23,16 @@ Design rules, from features/MONITORING_FEATURE_PLAN.md §1:
 * No "row counts look wrong" check. There is no baseline to compare against
   and it would fire on a quiet clinic.
 
-This file is ALMOST identical to IQ's, and that is a verified result rather
-than a copy-paste (CLAUDE.md §1, §2). **The exception is
-consecutive_fail_days()**, which diverged in the original feature commit and
-was only noticed on 2026-08-31: IQ picks each day's verdict by ran_at
-timestamp, this version by insert order (the rows arrive id DESC). The two
-agree whenever id order and ran_at order agree, which is always in normal
-operation — so this is a robustness gap, not a live bug. IQ's version is the
-better one and should be ported here; see COMPARISON.md §40.5. Every API it touches was
+This file is identical to IQ's apart from this paragraph — **as verified by
+`diff` on 2026-09-09**, not as a copy-paste (CLAUDE.md §1, §2). Take the date
+seriously: the previous version of this paragraph claimed a parity that had
+never been true. consecutive_fail_days() diverged in the original feature
+commit and nobody noticed until 2026-08-31, because a comment asserting
+parity is not evidence of parity (COMPARISON.md §40.6). That divergence was
+closed on 2026-09-09 by porting IQ's version here: each day's verdict is now
+keyed by the ran_at timestamp rather than by insert order (COMPARISON.md
+§43). **`diff` the two files rather than trusting this sentence.** Every API
+it touches was
 checked against JO's own code on 2026-08-26: logic.get_setting/int_setting,
 backup.last_backup/recent_backups, the backup_log columns, and
 updater.DATA_DIR all match IQ's exactly — DATA_DIR reads
@@ -489,11 +491,19 @@ def latest(db):
 
 
 def consecutive_fail_days(db):
-    """How many distinct calendar days, ending today, the most recent check
-    of each day reported 'fail'. Drives the Dashboard modal at 3 (§1.5).
+    """How many distinct calendar days in an unbroken run, ending with the
+    most recent day that has a result, reported 'fail'. Drives the Dashboard
+    modal at 3 (§1.5).
 
-    Counts days rather than rows so that a machine restarted six times in
-    one morning does not escalate to a modal by lunchtime.
+    Counts days rather than rows so that a machine restarted six times in one
+    morning does not escalate to a modal by lunchtime.
+
+    The run ends at the most recent *recorded* day rather than at today on
+    purpose: the app only records a result while it is running, so a machine
+    that was off for two days has no rows for those days, and its three
+    failing days before that are still the best evidence available. The
+    Dashboard additionally requires the latest result itself to be 'fail'
+    before showing the modal, so a stale streak alone cannot raise one.
     """
     try:
         rows = db.execute(
@@ -502,21 +512,26 @@ def consecutive_fail_days(db):
     except Exception:
         return 0
 
+    # Keyed by day, holding that day's latest result by TIMESTAMP rather than
+    # by insert order — id order and ran_at order are the same today, but
+    # tying the meaning of "that day's verdict" to an autoincrement is the
+    # kind of assumption that quietly stops being true.
     by_day = {}
     for row in rows:
         ts = _parse_ts(row["ran_at"])
         if ts is None:
             continue
         day = ts.date()
-        # rows arrive newest-first, so the first seen per day is that day's latest
-        by_day.setdefault(day, row["status"])
+        seen = by_day.get(day)
+        if seen is None or ts >= seen[0]:
+            by_day[day] = (ts, row["status"])
 
     if not by_day:
         return 0
 
     streak = 0
     day = max(by_day)
-    while by_day.get(day) == "fail":
+    while day in by_day and by_day[day][1] == "fail":
         streak += 1
         day = day - timedelta(days=1)
     return streak

@@ -437,6 +437,63 @@ def test_the_streak_is_broken_by_the_latest_result_of_that_day(env):
     assert selfcheck.consecutive_fail_days(db) == 0
 
 
+def test_a_days_verdict_follows_the_timestamp_not_the_insert_order(env):
+    """The same day twice, with the LATER result written FIRST — so the row
+    holding today's real verdict carries the LOWER id.
+
+    Keying "that day's result" to an autoincrement instead of to ran_at reads
+    today as the 03:05 'fail' and reports a failing day that never happened.
+    Nothing exotic is needed to produce this ordering: a clock correction —
+    NTP, a DST step, a machine whose date was simply wrong until someone
+    fixed it — is enough.
+
+    Written 2026-09-09, when JO's copy of this function was brought in line
+    with IQ's. The two implementations agree on every in-order case, so every
+    other test in this file passes against BOTH of them; this test and the
+    one below are the only ones in either suite that can tell them apart
+    (CLAUDE.md §7.3).
+    """
+    import selfcheck
+    db = env["db"]
+    db.execute("DELETE FROM self_check_log")
+    db.commit()
+
+    _record(db, 0, "ok", minute=30)    # lower id, LATER timestamp
+    _record(db, 0, "fail", minute=5)   # higher id, EARLIER timestamp
+
+    assert selfcheck.consecutive_fail_days(db) == 0, (
+        "today's verdict is the 03:30 'ok'; the 03:05 'fail' that happens to "
+        "have been written after it must not raise a streak"
+    )
+
+
+def test_an_out_of_order_row_cannot_hide_a_real_failing_streak(env):
+    """The consequential direction of the same ordering bug, and the control
+    for the test above: this one asserts a NON-zero streak, so the pair
+    distinguishes "counted for the right reason" from "returned 0 for any
+    reason at all" (CLAUDE.md §7.3).
+
+    Three genuinely failing days, with today's two rows written out of order.
+    Reading the day by insert order picks the early-morning 'ok' as today's
+    verdict, drops the streak to 0, and the Dashboard modal that should fire
+    stays silent — the failure mode this whole feature exists to prevent.
+    """
+    import selfcheck
+    db = env["db"]
+    db.execute("DELETE FROM self_check_log")
+    db.commit()
+
+    _record(db, 2, "fail")
+    _record(db, 1, "fail")
+    _record(db, 0, "fail", minute=30)  # lower id, LATER timestamp
+    _record(db, 0, "ok", minute=5)     # higher id, EARLIER timestamp
+
+    assert selfcheck.consecutive_fail_days(db) == 3, (
+        "today's latest result is the 03:30 'fail'; the 03:05 'ok' written "
+        "after it must not break a three-day streak and suppress the modal"
+    )
+
+
 # --- a destination that went away must not be papered over ----------------
 # Found 2026-08-30 while setting up soak Test C: renaming the backup folder
 # away produced status "ok". os.makedirs recreated it one minute later and the
