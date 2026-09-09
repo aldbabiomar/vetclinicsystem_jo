@@ -302,3 +302,36 @@ def test_toast_js_still_only_sweeps_flash_elements():
         "toast.js's sweep selector changed — recheck that .selfcheck-banner "
         "is still outside it"
     )
+
+
+def test_no_saved_page_has_been_committed_into_static():
+    """static/ holds assets. It must not hold rendered pages.
+
+    Both apps accumulated these by accident during the 2026-08-28/29 styling
+    work — one "Save Page As" copy in IQ, nine in JO — and nothing noticed for
+    two weeks, because nothing references them and nothing fails. Flask serves
+    everything in static/, so each was reachable at its own URL, carrying a
+    snapshot of the page: the install's LAN address and port, the configured
+    backup folder path, and a CSRF token from whoever saved it.
+
+    Detected as a complete HTML document sitting in static/, which no asset
+    is. The first version of this test keyed off the csrf-token meta tag those
+    pages carry — and flagged static/rebuild.js, a perfectly good script whose
+    job includes READING that tag. A guard with a false positive is worse than
+    none: this project already deleted an automated contrast check after two
+    attempts produced 117 then 142 of them. COMPARISON.md §47.
+    """
+    offenders = []
+    for path in sorted((ROOT / "static").rglob("*.html")):
+        if not path.is_file():
+            continue
+        try:
+            head = path.read_text(encoding="utf-8", errors="ignore").lstrip()[:200].lower()
+        except OSError:
+            continue
+        if head.startswith("<!doctype html") or head.startswith("<html"):
+            offenders.append(path.name)
+    assert not offenders, (
+        "saved rendered page(s) committed into static/, where they are served "
+        f"publicly: {offenders}. Delete them; they are in git history if needed."
+    )
