@@ -3,6 +3,18 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.10.1] - 2026-09-10
+
+### Fixed
+- **"Check for Updates" could wrongly report the clinic as offline.** GitHub
+  limits how many times an hour it can be asked for the latest version, and
+  the Settings page was using up that allowance every time it was opened —
+  even just to show which version you are on, which it already knows without
+  asking. Once the allowance ran out, checking for updates reported the
+  computer as offline when nothing was wrong with it. Opening Settings no
+  longer contacts GitHub at all, and if the limit is ever reached the message
+  now says so and tells you what time to try again.
+
 ## [1.10.0] - 2026-09-10
 
 ### Added
