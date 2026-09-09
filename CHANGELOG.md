@@ -3,6 +3,20 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.10.0] - 2026-09-10
+
+### Added
+- **A pet's microchip number can now be recorded, and used to find them.**
+  It is optional — nothing changes for pets that do not have one. Type the
+  number however it is printed or read off the scanner: spaces and dashes are
+  ignored, so searching "985 141 000 123456" finds a chip saved as
+  985141000123456. Searching by chip works everywhere you already search for a
+  pet — the Patients page, and the pet picker on Log a Visit, New Inpatient
+  and Boarding. The same chip cannot be saved on two different pets; if it is
+  already on file, the app tells you which animal has it. The number shows on
+  the pet's record and on the Patient File, Visit, Inpatient and Boarding PDF
+  exports.
+
 ## [1.9.1] - 2026-09-02
 
 ### Fixed
