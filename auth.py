@@ -87,6 +87,48 @@ VET_RECEPTION_DEFAULT_PERMISSIONS = PERMISSION_KEY_SET - ADMIN_ONLY_TODAY
 DISCOUNT_CAPS = {"Admin": 25, "Vet": 15, "Reception": 10}
 
 
+# The 200 or so passwords that actually get tried first in a spray. Kept
+# deliberately short and embedded -- a real breach corpus is a dependency and a
+# download this app has no way to keep current, and the top of the list is
+# where essentially all of the risk sits. Lower-cased; comparison is too.
+COMMON_PASSWORDS = {
+    "password", "password1", "password12", "password123", "password1234",
+    "passw0rd", "p@ssword", "p@ssw0rd", "12345678", "123456789", "1234567890",
+    "qwertyui", "qwerty123", "qwertyuiop", "iloveyou", "sunshine", "princess",
+    "football", "baseball", "welcome1", "welcome123", "admin123", "administrator",
+    "letmein1", "letmein123", "trustno1", "starwars", "whatever", "changeme",
+    "abc12345", "monkey123", "dragon123", "superman", "batman123", "michael1",
+    "clinic123", "vetclinic", "vetclinic1", "vetclinic123", "veterinary",
+}
+
+MIN_PASSWORD_LENGTH = 8
+
+
+def password_error(password, username=None):
+    """Returns a reason to reject `password`, or None if it is acceptable.
+
+    Shared by change_password(), admin_user_new() and
+    admin_user_reset_password() so the rules cannot drift apart between the
+    three places a password gets set. Length was previously the only rule, so
+    "password" and the person's own username were both accepted on a system
+    holding clinical records.
+
+    Deliberately NOT a complexity-class rule (one upper, one digit, one
+    symbol) and NOT an expiry: both push front-desk staff towards writing the
+    password on a note by the keyboard, which is a worse outcome on a machine
+    that is already inside the clinic. Length, not-your-username, and
+    not-one-of-the-obvious-ones is the proportionate set.
+    """
+    if len(password or "") < MIN_PASSWORD_LENGTH:
+        return f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+    lowered = password.lower()
+    if lowered in COMMON_PASSWORDS:
+        return "That password is one of the most commonly guessed ones — please choose another."
+    if username and len(username) >= 3 and username.lower() in lowered:
+        return "Password can't contain the username."
+    return None
+
+
 def hash_password(raw):
     return generate_password_hash(raw)
 
