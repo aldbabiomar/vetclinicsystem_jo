@@ -265,7 +265,7 @@ async function loadUpdatesStatus() {
   // spends one of the 60 unauthenticated GitHub calls this network gets per
   // hour. Nothing drawn below needs GitHub. See COMPARISON.md §46.
   try {
-    const res = await fetch('/settings/updates/status');
+    const res = await fetch('{{ url_for('settings_updates_status') }}');
     const data = await res.json();
     document.getElementById('updatesConfigured').style.display = data.configured ? '' : 'none';
     document.getElementById('updatesNotConfigured').style.display = data.configured ? 'none' : '';
@@ -282,7 +282,7 @@ async function checkForUpdates() {
   btn.disabled = true;
   statusEl.textContent = 'Checking…';
   try {
-    const res = await fetch('/settings/updates/check');
+    const res = await fetch('{{ url_for('settings_updates_check') }}');
     const data = await res.json();
     if (data.error) { statusEl.textContent = data.error; return; }
     if (data.available) {
@@ -309,7 +309,7 @@ function waitForRestart(successMessage) {
   const poll = setInterval(async () => {
     attempts++;
     try {
-      const res = await fetch('/health', { cache: 'no-store' });
+      const res = await fetch('{{ url_for('health') }}', { cache: 'no-store' });
       if (res.ok) {
         clearInterval(poll);
         panel.textContent = successMessage;
@@ -335,7 +335,7 @@ function runUpdateJob(startUrl, actionLabel) {
     .then(({ ok, data }) => {
       if (!ok || !data.job_id) { panel.textContent = data.error || (actionLabel + ' failed to start.'); return; }
       const poll = setInterval(async () => {
-        const res = await fetch('/settings/job-status?job_id=' + data.job_id);
+        const res = await fetch('{{ url_for('settings_job_status') }}?job_id=' + data.job_id);
         const s = await res.json();
         if (s.status === 'not_found') { clearInterval(poll); return; }
         if (s.status === 'running') {
@@ -396,7 +396,7 @@ document.getElementById('backupNowForm').addEventListener('submit', async functi
     });
     const data = await res.json();
     if (!res.ok || !data.job_id) throw new Error(data.error || 'Could not start the backup.');
-    window.VZProgress.poll(data.job_id, '/settings/job-status', {}, {
+    window.VZProgress.poll(data.job_id, '{{ url_for('settings_job_status') }}', {}, {
       onUpdate: (d) => window.VZProgress.render(panel, d),
       onDone: (d) => {
         resetSubmitButton(btn);
@@ -436,12 +436,12 @@ document.getElementById('restoreForm').addEventListener('submit', async function
     });
     const data = await res.json();
     if (!res.ok || !data.job_id) throw new Error('Could not start the restore.');
-    window.VZProgress.poll(data.job_id, '/settings/job-status', { kind: 'restore' }, {
+    window.VZProgress.poll(data.job_id, '{{ url_for('settings_job_status') }}', { kind: 'restore' }, {
       onUpdate: (d) => window.VZProgress.render(panel, d),
       onDone: (d) => {
         if (d.ok) {
           window.VZToast.show(`${d.message}. Please log in again.`, 'success');
-          setTimeout(() => { window.location = '/login'; }, 1200);
+          setTimeout(() => { window.location = '{{ url_for('login') }}'; }, 1200);
         } else {
           resetSubmitButton(btn);
           window.VZToast.show(d.message || 'Restore failed.', 'error');
@@ -598,7 +598,7 @@ async function folderBrowserNewFolder() {
   if (!name || !folderBrowserCurrent) return;
   const errEl = document.getElementById('folderBrowserError');
   try {
-    const res = await fetch('/api/browse-folder/new-folder', {
+    const res = await fetch('{{ url_for('api_browse_folder_new') }}', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

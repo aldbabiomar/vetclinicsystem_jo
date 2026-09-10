@@ -180,7 +180,7 @@ visitBillSearchInput.addEventListener('input', () => {
   const q = visitBillSearchInput.value.trim();
   if (!q) { visitBillResultsDiv.innerHTML = ''; return; }
   visitBillDebounce = setTimeout(() => {
-    fetch(`/api/price-list/lookup?q=${encodeURIComponent(q)}&category=Service&category=Medicine`)
+    fetch(`{{ url_for('api_price_list_lookup') }}?q=${encodeURIComponent(q)}&category=Service&category=Medicine`)
       .then(r => r.json())
       .then(list => {
         if (!list.length) { visitBillResultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }

@@ -154,11 +154,25 @@ def _js_function_body(name):
     return src[start:end]
 
 
+def _calls_route(body, path, endpoint):
+    """True if this JS body targets that route, written either way.
+
+    URLs in the templates moved from string literals to url_for() (see
+    test_frontend.py's hardcoded-URL guard), so the source now reads
+    `{{ url_for('settings_updates_status') }}` where it used to read
+    "/settings/updates/status". Both spellings mean the same request; matching
+    either keeps this guard about WHICH ROUTE IS CALLED rather than about how
+    the URL happens to be spelled. The rendered page still contains the literal
+    path, which is what the browser tier sees.
+    """
+    return path in body or endpoint in body
+
+
 def test_the_settings_page_asks_the_local_route_on_load():
     body = _js_function_body("loadUpdatesStatus")
-    assert "/settings/updates/status" in body, (
+    assert _calls_route(body, "/settings/updates/status", "settings_updates_status"), (
         "the page-load handler must call the local-only status route")
-    assert "/settings/updates/check" not in body, (
+    assert not _calls_route(body, "/settings/updates/check", "settings_updates_check"), (
         "the page-load handler is calling GitHub again — every Settings visit "
         "spends one of the 60 requests this network gets per hour")
 
@@ -167,5 +181,5 @@ def test_the_check_button_still_asks_the_route_that_calls_github():
     """The control. Without it, deleting the GitHub call altogether would pass
     the test above while quietly removing the feature."""
     body = _js_function_body("checkForUpdates")
-    assert "/settings/updates/check" in body, (
+    assert _calls_route(body, "/settings/updates/check", "settings_updates_check"), (
         "the Check for Updates button must still perform a real check")

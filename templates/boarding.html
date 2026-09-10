@@ -183,7 +183,7 @@ searchInput.addEventListener('input', () => {
   if (q.length === 0) { resultsDiv.innerHTML = ''; return; }
   if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">Type at least 2 characters.</div>'; return; }
   debounceTimer = setTimeout(() => {
-    fetch(`/api/patients/search?q=${encodeURIComponent(q)}`)
+    fetch(`{{ url_for('api_patients_search') }}?q=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .then(data => {
         if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
@@ -228,13 +228,13 @@ function suggestTotal() {
 }
 function openIncident(btn) {
   const { id, name } = btn.dataset;
-  document.getElementById('incidentForm').action = `/boarding/${id}/incident`;
+  document.getElementById('incidentForm').action = `{{ url_for('boarding_incident', boarding_id=999999999) }}`.replace('999999999', encodeURIComponent(id));
   document.getElementById('incidentPatientLabel').textContent = name;
   document.getElementById('incidentModal').style.display = 'flex';
 }
 function openPayment(btn) {
   const { id, name, discount } = btn.dataset;
-  document.getElementById('paymentForm').action = `/boarding/${id}/payment`;
+  document.getElementById('paymentForm').action = `{{ url_for('boarding_payment', boarding_id=999999999) }}`.replace('999999999', encodeURIComponent(id));
   document.getElementById('paymentPatientLabel').textContent = name;
   // Show the discount already on this stay. The field posts with every
   // payment, so leaving it at 0 here would quietly wipe an existing discount

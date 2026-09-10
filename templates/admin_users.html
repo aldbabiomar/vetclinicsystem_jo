@@ -254,7 +254,7 @@
   // ---- Delete Role modal ----
   function deleteRole(roleId, roleName, staffCount, triggerEl) {
     document.getElementById('deleteRoleTitle').textContent = 'Delete ' + roleName + '?';
-    document.getElementById('deleteRoleForm').action = '/admin/roles/' + roleId + '/delete';
+    document.getElementById('deleteRoleForm').action = `{{ url_for('admin_role_delete', role_id='__ID__') }}`.replace('__ID__', encodeURIComponent(roleId));
     const reassignBlock = document.getElementById('deleteRoleReassignBlock');
     const simpleText = document.getElementById('deleteRoleSimpleText');
     const confirmBtn = document.getElementById('deleteRoleConfirmBtn');

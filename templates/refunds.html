@@ -133,7 +133,7 @@ function lookupRefundSale() {
   const saleId = input.value.trim();
   const linesDiv = document.getElementById('refundSaleLines');
   if (!saleId) { window.VZToast.show('Enter a sale ID first.', 'error'); return; }
-  fetch(`/api/sales/${encodeURIComponent(saleId)}/refundable-items`)
+  fetch(`{{ url_for('api_sale_refundable_items', sale_id=999999999) }}`.replace('999999999', encodeURIComponent(saleId)))
     .then(r => r.json().then(data => ({ ok: r.ok, data })))
     .then(({ ok, data }) => {
       if (!ok) { window.VZToast.show(data.error || 'Sale not found.', 'error'); refundSaleId = null; refundLines = []; linesDiv.innerHTML = '<div class="empty-note">Look up a sale to see its refundable items.</div>'; document.getElementById('refundSaleCleanupNote').style.display = 'none'; renderRefundTotal(); return; }

@@ -276,7 +276,7 @@ function openBarcodeManager(itemId, itemName) {
 
 async function barcodeManagerRefresh() {
   try {
-    const res = await fetch(`/inventory-catalog/${barcodeManagerItemId}/barcode/status`);
+    const res = await fetch(`{{ url_for('inventory_catalog_barcode_status', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)));
     const data = await res.json();
     if (!res.ok) {
       window.VZToast.show(data.error || 'Could not load barcode status.', 'error');
@@ -337,7 +337,7 @@ async function barcodeManagerSaveManual() {
   const raw = input.value.trim();
   if (!raw) { window.VZToast.show('Enter a barcode.', 'error'); return; }
   try {
-    const res = await fetch(`/inventory-catalog/${barcodeManagerItemId}/barcode/manual`, {
+    const res = await fetch(`{{ url_for('inventory_catalog_barcode_manual', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -357,7 +357,7 @@ async function barcodeManagerSaveManual() {
 
 async function barcodeManagerGenerate() {
   try {
-    const res = await fetch(`/inventory-catalog/${barcodeManagerItemId}/create-barcode`, {
+    const res = await fetch(`{{ url_for('inventory_catalog_create_barcode', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
       method: 'POST',
       headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
     });
@@ -375,7 +375,7 @@ async function barcodeManagerRemove() {
   const ok = await window.VZDialog.confirm('Remove this barcode? You can add a new one afterward.');
   if (!ok) return;
   try {
-    const res = await fetch(`/inventory-catalog/${barcodeManagerItemId}/barcode/remove`, {
+    const res = await fetch(`{{ url_for('inventory_catalog_barcode_remove', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
       method: 'POST',
       headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
     });

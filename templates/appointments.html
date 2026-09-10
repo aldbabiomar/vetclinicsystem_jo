@@ -122,7 +122,7 @@ async function cancelAppt(el) {
   const ok = await window.VZDialog.confirm(`Cancel ${name}'s appointment?`, { originEl: el, okLabel: 'Cancel Appointment', cancelLabel: 'Keep It' });
   if (!ok) return;
   const f = document.getElementById('cancelForm');
-  f.action = `/appointments/${id}/cancel`;
+  f.action = `{{ url_for('appointment_cancel', appt_id=999999999) }}`.replace('999999999', encodeURIComponent(id));
   document.body.appendChild(f);
   f.submit();
 }

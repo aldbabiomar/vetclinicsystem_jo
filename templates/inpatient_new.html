@@ -47,7 +47,7 @@ searchInput.addEventListener('input', () => {
   if (q.length === 0) { resultsDiv.innerHTML = ''; return; }
   if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">Type at least 2 characters.</div>'; return; }
   debounceTimer = setTimeout(() => {
-    fetch(`/api/patients/search?q=${encodeURIComponent(q)}`)
+    fetch(`{{ url_for('api_patients_search') }}?q=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .then(data => {
         if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }

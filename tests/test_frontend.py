@@ -453,3 +453,34 @@ def test_credential_fields_tell_the_password_manager_what_they_are():
             if "autocomplete=" not in m.group(0):
                 offenders.append(f"{template.name}: {m.group(1)}")
     assert not offenders, "credential field(s) with no autocomplete hint: " + ", ".join(offenders)
+
+
+def test_no_template_hardcodes_an_application_url():
+    """URLs the JavaScript builds must come from url_for(), not string literals.
+
+    Twenty-two templates in IQ and twenty-one in JO built request URLs by
+    concatenation — fetch(`/api/sales/${id}/refundable-items`), form.action =
+    '/admin/roles/' + id + '/delete'. Renaming or re-prefixing a route then
+    breaks the UI silently: no import error, no template error, and no test
+    failure, because route tests POST to the path directly and never click.
+    That is exactly the shape of the POS "Complete Sale" bug, which did nothing
+    for 25 releases while the suite stayed green (COMPARISON.md §27).
+
+    Built from url_for(), a renamed route raises BuildError while the page is
+    rendering — loud, and at the first page load rather than the first click.
+    Routes with a dynamic segment render a template carrying a sentinel
+    (__ID__, or 999999999 where an int converter refuses a non-numeric value
+    at build time) which the script substitutes.
+
+    Anchors and form actions written in HTML are already url_for() and are not
+    what this looks at; the target here is JavaScript.
+    """
+    offenders = []
+    pattern = re.compile(r"""(fetch\(|\.action\s*=\s*|window\.location(?:\.href)?\s*=\s*)["'`]/""")
+    for template in TEMPLATES:
+        for i, line in enumerate(template.read_text(encoding="utf-8").splitlines(), 1):
+            if pattern.search(line):
+                offenders.append(f"{template.name}:{i}: {line.strip()[:90]}")
+    assert not offenders, (
+        f"{len(offenders)} hardcoded application URL(s) in JavaScript:\n  "
+        + "\n  ".join(offenders[:20]))

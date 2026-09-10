@@ -68,11 +68,11 @@ searchInput.addEventListener('input', () => {
   const q = searchInput.value.trim();
   if (!q) { resultsDiv.innerHTML = ''; return; }
   debounceTimer = setTimeout(() => {
-    fetch(`/api/inventory/lookup?barcode=${encodeURIComponent(q)}`)
+    fetch(`{{ url_for('api_inventory_lookup') }}?barcode=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .then(data => {
         if (data && data.id) { addToCart(data); searchInput.value = ''; resultsDiv.innerHTML=''; return; }
-        fetch(`/api/inventory/lookup?q=${encodeURIComponent(q)}`)
+        fetch(`{{ url_for('api_inventory_lookup') }}?q=${encodeURIComponent(q)}`)
           .then(r => r.json())
           .then(list => {
             if (!list.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
