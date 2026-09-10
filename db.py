@@ -14,6 +14,7 @@ attachments.py, ...) can use a consistent, simple data-access style. It provides
 """
 import os
 import re
+import atexit
 import threading
 
 import psycopg
@@ -98,6 +99,7 @@ def connect():
 # ---------------------------------------------------------------------------
 _pool = None
 _pool_lock = threading.Lock()
+_atexit_registered = False
 
 
 def _pool_settings():
@@ -135,6 +137,18 @@ def init_pool():
             max_lifetime=max_lifetime,
             open=True,
         )
+        # Hand the pool back before interpreter shutdown. Without this,
+        # ConnectionPool.__del__ runs during finalisation and tries to join
+        # its worker threads, which Python 3.14 refuses -- every test run
+        # ended with a PythonFinalizationError traceback after the result
+        # line, and any script that opens a pool would print the same. app.py
+        # already calls close_pool() on its own shutdown paths; this covers
+        # every other entry point (setup.py, import_seed.py, the test runner)
+        # without them each having to remember.
+        global _atexit_registered
+        if not _atexit_registered:
+            atexit.register(close_pool)
+            _atexit_registered = True
         return _pool
 
 
