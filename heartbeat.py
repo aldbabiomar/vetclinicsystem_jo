@@ -39,7 +39,6 @@ statuses only. `row_counts` exists to show a database is not empty, not to
 describe a clinic's business.
 """
 import json
-import os
 import time
 from datetime import datetime
 
