@@ -27,11 +27,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # (key, label, category) — grouped the same way the sidebar groups pages, so
 # a role's checklist reads like a shorter version of the nav itself.
 #
-# Includes a few keys (manage_cash_register, view_consignment,
-# manage_consignment_items, manage_consignment_stock,
-# manage_consignment_settlements) for features this app doesn't have yet —
-# kept in the vocabulary now so adding those features later is a permission
-# grant, not a second permissions-list migration.
+# Every key in this list is live and enforced (re-checked 2026-09-10). This
+# comment used to say the consignment and cash-register keys were placeholders
+# "for features this app doesn't have yet"; both shipped long ago — 14
+# consignment routes and 3 cash-register routes carry those decorators today.
 # ---------------------------------------------------------------------------
 PERMISSIONS = [
     ("manage_owners", "Manage Owners", "Patients & Visits"),
