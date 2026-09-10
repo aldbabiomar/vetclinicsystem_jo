@@ -19,7 +19,7 @@
 
 {% if backup_alert %}
 <div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
-  {{ backup_alert }} <a href="{{ url_for('settings_page') }}">Open Settings →</a>
+  {{ backup_alert }} <a href="{{ url_for('settings.settings_page') }}">Open Settings →</a>
 </div>
 {% endif %}
 
@@ -43,7 +43,7 @@
   </ul>
   <div class="small" style="margin-top:6px;">
     Last checked {{ self_check.ran_at.replace('T', ' ') }} —
-    <a href="{{ url_for('settings_page') }}" style="color:inherit; text-decoration:underline;">Open Settings →</a>
+    <a href="{{ url_for('settings.settings_page') }}" style="color:inherit; text-decoration:underline;">Open Settings →</a>
   </div>
 </div>
 {% endif %}
@@ -61,7 +61,7 @@
     </ul>
     <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
       <button class="btn secondary" type="button" onclick="dismissSelfCheckModal()">Not now</button>
-      <a class="btn" href="{{ url_for('settings_page') }}">Open Settings</a>
+      <a class="btn" href="{{ url_for('settings.settings_page') }}">Open Settings</a>
     </div>
   </div>
 </div>

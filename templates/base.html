@@ -155,7 +155,7 @@
         <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin_logs') }}">Logins and Changes</a>
         {% endif %}
         {% if has_permission('manage_settings') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='settings_page' }}" href="{{ url_for('settings_page') }}">Settings</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='settings_page' }}" href="{{ url_for('settings.settings_page') }}">Settings</a>
         {% endif %}
       </div>
     </div>

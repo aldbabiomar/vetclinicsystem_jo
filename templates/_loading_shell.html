@@ -10,7 +10,7 @@
 <script>
 (function () {
   const panel = document.getElementById('loadingProgress');
-  window.VZProgress.poll({{ job_id | tojson }}, '/jobs/status', {}, {
+  window.VZProgress.poll({{ job_id | tojson }}, '{{ url_for('jobs_status') }}', {}, {
     onUpdate: (d) => window.VZProgress.render(panel, d),
     onDone: () => { window.location = {{ reload_url | tojson }}; },
     onError: (d) => {

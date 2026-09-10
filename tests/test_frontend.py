@@ -476,10 +476,19 @@ def test_no_template_hardcodes_an_application_url():
     what this looks at; the target here is JavaScript.
     """
     offenders = []
-    pattern = re.compile(r"""(fetch\(|\.action\s*=\s*|window\.location(?:\.href)?\s*=\s*)["'`]/""")
+    # Any string literal that starts a path, wherever it appears — assigned to
+    # a variable, passed as an argument, concatenated. The first version of
+    # this guard only looked for fetch(, .action= and window.location=, and
+    # missed four more per app: `const url = '/api/browse-folder'` and two
+    # runUpdateJob('/settings/updates/...') calls. Two of those were routes
+    # about to move into a blueprint, which would have broken them silently —
+    # the exact failure this guard exists to prevent, hiding just outside the
+    # shape it was looking for.
+    pattern = re.compile(r"""[=(,]\s*["'`]/[a-z][a-z0-9/_-]*""")
     for template in TEMPLATES:
         for i, line in enumerate(template.read_text(encoding="utf-8").splitlines(), 1):
-            if pattern.search(line):
+            m = pattern.search(line)
+            if m and "url_for" not in line[max(0, m.start() - 40):m.start()]:
                 offenders.append(f"{template.name}:{i}: {line.strip()[:90]}")
     assert not offenders, (
         f"{len(offenders)} hardcoded application URL(s) in JavaScript:\n  "

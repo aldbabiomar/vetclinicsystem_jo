@@ -159,7 +159,7 @@ def _calls_route(body, path, endpoint):
 
     URLs in the templates moved from string literals to url_for() (see
     test_frontend.py's hardcoded-URL guard), so the source now reads
-    `{{ url_for('settings_updates_status') }}` where it used to read
+    `{{ url_for('settings.settings_updates_status') }}` where it used to read
     "/settings/updates/status". Both spellings mean the same request; matching
     either keeps this guard about WHICH ROUTE IS CALLED rather than about how
     the URL happens to be spelled. The rendered page still contains the literal

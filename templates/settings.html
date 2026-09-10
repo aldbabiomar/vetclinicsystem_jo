@@ -111,7 +111,7 @@
 <div class="card">
 <div class="settings-card-head"><h2>Backups &amp; Restore</h2><span class="settings-tag now">Runs when you click</span></div>
 <p class="small muted" style="margin:2px 0 0;">The backup history and the restore that reads it, beside the folder they use.</p>
-<form method="post" action="{{ url_for('settings_backup_now') }}" id="backupNowForm" style="margin-top:10px;">
+<form method="post" action="{{ url_for('settings.settings_backup_now') }}" id="backupNowForm" style="margin-top:10px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <button class="btn secondary" type="submit" id="backupNowBtn" data-saving-label="Backing up…"
           {{ 'disabled' if not settings.backup_dir }}>Back Up Now</button>
@@ -165,7 +165,7 @@
     </div>
   </div>
 </div>
-<form method="post" action="{{ url_for('settings_restore_now') }}" id="restoreForm" style="margin-top:10px;"
+<form method="post" action="{{ url_for('settings.settings_restore_now') }}" id="restoreForm" style="margin-top:10px;"
       data-confirm="This replaces ALL current data in VetClinicSystem JO with the contents of this backup file, and cannot be undone. Everything added or changed since that backup was taken will be lost. Continue?">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="source_file" id="restoreSourceFile">
@@ -234,7 +234,7 @@
    (installing/removing a login item) that applies immediately, not a
    settings-table field waiting on a general Save Settings click. #}
 <div class="section-title">Startup &amp; Shutdown</div>
-<form method="post" action="{{ url_for('settings_autostart') }}" id="autostartForm">
+<form method="post" action="{{ url_for('settings.settings_autostart') }}" id="autostartForm">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="form-grid">
     <div class="field full">
@@ -266,7 +266,7 @@ async function loadUpdatesStatus() {
   // spends one of the 60 unauthenticated GitHub calls this network gets per
   // hour. Nothing drawn below needs GitHub. See COMPARISON.md §46.
   try {
-    const res = await fetch('{{ url_for('settings_updates_status') }}');
+    const res = await fetch('{{ url_for('settings.settings_updates_status') }}');
     const data = await res.json();
     document.getElementById('updatesConfigured').style.display = data.configured ? '' : 'none';
     document.getElementById('updatesNotConfigured').style.display = data.configured ? 'none' : '';
@@ -283,7 +283,7 @@ async function checkForUpdates() {
   btn.disabled = true;
   statusEl.textContent = 'Checking…';
   try {
-    const res = await fetch('{{ url_for('settings_updates_check') }}');
+    const res = await fetch('{{ url_for('settings.settings_updates_check') }}');
     const data = await res.json();
     if (data.error) { statusEl.textContent = data.error; return; }
     if (data.available) {
@@ -336,7 +336,7 @@ function runUpdateJob(startUrl, actionLabel) {
     .then(({ ok, data }) => {
       if (!ok || !data.job_id) { panel.textContent = data.error || (actionLabel + ' failed to start.'); return; }
       const poll = setInterval(async () => {
-        const res = await fetch('{{ url_for('settings_job_status') }}?job_id=' + data.job_id);
+        const res = await fetch('{{ url_for('settings.settings_job_status') }}?job_id=' + data.job_id);
         const s = await res.json();
         if (s.status === 'not_found') { clearInterval(poll); return; }
         if (s.status === 'running') {
@@ -361,13 +361,13 @@ function runUpdateJob(startUrl, actionLabel) {
 async function applyUpdate() {
   const ok = await window.VZDialog.confirm('This will restart VetClinicSystem JO for everyone for about 30 seconds. A backup will be taken first. Continue?');
   if (!ok) return;
-  runUpdateJob('/settings/updates/apply', 'Update');
+  runUpdateJob('{{ url_for('settings.settings_updates_apply') }}', 'Update');
 }
 
 async function rollbackUpdate() {
   const ok = await window.VZDialog.confirm('This will roll back to the previous version and restart VetClinicSystem JO for everyone for about 30 seconds. Continue?');
   if (!ok) return;
-  runUpdateJob('/settings/updates/rollback', 'Rollback');
+  runUpdateJob('{{ url_for('settings.settings_updates_rollback') }}', 'Rollback');
 }
 
 // --------------------------------------------------------------------
@@ -397,7 +397,7 @@ document.getElementById('backupNowForm').addEventListener('submit', async functi
     });
     const data = await res.json();
     if (!res.ok || !data.job_id) throw new Error(data.error || 'Could not start the backup.');
-    window.VZProgress.poll(data.job_id, '{{ url_for('settings_job_status') }}', {}, {
+    window.VZProgress.poll(data.job_id, '{{ url_for('settings.settings_job_status') }}', {}, {
       onUpdate: (d) => window.VZProgress.render(panel, d),
       onDone: (d) => {
         resetSubmitButton(btn);
@@ -437,7 +437,7 @@ document.getElementById('restoreForm').addEventListener('submit', async function
     });
     const data = await res.json();
     if (!res.ok || !data.job_id) throw new Error('Could not start the restore.');
-    window.VZProgress.poll(data.job_id, '{{ url_for('settings_job_status') }}', { kind: 'restore' }, {
+    window.VZProgress.poll(data.job_id, '{{ url_for('settings.settings_job_status') }}', { kind: 'restore' }, {
       onUpdate: (d) => window.VZProgress.render(panel, d),
       onDone: (d) => {
         if (d.ok) {
@@ -531,7 +531,7 @@ async function loadFolderBrowser(path) {
     if (path) params.set('path', path);
     if (folderBrowserFilePicker && folderBrowserExt) params.set('ext', folderBrowserExt);
     const qs = params.toString();
-    const url = '/api/browse-folder' + (qs ? `?${qs}` : '');
+    const url = '{{ url_for('settings.api_browse_folder') }}' + (qs ? `?${qs}` : '');
     const res = await fetch(url);
     const data = await res.json();
     if (!res.ok) {
@@ -599,7 +599,7 @@ async function folderBrowserNewFolder() {
   if (!name || !folderBrowserCurrent) return;
   const errEl = document.getElementById('folderBrowserError');
   try {
-    const res = await fetch('{{ url_for('api_browse_folder_new') }}', {
+    const res = await fetch('{{ url_for('settings.api_browse_folder_new') }}', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
