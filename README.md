@@ -309,6 +309,34 @@ Endpoint names are blueprint-prefixed — `settings.settings_page`, not
 `settings_page` — so a stale `url_for()` fails loudly when the page renders
 rather than producing a broken link.
 
+### Styling conventions
+
+Styles live in `static/style.css`, not in `style=` attributes. The foot of that
+file holds a small set of utilities (spacing, flex rows, a few component
+classes) built on the palette variables — use those rather than typing a pixel
+value into a template.
+
+The rule is opportunistic, not a sweep: **when you edit a template for any
+reason, move its inline `style=` declarations up into the stylesheet.**
+`settings.html` and `inventory_catalog.html` were done first;
+`tests/test_inline_styles.py` holds the line for the rest, and fails if the
+count goes up.
+
+Two things stay inline and are not a lapse:
+
+- **A value the server computes** — `style="display:{{ 'none' if ... }}"`.
+- **Anything a script reveals with `el.style.display = ''`.** That clears the
+  *inline* style and nothing else, so it unhides the element only while the
+  inline style is the only thing hiding it. Move that `display:none` into a
+  class and the element never appears again — no error, no clue. There is a
+  test for exactly this, because it is the obvious-looking edit that breaks the
+  Settings Updates panel.
+
+One quirk worth knowing: a few utilities are written with their class name
+twice (`.u-strong.u-strong`). `.field label` is more specific than a single
+class, so the inline style being replaced was the only thing winning; doubling
+the class raises specificity without tying the utility to where it is used.
+
 ## Running the tests
 
 The money math — totals, discounts, write-offs, and the Decimal

@@ -780,3 +780,186 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 }
 .selfcheck-banner ul { margin: 6px 0 0; padding-left: 20px; }
 .selfcheck-banner a { color: inherit; }
+
+/* ---------------------------------------------------------------------------
+   Layout utilities and shared component classes (review finding M8)
+
+   These exist so a spacing or theming change is one edit here rather than
+   sixty edits across templates — which is exactly how the card-spacing drift
+   in COMPARISON.md §38 became app-wide and identical in both apps.
+
+   The convention, also written in the README: when you edit a template for
+   any reason, move its inline style= declarations up here. Two things stay
+   inline and are not a lapse — a value the server computes
+   (style="display:{{ 'none' if ... }}") and a genuine one-off print style.
+   --------------------------------------------------------------------------- */
+
+/* Spacing scale. 16px is the card-spacing unit from §38; the rest are the
+   values already in use across the templates, named rather than repeated. */
+:root {
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 22px;
+}
+
+.u-hidden      { display: none; }
+.u-inline      { display: inline; }
+.u-nowrap      { white-space: nowrap; }
+.u-wrap        { white-space: normal; }
+.u-grow        { flex: 1; }
+.u-mono        { font-family: monospace; }
+.u-strong.u-strong { font-weight: 600; }   /* doubled: see the note below */
+
+.u-row         { display: flex; gap: var(--space-4); }
+.u-row-sm      { display: flex; gap: var(--space-3); }
+.u-row-center  { display: flex; align-items: center; gap: var(--space-3); }
+.u-row-end     { display: flex; justify-content: flex-end; gap: var(--space-4); }
+
+.u-mt-0        { margin-top: 0; }
+.u-mt-1        { margin-top: var(--space-1); }
+.u-mt-3        { margin-top: var(--space-3); }
+.u-mt-4        { margin-top: var(--space-4); }
+.u-mt-6        { margin-top: var(--space-6); }
+.u-mt-7        { margin-top: var(--space-7); }
+.u-mt-8        { margin-top: var(--space-8); }
+/* Pulls a caption up under the heading it belongs to. */
+.u-mt-tight    { margin-top: -6px; }
+.u-mb-0        { margin-bottom: 0; }
+.u-mb-1        { margin-bottom: var(--space-1); }
+.u-mb-2        { margin-bottom: var(--space-2); }
+.u-mb-3        { margin-bottom: var(--space-3); }
+.u-mb-4        { margin-bottom: var(--space-4); }
+.u-mb-5        { margin-bottom: var(--space-5); }
+.u-mb-7        { margin-bottom: var(--space-7); }
+.u-m-0         { margin: 0; }
+.u-stack-tight { margin: 2px 0 0; }
+.u-stack-1     { margin: var(--space-1) 0 0; }
+.u-stack-2     { margin: var(--space-2) 0 0; }
+.u-lead-out    { margin: -4px 0 var(--space-5); }
+
+.u-w-520       { max-width: 520px; }
+.u-w-560       { max-width: 560px; }
+.u-w-640       { max-width: 640px; }
+
+/* A checkbox's own label sits next to the box, so it opts out of the
+   uppercase treatment field labels get. */
+
+
+/* An inline error line inside a modal: hidden until a script fills it, and
+   allowed to break anywhere because it can carry an unspaced identifier. */
+.form-error-note {
+  color: var(--danger); display: none; margin-bottom: var(--space-4);
+  overflow-wrap: anywhere; word-break: break-word;
+}
+
+/* A bordered sub-panel inside a modal or card. */
+.sub-panel {
+  padding: var(--space-5); border: 1px solid var(--line-soft);
+  border-radius: 8px;
+}
+.sub-panel-title { font-weight: 650; margin-bottom: var(--space-1); }
+
+/* A value shown for reading or copying — a barcode, a path, a token. */
+.code-box {
+  font-family: monospace; padding: var(--space-3) var(--space-4);
+  background: var(--muted-tint); border-radius: 6px;
+}
+.code-box.break {
+  margin: var(--space-4) 0; padding: var(--space-3) var(--space-4);
+  border-radius: 8px; word-break: break-all;
+}
+
+/* A scrolling list inside a fixed-height box. */
+.scroll-box {
+  max-height: 280px; overflow-y: auto;
+  border: 1px solid var(--line-soft); border-radius: 8px;
+}
+.scroll-box.tall { max-height: 360px; border: none; border-radius: 0; }
+
+/* Table cells that are editable in place: the input has to look like text
+   until it is focused, or the row reads as a form rather than a row. */
+.cell-input {
+  border: none; background: transparent; padding: 2px; width: 100%;
+}
+.cell-input-plain { border: none; background: transparent; }
+.cell-input.short { width: 70px; }
+.cell-input.num   { width: 80px; text-align: right; }
+
+/* Column widths for the Inventory Catalog's fixed-layout table. Keyed by
+   position, so they move if a column is inserted — add the new width here in
+   the same edit. */
+.inv-table.fixed { table-layout: fixed; width: 100%; }
+.inv-table.fixed col:nth-child(1) { width: 5%; }
+.inv-table.fixed col:nth-child(2) { width: 24%; }
+.inv-table.fixed col:nth-child(3) { width: 11%; }
+.inv-table.fixed col:nth-child(4) { width: 7%; }
+.inv-table.fixed col:nth-child(5) { width: 13%; }
+.inv-table.fixed col:nth-child(6) { width: 6%; }
+.inv-table.fixed col:nth-child(7) { width: 9%; }
+.inv-table.fixed col:nth-child(8) { width: 11%; }
+.inv-table.fixed col:nth-child(9) { width: 14%; }
+
+/* The "expiry tracked" key swatch under the catalog heading. */
+.legend-swatch {
+  display: inline-block; width: 10px; height: 10px;
+  background: var(--warn-tint); border-left: 3px solid var(--warn);
+  vertical-align: middle;
+}
+
+/* The last of settings.html / inventory_catalog.html's inline styles. These
+   describe specific pieces rather than generic spacing, so they get names. */
+
+/* An inline warning strip inside a card (not a page-level flash). */
+.notice-warn {
+  background: var(--warn-tint); color: var(--warn-ink);
+  margin-bottom: var(--space-5);
+}
+
+/* A panel a script reveals — the barcode scanner box, the restore preview. */
+.reveal-panel {
+  display: none; margin-top: var(--space-6); padding: var(--space-6);
+  border: 1px solid var(--line-soft); border-radius: 10px;
+}
+.reveal-panel.plain { padding: 0; border: none; margin-top: var(--space-5); }
+
+/* Server-rendered text that must keep its own line breaks — a log excerpt,
+   a stored note. font-family:inherit stops <pre> reverting to monospace. */
+.preserve-lines {
+  white-space: pre-wrap; font-family: inherit; margin: 0 0 var(--space-5);
+}
+
+/* The search/filter bar above a table: a growing input, then buttons that
+   keep their size, wrapping to a second line on a narrow screen. */
+.filter-bar        { display: flex; gap: var(--space-3); flex: 1 1 260px; }
+.filter-bar-field  { flex: 1 1 auto; min-width: 120px; }
+.filter-bar-actions{ display: flex; gap: var(--space-3); flex: 0 0 auto; }
+
+.u-row-center-mt   { display: flex; gap: var(--space-4); align-items: center; margin-top: var(--space-4); }
+.u-row-wrap-center {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-6);
+}
+.u-pad-5           { padding: var(--space-5); }
+/* A footer rule inside a card, separating actions from content. */
+.card-footer-rule  { padding: var(--space-5) 0; border-top: 1px solid var(--line-soft); }
+
+/* Doubled selectors, deliberately. `.field label` is 0,0,1,1 and outranks a
+   single utility class, so the inline style these replaced was the only thing
+   winning. Repeating the class raises this to 0,0,2,0 without coupling the
+   utility to where it is used. Checked by diffing computed style before and
+   after — a label that quietly went from 500 to 620 is exactly the kind of
+   drift nothing else here would report. */
+.u-label-inline.u-label-inline { text-transform: none; font-weight: 500; }
+.u-weight-normal.u-weight-normal { font-weight: 400; }
+
+/* margin:0 0 8px also zeroes the top margin — a <p>'s default would otherwise
+   come back. Not the same as u-mb-3. */
+.u-mb-3-flush { margin: 0 0 var(--space-3); }
+
+/* The gapless variant. u-row-end carries gap:10px; these had none. */
+.u-row-end-plain { display: flex; justify-content: flex-end; }
