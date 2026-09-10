@@ -1277,6 +1277,25 @@ def recent_refunds(db, limit=100, offset=0, date_filter=None):
 _MICROCHIP_SEPARATORS = re.compile(r"[\s\-\u2013\u2014.]")
 
 
+def like_pattern(term):
+    """A substring pattern for LIKE/ILIKE, with the wildcards in `term`
+    escaped so they match themselves.
+
+    Every search box in this app built f"%{term}%" and passed it straight in.
+    The query is parameterised, so this was never an injection route -- but %
+    and _ are wildcards inside the pattern regardless of how it got there, so
+    someone searching for "50%" matched every row and an item called "A_B"
+    also matched "AxB". Wrong results, quietly.
+
+    Postgres treats backslash as LIKE's escape character by default (verified
+    against the live database: 'axb' ILIKE '%a\\_b%' is false), so no ESCAPE
+    clause is needed at the call sites -- escaping the pattern is enough.
+    Backslash is escaped first, or it would double-escape the two below it.
+    """
+    escaped = (term or "").replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 def strip_microchip_separators(raw):
     if raw is None:
         return ""
@@ -1290,8 +1309,8 @@ def search_patients(db, term):
     # nowhere in the database. Every other field is matched on the term as
     # typed, which is why this is a second parameter rather than a change to
     # the first.
-    chip_term = f"%{strip_microchip_separators(term)}%"
-    term = f"%{term}%"
+    chip_term = like_pattern(strip_microchip_separators(term))
+    term = like_pattern(term)
     return db.execute(
         "SELECT p.*, o.name as owner_name, o.phone as owner_phone FROM patients p "
         "JOIN owners o ON o.id = p.owner_id "

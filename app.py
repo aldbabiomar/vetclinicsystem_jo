@@ -1257,8 +1257,8 @@ def change_password():
         user = db.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
         if not auth.verify_password(user["password_hash"], current):
             flash("Current password is incorrect.", "error")
-        elif len(new) < 8:
-            flash("New password must be at least 8 characters.", "error")
+        elif auth.password_error(new, user["username"]):
+            flash(auth.password_error(new, user["username"]), "error")
         elif new != confirm:
             flash("New password and confirmation don't match.", "error")
         else:
@@ -1358,8 +1358,9 @@ def admin_user_new():
     if not username or not full_name or not role:
         flash("Fill in a username, full name, and role.", "error")
         return redirect(url_for("admin_users"))
-    if len(password) < 8:
-        flash("Password must be at least 8 characters.", "error")
+    pw_error = auth.password_error(password, username)
+    if pw_error:
+        flash(pw_error, "error")
         return redirect(url_for("admin_users"))
     if db.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
         flash("That username is already taken.", "error")
@@ -1613,8 +1614,10 @@ def admin_role_delete(role_id):
 def admin_user_reset_password(user_id):
     db = get_db()
     new_pw = request.form.get("new_password", "")
-    if len(new_pw) < 8:
-        flash("Password must be at least 8 characters.", "error")
+    target = db.execute("SELECT username FROM users WHERE id=?", (user_id,)).fetchone()
+    pw_error = auth.password_error(new_pw, target["username"] if target else None)
+    if pw_error:
+        flash(pw_error, "error")
         return redirect(url_for("admin_users"))
     # Also stamps password_changed_at so this reset immediately invalidates
     # any of this user's existing sessions elsewhere (see require_login())
@@ -1763,7 +1766,7 @@ def api_inventory_lookup():
                         "stock": status["current_stock"] if status else None})
     if q:
         rows = db.execute("SELECT id, name FROM inventory_list WHERE active=true AND category='Retail' AND name ILIKE ? LIMIT 10",
-                          (f"%{q}%",)).fetchall()
+                          (logic.like_pattern(q),)).fetchall()
         # inventory_status_by_id() re-runs the whole catalog-wide status
         # computation and linear-scans for one item — fine called once, not
         # once per matched row here (up to 10x per autocomplete keystroke
@@ -1796,7 +1799,7 @@ def api_price_list_lookup():
     sql = (f"SELECT id, name, category, sale_price FROM price_list "
            f"WHERE active=true AND sale_price IS NOT NULL AND category IN ({placeholders}) "
            f"AND (id ILIKE ? OR name ILIKE ?) ORDER BY name LIMIT 15")
-    params = [*categories, f"%{q}%", f"%{q}%"]
+    params = [*categories, logic.like_pattern(q), logic.like_pattern(q)]
     rows = db.execute(sql, params).fetchall()
     return jsonify([{"id": r["id"], "name": r["name"], "category": r["category"], "price": r["sale_price"]} for r in rows])
 
@@ -1959,10 +1962,10 @@ def owners_list():
     page = get_page()
     if search:
         total = db.execute("SELECT COUNT(*) c FROM owners WHERE name ILIKE ? OR phone ILIKE ?",
-                            (f"%{search}%", f"%{search}%")).fetchone()["c"]
+                            (logic.like_pattern(search), logic.like_pattern(search))).fetchone()["c"]
         rows = db.execute(
             "SELECT * FROM owners WHERE name ILIKE ? OR phone ILIKE ? ORDER BY name LIMIT ? OFFSET ?",
-            (f"%{search}%", f"%{search}%", PER_PAGE, page_offset(page)),
+            (logic.like_pattern(search), logic.like_pattern(search), PER_PAGE, page_offset(page)),
         ).fetchall()
     else:
         total = db.execute("SELECT COUNT(*) c FROM owners").fetchone()["c"]
@@ -2496,7 +2499,7 @@ def visits_list():
         params.append(day_filter)
     if search:
         where.append("(p.animal_name ILIKE ? OR o.name ILIKE ?)")
-        params.extend([f"%{search}%", f"%{search}%"])
+        params.extend([logic.like_pattern(search), logic.like_pattern(search)])
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""
 
     total = db.execute(f"SELECT COUNT(*) c {from_join}{where_sql}", params).fetchone()["c"]
@@ -3118,7 +3121,7 @@ def _price_list_context(db):
         params.append(cat)
     if search:
         where.append("name ILIKE ?")
-        params.append(f"%{search}%")
+        params.append(logic.like_pattern(search))
     where_sql = " WHERE " + " AND ".join(where)
     total = db.execute(f"SELECT COUNT(*) c FROM price_list{where_sql}", params).fetchone()["c"]
     q = f"SELECT * FROM price_list{where_sql} ORDER BY category, name LIMIT ? OFFSET ?"
@@ -3369,7 +3372,7 @@ def _inventory_catalog_context(db):
         where.append("i.active=true")
     if search:
         where.append("i.name ILIKE ?")
-        params.append(f"%{search}%")
+        params.append(logic.like_pattern(search))
     where_sql = (" WHERE " + " AND ".join(where)) if where else ""
     total = db.execute(f"SELECT COUNT(*) c FROM inventory_list i{where_sql}", params).fetchone()["c"]
     q = ("SELECT i.*, d.name as distributor_name FROM inventory_list i LEFT JOIN distributors d ON d.id=i.distributor_id"
@@ -3742,7 +3745,7 @@ def inventory_catalog_barcodes_bulk_print():
 def _distributors_list_context(search):
     db = get_db()
     if search:
-        rows = db.execute("SELECT * FROM distributors WHERE name ILIKE ? ORDER BY name", (f"%{search}%",)).fetchall()
+        rows = db.execute("SELECT * FROM distributors WHERE name ILIKE ? ORDER BY name", (logic.like_pattern(search),)).fetchall()
     else:
         rows = db.execute("SELECT * FROM distributors ORDER BY name").fetchall()
     outstanding = logic.distributor_outstanding_totals(db)
