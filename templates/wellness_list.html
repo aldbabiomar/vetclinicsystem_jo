@@ -9,11 +9,11 @@
   <thead><tr><th scope="col">Next Dose Date</th><th scope="col">Animal</th><th scope="col">Owner</th><th scope="col">Phone</th><th scope="col">Type</th><th scope="col">Remind From</th><th scope="col">Contacted?</th><th scope="col">Method?</th><th scope="col"></th><th scope="col"></th></tr></thead>
   <tbody>
     {% for w in rows %}
-    <form id="w-{{ w.visit_id }}" method="post" action="{{ url_for('wellness_update', visit_id=w.visit_id) }}">
+    <form id="w-{{ w.visit_id }}" method="post" action="{{ url_for('clinical.wellness_update', visit_id=w.visit_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr>
       <td>{{ w.wellness_next_dose_date }} {% if w.missed %}<span class="badge danger">MISSED</span>{% elif w.due %}<span class="badge warn">DUE</span>{% endif %}</td>
-      <td><a href="{{ url_for('visit_detail', visit_id=w.visit_id) }}"><strong>{{ w.animal_name }}</strong></a></td>
+      <td><a href="{{ url_for('clinical.visit_detail', visit_id=w.visit_id) }}"><strong>{{ w.animal_name }}</strong></a></td>
       <td>{{ w.owner_name }}</td><td>{{ w.phone or "—" }}</td><td>{{ w.wellness_type }}</td>
       <td class="muted">{{ w.remind_from_date }}</td>
       <td>
@@ -35,7 +35,7 @@
         <a class="btn small ok" target="_blank" rel="noopener"
            href="https://wa.me/{{ w.phone|replace('+','') }}?text={{ ('Hi ' ~ w.owner_name ~ ', this is a reminder that ' ~ w.animal_name ~ ' is due for their ' ~ w.wellness_type ~ ' on ' ~ w.wellness_next_dose_date ~ '. Please contact us to schedule. - ' ~ clinic_name)|urlencode }}">Send WhatsApp Message</a>
         {% else %}
-        <a class="btn small secondary" href="{{ url_for('owner_edit', owner_id=w.owner_id) }}">Add phone</a>
+        <a class="btn small secondary" href="{{ url_for('clinical.owner_edit', owner_id=w.owner_id) }}">Add phone</a>
         {% endif %}
       </td>
     </tr>

@@ -79,7 +79,14 @@ def _scan(src, wrappers=WRAPPERS):
 
 
 def _modules():
-    return sorted(p for p in APP_ROOT.glob("*.py"))
+    """Every module that can read a form field.
+
+    Top-level .py plus the blueprint modules under routes/. This scanned only
+    the top level until the routes moved out of app.py, at which point it found
+    zero date reads and would have passed while checking nothing — which is
+    exactly what the floor below is for, and it is what caught the omission.
+    """
+    return sorted(APP_ROOT.glob("*.py")) + sorted((APP_ROOT / "routes").glob("*.py"))
 
 
 def test_no_unvalidated_write_side_date_fields():

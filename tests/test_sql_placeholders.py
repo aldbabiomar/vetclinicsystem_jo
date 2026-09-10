@@ -23,7 +23,8 @@ import re
 
 ROOT = pathlib.Path(__file__).parent.parent
 SQL_FILES = sorted(ROOT.glob("*.sql"))
-PY_FILES = sorted(ROOT.glob("*.py"))
+# routes/ too, since the blueprint split moved most SQL-bearing code there.
+PY_FILES = sorted(ROOT.glob("*.py")) + sorted((ROOT / "routes").glob("*.py"))
 
 
 def _sql_string_literals(text):

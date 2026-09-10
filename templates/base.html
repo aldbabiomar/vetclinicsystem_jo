@@ -61,19 +61,19 @@
 
     <div class="nav-group">
       <div class="nav-label">Patients &amp; Visits</div>
-      <a class="nav-link {{ 'active' if request.endpoint in ['owners_list','owner_new','owner_detail','owner_edit'] }}" href="{{ url_for('owners_list') }}">Owners</a>
-      <a class="nav-link {{ 'active' if request.endpoint in ['patients_list','patient_detail','patient_edit','patient_history'] }}" href="{{ url_for('patients_list') }}">Patients</a>
-      <a class="nav-link {{ 'active' if request.endpoint in ['visits_list','visit_new_start','visit_new_existing','visit_new_patient','visit_detail','visit_edit'] }}" href="{{ url_for('visits_list') }}">Visits</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='followups_list' }}" href="{{ url_for('followups_list') }}">Follow-Ups</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='wellness_list' }}" href="{{ url_for('wellness_list') }}">Wellness</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='grooming_list' }}" href="{{ url_for('grooming_list') }}">Grooming</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='boarding_page' }}" href="{{ url_for('boarding_page') }}">Boarding</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='appointments_page' }}" href="{{ url_for('appointments_page') }}">Appointments</a>
+      <a class="nav-link {{ 'active' if request.endpoint in ['owners_list','owner_new','owner_detail','owner_edit'] }}" href="{{ url_for('clinical.owners_list') }}">Owners</a>
+      <a class="nav-link {{ 'active' if request.endpoint in ['patients_list','patient_detail','patient_edit','patient_history'] }}" href="{{ url_for('clinical.patients_list') }}">Patients</a>
+      <a class="nav-link {{ 'active' if request.endpoint in ['visits_list','visit_new_start','visit_new_existing','visit_new_patient','visit_detail','visit_edit'] }}" href="{{ url_for('clinical.visits_list') }}">Visits</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='followups_list' }}" href="{{ url_for('clinical.followups_list') }}">Follow-Ups</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='wellness_list' }}" href="{{ url_for('clinical.wellness_list') }}">Wellness</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='grooming_list' }}" href="{{ url_for('clinical.grooming_list') }}">Grooming</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='boarding_page' }}" href="{{ url_for('clinical.boarding_page') }}">Boarding</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='appointments_page' }}" href="{{ url_for('clinical.appointments_page') }}">Appointments</a>
     </div>
 
     <div class="nav-group">
       <div class="nav-label">Inpatient</div>
-      <a class="nav-link {{ 'active' if request.endpoint in ['inpatient_list','inpatient_new','inpatient_detail'] }}" href="{{ url_for('inpatient_list') }}">Inpatient Cases</a>
+      <a class="nav-link {{ 'active' if request.endpoint in ['inpatient_list','inpatient_new','inpatient_detail'] }}" href="{{ url_for('clinical.inpatient_list') }}">Inpatient Cases</a>
     </div>
 
     <div class="nav-group" data-collapsible="inventory">

@@ -32,7 +32,7 @@
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Admit</button>
-      <a class="btn secondary" href="{{ url_for('inpatient_list') }}">Cancel</a>
+      <a class="btn secondary" href="{{ url_for('clinical.inpatient_list') }}">Cancel</a>
     </div>
   </form>
 </div>
@@ -47,7 +47,7 @@ searchInput.addEventListener('input', () => {
   if (q.length === 0) { resultsDiv.innerHTML = ''; return; }
   if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">Type at least 2 characters.</div>'; return; }
   debounceTimer = setTimeout(() => {
-    fetch(`{{ url_for('api_patients_search') }}?q=${encodeURIComponent(q)}`)
+    fetch(`{{ url_for('clinical.api_patients_search') }}?q=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .then(data => {
         if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }

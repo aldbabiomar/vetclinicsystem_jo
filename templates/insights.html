@@ -87,7 +87,7 @@
       <tbody>
         {% for c in top_clients %}
         <tr>
-          <td><a href="{{ url_for('owner_detail', owner_id=c.id) }}">{{ c.name }}</a></td>
+          <td><a href="{{ url_for('clinical.owner_detail', owner_id=c.id) }}">{{ c.name }}</a></td>
           <td class="num-col">{{ c.payment_count }}</td>
           <td class="num-col">{{ c.total_paid|money }}</td>
         </tr>

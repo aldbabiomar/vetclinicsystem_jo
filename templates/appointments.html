@@ -4,7 +4,7 @@
 <div class="page-head">
   <div><h1>Appointments</h1><p class="page-sub">Slot length and hours are set in Settings.</p></div>
   <div style="display:flex; gap:10px;">
-    <a class="btn secondary" href="{{ url_for('appointments_page', week=today_iso, day=today_iso) }}">This Week</a>
+    <a class="btn secondary" href="{{ url_for('clinical.appointments_page', week=today_iso, day=today_iso) }}">This Week</a>
   </div>
 </div>
 
@@ -38,22 +38,22 @@
 <p class="small muted" style="margin:-8px 0 12px;">
   {% if show_past %}
   Showing unreachable bookings from any date, including past ones.
-  <a href="{{ url_for('appointments_page', week=week_anchor, day=selected_day) }}">Hide past bookings</a>
+  <a href="{{ url_for('clinical.appointments_page', week=week_anchor, day=selected_day) }}">Hide past bookings</a>
   {% else %}
-  <a href="{{ url_for('appointments_page', week=week_anchor, day=selected_day, show_past=1) }}">Show past unreachable bookings</a>
+  <a href="{{ url_for('clinical.appointments_page', week=week_anchor, day=selected_day, show_past=1) }}">Show past unreachable bookings</a>
   {% endif %}
 </p>
 <div class="tabs">
   {% for d in days %}
-  <a class="{{ 'active' if d.isoformat()==selected_day }}" href="{{ url_for('appointments_page', week=week_anchor, day=d.isoformat()) }}">
+  <a class="{{ 'active' if d.isoformat()==selected_day }}" href="{{ url_for('clinical.appointments_page', week=week_anchor, day=d.isoformat()) }}">
     {{ d.strftime('%a %d %b') }}
   </a>
   {% endfor %}
 </div>
 
 <div style="display:flex; gap:10px; margin-bottom:14px;">
-  <a class="btn small secondary" href="{{ url_for('appointments_page', week=prev_week, day=prev_week) }}">← Prior Week</a>
-  <a class="btn small secondary" href="{{ url_for('appointments_page', week=next_week, day=next_week) }}">Next Week →</a>
+  <a class="btn small secondary" href="{{ url_for('clinical.appointments_page', week=prev_week, day=prev_week) }}">← Prior Week</a>
+  <a class="btn small secondary" href="{{ url_for('clinical.appointments_page', week=next_week, day=next_week) }}">Next Week →</a>
 </div>
 
 <div class="appt-grid" style="grid-template-columns: 70px repeat({{ columns|length }}, minmax(140px, 1fr));">
@@ -82,7 +82,7 @@
 <div id="addModal" class="modal-overlay" style="display:{{ 'flex' if open_add_modal else 'none' }};">
   <div class="modal-box">
     <h2 style="margin-top:0;">New Appointment</h2>
-    <form method="post" action="{{ url_for('appointment_new') }}">
+    <form method="post" action="{{ url_for('clinical.appointment_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="appt_date" id="addDate" value="{{ fv(form, 'appt_date') }}">
       <input type="hidden" name="slot_label" id="addSlot" value="{{ fv(form, 'slot_label') }}">
@@ -122,7 +122,7 @@ async function cancelAppt(el) {
   const ok = await window.VZDialog.confirm(`Cancel ${name}'s appointment?`, { originEl: el, okLabel: 'Cancel Appointment', cancelLabel: 'Keep It' });
   if (!ok) return;
   const f = document.getElementById('cancelForm');
-  f.action = `{{ url_for('appointment_cancel', appt_id=999999999) }}`.replace('999999999', encodeURIComponent(id));
+  f.action = `{{ url_for('clinical.appointment_cancel', appt_id=999999999) }}`.replace('999999999', encodeURIComponent(id));
   document.body.appendChild(f);
   f.submit();
 }

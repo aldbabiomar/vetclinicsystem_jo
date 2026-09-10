@@ -4,8 +4,8 @@
 <div class="page-head"><div><h1>Grooming Queue</h1><p class="page-sub">Ongoing grooming requests logged as part of a visit. {{ total_count }} shown.</p></div></div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not include_finished }}" href="{{ url_for('grooming_list') }}">In Progress</a>
-  <a class="chip {{ 'active' if include_finished }}" href="{{ url_for('grooming_list', all=1) }}">Include Finished</a>
+  <a class="chip {{ 'active' if not include_finished }}" href="{{ url_for('clinical.grooming_list') }}">In Progress</a>
+  <a class="chip {{ 'active' if include_finished }}" href="{{ url_for('clinical.grooming_list', all=1) }}">Include Finished</a>
 </div>
 
 <div class="table-wrap sticky-scroll">
@@ -13,11 +13,11 @@
   <thead><tr><th scope="col">Patient ID</th><th scope="col">Animal</th><th scope="col">Owner</th><th scope="col">Phone</th><th scope="col">Admitted Items</th><th scope="col">Status</th><th scope="col">Contacted?</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for gr in rows %}
-    <form id="g-{{ gr.visit_id }}" method="post" action="{{ url_for('grooming_update', visit_id=gr.visit_id) }}">
+    <form id="g-{{ gr.visit_id }}" method="post" action="{{ url_for('clinical.grooming_update', visit_id=gr.visit_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr>
       <td class="muted">{{ gr.patient_id }}</td>
-      <td><a href="{{ url_for('visit_detail', visit_id=gr.visit_id) }}"><strong>{{ gr.animal_name }}</strong></a></td>
+      <td><a href="{{ url_for('clinical.visit_detail', visit_id=gr.visit_id) }}"><strong>{{ gr.animal_name }}</strong></a></td>
       <td>{{ gr.owner_name }}</td><td>{{ gr.phone or "—" }}</td>
       <td class="small">{{ gr.grooming_admitted_items or "—" }}</td>
       <td>

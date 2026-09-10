@@ -7,7 +7,7 @@
     <p class="page-sub">Snapshot as of today, {{ today }}.{% if current_role == 'Admin' %} Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.{% endif %}</p>
   </div>
   <div style="display:flex; gap:10px;">
-    <a class="btn secondary" href="{{ url_for('visit_new_start') }}">+ Log a Visit</a>
+    <a class="btn secondary" href="{{ url_for('clinical.visit_new_start') }}">+ Log a Visit</a>
   </div>
 </div>
 
@@ -97,10 +97,10 @@
       {% for f in snap.due_today[:6] %}
       <div class="list-line">
         <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }})</span></div><div class="meta">{{ f.followup_method }} — {{ f.followup_reason }}</div></div>
-        <a class="btn small secondary" href="{{ url_for('visit_detail', visit_id=f.visit_id) }}">Open</a>
+        <a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}">Open</a>
       </div>
       {% endfor %}
-      {% if snap.due_today|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('followups_list') }}">View all follow-ups →</a></div>{% endif %}
+      {% if snap.due_today|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.followups_list') }}">View all follow-ups →</a></div>{% endif %}
     {% else %}<div class="empty-note">Nothing due today.</div>{% endif %}
   </div>
 
@@ -110,10 +110,10 @@
       {% for f in snap.reminders_tomorrow[:6] %}
       <div class="list-line">
         <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }}, {{ f.phone or "no phone on file" }})</span></div><div class="meta">Visit set for {{ f.followup_date }}</div></div>
-        <a class="btn small secondary" href="{{ url_for('visit_detail', visit_id=f.visit_id) }}">Open</a>
+        <a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}">Open</a>
       </div>
       {% endfor %}
-      {% if snap.reminders_tomorrow|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('followups_list') }}">View all follow-ups →</a></div>{% endif %}
+      {% if snap.reminders_tomorrow|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.followups_list') }}">View all follow-ups →</a></div>{% endif %}
     {% else %}<div class="empty-note">No reminder calls needed today.</div>{% endif %}
   </div>
 
@@ -123,10 +123,10 @@
       {% for w in snap.wellness_due[:6] %}
       <div class="list-line">
         <div><div class="who">{{ w.animal_name }} <span class="meta">({{ w.owner_name }})</span></div><div class="meta">{{ w.wellness_type }} due {{ w.wellness_next_dose_date }}</div></div>
-        <a class="btn small secondary" href="{{ url_for('wellness_list') }}">Open</a>
+        <a class="btn small secondary" href="{{ url_for('clinical.wellness_list') }}">Open</a>
       </div>
       {% endfor %}
-      {% if snap.wellness_due|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('wellness_list') }}">View all wellness reminders →</a></div>{% endif %}
+      {% if snap.wellness_due|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.wellness_list') }}">View all wellness reminders →</a></div>{% endif %}
     {% else %}<div class="empty-note">No wellness reminders due.</div>{% endif %}
   </div>
 
@@ -138,7 +138,7 @@
         <div><div class="who">{{ gr.animal_name }} <span class="meta">({{ gr.owner_name }})</span></div><div class="meta">{{ gr.grooming_status or "Waiting" }}</div></div>
       </div>
       {% endfor %}
-      {% if snap.grooming_queue|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('grooming_list') }}">View grooming queue →</a></div>{% endif %}
+      {% if snap.grooming_queue|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.grooming_list') }}">View grooming queue →</a></div>{% endif %}
     {% else %}<div class="empty-note">No grooming in progress.</div>{% endif %}
   </div>
 
@@ -178,7 +178,7 @@
       <td>{{ m.animal_name }}</td>
       <td class="muted">{{ m.deadline }}</td>
       <td>{{ m.responsible or "Unassigned" }}</td>
-      <td><a class="btn small secondary" href="{{ url_for('visit_detail', visit_id=m.visit_id) }}">Open</a></td>
+      <td><a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=m.visit_id) }}">Open</a></td>
     </tr>
     {% else %}
     <tr><td colspan="5" class="empty-note">Nothing overdue by more than two weeks.</td></tr>

@@ -3,14 +3,14 @@
 {% block content %}
 <div class="page-head">
   <div><h1>Visits</h1><p class="page-sub">{{ total_count }} visits{% if day_filter %} on {{ day_filter }}{% endif %}.</p></div>
-  <a class="btn" href="{{ url_for('visit_new_start') }}">+ Log a Visit</a>
+  <a class="btn" href="{{ url_for('clinical.visit_new_start') }}">+ Log a Visit</a>
 </div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if sort=='date' }}" href="{{ url_for('visits_list', sort='date', date=day_filter) }}">Date (Default)</a>
-  <a class="chip {{ 'active' if sort=='type' }}" href="{{ url_for('visits_list', sort='type', date=day_filter) }}">Visit Type</a>
-  <a class="chip {{ 'active' if sort=='status' }}" href="{{ url_for('visits_list', sort='status', date=day_filter) }}">Status</a>
-  <a class="chip {{ 'active' if sort=='payment' }}" href="{{ url_for('visits_list', sort='payment', date=day_filter) }}">Payment</a>
+  <a class="chip {{ 'active' if sort=='date' }}" href="{{ url_for('clinical.visits_list', sort='date', date=day_filter) }}">Date (Default)</a>
+  <a class="chip {{ 'active' if sort=='type' }}" href="{{ url_for('clinical.visits_list', sort='type', date=day_filter) }}">Visit Type</a>
+  <a class="chip {{ 'active' if sort=='status' }}" href="{{ url_for('clinical.visits_list', sort='status', date=day_filter) }}">Status</a>
+  <a class="chip {{ 'active' if sort=='payment' }}" href="{{ url_for('clinical.visits_list', sort='payment', date=day_filter) }}">Payment</a>
 </div>
 
 <form class="search-bar" method="get">
@@ -18,7 +18,7 @@
   <input type="text" name="q" value="{{ search }}" placeholder="Search by Animal or Owner name…">
   <input type="date" name="date" value="{{ day_filter }}">
   <button class="btn secondary" type="submit">Search</button>
-  {% if day_filter or search %}<a class="btn secondary" href="{{ url_for('visits_list', sort=sort) }}">Clear Filters</a>{% endif %}
+  {% if day_filter or search %}<a class="btn secondary" href="{{ url_for('clinical.visits_list', sort=sort) }}">Clear Filters</a>{% endif %}
 </form>
 
 <div class="table-wrap sticky-scroll">
@@ -26,7 +26,7 @@
   <thead><tr><th scope="col">Date</th><th scope="col">ID</th><th scope="col">Animal</th><th scope="col">Owner</th><th scope="col">Type</th><th scope="col">Doctor</th><th scope="col">Status</th><th scope="col">Payment</th><th scope="col" class="num-col">Bill (JOD)</th></tr></thead>
   <tbody>
     {% for v in visits %}
-    <tr onclick="window.location='{{ url_for('visit_detail', visit_id=v.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('visit_detail', visit_id=v.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
+    <tr onclick="window.location='{{ url_for('clinical.visit_detail', visit_id=v.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('clinical.visit_detail', visit_id=v.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
       <td>{{ v.date or "—" }}</td><td class="muted">{{ v.id }}</td><td><strong>{{ v.animal_name }}</strong></td><td>{{ v.owner_name }}</td>
       <td>{{ v.visit_type }}{% if v.grooming_needed=='Y' %} <span class="badge primary">Grooming</span>{% endif %}</td>
       <td>{{ v.doctor or "—" }}</td>

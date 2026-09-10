@@ -7,8 +7,8 @@
 </div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('boarding_page') }}">Currently Boarding</a>
-  <a class="chip {{ 'active' if show_all }}" href="{{ url_for('boarding_page', all=1) }}">All (Incl. Picked Up)</a>
+  <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('clinical.boarding_page') }}">Currently Boarding</a>
+  <a class="chip {{ 'active' if show_all }}" href="{{ url_for('clinical.boarding_page', all=1) }}">All (Incl. Picked Up)</a>
 </div>
 
 {% set new_form = form if open_new_form else None %}
@@ -19,7 +19,7 @@
   </div>
   <div id="searchResults" style="margin-bottom:10px;"></div>
 
-  <form method="post" action="{{ url_for('boarding_new') }}" id="addBoardingForm" style="display:{{ 'block' if open_new_form else 'none' }};">
+  <form method="post" action="{{ url_for('clinical.boarding_new') }}" id="addBoardingForm" style="display:{{ 'block' if open_new_form else 'none' }};">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel">{{ new_form_patient_label or '' }}</strong></p>
     <input type="hidden" name="patient_id" id="patientIdField" value="{{ fv(new_form, 'patient_id') }}">
@@ -125,9 +125,9 @@
             <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-discount="{{ s.discount_percent or 0 }}" onclick="openPayment(this)">Payment</button>
             <button class="btn small secondary" type="button" onclick="toggleEdit({{ s.id }})">Edit</button>
           </div>
-          <a class="btn small secondary" href="{{ url_for('boarding_export_pdf', boarding_id=s.id) }}">Export (PDF)</a>
+          <a class="btn small secondary" href="{{ url_for('clinical.boarding_export_pdf', boarding_id=s.id) }}">Export (PDF)</a>
           {% if not s.dismissed %}
-          <form method="post" action="{{ url_for('boarding_dismiss', boarding_id=s.id) }}" style="display:inline;" data-confirm="Mark {{ s.animal_name }} as picked up?">
+          <form method="post" action="{{ url_for('clinical.boarding_dismiss', boarding_id=s.id) }}" style="display:inline;" data-confirm="Mark {{ s.animal_name }} as picked up?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn small secondary" type="submit">Mark Picked Up</button>
           </form>
@@ -136,7 +136,7 @@
           <a class="btn small ok" target="_blank" rel="noopener"
              href="https://wa.me/{{ s.owner_phone|replace('+','') }}?text={{ ('Hi ' ~ s.owner_name ~ ', this is a reminder that ' ~ s.animal_name ~ ' is due for their pickup from boarding on ' ~ (s.dismissal_date or 'the agreed date') ~ '. - ' ~ clinic_name)|urlencode }}">Send WhatsApp Message</a>
           {% else %}
-          <a class="btn small secondary" href="{{ url_for('owner_edit', owner_id=s.owner_id) }}">Add phone to send WhatsApp</a>
+          <a class="btn small secondary" href="{{ url_for('clinical.owner_edit', owner_id=s.owner_id) }}">Add phone to send WhatsApp</a>
           {% endif %}
         </div>
       </td>
@@ -144,7 +144,7 @@
     {% set row_form = form if edit_boarding_id == s.id else None %}
     <tr id="editRow-{{ s.id }}" style="display:{{ 'table-row' if edit_boarding_id == s.id else 'none' }};">
       <td colspan="10">
-        <form method="post" action="{{ url_for('boarding_edit', boarding_id=s.id) }}" class="form-grid" style="padding:10px 0;">
+        <form method="post" action="{{ url_for('clinical.boarding_edit', boarding_id=s.id) }}" class="form-grid" style="padding:10px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="expected_updated_at" value="{{ s.updated_at or '' }}">
           <div class="field"><label for="stay-entry_date-{{ s.id }}">Entry Date</label><input id="stay-entry_date-{{ s.id }}" type="date" name="entry_date" value="{{ fv(row_form, 'entry_date', s.entry_date) }}"></div>
@@ -183,7 +183,7 @@ searchInput.addEventListener('input', () => {
   if (q.length === 0) { resultsDiv.innerHTML = ''; return; }
   if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">Type at least 2 characters.</div>'; return; }
   debounceTimer = setTimeout(() => {
-    fetch(`{{ url_for('api_patients_search') }}?q=${encodeURIComponent(q)}`)
+    fetch(`{{ url_for('clinical.api_patients_search') }}?q=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .then(data => {
         if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
@@ -228,13 +228,13 @@ function suggestTotal() {
 }
 function openIncident(btn) {
   const { id, name } = btn.dataset;
-  document.getElementById('incidentForm').action = `{{ url_for('boarding_incident', boarding_id=999999999) }}`.replace('999999999', encodeURIComponent(id));
+  document.getElementById('incidentForm').action = `{{ url_for('clinical.boarding_incident', boarding_id=999999999) }}`.replace('999999999', encodeURIComponent(id));
   document.getElementById('incidentPatientLabel').textContent = name;
   document.getElementById('incidentModal').style.display = 'flex';
 }
 function openPayment(btn) {
   const { id, name, discount } = btn.dataset;
-  document.getElementById('paymentForm').action = `{{ url_for('boarding_payment', boarding_id=999999999) }}`.replace('999999999', encodeURIComponent(id));
+  document.getElementById('paymentForm').action = `{{ url_for('clinical.boarding_payment', boarding_id=999999999) }}`.replace('999999999', encodeURIComponent(id));
   document.getElementById('paymentPatientLabel').textContent = name;
   // Show the discount already on this stay. The field posts with every
   // payment, so leaving it at 0 here would quietly wipe an existing discount
