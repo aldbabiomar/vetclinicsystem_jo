@@ -502,8 +502,10 @@ class BadDate(ValueError):
     this is what stops an empty string ('') from ever reaching a date
     column. '' is not NULL, so a downstream query that assumes a date
     column is only ever 'a real date or NULL' (e.g. `WHERE date IS NOT
-    NULL` followed by `date::date`) breaks the moment it meets one — see
-    data_integrity_framework.md for the incident this fixes."""
+    NULL` followed by `date::date`) breaks the moment it meets one. That is
+    not hypothetical: a blank date reaching a nullable date column is what
+    made reports skip bills entirely and comparisons behave as though the
+    row had no date at all."""
 
 
 def clean(v):
@@ -6663,6 +6665,11 @@ def settings_page():
             # from switching the check off, which selfcheck_enabled already does
             # honestly.
             "selfcheck_backup_max_age_days": (1, 30),
+            # Floor of 90 days is deliberate and load-bearing: auth
+            # .login_lock_status() reads login_log to decide whether an
+            # account is locked out, so pruning inside that window would
+            # silently disarm the lockout.
+            "log_retention_days": (logic.LOG_RETENTION_MIN_DAYS, logic.LOG_RETENTION_MAX_DAYS),
         }
         for key, (lo, hi) in NUMERIC_RANGES.items():
             val = request.form.get(key)
@@ -6726,7 +6733,7 @@ def settings_page():
         for key in ["clinic_name", "clinic_location", "audit_overdue_days", "expiry_soon_days", "opening_date",
                     "appt_start_time", "appt_end_time", "appt_slot_minutes",
                     "backup_dir", "backup_time", "backup_retention",
-                    "selfcheck_backup_max_age_days", "heartbeat_url"]:
+                    "selfcheck_backup_max_age_days", "heartbeat_url", "log_retention_days"]:
             val = request.form.get(key)
             if val is not None:
                 old = logic.get_setting(db, key)

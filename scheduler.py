@@ -220,6 +220,15 @@ def _do_self_check(get_db, close_db, send_heartbeat=True):
         import selfcheck
         result = selfcheck.run_self_check(db)
         selfcheck.record(db, result)
+        # Retention runs here rather than on its own schedule: this job already
+        # fires once a day, already holds a connection, and already survives a
+        # machine that was switched off (see _run_self_check_if_due). Its own
+        # try/except so a prune failure cannot cost the clinic its daily
+        # self-check verdict -- the far more important of the two.
+        try:
+            logic.prune_old_logs(db)
+        except Exception:
+            _log_failure("the daily log prune")
         if send_heartbeat:
             try:
                 import heartbeat
