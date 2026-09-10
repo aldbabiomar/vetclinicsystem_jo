@@ -4,7 +4,7 @@ Releases. Never touches vetclinicsystemjo-data/ except to read/write
 active_release.txt, write to logs/updates.log, and invoke backup.py
 before an update.
 
-Consumer side of CLAUDE_CODE_RELEASE_WORKFLOW.md / UPDATE_MECHANISM_PLAN.md
+Consumer side of RELEASE_WORKFLOW.md
 — read both before changing this file, since the release format and this
 module's expectations of it are one system split across two docs.
 
@@ -321,7 +321,7 @@ def _run_schema_sync(release_path):
     INCREMENTAL_SCHEMA_STATEMENTS internally) against the shared, live
     database — using the new release's OWN copy of that logic, in case a
     future release changes it. Only ever additive (new column/table with
-    a default) per CLAUDE_CODE_RELEASE_WORKFLOW.md §6 step 2 — never a
+    a default) per RELEASE_WORKFLOW.md §6 step 2 — never a
     drop/rename/type-narrowing, so this is safe to run before the new
     release is actually serving traffic."""
     py = _venv_python(release_path)

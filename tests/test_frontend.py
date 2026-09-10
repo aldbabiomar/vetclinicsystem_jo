@@ -484,3 +484,36 @@ def test_no_template_hardcodes_an_application_url():
     assert not offenders, (
         f"{len(offenders)} hardcoded application URL(s) in JavaScript:\n  "
         + "\n  ".join(offenders[:20]))
+
+
+def test_every_cited_document_can_be_found():
+    """A comment citing a document nobody can open is worse than no comment.
+
+    Both repos are published. Sixty-odd comments cite design and audit
+    documents by filename — "see ORPHANED_RECORDS_AUDIT.md F-12" — and none of
+    those documents ship here. Seven of the titles cited existed nowhere at all,
+    including on the author's own machine, so they could not be followed by
+    anyone; those citations now carry the reasoning inline instead.
+
+    The rest live in the shared workspace on purpose (they describe BOTH apps),
+    and docs/README.md says where. This fails if a citation appears that is
+    neither in the repository nor listed there — which is the only thing that
+    keeps that list from falling behind the code again.
+    """
+    root = ROOT
+    index = root / "docs" / "README.md"
+    assert index.exists(), "docs/README.md is missing — the citation index"
+    listed = set(re.findall(r"`([A-Za-z0-9_ .-]+\.md)`", index.read_text(encoding="utf-8")))
+    in_repo = {p.name for p in root.rglob("*.md") if ".git" not in p.parts}
+
+    cited, unresolved = set(), []
+    for path in list(root.glob("*.py")) + list(root.glob("*.sql")):
+        for name in re.findall(r"\b([A-Za-z0-9_]+\.md)\b", path.read_text(encoding="utf-8")):
+            cited.add(name)
+            if name not in listed and name not in in_repo:
+                unresolved.append(f"{path.name} -> {name}")
+
+    assert cited, "no .md citations found at all — this guard would pass vacuously"
+    assert not unresolved, (
+        "comment(s) cite a document that is neither in this repo nor listed in "
+        "docs/README.md:\n  " + "\n  ".join(sorted(set(unresolved))))

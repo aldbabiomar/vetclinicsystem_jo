@@ -434,7 +434,7 @@ def ensure_desktop_shortcut(data_dir=None):
 # the in-app updater (Settings -> Updates, updater.py) needs. Not run by
 # default main() — an admin runs `python3 setup.py --enable-updates`
 # deliberately, since it moves .env/logs/attachments out of this folder.
-# See UPDATE_MECHANISM_PLAN.md §3 for the target layout.
+# See RELEASE_WORKFLOW.md §3 for the target layout.
 # ---------------------------------------------------------------------------
 _MACOS_LAUNCHER = """#!/bin/bash
 # VetClinicSystem JO — supervisor launcher (macOS). Lives in vetclinicsystemjo-data/,
