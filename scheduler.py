@@ -116,6 +116,34 @@ BACKUP_RETRY_MIN_MINUTES = 60
 VERIFY_AFTER_BACKUP_MINUTES = 45
 
 
+
+def _log_failure(what, level="error"):
+    """Record why a scheduled job failed, then let the caller swallow it.
+
+    Every handler in this module swallows on purpose: an exception escaping a
+    scheduler thread kills that job silently and takes nothing else with it,
+    which is worse than carrying on. What they also did until now was swallow
+    *without a trace* -- in the one component whose entire bug history is work
+    that did not happen and said nothing about it (see the module docstring,
+    and COMPARISON.md sections 32, 33, 37, 39 and 41). A backup that raised
+    before it could write its own backup_log row left no record anywhere of
+    why, so detection fell back to staleness instead of the error already in
+    hand.
+
+    Writes to app.py's existing rotating errors.log rather than opening a
+    second log. Imported lazily inside the function because app.py imports
+    this module, matching heartbeat.py's own lazy `import app as app_module`.
+    Any failure of the logging itself is swallowed too -- telemetry must never
+    be the thing that breaks the job it is describing.
+    """
+    try:
+        import traceback
+        import app as app_module
+        getattr(app_module.error_logger, level)(
+            f"scheduler: {what} failed\n" + traceback.format_exc())
+    except Exception:
+        pass
+
 def _run_backup_if_due(get_db, close_db):
     """Take tonight's backup, unless it has already been taken.
 
@@ -136,13 +164,14 @@ def _run_backup_if_due(get_db, close_db):
             backup.run_backup(db, triggered_by="nightly")
             return True
         except Exception:
+            _log_failure("the nightly backup catch-up")
             return False
         finally:
             if db is not None:
                 try:
                     close_db(db)
                 except Exception:
-                    pass
+                    _log_failure("closing the connection after the nightly backup catch-up", level="warning")
 
 
 def _run_self_check_if_due(get_db, close_db):
@@ -159,13 +188,14 @@ def _run_self_check_if_due(get_db, close_db):
             sc_hour, sc_minute = _self_check_time(hour, minute)
             due = _self_check_due(db, sc_hour, sc_minute)
         except Exception:
+            _log_failure("deciding whether the daily self-check is due")
             due = False
         finally:
             if db is not None:
                 try:
                     close_db(db)
                 except Exception:
-                    pass
+                    _log_failure("closing the connection after the self-check due check", level="warning")
         if not due:
             return False
         _do_self_check(get_db, close_db)
@@ -195,15 +225,15 @@ def _do_self_check(get_db, close_db, send_heartbeat=True):
                 import heartbeat
                 heartbeat.send_for(db, result)
             except Exception:
-                pass
+                _log_failure("sending the heartbeat")
     except Exception:
-        pass
+        _log_failure("the daily self-check")
     finally:
         if db is not None:
             try:
                 close_db(db)
             except Exception:
-                pass
+                _log_failure("closing the connection after the daily self-check", level="warning")
 
 
 def _do_verify_restore(get_db, close_db):
@@ -231,13 +261,13 @@ def _do_verify_restore(get_db, close_db):
         import selfcheck
         selfcheck.record(db, selfcheck.run_self_check(db))
     except Exception:
-        pass
+        _log_failure("the monthly restore verification")
     finally:
         if db is not None:
             try:
                 close_db(db)
             except Exception:
-                pass
+                _log_failure("closing the connection after the restore verification", level="warning")
 
 
 def _backup_catchup_due(db, hour, minute):
@@ -352,7 +382,7 @@ def _do_tick(get_db, close_db):
         finally:
             close_db(db)
     except Exception:
-        pass
+        _log_failure("the periodic tick's restore-verification check")
 
 
 def _do_verify_restore_on(db):
@@ -364,7 +394,7 @@ def _do_verify_restore_on(db):
         import selfcheck
         selfcheck.record(db, selfcheck.run_self_check(db))
     except Exception:
-        pass
+        _log_failure("the restore verification")
 
 
 def _do_startup_catchup(get_db, close_db):
