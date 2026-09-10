@@ -16,6 +16,7 @@ the update UI.
 """
 import os
 import io
+import re
 from datetime import datetime
 import json
 import shutil
@@ -87,14 +88,40 @@ def current_version():
     return open(path).read().strip() if os.path.exists(path) else "unknown"
 
 
+def _version_tuple(value):
+    """(major, minor, patch) from '1.12.1' / 'v1.12.1', or None if it is not
+    a plain three-part version. Used for every version comparison in this
+    module -- string comparison is wrong the moment a component reaches two
+    digits, which is the whole point of this helper."""
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)$", (value or "").strip().lstrip("vV"))
+    return tuple(int(g) for g in m.groups()) if m else None
+
+
+def _release_sort_key(name):
+    """Sort key for an 'app_vX.Y.Z' folder name.
+
+    sorted(names, reverse=True) on the raw strings was wrong: "app_v1.9.0"
+    is lexicographically GREATER than "app_v1.12.1", so once either app
+    passed v1.9 the "most recent other release" that rollback_to_previous()
+    picks -- candidates[0] -- was the oldest folder on disk, not the newest.
+    With three or more releases present that meant Rollback silently jumped
+    back several minor versions, across schema migrations, while telling the
+    admin it was doing something else.
+
+    A name that does not parse sorts last rather than raising, so one stray
+    directory in the releases folder cannot break Rollback entirely.
+    """
+    parsed = _version_tuple(name[len("app_v"):]) if name.startswith("app_v") else None
+    return (1,) + parsed if parsed else (0, 0, 0, 0)
+
+
 def list_releases():
-    """Release folder names on disk, newest first by name (app_vX.Y.Z sorts
-    correctly for this app's strict-semver tags)."""
+    """Release folder names on disk, newest first by parsed version."""
     if not is_configured():
         return []
     names = [n for n in os.listdir(RELEASES_DIR) if n.startswith("app_v")
               and os.path.isdir(os.path.join(RELEASES_DIR, n))]
-    return sorted(names, reverse=True)
+    return sorted(names, key=_release_sort_key, reverse=True)
 
 
 def _api_headers():
@@ -118,8 +145,31 @@ def check_latest_release():
 
 
 def is_update_available():
+    """(bool, latest_release_json).
+
+    Strictly NEWER, not merely different. The old test was
+    `tag != current_version()`, which reports an update whenever the two
+    differ at all -- so a deleted release, a re-pointed /releases/latest, or
+    a republished older tag would be offered to the clinic as an update and
+    installed by apply_update(). Same root cause as list_releases() above:
+    versions were being compared as strings.
+    """
     latest = check_latest_release()
-    return latest["tag_name"].lstrip("v") != current_version(), latest
+    tag = latest.get("tag_name") or ""
+    remote = _version_tuple(tag)
+    local = _version_tuple(current_version())
+    if remote is None:
+        # Not a plain X.Y.Z tag -- do not install something we cannot reason
+        # about. Logged rather than silently ignored.
+        _log(f"remote tag {tag!r} is not a plain X.Y.Z version; not offering it as an update")
+        return False, latest
+    if local is None:
+        # A missing or unreadable VERSION file should not block recovery via
+        # an update, so fall back to the old inequality test -- but say so.
+        _log(f"local version {current_version()!r} is not a plain X.Y.Z version; "
+             f"falling back to an inequality check against {tag!r}")
+        return tag.lstrip("vV") != current_version(), latest
+    return remote > local, latest
 
 
 # What went wrong is not always "offline". Until 2026-09-10 every failure here
