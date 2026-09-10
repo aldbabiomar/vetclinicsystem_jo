@@ -31,7 +31,21 @@ from conftest import needs_db
 
 pytestmark = needs_db
 
-APP_PY = pathlib.Path(__file__).parent.parent / "app.py"
+ROOT = pathlib.Path(__file__).parent.parent
+APP_PY = ROOT / "app.py"
+
+
+def route_source_files():
+    """Every file that can carry a route decorator.
+
+    app.py plus the blueprint modules under routes/. Reading only app.py was
+    correct until the routes moved; after the split it would have quietly
+    discovered a fraction of the surface and every test in this file would have
+    passed while checking almost nothing.
+    test_route_discovery_matches_the_live_url_map() is what makes that
+    impossible rather than merely unlikely.
+    """
+    return [APP_PY] + sorted((ROOT / "routes").glob("*.py"))
 
 # Routes that intentionally sit outside the permission model, or that would
 # damage the shared test session if probed.
@@ -45,23 +59,25 @@ def _route_permissions():
     permission_required() closes over its keys — the wrapped view does not
     expose which permission it is gating.
     """
-    src = io.open(APP_PY, encoding="utf-8").read().split("\n")
-    pairs, pending = [], []
-    for line in src:
-        stripped = line.strip()
-        m = re.match(r'@app\.route\("([^"]+)"(?:,\s*methods=\[([^\]]+)\])?\)', stripped)
-        if m:
-            methods = re.findall(r'"(\w+)"', m.group(2) or '"GET"')
-            pending.append((m.group(1), methods))
-            continue
-        p = re.match(r'@auth\.permission_required\((.+)\)', stripped)
-        if p and pending:
-            keys = tuple(re.findall(r'"(\w+)"', p.group(1)))
-            pairs.extend((rule, tuple(methods), keys) for rule, methods in pending)
-            pending = []
-            continue
-        if line.startswith("def ") or (stripped and not stripped.startswith("@")):
-            pending = []
+    pairs = []
+    for path in route_source_files():
+        pending = []
+        for line in io.open(path, encoding="utf-8").read().split("\n"):
+            stripped = line.strip()
+            # @app.route(...) in app.py, @bp.route(...) in a blueprint module.
+            m = re.match(r'@\w+\.route\("([^"]+)"(?:,\s*methods=\[([^\]]+)\])?\)', stripped)
+            if m:
+                methods = re.findall(r'"(\w+)"', m.group(2) or '"GET"')
+                pending.append((m.group(1), methods))
+                continue
+            p = re.match(r'@auth\.permission_required\((.+)\)', stripped)
+            if p and pending:
+                keys = tuple(re.findall(r'"(\w+)"', p.group(1)))
+                pairs.extend((rule, tuple(methods), keys) for rule, methods in pending)
+                pending = []
+                continue
+            if line.startswith("def ") or (stripped and not stripped.startswith("@")):
+                pending = []
     return [t for t in pairs if t[0] not in SKIP_RULES]
 
 
@@ -133,9 +149,35 @@ def test_route_discovery_found_the_whole_permission_surface():
     """If the parse silently returned nothing, every test below would pass
     while checking no routes at all."""
     assert len(ROUTE_PERMISSIONS) > 100, (
-        f"only {len(ROUTE_PERMISSIONS)} guarded routes found — the app.py parse has broken")
+        f"only {len(ROUTE_PERMISSIONS)} guarded routes found — the source parse has broken")
     assert len(ALL_PERMISSIONS) >= 20, (
         f"only {len(ALL_PERMISSIONS)} distinct permissions found")
+
+
+def test_route_discovery_matches_the_live_url_map(flask_app):
+    """Every rule Flask actually registered must be one this file found.
+
+    The magic-number version of this guard ("more than 100") cannot notice a
+    parse that finds most of the surface but not all of it — which is exactly
+    what moving routes into blueprint modules would produce if the discovery
+    were left reading app.py alone. Comparing against the live url_map needs no
+    number and cannot drift: add a route anywhere and this still holds.
+    """
+    registered = {
+        str(rule) for rule in flask_app.url_map.iter_rules()
+        if rule.endpoint != "static"
+    }
+    discovered = {rule for rule, _, _ in _route_permissions()}
+    # Unguarded routes (login, health, the dashboard...) are legitimately not
+    # in ROUTE_PERMISSIONS; what matters is that the PARSE sees every file.
+    parsed_any = set()
+    for path in route_source_files():
+        parsed_any |= set(re.findall(r'@\w+\.route\("([^"]+)"', path.read_text(encoding="utf-8")))
+    missing = registered - parsed_any - SKIP_RULES
+    assert not missing, (
+        f"{len(missing)} registered route(s) are in no file the parse reads — "
+        f"route_source_files() is behind the code: {sorted(missing)[:10]}")
+    assert discovered, "no guarded routes discovered at all"
 
 
 def test_every_discovered_permission_is_a_real_permission_key():

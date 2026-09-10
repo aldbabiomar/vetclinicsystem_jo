@@ -36,7 +36,13 @@ from conftest import needs_db
 
 pytestmark = needs_db
 
-APP_PY = pathlib.Path(__file__).parent.parent / "app.py"
+ROOT = pathlib.Path(__file__).parent.parent
+
+
+def _route_sources():
+    """app.py plus every blueprint module. Reading app.py alone would silently
+    stop finding these decorators the moment a route moved into routes/."""
+    return [ROOT / "app.py"] + sorted((ROOT / "routes").glob("*.py"))
 
 # Everything the Settings page hides behind the maintenance gate. If a route
 # is added to that block, add it here too — the whole point is that the UI
@@ -59,14 +65,14 @@ def _decorated_permission(func_name):
     """The permission key on the route whose view is `func_name`, read from
     app.py's source — permission_required() closes over its keys, so the
     wrapped view does not expose them at runtime."""
-    src = APP_PY.read_text(encoding="utf-8")
-    m = re.search(
-        r'@auth\.permission_required\(([^)]*)\)\s*\ndef ' + re.escape(func_name) + r'\(',
-        src,
-    )
-    if not m:
-        return None
-    return tuple(re.findall(r'"(\w+)"', m.group(1)))
+    for path in _route_sources():
+        m = re.search(
+            r'@auth\.permission_required\(([^)]*)\)\s*\ndef ' + re.escape(func_name) + r'\(',
+            path.read_text(encoding="utf-8"),
+        )
+        if m:
+            return tuple(re.findall(r'"(\w+)"', m.group(1)))
+    return None
 
 
 # ---------------------------------------------------------------------------

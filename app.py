@@ -3,7 +3,6 @@ import json
 import os
 import re
 import signal
-import socket
 import sys
 import time
 import logging
@@ -44,9 +43,10 @@ import attachments as attach_mod
 import jobs
 import pdf_export
 
-BASE_DIR = os.path.dirname(__file__)
-_version_path = os.path.join(BASE_DIR, "VERSION")
-VERSION = open(_version_path).read().strip() if os.path.exists(_version_path) else "unknown"
+# BASE_DIR, VERSION, DB_REQUEST_TIMEOUT_SECONDS, get_db() and lan_address()
+# live in core.py so the route blueprints under routes/ can reach them
+# without importing this module, which registers them (see core.py).
+from core import BASE_DIR, VERSION, DB_REQUEST_TIMEOUT_SECONDS, get_db, lan_address
 # Read by heartbeat.py for the payload's uptime figure. Set here rather than in
 # heartbeat itself because that module is imported lazily inside a scheduler
 # job, which would make "uptime" mean "time since the first heartbeat".
@@ -273,21 +273,6 @@ if not error_logger.handlers:
     error_logger.addHandler(_err_handler)
 
 
-# Separate from (and shorter than) DB_POOL_TIMEOUT_SECONDS, which the pool
-# itself still uses for background/maintenance callers (dbmod.connect()).
-# During a full DB outage every request that reaches get_db() would
-# otherwise block for the pool's full default wait (10s) before failing —
-# tying up one of Waitress's worker threads that whole time and making the
-# app look hung rather than degraded. A shorter wait here means a
-# request-serving caller finds out sooner and the generic error handler
-# gets a chance to respond well before the thread pool is exhausted.
-DB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("DB_REQUEST_TIMEOUT_SECONDS", "4"))
-
-
-def get_db():
-    if "db" not in g:
-        g.db = dbmod.getconn(timeout=DB_REQUEST_TIMEOUT_SECONDS)
-    return g.db
 
 
 def mark_transaction_failed():
@@ -735,17 +720,6 @@ def microchip_taken_message(microchip, row):
 @app.template_filter("money")
 def money_filter(v):
     return logic.fmt_money(v)
-
-
-def lan_address():
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
-        return "127.0.0.1"
 
 
 def vet_users(db):
