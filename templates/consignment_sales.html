@@ -17,7 +17,7 @@
   <input type="date" name="date_from" value="{{ date_from }}" placeholder="From">
   <input type="date" name="date_to" value="{{ date_to }}" placeholder="To">
   <button class="btn secondary" type="submit">Filter</button>
-  {% if distributor_id or date_from or date_to %}<a class="btn secondary" href="{{ url_for('consignment_sales_page') }}">Clear</a>{% endif %}
+  {% if distributor_id or date_from or date_to %}<a class="btn secondary" href="{{ url_for('consignment.consignment_sales_page') }}">Clear</a>{% endif %}
 </form>
 
 <div class="table-wrap sticky-scroll">

@@ -30,9 +30,9 @@
       <td class="num-col">{{ r.units_sold_this_month|round(2) }}</td>
       <td style="white-space:nowrap;">
         {% if has_permission('manage_consignment_settlements') %}
-        <a class="btn small secondary" href="{{ url_for('consignment_settlements_page', distributor_id=r.distributor_id) }}">Settle</a>
+        <a class="btn small secondary" href="{{ url_for('consignment.consignment_settlements_page', distributor_id=r.distributor_id) }}">Settle</a>
         {% endif %}
-        <a class="btn small secondary" href="{{ url_for('consignment_sales_page', distributor_id=r.distributor_id) }}">Sales</a>
+        <a class="btn small secondary" href="{{ url_for('consignment.consignment_sales_page', distributor_id=r.distributor_id) }}">Sales</a>
       </td>
     </tr>
     {% else %}

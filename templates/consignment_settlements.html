@@ -6,7 +6,7 @@
     <h1>Settle with {{ distributor.name }}</h1>
     <p class="page-sub">{{ distributor.contact_person or '' }}{% if distributor.phone %} · {{ distributor.phone }}{% endif %}</p>
   </div>
-  <a class="btn secondary" href="{{ url_for('consignment_overview') }}">← Back to Overview</a>
+  <a class="btn secondary" href="{{ url_for('consignment.consignment_overview') }}">← Back to Overview</a>
 </div>
 
 <div class="card" style="margin-bottom:16px;">
@@ -20,7 +20,7 @@
     · {{ balance.units_sold_since|round(2) }} unit(s) sold since last settlement.</p>
 
   {% if has_permission('manage_consignment_settlements') %}
-  <form method="post" action="{{ url_for('consignment_settlement_new', distributor_id=distributor.id) }}" class="form-grid" style="margin-top:16px;" data-confirm="Record this settlement? The amount owed will be recalculated at the moment you submit.">
+  <form method="post" action="{{ url_for('consignment.consignment_settlement_new', distributor_id=distributor.id) }}" class="form-grid" style="margin-top:16px;" data-confirm="Record this settlement? The amount owed will be recalculated at the moment you submit.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field"><label for="consignmentsettlements-1-amount_paid">Amount Paid (JOD)</label><input id="consignmentsettlements-1-amount_paid" type="number" step="0.001" name="amount_paid" value="{{ fv(form, 'amount_paid', balance.amount_owed) }}" required></div>
     <div class="field"><label for="consignmentsettlements-2-payment_method">Payment Method</label>
@@ -55,7 +55,7 @@
       <td class="num-col">{{ (s.amount_owed - s.amount_paid)|money }}</td>
       <td>{{ s.payment_method or '—' }}</td>
       <td>{{ s.settled_by_name or '—' }}</td>
-      <td><a class="btn small secondary" href="{{ url_for('consignment_settlement_export', settlement_id=s.id) }}">PDF</a></td>
+      <td><a class="btn small secondary" href="{{ url_for('consignment.consignment_settlement_export', settlement_id=s.id) }}">PDF</a></td>
     </tr>
     {% else %}
     <tr><td colspan="8" class="empty-note">No settlements recorded yet.</td></tr>

@@ -8,7 +8,7 @@
       logging receiving/shrinkage/returns against it — check the box for as many items as you need, then save them
       all at once.</p>
   </div>
-  <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('consignment_items_bulk_edit') }}">Save Changes</button>
+  <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('consignment.consignment_items_bulk_edit') }}">Save Changes</button>
 </div>
 
 <div class="table-wrap sticky-scroll">
@@ -20,7 +20,7 @@
     {% for i in items %}
     {% set is_locked = locked.get(i.id) if i.ownership_type == 'Consignment' else false %}
     {% if not is_locked and has_permission('manage_consignment_items') %}
-    <form id="edit-{{ i.id }}" method="post" action="{{ url_for('consignment_items_bulk_edit') }}">
+    <form id="edit-{{ i.id }}" method="post" action="{{ url_for('consignment.consignment_items_bulk_edit') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     {% endif %}
     <tr {% if not is_locked and has_permission('manage_consignment_items') %}data-edit-form="edit-{{ i.id }}"{% endif %}>

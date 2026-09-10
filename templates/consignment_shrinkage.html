@@ -13,7 +13,7 @@
 
 {% if has_permission('manage_consignment_stock') %}
 <div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:16px;">
-  <form method="post" action="{{ url_for('consignment_shrinkage_new') }}">
+  <form method="post" action="{{ url_for('consignment.consignment_shrinkage_new') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
       <div class="field"><label for="consignmentshrinkage-1-item_id">Item</label>

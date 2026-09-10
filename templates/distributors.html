@@ -29,7 +29,7 @@
     <tbody>
       {% for r in payables.top_outstanding %}
       <tr>
-        <td><a href="{{ url_for('distributor_detail', dist_id=r.id) }}">{{ r.name }}</a></td>
+        <td><a href="{{ url_for('consignment.distributor_detail', dist_id=r.id) }}">{{ r.name }}</a></td>
         <td class="num-col">{{ r.balance|money }}</td>
       </tr>
       {% endfor %}
@@ -41,11 +41,11 @@
 <form class="search-bar" method="get">
   <input type="text" name="q" value="{{ search }}" placeholder="Search by Distributor Name…">
   <button class="btn secondary" type="submit">Search</button>
-  {% if search %}<a class="btn secondary" href="{{ url_for('distributors_list') }}">Clear</a>{% endif %}
+  {% if search %}<a class="btn secondary" href="{{ url_for('consignment.distributors_list') }}">Clear</a>{% endif %}
 </form>
 
 <div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:16px;">
-  <form method="post" action="{{ url_for('distributor_new') }}">
+  <form method="post" action="{{ url_for('consignment.distributor_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if open_new_form else None %}
     <div class="form-grid">
@@ -73,7 +73,7 @@
   <tbody>
     {% for d in distributors %}
     {% set row_form = form if edit_dist_id == d.id else None %}
-    <form id="edit-{{ d.id }}" method="post" action="{{ url_for('distributor_edit', dist_id=d.id) }}">
+    <form id="edit-{{ d.id }}" method="post" action="{{ url_for('consignment.distributor_edit', dist_id=d.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr>
       <td class="muted">{{ d.id }}</td>
@@ -85,9 +85,9 @@
       <td><input form="edit-{{ d.id }}" name="payment_terms" value="{{ fv(row_form, 'payment_terms', d.payment_terms or '') }}" style="border:none; background:transparent; padding:2px; width:80px;"></td>
       <td class="num-col">{{ outstanding.get(d.id)|money if outstanding.get(d.id) else "—" }}</td>
       <td style="white-space:nowrap;">
-        <a class="btn small secondary" href="{{ url_for('distributor_detail', dist_id=d.id) }}">Ledger</a>
+        <a class="btn small secondary" href="{{ url_for('consignment.distributor_detail', dist_id=d.id) }}">Ledger</a>
         <button class="btn small secondary" form="edit-{{ d.id }}" type="submit">Save</button>
-        <form method="post" action="{{ url_for('distributor_delete', dist_id=d.id) }}" style="display:inline;" data-confirm="Delete {{ d.name }}?">
+        <form method="post" action="{{ url_for('consignment.distributor_delete', dist_id=d.id) }}" style="display:inline;" data-confirm="Delete {{ d.name }}?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn small danger" type="submit">Delete</button>
         </form>

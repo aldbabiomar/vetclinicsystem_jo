@@ -86,7 +86,7 @@
         <a class="nav-link {{ 'active' if request.endpoint=='ordering_sheet_page' }}" href="{{ url_for('ordering_sheet_page') }}">Ordering Sheet</a>
         <a class="nav-link {{ 'active' if request.endpoint in ['audit_history_list','audit_session_view'] }}" href="{{ url_for('audit_history_list') }}">Audit History</a>
         <a class="nav-link {{ 'active' if request.endpoint=='inventory_catalog' }}" href="{{ url_for('inventory_catalog') }}">Inventory Catalog</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='distributors_list' }}" href="{{ url_for('distributors_list') }}">Distributors</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='distributors_list' }}" href="{{ url_for('consignment.distributors_list') }}">Distributors</a>
       </div>
     </div>
 
@@ -99,15 +99,15 @@
       </button>
       <div class="nav-group-links">
         {% if has_permission('view_consignment') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_overview' }}" href="{{ url_for('consignment_overview') }}">Overview</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_items' }}" href="{{ url_for('consignment_items') }}">Items</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_receiving_page' }}" href="{{ url_for('consignment_receiving_page') }}">Receiving</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_shrinkage_page' }}" href="{{ url_for('consignment_shrinkage_page') }}">Shrinkage</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_returns_page' }}" href="{{ url_for('consignment_returns_page') }}">Returns</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_sales_page' }}" href="{{ url_for('consignment_sales_page') }}">Sales by Distributor</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_overview' }}" href="{{ url_for('consignment.consignment_overview') }}">Overview</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_items' }}" href="{{ url_for('consignment.consignment_items') }}">Items</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_receiving_page' }}" href="{{ url_for('consignment.consignment_receiving_page') }}">Receiving</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_shrinkage_page' }}" href="{{ url_for('consignment.consignment_shrinkage_page') }}">Shrinkage</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_returns_page' }}" href="{{ url_for('consignment.consignment_returns_page') }}">Returns</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_sales_page' }}" href="{{ url_for('consignment.consignment_sales_page') }}">Sales by Distributor</a>
         {% endif %}
         {% if has_permission('manage_consignment_settlements') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_settlements_page' }}" href="{{ url_for('consignment_overview') }}">Settlements</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_settlements_page' }}" href="{{ url_for('consignment.consignment_overview') }}">Settlements</a>
         {% endif %}
       </div>
     </div>
