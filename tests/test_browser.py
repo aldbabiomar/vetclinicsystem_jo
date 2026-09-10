@@ -119,6 +119,21 @@ def _visit(page, path):
     return errors, failed_requests
 
 
+def _visit_watching_console(page, path):
+    """Same as _visit, but also collects console messages.
+
+    `pageerror` does NOT fire for a Content-Security-Policy violation — the
+    browser refuses the script and writes a console error instead, and the
+    page carries on looking completely normal. So a CSP that blocks every
+    inline script on a page is invisible to every check above this line, and
+    would ship as "all pages load fine".
+    """
+    messages = []
+    page.on("console", lambda m: messages.append(f"{m.type}: {m.text}"))
+    page.goto(f"{APP_URL}{path}", wait_until="networkidle")
+    return messages
+
+
 # ---------------------------------------------------------------------------
 
 def test_the_app_is_actually_reachable(signed_in):
@@ -294,11 +309,30 @@ def test_every_page_still_renders_in_dark_mode(signed_in, browser):
 # ---------------------------------------------------------------------------
 
 def _add_first_search_result(page):
+    """Click the first POS search result, the way a cashier does.
+
+    The selector is the interesting part. It used to be
+    `div[onclick*=addToCart]`, which stopped matching anything the moment the
+    inline handlers were moved into static/behaviors.js (review finding S6) —
+    and because a missing result is a `skip`, not a failure, the two most
+    important tests in this file went dormant and reported green. That is the
+    same shape as the dormant browser tier in COMPARISON.md §40.3: a guard
+    that goes vacuous rather than red.
+
+    So this asserts rather than returning False when the search itself works
+    but nothing matches the selector. "The search returned rows and none of
+    them was clickable" is a bug, not a reason to skip.
+    """
     page.fill("#posSearch", "a")
     page.wait_for_timeout(1200)
-    hit = page.locator("div[onclick*=addToCart]").first
-    if hit.count() == 0:
+    rows = page.locator("#posResults .list-line")
+    if rows.count() == 0:
         return False
+    hit = page.locator('#posResults [data-vz-act="pos-4"]').first
+    assert hit.count() > 0, (
+        "the POS search returned rows but none carried the add-to-cart hook — "
+        "the markup and static/behaviors.js have drifted apart, and every test "
+        "using this helper would otherwise have skipped silently")
     hit.click()
     page.wait_for_timeout(300)
     return page.evaluate("() => (typeof cart !== 'undefined') && cart.length > 0")
@@ -346,3 +380,65 @@ def test_a_double_click_still_only_makes_one_sale(signed_in):
     assert len(checkouts) == 1, (
         f"{len(checkouts)} checkout requests from one triple-click — a customer could be "
         "charged more than once")
+
+
+# ---------------------------------------------------------------------------
+# Content-Security-Policy (review finding S6)
+#
+# script-src carries a per-request nonce instead of 'unsafe-inline'. Two ways
+# that goes wrong silently: the nonce in the header stops matching the one in
+# the markup (every inline script on every page is refused), or a template
+# regrows an on*= attribute (that one handler stops working, nothing else).
+# Neither raises a JS error and neither changes what the page looks like.
+# ---------------------------------------------------------------------------
+
+def test_no_page_reports_a_csp_violation(signed_in):
+    """GUARD. Reintroduce 'unsafe-inline' and this still passes; break the
+    nonce and it fails on every page at once, which is the failure worth
+    catching, because nothing else in this file would notice it."""
+    page = signed_in["laptop"]
+    problems = []
+    for path in PAGES:
+        for msg in _visit_watching_console(page, path):
+            low = msg.lower()
+            if "content security policy" in low or "refused to execute" in low:
+                problems.append(f"{path}: {msg[:160]}")
+    assert not problems, (
+        "Content-Security-Policy blocked script(s) — the page still renders, so "
+        "nothing else here would have caught this:\n  " + "\n  ".join(problems))
+
+
+def test_the_csp_actually_forbids_inline_script(signed_in):
+    """CONTROL for the test above.
+
+    Without this, a policy that had quietly gone back to 'unsafe-inline' would
+    pass the violation check perfectly — no violations is exactly what a
+    permissive policy produces. This injects a script the policy must refuse
+    and fails if it runs.
+    """
+    page = signed_in["laptop"]
+    page.goto(f"{APP_URL}/", wait_until="networkidle")
+    ran = page.evaluate("""() => {
+        const s = document.createElement('script');
+        s.textContent = 'window.__cspProbe = true;';
+        document.head.appendChild(s);
+        return window.__cspProbe === true;
+    }""")
+    assert not ran, (
+        "an inline <script> with no nonce executed — script-src is still "
+        "permissive, so test_no_page_reports_a_csp_violation is passing "
+        "for the wrong reason")
+
+
+def test_the_nonce_changes_between_requests(signed_in):
+    """A nonce reused across responses is worth about as much as none at all:
+    an attacker who can read one page can embed it in the injection."""
+    page = signed_in["laptop"]
+    seen = set()
+    for _ in range(3):
+        page.goto(f"{APP_URL}/", wait_until="domcontentloaded")
+        seen.add(page.evaluate(
+            "() => document.querySelector('script[nonce]')?.nonce || "
+            "document.querySelector('script[nonce]')?.getAttribute('nonce')"))
+    assert None not in seen, "no inline script carried a nonce attribute"
+    assert len(seen) == 3, f"the nonce repeated across requests: {seen}"

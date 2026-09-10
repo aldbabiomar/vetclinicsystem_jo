@@ -5,7 +5,7 @@
   <div><h1>Price List</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items.{% endif %} Admin-only page — visible to Vet/Reception only as a read-only picker while billing.</p></div>
   <div style="display:flex; gap:10px;">
     <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory.price_list_bulk_edit') }}">Save Changes</button>
-    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
+    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" data-vzh="price-list-1">+ New Item</button>
   </div>
 </div>
 
@@ -33,12 +33,12 @@
     <div class="form-grid">
       <div class="field"><label for="newItemName">Name</label><input required name="name" id="newItemName" value="{{ fv(new_form, 'name') }}"></div>
       <div class="field"><label for="pricelist-1-category">Category</label>
-        <select id="pricelist-1-category" name="category" required onchange="toggleLink(this)">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select>
+        <select id="pricelist-1-category" name="category" required data-vzh="price-list-2">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select>
       </div>
       <div class="field"><label for="newItemCost">Cost Price (JOD)</label><input type="number" step="0.001" name="cost_price" id="newItemCost" value="{{ fv(new_form, 'cost_price') }}"></div>
       <div class="field"><label for="pricelist-2-sale_price">Sale Price (JOD)</label><input id="pricelist-2-sale_price" type="number" step="0.001" name="sale_price" value="{{ fv(new_form, 'sale_price') }}"></div>
       <div class="field link-field"><label for="pricelist-3-linked_item_id">Linked Inventory Item (Retail Only — for POS)</label>
-        <select id="pricelist-3-linked_item_id" name="linked_item_id" onchange="fillFromLinkedItem(this)"><option value="">—</option>{% for i in inv_items %}<option value="{{ i.id }}" data-name="{{ i.name }}" data-cost="{{ i.cost_price if i.cost_price is not none else '' }}" {{ 'selected' if fv(new_form, 'linked_item_id')==i.id }}>{{ i.name }}</option>{% endfor %}</select>
+        <select id="pricelist-3-linked_item_id" name="linked_item_id" data-vzh="price-list-3"><option value="">—</option>{% for i in inv_items %}<option value="{{ i.id }}" data-name="{{ i.name }}" data-cost="{{ i.cost_price if i.cost_price is not none else '' }}" {{ 'selected' if fv(new_form, 'linked_item_id')==i.id }}>{{ i.name }}</option>{% endfor %}</select>
       </div>
       <div class="field full"><label for="pricelist-4-notes">Notes</label><input id="pricelist-4-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
       <div class="field full">
@@ -48,7 +48,7 @@
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Add Item</button>
-      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+      <button class="btn secondary" type="button" data-vzh="price-list-4">Cancel</button>
     </div>
   </form>
 </div>
@@ -85,7 +85,7 @@
 </table>
 </div>
 {% include "_pagination.html" %}
-<script>
+<script nonce="{{ csp_nonce }}">
 function toggleLink(sel) {
   document.querySelector('.link-field').style.display = sel.value === 'Retail' ? 'flex' : 'none';
   const cb = document.getElementById('canDiscountNew');
@@ -105,4 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <script src="{{ url_for('static', filename='unsaved-changes.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('price-list-1', 'click', function (event) { document.getElementById('newForm').style.display='block'; this.style.display='none'; });
+VZ.bind('price-list-2', 'change', function (event) { toggleLink(this); });
+VZ.bind('price-list-3', 'change', function (event) { fillFromLinkedItem(this); });
+VZ.bind('price-list-4', 'click', function (event) { document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex'; });
+</script>
 {% endblock %}

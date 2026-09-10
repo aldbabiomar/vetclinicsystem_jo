@@ -7,7 +7,7 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<script>
+<script nonce="{{ csp_nonce }}">
 // Applied before first paint so switching themes never shows a flash of the other theme.
 (function() {
   try {
@@ -19,19 +19,20 @@
 <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
 <script src="{{ url_for('static', filename='motion.js') }}"></script>
 <script src="{{ url_for('static', filename='toast.js') }}"></script>
+<script src="{{ url_for('static', filename='behaviors.js') }}"></script>
 </head>
 <body>
 {% if session.get('user_id') %}
 <div class="mobile-topbar">
-  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu">
+  <button class="hamburger-btn" data-vzh="base-1" aria-label="Open menu">
     <span></span><span></span><span></span>
   </button>
   <span class="mobile-topbar-brand">{{ clinic_name }}</span>
 </div>
-<div class="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="sidebar-backdrop" data-vzh="base-2"></div>
 <div class="app-shell">
   <nav class="sidebar">
-    <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">&times;</button>
+    <button class="sidebar-close-btn" data-vzh="base-2" aria-label="Close menu">&times;</button>
     <div class="brand">
       <span class="mark">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -41,7 +42,7 @@
         </svg>
       </span>
       <span class="brand-name">{{ clinic_name }}</span>
-      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle dark mode">
+      <button type="button" class="theme-toggle-btn" data-vzh="base-3" aria-label="Toggle dark mode">
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="4.2"/>
           <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/>
@@ -178,7 +179,7 @@
     {% block content %}{% endblock %}
   </main>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 function toggleSidebar() {
   var sidebar = document.querySelector('.sidebar');
   var backdrop = document.querySelector('.sidebar-backdrop');
@@ -219,7 +220,7 @@ document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
   {% endwith %}
   {% block auth_content %}{% endblock %}
 {% endif %}
-<script>
+<script nonce="{{ csp_nonce }}">
 function escapeHtml(value) {
   if (value === null || value === undefined) return '';
   return String(value)
@@ -230,7 +231,7 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 </script>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
   var token = document.querySelector('meta[name="csrf-token"]').content;
   document.querySelectorAll('form').forEach(function(form) {
@@ -246,5 +247,10 @@ function escapeHtml(value) {
 })();
 </script>
 <script src="{{ url_for('static', filename='upload-progress.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('base-1', 'click', function (event) { toggleSidebar(); });
+VZ.bind('base-2', 'click', function (event) { closeSidebar(); });
+VZ.bind('base-3', 'click', function (event) { toggleTheme(); });
+</script>
 </body>
 </html>

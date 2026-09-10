@@ -60,12 +60,12 @@
       {% for f in self_check.findings %}<li>{{ f.message }}</li>{% endfor %}
     </ul>
     <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-      <button class="btn secondary" type="button" onclick="dismissSelfCheckModal()">Not now</button>
+      <button class="btn secondary" type="button" data-vzh="dashboard-1">Not now</button>
       <a class="btn" href="{{ url_for('settings.settings_page') }}">Open Settings</a>
     </div>
   </div>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   // Session-only dismissal, deliberately: a day-long "don't show again" means
   // a machine rebooted every morning never shows it again. sessionStorage
@@ -190,4 +190,7 @@
 {% include "_pagination.html" %}
 {% endwith %}
 {% endif %}
+<script nonce="{{ csp_nonce }}">
+VZ.bind('dashboard-1', 'click', function (event) { dismissSelfCheckModal(); });
+</script>
 {% endblock %}

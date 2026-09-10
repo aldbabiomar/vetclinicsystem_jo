@@ -4,7 +4,7 @@
 <div class="page-head no-print">
   <div><h1>Barcode Label</h1><p class="page-sub">{{ item.name }}</p></div>
   <div style="display:flex; gap:10px;">
-    <button class="btn secondary" id="printBtn" onclick="window.print()" disabled>Print</button>
+    <button class="btn secondary" id="printBtn" data-vzh="barcode-label-1" disabled>Print</button>
     <a class="btn secondary" href="{{ url_for('inventory.inventory_catalog') }}">Back</a>
   </div>
 </div>
@@ -16,7 +16,7 @@
     Could not render the barcode. Try refreshing the page.
   </p>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 function renderBarcodeLabel() {
   const code = "{{ item.barcode }}";
   try {
@@ -29,6 +29,10 @@ function renderBarcodeLabel() {
 </script>
 <script src="{{ url_for('static', filename='barcode-render.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"
-        onload="renderBarcodeLabel();"
-        onerror="document.getElementById('barcodeError').style.display = 'block';"></script>
+        data-vzh="barcode-label-2 barcode-label-3"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('barcode-label-1', 'click', function (event) { window.print(); });
+VZ.bind('barcode-label-2', 'load', function (event) { renderBarcodeLabel(); });
+VZ.bind('barcode-label-3', 'error', function (event) { document.getElementById('barcodeError').style.display = 'block'; });
+</script>
 {% endblock %}

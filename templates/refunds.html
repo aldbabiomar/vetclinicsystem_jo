@@ -12,7 +12,7 @@
       <label for="refundSaleId">Sale ID</label>
       <div style="display:flex; gap:8px;">
         <input type="text" id="refundSaleId" autocomplete="off" placeholder="e.g. 1042" style="flex:1;">
-        <button type="button" class="btn secondary" onclick="lookupRefundSale()">Find Sale</button>
+        <button type="button" class="btn secondary" data-vzh="refunds-1">Find Sale</button>
       </div>
     </div>
     <div id="refundSaleCleanupNote" class="small" style="display:none; margin-bottom:8px;"></div>
@@ -43,7 +43,7 @@
         <input type="hidden" name="restock" id="restockHidden">
         <div id="refundFieldsHidden"></div>
         <div class="form-actions">
-          <button class="btn" type="submit" onclick="return prepareRefundSubmit()">Process Retail Refund</button>
+          <button class="btn" type="submit" data-vzh="refunds-2">Process Retail Refund</button>
         </div>
       </form>
     </div>
@@ -124,7 +124,7 @@
 {% endif %}
 {% include "_pagination.html" %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 let refundSaleId = null;
 let refundLines = []; // {sale_item_id, item_id, name, unit_price, quantity, remaining, refundQty}
 
@@ -158,7 +158,7 @@ function renderRefundLines() {
     <div class="pos-cart-line">
       <div>${escapeHtml(l.name)}<div class="meta small">${l.unit_price} JOD each — ${l.remaining} left refundable</div></div>
       <div style="display:flex; align-items:center; gap:6px;">
-        <input type="number" min="0" max="${l.remaining}" step="any" value="${l.refundQty}" style="width:70px;" onchange="setRefundQty(${idx}, this.value)">
+        <input type="number" min="0" max="${l.remaining}" step="any" value="${l.refundQty}" style="width:70px;" data-vz-change="refunds-3" data-idx="${idx}">
       </div>
     </div>`).join('');
   renderRefundTotal();
@@ -189,5 +189,10 @@ function prepareRefundSubmit() {
   });
   return true;
 }
+</script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('refunds-1', 'click', function (event) { lookupRefundSale(); });
+VZ.bind('refunds-2', 'click', function (event) { return prepareRefundSubmit(); });
+VZ.action('refunds-3', function (event) { setRefundQty(Number(this.dataset.idx), this.value); });
 </script>
 {% endblock %}

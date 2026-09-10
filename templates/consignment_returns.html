@@ -8,7 +8,7 @@
       COGS, or settlement impact — nothing sold, so nothing owed either way.</p>
   </div>
   {% if has_permission('manage_consignment_stock') %}
-  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Log Return</button>
+  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="consignment-returns-1">+ Log Return</button>
   {% endif %}
 </div>
 
@@ -30,7 +30,7 @@
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Log Return</button>
-      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+      <button class="btn secondary" type="button" data-vzh="consignment-returns-2">Cancel</button>
     </div>
   </form>
 </div>
@@ -60,4 +60,8 @@
 </table>
 </div>
 {% include "_pagination.html" %}
+<script nonce="{{ csp_nonce }}">
+VZ.bind('consignment-returns-1', 'click', function (event) { document.getElementById('newForm').style.display='block'; this.style.display='none'; });
+VZ.bind('consignment-returns-2', 'click', function (event) { document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex'; });
+</script>
 {% endblock %}

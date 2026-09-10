@@ -6,10 +6,10 @@
   <div><h1>Inventory Catalog</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items shown.{% endif %} Audit history tracks actual counts.</p></div>
   <div style="display:flex; gap:10px;">
     {% if has_barcodes %}
-    <button class="btn secondary" type="button" onclick="document.getElementById('bulkBarcodeModal').style.display='flex'; loadBulkBarcodeList();">Bulk Barcode Print</button>
+    <button class="btn secondary" type="button" data-vzh="inventory-catalog-1">Bulk Barcode Print</button>
     {% endif %}
     <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory.inventory_catalog_bulk_edit') }}">Save Changes</button>
-    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
+    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" data-vzh="inventory-catalog-2">+ New Item</button>
   </div>
 </div>
 
@@ -47,7 +47,7 @@
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Add Item</button>
-      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+      <button class="btn secondary" type="button" data-vzh="inventory-catalog-3">Cancel</button>
     </div>
   </form>
 </div>
@@ -79,15 +79,14 @@
       <td class="small muted">
         {% if i.barcode %}<span style="font-family:monospace;">{{ i.barcode }}</span> <a href="{{ url_for('inventory.inventory_barcode_label', item_id=i.id) }}">print</a><br>{% endif %}
         <button class="btn small secondary" type="button" data-item-id="{{ i.id }}" data-item-name="{{ i.name }}"
-                onclick="openBarcodeManager(this.dataset.itemId, this.dataset.itemName)">{{ 'Manage Barcode' if i.barcode else 'Add Barcode' }}</button>
+                data-vzh="inventory-catalog-4">{{ 'Manage Barcode' if i.barcode else 'Add Barcode' }}</button>
       </td>
       <td><input form="edit-{{ i.id }}" type="checkbox" name="track_expiry" {{ 'checked' if fv(row_form, 'track_expiry', 'on' if i.track_expiry else '')=='on' }}></td>
       <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="cost_price" value="{{ fv(row_form, 'cost_price', i.cost_price if i.cost_price is not none else '') }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>
       <td class="dist-cell">
-        <span class="dist-label" id="distLabel-{{ i.id }}" onclick="toggleDistEdit('{{ i.id }}')" title="Click to change distributor">{{ i.distributor_name or "—" }}</span>
+        <span class="dist-label" id="distLabel-{{ i.id }}" data-vzh="inventory-catalog-5" data-vz-arg="{{ i.id }}" title="Click to change distributor">{{ i.distributor_name or "—" }}</span>
         <select form="edit-{{ i.id }}" name="distributor_id" id="distSelect-{{ i.id }}" class="dist-select"
-          onchange="document.getElementById('distLabel-{{ i.id }}').textContent = this.options[this.selectedIndex].text; this.style.display='none'; document.getElementById('distLabel-{{ i.id }}').style.display='inline';"
-          onblur="this.style.display='none'; document.getElementById('distLabel-{{ i.id }}').style.display='inline';">
+          data-vzh="inventory-catalog-6 inventory-catalog-7" data-vz-arg="{{ i.id }}">
           <option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if fv(row_form, 'distributor_id', i.distributor_id)==d.id }}>{{ d.name }}</option>{% endfor %}
         </select>
       </td>
@@ -115,8 +114,8 @@
     <p id="bulkBarcodeEmpty" class="small muted" style="display:none;">Nothing left to print.</p>
     <div id="bulkBarcodeList" style="max-height:360px; overflow-y:auto;"></div>
     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
-      <button class="btn secondary" type="button" onclick="document.getElementById('bulkBarcodeModal').style.display='none';">Cancel</button>
-      <button class="btn" type="button" id="bulkBarcodePrintBtn" onclick="bulkBarcodePrint()" disabled>Print</button>
+      <button class="btn secondary" type="button" data-vzh="inventory-catalog-8">Cancel</button>
+      <button class="btn" type="button" id="bulkBarcodePrintBtn" data-vzh="inventory-catalog-9" disabled>Print</button>
     </div>
   </div>
 </div>
@@ -136,8 +135,8 @@
         <input type="text" id="barcodeManualInput" placeholder="Scan or type the barcode from the packaging" maxlength="64">
       </div>
       <div style="display:flex; gap:8px;">
-        <button class="btn small" type="button" id="barcodeManualSaveBtn" onclick="barcodeManagerSaveManual()">Save</button>
-        <button class="btn small danger" type="button" id="barcodeManualRemoveBtn" style="display:none;" onclick="barcodeManagerRemove()">Remove Barcode</button>
+        <button class="btn small" type="button" id="barcodeManualSaveBtn" data-vzh="inventory-catalog-10">Save</button>
+        <button class="btn small danger" type="button" id="barcodeManualRemoveBtn" style="display:none;" data-vzh="inventory-catalog-11">Remove Barcode</button>
       </div>
     </div>
 
@@ -145,19 +144,19 @@
       <div style="font-weight:600; margin-bottom:4px;" id="barcodeGeneratedTitle">Create Barcode</div>
       <p class="small muted" style="margin:0 0 8px;" id="barcodeGeneratedHint">No barcode on the packaging? This app can create one and print a label to stick on the item.</p>
       <div style="display:flex; gap:8px;">
-        <button class="btn small secondary" type="button" id="barcodeGeneratedCreateBtn" onclick="barcodeManagerGenerate()">Create Now</button>
+        <button class="btn small secondary" type="button" id="barcodeGeneratedCreateBtn" data-vzh="inventory-catalog-12">Create Now</button>
         <a class="btn small secondary" type="button" id="barcodeGeneratedPrintBtn" style="display:none;" href="#">Print Label</a>
-        <button class="btn small danger" type="button" id="barcodeGeneratedRemoveBtn" style="display:none;" onclick="barcodeManagerRemove()">Remove Barcode</button>
+        <button class="btn small danger" type="button" id="barcodeGeneratedRemoveBtn" style="display:none;" data-vzh="inventory-catalog-11">Remove Barcode</button>
       </div>
     </div>
 
     <div style="display:flex; justify-content:flex-end; margin-top:14px;">
-      <button class="btn secondary" type="button" onclick="document.getElementById('barcodeManagerModal').style.display='none';">Close</button>
+      <button class="btn secondary" type="button" data-vzh="inventory-catalog-13">Close</button>
     </div>
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function toggleDistEdit(id) {
   document.getElementById('distLabel-' + id).style.display = 'none';
   var sel = document.getElementById('distSelect-' + id);
@@ -398,4 +397,19 @@ function barcodeManagerRefreshRow() {
 }
 </script>
 <script src="{{ url_for('static', filename='unsaved-changes.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('inventory-catalog-1', 'click', function (event) { document.getElementById('bulkBarcodeModal').style.display='flex'; loadBulkBarcodeList(); });
+VZ.bind('inventory-catalog-2', 'click', function (event) { document.getElementById('newForm').style.display='block'; this.style.display='none'; });
+VZ.bind('inventory-catalog-3', 'click', function (event) { document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex'; });
+VZ.bind('inventory-catalog-4', 'click', function (event) { openBarcodeManager(this.dataset.itemId, this.dataset.itemName); });
+VZ.bind('inventory-catalog-5', 'click', function (event) { toggleDistEdit(this.dataset.vzArg); });
+VZ.bind('inventory-catalog-6', 'change', function (event) { document.getElementById('distLabel-' + this.dataset.vzArg).textContent = this.options[this.selectedIndex].text; this.style.display='none'; document.getElementById('distLabel-' + this.dataset.vzArg).style.display='inline'; });
+VZ.bind('inventory-catalog-7', 'blur', function (event) { this.style.display='none'; document.getElementById('distLabel-' + this.dataset.vzArg).style.display='inline'; });
+VZ.bind('inventory-catalog-8', 'click', function (event) { document.getElementById('bulkBarcodeModal').style.display='none'; });
+VZ.bind('inventory-catalog-9', 'click', function (event) { bulkBarcodePrint(); });
+VZ.bind('inventory-catalog-10', 'click', function (event) { barcodeManagerSaveManual(); });
+VZ.bind('inventory-catalog-11', 'click', function (event) { barcodeManagerRemove(); });
+VZ.bind('inventory-catalog-12', 'click', function (event) { barcodeManagerGenerate(); });
+VZ.bind('inventory-catalog-13', 'click', function (event) { document.getElementById('barcodeManagerModal').style.display='none'; });
+</script>
 {% endblock %}

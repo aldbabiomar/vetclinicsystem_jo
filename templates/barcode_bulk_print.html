@@ -4,7 +4,7 @@
 <div class="page-head no-print">
   <div><h1>Bulk Barcode Print</h1><p class="page-sub">{{ labels|sum(attribute='qty') }} label(s) across {{ labels|length }} item(s).</p></div>
   <div style="display:flex; gap:10px;">
-    <button class="btn secondary" id="printBtn" onclick="window.print()" disabled>Print</button>
+    <button class="btn secondary" id="printBtn" data-vzh="barcode-bulk-print-1" disabled>Print</button>
     <a class="btn secondary" href="{{ url_for('inventory.inventory_catalog') }}">Back</a>
   </div>
 </div>
@@ -25,7 +25,7 @@
     {% endfor %}
   {% endfor %}
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 function renderAllBarcodes() {
   var svgs = document.querySelectorAll('.barcode-sheet svg');
   var anyError = false;
@@ -45,6 +45,10 @@ function renderAllBarcodes() {
 </script>
 <script src="{{ url_for('static', filename='barcode-render.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"
-        onload="renderAllBarcodes();"
-        onerror="document.getElementById('bulkPrintError').style.display = 'block';"></script>
+        data-vzh="barcode-bulk-print-2 barcode-bulk-print-3"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('barcode-bulk-print-1', 'click', function (event) { window.print(); });
+VZ.bind('barcode-bulk-print-2', 'load', function (event) { renderAllBarcodes(); });
+VZ.bind('barcode-bulk-print-3', 'error', function (event) { document.getElementById('bulkPrintError').style.display = 'block'; });
+</script>
 {% endblock %}

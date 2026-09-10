@@ -6,7 +6,7 @@
     <h1>Distributors</h1>
     <p class="page-sub">{{ distributors|length }} on file.</p>
   </div>
-  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Distributor</button>
+  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="distributors-1">+ New Distributor</button>
 </div>
 
 <div class="stat-grid">
@@ -60,7 +60,7 @@
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Add Distributor</button>
-      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+      <button class="btn secondary" type="button" data-vzh="distributors-2">Cancel</button>
     </div>
   </form>
 </div>
@@ -100,4 +100,8 @@
 </table>
 </div>
 <script src="{{ url_for('static', filename='phone-validate.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('distributors-1', 'click', function (event) { document.getElementById('newForm').style.display='block'; this.style.display='none'; });
+VZ.bind('distributors-2', 'click', function (event) { document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex'; });
+</script>
 {% endblock %}

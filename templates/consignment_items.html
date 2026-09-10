@@ -32,7 +32,7 @@
         {% elif has_permission('manage_consignment_items') %}
           <input type="checkbox" form="edit-{{ i.id }}" name="is_consignment" id="isConsignment-{{ i.id }}"
                  {{ 'checked' if i.ownership_type == 'Consignment' }}
-                 onchange="toggleConsignmentFields('{{ i.id }}')">
+                 data-vzh="consignment-items-1" data-vz-arg="{{ i.id }}">
         {% else %}
           {{ 'Yes' if i.ownership_type == 'Consignment' else 'No' }}
         {% endif %}
@@ -74,7 +74,7 @@
 </div>
 {% include "_pagination.html" %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // Distributor/Cost Price only mean anything once "Consignment?" is
 // checked — greyed out (and excluded from what gets submitted, since a
 // disabled field's form= association is simply skipped) otherwise, and
@@ -90,4 +90,7 @@ function toggleConsignmentFields(id) {
 }
 </script>
 <script src="{{ url_for('static', filename='unsaved-changes.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('consignment-items-1', 'change', function (event) { toggleConsignmentFields(this.dataset.vzArg); });
+</script>
 {% endblock %}

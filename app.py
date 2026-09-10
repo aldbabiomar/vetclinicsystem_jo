@@ -47,6 +47,7 @@ import pdf_export
 # live in core.py so the route blueprints under routes/ can reach them
 # without importing this module, which registers them (see core.py).
 from core import BASE_DIR, VERSION, DB_REQUEST_TIMEOUT_SECONDS, get_db, lan_address
+from core import csp_nonce
 from core import (
     BadDate,
     BadNumber,
@@ -262,22 +263,30 @@ def add_security_headers(resp):
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "same-origin"
-    # Baseline CSP — every template is inline-script-heavy (inline <script>
-    # blocks and onclick= handlers throughout), so this deliberately allows
-    # 'unsafe-inline' rather than pretending otherwise; it doesn't stop an
-    # injected inline script from running (Jinja autoescaping + the
-    # shared escapeHtml() helper are what actually prevent that). A
-    # nonce-based CSP would close that gap too, but requires threading a
-    # per-request nonce through every inline <script>/onclick= across every
-    # template — not worth the sitewide template rewrite for what
-    # autoescaping already covers. What this does block: the page loading
-    # any script/style/image/frame/connection from anywhere other than its
-    # own origin — closes off exfiltration via an injected external
-    # <script src>, a malicious iframe, or a compromised dependency
-    # reaching out somewhere else, without touching any existing template.
+    # Baseline CSP. script-src carries a per-request nonce rather than
+    # 'unsafe-inline' — the sitewide template rewrite this used to say was
+    # "not worth it" was done on 2026-09-10 (review finding S6): every on*=
+    # attribute became a listener in static/behaviors.js, and every inline
+    # <script> carries nonce="{{ csp_nonce }}". A nonce authorises <script>
+    # blocks only, never inline handlers, and a browser that sees one ignores
+    # 'unsafe-inline' altogether — which is why the attributes had to go first
+    # rather than alongside.
+    #
+    # style-src still allows 'unsafe-inline' because of the inline style=
+    # attributes that remain (review finding M8); tightening it is that
+    # finding's job, not this one's.
+    #
+    # connect-src and frame-ancestors are spelled out rather than left to
+    # inherit. The effective policy did not change: connect-src falls back to
+    # default-src 'self', and X-Frame-Options: DENY above already blocks
+    # framing. IQ has always listed both explicitly and JO has not — an
+    # undocumented textual divergence with no behavioural difference, now
+    # closed in the direction of saying what is meant.
     resp.headers["Content-Security-Policy"] = (
         "default-src 'self'; img-src 'self' data:; "
-        "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+        "style-src 'self' 'unsafe-inline'; "
+        f"script-src 'self' 'nonce-{csp_nonce()}'; "
+        "connect-src 'self'; frame-ancestors 'none'"
     )
     return resp
 
@@ -503,6 +512,19 @@ def require_login():
     auth.refresh_session_permissions(db, user)
     if user["must_change_password"] and request.endpoint != "change_password":
         return redirect(url_for("change_password"))
+
+
+@app.context_processor
+def inject_csp_nonce():
+    """Deliberately separate from inject_globals().
+
+    That one talks to the database and carries a fallback path for when the
+    database is unreachable. A nonce dropped on that fallback path would block
+    every script on the 500 page — the page you least want to break, and the
+    one least likely to be looked at before release. This processor cannot
+    fail for that reason because it touches nothing but `g`.
+    """
+    return dict(csp_nonce=csp_nonce())
 
 
 @app.context_processor

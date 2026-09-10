@@ -24,7 +24,7 @@
       <td>
         <form method="post" class="inline-form" action="{{ url_for('clinical.followup_status_update', visit_id=f.visit_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <select name="status" onchange="this.form.submit()" class="small">
+          <select name="status" data-vzh="followups-list-1" class="small">
             {% for s in ['Pending','Completed','Cancelled','N/A'] %}<option value="{{ s }}" {{ 'selected' if f.followup_status==s }}>{{ s }}</option>{% endfor %}
           </select>
         </form>
@@ -43,4 +43,7 @@
 </table>
 </div>
 {% include "_pagination.html" %}
+<script nonce="{{ csp_nonce }}">
+VZ.bind('followups-list-1', 'change', function (event) { this.form.submit(); });
+</script>
 {% endblock %}

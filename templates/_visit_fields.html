@@ -25,7 +25,7 @@
 <div class="form-grid" style="margin-top:14px;">
   <div class="field">
     <label for="wellnessNeeded">Wellness Visit?</label>
-    <select name="wellness_needed" id="wellnessNeeded" onchange="toggleWellness()">
+    <select name="wellness_needed" id="wellnessNeeded" data-vzh="visit-fields-1">
       <option value="N" {{ 'selected' if fv(form, 'wellness_needed', visit.wellness_needed if visit else 'N')=='N' }}>No</option>
       <option value="Y" {{ 'selected' if fv(form, 'wellness_needed', visit.wellness_needed if visit else 'N')=='Y' }}>Yes</option>
     </select>
@@ -40,7 +40,7 @@
 
   <div class="field">
     <label for="groomingNeeded">Grooming?</label>
-    <select name="grooming_needed" id="groomingNeeded" onchange="toggleGrooming()">
+    <select name="grooming_needed" id="groomingNeeded" data-vzh="visit-fields-2">
       <option value="N" {{ 'selected' if fv(form, 'grooming_needed', visit.grooming_needed if visit else 'N')=='N' }}>No</option>
       <option value="Y" {{ 'selected' if fv(form, 'grooming_needed', visit.grooming_needed if visit else 'N')=='Y' }}>Yes</option>
     </select>
@@ -63,7 +63,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function toggleWellness() {
   // A `required`/hidden field is skipped by HTML5 validation in most
   // browsers when its container is display:none, so the constraint must
@@ -80,4 +80,8 @@ function toggleGrooming() {
   document.querySelectorAll('.grooming-only').forEach(el => el.style.display = needed ? 'block' : 'none');
 }
 toggleWellness(); toggleGrooming();
+</script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('visit-fields-1', 'change', function (event) { toggleWellness(); });
+VZ.bind('visit-fields-2', 'change', function (event) { toggleGrooming(); });
 </script>

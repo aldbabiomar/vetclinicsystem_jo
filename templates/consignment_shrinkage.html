@@ -7,7 +7,7 @@
     <p class="page-sub">Damaged/expired Consignment stock, written off before it sold. {{ total_count }} entr{{ 'y' if total_count == 1 else 'ies' }} on file.</p>
   </div>
   {% if has_permission('manage_consignment_stock') %}
-  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Log Shrinkage</button>
+  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="consignment-shrinkage-1">+ Log Shrinkage</button>
   {% endif %}
 </div>
 
@@ -43,7 +43,7 @@
       still owed for stock lost on your side. Distributor-liable shrinkage adds nothing — they absorb that loss directly.</p>
     <div class="form-actions">
       <button class="btn" type="submit">Log Shrinkage</button>
-      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex';">Cancel</button>
+      <button class="btn secondary" type="button" data-vzh="consignment-shrinkage-2">Cancel</button>
     </div>
   </form>
 </div>
@@ -74,4 +74,8 @@
 </table>
 </div>
 {% include "_pagination.html" %}
+<script nonce="{{ csp_nonce }}">
+VZ.bind('consignment-shrinkage-1', 'click', function (event) { document.getElementById('newForm').style.display='block'; this.style.display='none'; });
+VZ.bind('consignment-shrinkage-2', 'click', function (event) { document.getElementById('newForm').style.display='none'; document.getElementById('newItemBtn').style.display='inline-flex'; });
+</script>
 {% endblock %}

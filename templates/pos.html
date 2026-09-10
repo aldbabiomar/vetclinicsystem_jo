@@ -19,16 +19,16 @@
       <div class="detail-item"><div class="k">Subtotal</div><div class="v" id="cartSubtotal">0 JOD</div></div>
       <div class="field" style="margin:10px 0;">
         <label for="discountInput">Discount % (Max {{ discount_cap }}%)</label>
-        <input type="number" id="discountInput" min="0" max="{{ discount_cap }}" value="{{ fv(form, 'discount_percent', '0') }}" oninput="renderCart()">
+        <input type="number" id="discountInput" min="0" max="{{ discount_cap }}" value="{{ fv(form, 'discount_percent', '0') }}" data-vzh="pos-1">
       </div>
       <div class="field" style="margin:10px 0;">
         <label for="cleanupInput">Clean Up (max {{ CLEANUP_CAP }} JOD)</label>
-        <input type="number" id="cleanupInput" step="0.001" min="0" value="{{ fv(form, 'cleanup_amount', '0') }}" oninput="renderCart()">
+        <input type="number" id="cleanupInput" step="0.001" min="0" value="{{ fv(form, 'cleanup_amount', '0') }}" data-vzh="pos-1">
       </div>
       <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 JOD</div></div>
       <div class="field" style="margin:10px 0;">
         <label for="paymentMethod">Payment Method</label>
-        <select id="paymentMethod" onchange="toggleCashFields()">
+        <select id="paymentMethod" data-vzh="pos-2">
           <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Cash' }}>Cash</option>
           <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Card' }}>Card</option>
           <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Transfer' }}>Transfer</option>
@@ -37,7 +37,7 @@
       <div id="cashFields" style="display:{{ 'none' if form and fv(form, 'payment_method', 'Cash')!='Cash' else '' }};">
         <div class="field" style="margin:10px 0;">
           <label for="cashReceivedInput">Cash Received (JOD)</label>
-          <input type="number" id="cashReceivedInput" step="0.001" min="0" value="{{ fv(form, 'cash_received') }}" oninput="renderCart()">
+          <input type="number" id="cashReceivedInput" step="0.001" min="0" value="{{ fv(form, 'cash_received') }}" data-vzh="pos-1">
         </div>
         <div class="detail-item"><div class="k">Change Due</div><div class="v" style="font-size:18px; font-weight:700;" id="changeDue">—</div></div>
         <div class="meta small" id="changeNote" style="margin-top:2px;"></div>
@@ -50,13 +50,13 @@
         <input type="hidden" name="payment_method" id="paymentHidden">
         <input type="hidden" name="cash_received" id="cashReceivedHidden">
         <div id="cartFieldsHidden"></div>
-        <button class="btn" type="submit" id="completeSaleBtn" style="width:100%; justify-content:center;" onclick="return prepareSubmit()">Complete Sale</button>
+        <button class="btn" type="submit" id="completeSaleBtn" style="width:100%; justify-content:center;" data-vzh="pos-3">Complete Sale</button>
       </form>
     </div>
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 let cart = []; // {id, name, price, qty, stock}
 
 const searchInput = document.getElementById('posSearch');
@@ -78,7 +78,7 @@ searchInput.addEventListener('input', () => {
             if (!list.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
             window.__posSearchResults = list;
             resultsDiv.innerHTML = list.map((i, idx) =>
-              `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" onclick="addToCart(window.__posSearchResults[this.dataset.idx])">
+              `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" data-vz-act="pos-4">
                  <div class="who">${escapeHtml(i.name)}</div><div class="meta">${i.price != null ? i.price + ' JOD' : 'no price set'} · stock: ${i.stock ?? '—'}</div>
                </div>`
             ).join('');
@@ -127,10 +127,10 @@ function renderCart() {
       <div class="pos-cart-line">
         <div>${escapeHtml(c.name)}<div class="meta small">${c.price} JOD each</div></div>
         <div style="display:flex; align-items:center; gap:6px;">
-          <button class="btn small secondary" type="button" onclick="changeQty('${c.id}',-1)">-</button>
-          <input type="number" min="1" ${c.stock != null ? `max="${c.stock}"` : ''} value="${c.qty}" style="width:56px; text-align:center;" onchange="setQty('${c.id}', this.value)">
-          <button class="btn small secondary" type="button" onclick="changeQty('${c.id}',1)">+</button>
-          <button class="btn small danger" type="button" onclick="removeLine('${c.id}')">×</button>
+          <button class="btn small secondary" type="button" data-vz-act="pos-5" data-line-id="${c.id}">-</button>
+          <input type="number" min="1" ${c.stock != null ? `max="${c.stock}"` : ''} value="${c.qty}" style="width:56px; text-align:center;" data-vz-change="pos-6" data-line-id="${c.id}">
+          <button class="btn small secondary" type="button" data-vz-act="pos-7" data-line-id="${c.id}">+</button>
+          <button class="btn small danger" type="button" data-vz-act="pos-8" data-line-id="${c.id}">×</button>
         </div>
       </div>`).join('');
   }
@@ -207,5 +207,15 @@ function prepareSubmit() {
 // totals to the discount/payment-method values fv() just prefilled above.
 toggleCashFields();
 {% endif %}
+</script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('pos-1', 'input', function (event) { renderCart(); });
+VZ.bind('pos-2', 'change', function (event) { toggleCashFields(); });
+VZ.bind('pos-3', 'click', function (event) { return prepareSubmit(); });
+VZ.action('pos-4', function (event) { addToCart(window.__posSearchResults[this.dataset.idx]); });
+VZ.action('pos-5', function (event) { changeQty(this.dataset.lineId,-1); });
+VZ.action('pos-6', function (event) { setQty(this.dataset.lineId, this.value); });
+VZ.action('pos-7', function (event) { changeQty(this.dataset.lineId,1); });
+VZ.action('pos-8', function (event) { removeLine(this.dataset.lineId); });
 </script>
 {% endblock %}

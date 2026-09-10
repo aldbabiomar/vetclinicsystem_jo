@@ -27,7 +27,7 @@
           <td>{{ a.owner_name }}</td>
           <td class="small">{{ a.vet_name if a.resource_type=='vet' else 'Grooming' }}</td>
           <td class="small muted">{{ a.reason }}</td>
-          <td><button class="btn small danger" type="button" data-appt-id="{{ a.id }}" data-pet-name="{{ a.pet_name }}" onclick="cancelAppt(this)">Cancel</button></td>
+          <td><button class="btn small danger" type="button" data-appt-id="{{ a.id }}" data-pet-name="{{ a.pet_name }}" data-vzh="appointments-1">Cancel</button></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -69,11 +69,11 @@
   {% for cell in row.cells %}
   <div class="appt-cell">
     {% for a in cell.appointments %}
-    <div class="appt-chip {{ 'grooming' if a.resource_type=='grooming' }}" title="{{ a.reason or '' }}" data-appt-id="{{ a.id }}" data-pet-name="{{ a.pet_name }}" onclick="cancelAppt(this)">
+    <div class="appt-chip {{ 'grooming' if a.resource_type=='grooming' }}" title="{{ a.reason or '' }}" data-appt-id="{{ a.id }}" data-pet-name="{{ a.pet_name }}" data-vzh="appointments-1">
       {{ a.pet_name }} — {{ a.owner_name }}
     </div>
     {% endfor %}
-    <button class="appt-add-btn" data-date="{{ selected_day }}" data-slot="{{ row.slot.label }}" data-resource-type="{{ cell.column.resource_type }}" data-resource-id="{{ cell.column.resource_id or '' }}" data-label="{{ cell.column.label }}" onclick="openAdd(this)">+</button>
+    <button class="appt-add-btn" data-date="{{ selected_day }}" data-slot="{{ row.slot.label }}" data-resource-type="{{ cell.column.resource_type }}" data-resource-id="{{ cell.column.resource_id or '' }}" data-label="{{ cell.column.label }}" data-vzh="appointments-2">+</button>
   </div>
   {% endfor %}
   {% endfor %}
@@ -96,7 +96,7 @@
       </div>
       <div class="field" style="margin-bottom:14px;"><label for="appointments-4-reason">Reason</label><input id="appointments-4-reason" name="reason" value="{{ fv(form, 'reason') }}"></div>
       <div style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn secondary" type="button" onclick="document.getElementById('addModal').style.display='none';">Cancel</button>
+        <button class="btn secondary" type="button" data-vzh="appointments-3">Cancel</button>
         <button class="btn" type="submit">Book</button>
       </div>
     </form>
@@ -106,7 +106,7 @@
 <form id="cancelForm" method="post" style="display:none;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function openAdd(btn) {
   const { date, slot, resourceType, resourceId, label } = btn.dataset;
   document.getElementById('addDate').value = date;
@@ -126,5 +126,10 @@ async function cancelAppt(el) {
   document.body.appendChild(f);
   f.submit();
 }
+</script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('appointments-1', 'click', function (event) { cancelAppt(this); });
+VZ.bind('appointments-2', 'click', function (event) { openAdd(this); });
+VZ.bind('appointments-3', 'click', function (event) { document.getElementById('addModal').style.display='none'; });
 </script>
 {% endblock %}

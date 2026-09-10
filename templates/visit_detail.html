@@ -29,7 +29,7 @@
     <div class="detail-item"><div class="k">Updates Log</div><div class="v updates-log">{{ visit.updates_log or "—" }}</div></div>
 
     <div style="margin-top:10px;">
-      <button class="btn small secondary" type="button" onclick="var b=document.getElementById('uploadBox'); b.style.display = (b.style.display==='none' ? 'block' : 'none');">Additional Tests / X-Rays</button>
+      <button class="btn small secondary" type="button" data-vzh="visit-detail-1">Additional Tests / X-Rays</button>
       <span class="small muted">({{ files|length }} file(s) on record)</span>
     </div>
     <div id="uploadBox" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
@@ -48,7 +48,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="file" name="file" accept=".pdf,.jpg,.jpeg" required>
         <button class="btn small" type="submit">Upload</button>
-        <button class="btn small secondary" type="button" onclick="document.getElementById('uploadBox').style.display='none';">Close</button>
+        <button class="btn small secondary" type="button" data-vzh="visit-detail-2">Close</button>
       </form>
     </div>
   </div>
@@ -92,10 +92,10 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="display:flex; gap:16px; margin-bottom:12px;">
           <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-            <input type="radio" name="billing_type" value="Automatic" onchange="toggleBillingType()" id="btAuto" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Automatic' }}> Automatic Calculation
+            <input type="radio" name="billing_type" value="Automatic" data-vzh="visit-detail-3" id="btAuto" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Automatic' }}> Automatic Calculation
           </label>
           <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-            <input type="radio" name="billing_type" value="Manual" onchange="toggleBillingType()" id="btManual" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Manual' }}> Manual Entry
+            <input type="radio" name="billing_type" value="Manual" data-vzh="visit-detail-3" id="btManual" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Manual' }}> Manual Entry
           </label>
         </div>
         <div id="autoFields" class="field full" style="margin-bottom:12px;">
@@ -112,7 +112,7 @@
         </div>
         <div class="field full" style="margin-bottom:12px;"><label for="visitdetail-2-date_billed">Date Billed</label><input id="visitdetail-2-date_billed" type="date" name="date_billed" required value="{{ fv(form, 'date_billed', billing.date_billed if billing else (visit.date or today)) }}"></div>
         <div class="field full" style="margin-bottom:14px;"><label for="visitdetail-3-notes">Notes</label><input id="visitdetail-3-notes" name="notes" value="{{ fv(form, 'notes', billing.notes if billing else '') }}"></div>
-        <button class="btn small" type="submit" onclick="return prepareBillingSubmit()">Save Billing</button>
+        <button class="btn small" type="submit" data-vzh="visit-detail-4">Save Billing</button>
       </form>
 
       <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
@@ -152,7 +152,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function toggleBillingType() {
   const auto = document.getElementById('btAuto').checked;
   document.getElementById('autoFields').style.display = auto ? 'flex' : 'none';
@@ -186,7 +186,7 @@ visitBillSearchInput.addEventListener('input', () => {
         if (!list.length) { visitBillResultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
         window.__visitBillResults = list;
         visitBillResultsDiv.innerHTML = list.map((i, idx) =>
-          `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" onclick="addToVisitBillCart(window.__visitBillResults[this.dataset.idx])">
+          `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" data-vz-act="visit-detail-5">
              <div class="who">${escapeHtml(i.name)}</div><div class="meta">${i.category} · ${i.price != null ? i.price + ' JOD' : 'no price set'}</div>
            </div>`
         ).join('');
@@ -226,10 +226,10 @@ function renderVisitBillCart() {
     <div class="pos-cart-line">
       <div>${escapeHtml(c.name)}<div class="meta small">${c.price} JOD each</div></div>
       <div style="display:flex; align-items:center; gap:6px;">
-        <button class="btn small secondary" type="button" onclick="changeVisitBillQty('${c.id}',-1)">-</button>
-        <input type="number" min="1" value="${c.qty}" style="width:56px; text-align:center;" onchange="setVisitBillQty('${c.id}', this.value)">
-        <button class="btn small secondary" type="button" onclick="changeVisitBillQty('${c.id}',1)">+</button>
-        <button class="btn small danger" type="button" onclick="removeVisitBillLine('${c.id}')">×</button>
+        <button class="btn small secondary" type="button" data-vz-act="visit-detail-6" data-line-id="${c.id}">-</button>
+        <input type="number" min="1" value="${c.qty}" style="width:56px; text-align:center;" data-vz-change="visit-detail-7" data-line-id="${c.id}">
+        <button class="btn small secondary" type="button" data-vz-act="visit-detail-8" data-line-id="${c.id}">+</button>
+        <button class="btn small danger" type="button" data-vz-act="visit-detail-9" data-line-id="${c.id}">×</button>
       </div>
     </div>`).join('');
 }
@@ -246,5 +246,16 @@ function prepareBillingSubmit() {
   }
   return true;
 }
+</script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('visit-detail-1', 'click', function (event) { var b=document.getElementById('uploadBox'); b.style.display = (b.style.display==='none' ? 'block' : 'none'); });
+VZ.bind('visit-detail-2', 'click', function (event) { document.getElementById('uploadBox').style.display='none'; });
+VZ.bind('visit-detail-3', 'change', function (event) { toggleBillingType(); });
+VZ.bind('visit-detail-4', 'click', function (event) { return prepareBillingSubmit(); });
+VZ.action('visit-detail-5', function (event) { addToVisitBillCart(window.__visitBillResults[this.dataset.idx]); });
+VZ.action('visit-detail-6', function (event) { changeVisitBillQty(this.dataset.lineId,-1); });
+VZ.action('visit-detail-7', function (event) { setVisitBillQty(this.dataset.lineId, this.value); });
+VZ.action('visit-detail-8', function (event) { changeVisitBillQty(this.dataset.lineId,1); });
+VZ.action('visit-detail-9', function (event) { removeVisitBillLine(this.dataset.lineId); });
 </script>
 {% endblock %}

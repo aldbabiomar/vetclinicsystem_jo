@@ -15,7 +15,7 @@
   <thead><tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Phone</th><th scope="col" class="num-col">Patients</th></tr></thead>
   <tbody>
     {% for o in owners %}
-    <tr onclick="window.location='{{ url_for('clinical.owner_detail', owner_id=o.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('clinical.owner_detail', owner_id=o.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
+    <tr data-vz-href="{{ url_for('clinical.owner_detail', owner_id=o.id) }}" tabindex="0" role="link" style="cursor:pointer;">
       <td class="muted">{{ o.id }}</td><td><strong>{{ o.name }}</strong></td><td>{{ o.phone or "—" }}</td>
       <td class="num-col">{{ counts.get(o.id, 0) }}</td>
     </tr>

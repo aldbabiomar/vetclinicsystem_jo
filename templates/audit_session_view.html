@@ -9,7 +9,7 @@
   {% if not readonly %}
   <div style="display:flex; gap:10px;">
     <button class="btn secondary" type="submit" form="auditForm" formaction="{{ url_for('inventory.audit_session_save', session_id=sess.id) }}">Save</button>
-    <button class="btn" type="button" onclick="confirmAudit()">Confirm</button>
+    <button class="btn" type="button" data-vzh="audit-session-view-1">Confirm</button>
   </div>
   {% endif %}
 </div>
@@ -68,13 +68,13 @@
     <p class="small">Continuing will confirm the audit and it can't be edited after. If you intend to save it for later, click Cancel and use Save instead.</p>
     <div id="confirmSummary" class="small" style="margin:10px 0; padding:10px; border-radius:8px; background:var(--muted-tint);"></div>
     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
-      <button class="btn secondary" type="button" onclick="document.getElementById('confirmModal').style.display='none';">Cancel</button>
+      <button class="btn secondary" type="button" data-vzh="audit-session-view-2">Cancel</button>
       <form method="post" action="{{ url_for('inventory.audit_session_confirm', session_id=sess.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">Yes, Confirm Permanently</button></form>
     </div>
   </div>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 function confirmAudit() {
   document.getElementById('auditForm').setAttribute('action', "{{ url_for('inventory.audit_session_save', session_id=sess.id) }}");
   const totalItems = {{ items|length }};
@@ -98,4 +98,8 @@ function confirmAudit() {
 }
 </script>
 {% endif %}
+<script nonce="{{ csp_nonce }}">
+VZ.bind('audit-session-view-1', 'click', function (event) { confirmAudit(); });
+VZ.bind('audit-session-view-2', 'click', function (event) { document.getElementById('confirmModal').style.display='none'; });
+</script>
 {% endblock %}

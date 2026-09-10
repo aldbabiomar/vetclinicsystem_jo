@@ -4,7 +4,7 @@
 <div class="page-head">
   <div><h1>Logins and Changes</h1><p class="page-sub">Pick a date to review who logged in and what was changed.</p></div>
   <form method="get" style="display:flex; gap:10px; align-items:center;">
-    <input type="date" name="date" value="{{ day }}" onchange="this.form.submit()">
+    <input type="date" name="date" value="{{ day }}" data-vzh="admin-logs-1">
     {% if day != today %}<a class="btn secondary" href="{{ url_for('admin.admin_logs') }}">Clear</a>{% endif %}
   </form>
 </div>
@@ -50,4 +50,7 @@
   </tbody>
 </table>
 </div>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('admin-logs-1', 'change', function (event) { this.form.submit(); });
+</script>
 {% endblock %}

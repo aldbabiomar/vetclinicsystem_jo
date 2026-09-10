@@ -31,7 +31,7 @@ Message:   {{ exc_message }}
     <a class="btn secondary" href="javascript:location.reload()">Try Again</a>
   </div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
   document.querySelectorAll('[data-copy-target]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var text = document.getElementById(btn.dataset.copyTarget).textContent;

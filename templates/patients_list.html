@@ -25,7 +25,7 @@
   <thead><tr><th scope="col">ID</th><th scope="col">Animal</th><th scope="col">Species</th><th scope="col">Sex</th><th scope="col">Owner</th><th scope="col">Phone</th></tr></thead>
   <tbody>
     {% for p in patients %}
-    <tr onclick="window.location='{{ url_for('clinical.patient_detail', patient_id=p.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('clinical.patient_detail', patient_id=p.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">
+    <tr data-vz-href="{{ url_for('clinical.patient_detail', patient_id=p.id) }}" tabindex="0" role="link" style="cursor:pointer;">
       <td class="muted">{{ p.id }}</td><td><strong>{{ p.animal_name }}</strong></td><td>{{ p.species }}</td>
       <td>{{ p.sex or "—" }}</td><td>{{ p.owner_name }}</td><td>{{ p.owner_phone or "—" }}</td>
     </tr>

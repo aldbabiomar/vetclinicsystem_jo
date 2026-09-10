@@ -169,7 +169,7 @@
 {% endif %}
 
 <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 const REVENUE = {{ revenue|tojson }};
 const PAYMENT_MIX = {{ payment_mix|tojson }};
 const COLORS = {

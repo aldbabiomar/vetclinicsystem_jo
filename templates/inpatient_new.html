@@ -37,7 +37,7 @@
   </form>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const searchInput = document.getElementById('patientSearch');
 const resultsDiv = document.getElementById('searchResults');
 let debounceTimer;
@@ -53,7 +53,7 @@ searchInput.addEventListener('input', () => {
         if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
         window.__inpatientSearchResults = data;
         resultsDiv.innerHTML = data.map((p, idx) =>
-          `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" onclick="selectPatient(window.__inpatientSearchResults[this.dataset.idx])">
+          `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" data-vz-act="inpatient-new-1">
              <div><div class="who">${escapeHtml(p.animal_name)} <span class="meta">(${escapeHtml(p.species || '')})</span></div>
              <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || 'no phone')} · ${escapeHtml(p.id)}${p.microchip ? ' · Chip: ' + escapeHtml(p.microchip) : ''}</div></div>
            </div>`
@@ -71,4 +71,7 @@ function selectPatient(p) {
 }
 </script>
 <script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.action('inpatient-new-1', function (event) { selectPatient(window.__inpatientSearchResults[this.dataset.idx]); });
+</script>
 {% endblock %}

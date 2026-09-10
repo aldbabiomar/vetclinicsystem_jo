@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div><h1>Boarding</h1><p class="page-sub">{{ total_count }} {{ 'boarding session(s)' }}{% if not show_all %} currently boarding{% endif %}.</p></div>
-  <button class="btn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ Add Boarding</button>
+  <button class="btn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="boarding-1">+ Add Boarding</button>
 </div>
 
 <div class="filter-chips">
@@ -24,16 +24,16 @@
     <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel">{{ new_form_patient_label or '' }}</strong></p>
     <input type="hidden" name="patient_id" id="patientIdField" value="{{ fv(new_form, 'patient_id') }}">
     <div class="form-grid">
-      <div class="field"><label for="entryDateField">Entry Date</label><input required type="date" name="entry_date" value="{{ fv(new_form, 'entry_date', today) }}" onchange="suggestTotal()" id="entryDateField"></div>
-      <div class="field"><label for="dismissalDateField">Expected Dismissal Date</label><input type="date" name="dismissal_date" value="{{ fv(new_form, 'dismissal_date') }}" onchange="suggestTotal()" id="dismissalDateField"></div>
+      <div class="field"><label for="entryDateField">Entry Date</label><input required type="date" name="entry_date" value="{{ fv(new_form, 'entry_date', today) }}" data-vzh="boarding-2" id="entryDateField"></div>
+      <div class="field"><label for="dismissalDateField">Expected Dismissal Date</label><input type="date" name="dismissal_date" value="{{ fv(new_form, 'dismissal_date') }}" data-vzh="boarding-2" id="dismissalDateField"></div>
       <div class="field"><label for="boarding-1-room">Allocated Room</label><input id="boarding-1-room" name="room" value="{{ fv(new_form, 'room') }}"></div>
       <div class="field"><label for="boarding-2-admitted_items">Admitted Items (Leash, Bed, Etc.)</label><input id="boarding-2-admitted_items" name="admitted_items" value="{{ fv(new_form, 'admitted_items') }}"></div>
-      <div class="field"><label for="pricePerDayField">Price per Day (JOD)</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" value="{{ fv(new_form, 'price_per_day') }}" onchange="suggestTotal()"></div>
+      <div class="field"><label for="pricePerDayField">Price per Day (JOD)</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" value="{{ fv(new_form, 'price_per_day') }}" data-vzh="boarding-2"></div>
       <div class="field"><label for="totalField">Total (JOD)</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="Auto-suggested from price × nights"></div>
       <div class="field full" id="boardingDateWarning" style="display:none; color:var(--danger);"></div>
       <div class="field full">
         <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-          <input type="checkbox" name="special_needs" id="specialNeedsCheck" {{ 'checked' if fv(new_form, 'special_needs')=='on' }} onchange="document.getElementById('specialNeedsNotesField').style.display = this.checked ? 'block' : 'none';">
+          <input type="checkbox" name="special_needs" id="specialNeedsCheck" {{ 'checked' if fv(new_form, 'special_needs')=='on' }} data-vzh="boarding-3">
           Special Needs?
         </label>
         <p class="small muted" style="margin:2px 0 8px;">Check this to report any chronic diseases or custom requirements for the stay (medication schedule, dietary restrictions, mobility issues, etc.).</p>
@@ -44,7 +44,7 @@
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Add Boarding</button>
-      <button class="btn secondary" type="button" onclick="document.getElementById('newForm').style.display='none'; document.querySelector('.page-head button').style.display='inline-flex';">Cancel</button>
+      <button class="btn secondary" type="button" data-vzh="boarding-4">Cancel</button>
     </div>
   </form>
 </div>
@@ -57,7 +57,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field full" style="margin-bottom:12px;"><label for="boarding-3-issue">What's wrong?</label><textarea id="boarding-3-issue" name="issue" required></textarea></div>
       <label class="checkbox-row small" style="text-transform:none; font-weight:500; margin-bottom:8px;">
-        <input type="checkbox" name="contacted" id="incidentContactedCheck" onchange="document.getElementById('incidentContactFields').style.display = this.checked ? 'block' : 'none';">
+        <input type="checkbox" name="contacted" id="incidentContactedCheck" data-vzh="boarding-5">
         Contacted the owner?
       </label>
       <div id="incidentContactFields" style="display:none;">
@@ -68,7 +68,7 @@
       </div>
       <div class="form-actions">
         <button class="btn small" type="submit">Log Incident</button>
-        <button class="btn small secondary" type="button" onclick="document.getElementById('incidentModal').style.display='none';">Cancel</button>
+        <button class="btn small secondary" type="button" data-vzh="boarding-6">Cancel</button>
       </div>
     </form>
   </div>
@@ -94,7 +94,7 @@
       <div class="field full" style="margin-bottom:12px;"><label for="boarding-9-notes">Notes</label><input id="boarding-9-notes" name="notes" value="{{ fv(form, 'notes') if payment_error_id else '' }}"></div>
       <div class="form-actions">
         <button class="btn small" type="submit">Record Payment</button>
-        <button class="btn small secondary" type="button" onclick="document.getElementById('paymentModal').style.display='none';">Cancel</button>
+        <button class="btn small secondary" type="button" data-vzh="boarding-7">Cancel</button>
       </div>
     </form>
   </div>
@@ -120,10 +120,10 @@
       <td>{% if s.incident_count %}<span class="badge danger">{{ s.incident_count }}</span>{% else %}<span class="muted small">0</span>{% endif %}</td>
       <td class="actions-cell">
         <div class="action-btns">
-          <button class="btn small danger" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" onclick="openIncident(this)">Something's Wrong!</button>
+          <button class="btn small danger" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-vzh="boarding-8">Something's Wrong!</button>
           <div class="action-btns-row">
-            <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-discount="{{ s.discount_percent or 0 }}" onclick="openPayment(this)">Payment</button>
-            <button class="btn small secondary" type="button" onclick="toggleEdit({{ s.id }})">Edit</button>
+            <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-discount="{{ s.discount_percent or 0 }}" data-vzh="boarding-9">Payment</button>
+            <button class="btn small secondary" type="button" data-vzh="boarding-10" data-vz-arg="{{ s.id }}">Edit</button>
           </div>
           <a class="btn small secondary" href="{{ url_for('clinical.boarding_export_pdf', boarding_id=s.id) }}">Export (PDF)</a>
           {% if not s.dismissed %}
@@ -156,7 +156,7 @@
             value="{{ fv(row_form, 'total', s.total if (s.total is not none and not s.total_is_auto) else '') }}"></div>
           <div class="field full">
             <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-              <input type="checkbox" name="special_needs" id="specialNeedsCheck-{{ s.id }}" {{ 'checked' if fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on' }} onchange="document.getElementById('specialNeedsNotesField-' + {{ s.id }}).style.display = this.checked ? 'block' : 'none';"> Special Needs?
+              <input type="checkbox" name="special_needs" id="specialNeedsCheck-{{ s.id }}" {{ 'checked' if fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on' }} data-vzh="boarding-11" data-vz-arg="{{ s.id }}"> Special Needs?
             </label>
             <textarea name="special_needs_notes" id="specialNeedsNotesField-{{ s.id }}" placeholder="Describe the special need…" style="display: {{ 'block' if (fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on') else 'none' }};">{{ fv(row_form, 'special_needs_notes', s.special_needs_notes or '') }}</textarea>
             {% if s.special_needs_notes and not s.special_needs %}
@@ -173,7 +173,7 @@
 </div>
 {% include "_pagination.html" %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const searchInput = document.getElementById('patientSearch');
 const resultsDiv = document.getElementById('searchResults');
 let debounceTimer;
@@ -189,7 +189,7 @@ searchInput.addEventListener('input', () => {
         if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
         window.__boardingSearchResults = data;
         resultsDiv.innerHTML = data.map((p, idx) =>
-          `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" onclick="selectPatient(window.__boardingSearchResults[this.dataset.idx])">
+          `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" data-vz-act="boarding-12">
              <div><div class="who">${escapeHtml(p.animal_name)} <span class="meta">(${escapeHtml(p.species || '')})</span></div>
              <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || 'no phone')} · ${escapeHtml(p.id)}${p.microchip ? ' · Chip: ' + escapeHtml(p.microchip) : ''}</div></div>
            </div>`
@@ -248,7 +248,21 @@ function toggleEdit(id) {
   row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
 }
 {% if payment_error_id %}
-openPayment(document.querySelector('button[data-id="{{ payment_error_id }}"][onclick="openPayment(this)"]'));
+openPayment(document.querySelector('button[data-id="{{ payment_error_id }}"][data-vzh="boarding-9"]'));
 {% endif %}
+</script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('boarding-1', 'click', function (event) { document.getElementById('newForm').style.display='block'; this.style.display='none'; });
+VZ.bind('boarding-2', 'change', function (event) { suggestTotal(); });
+VZ.bind('boarding-3', 'change', function (event) { document.getElementById('specialNeedsNotesField').style.display = this.checked ? 'block' : 'none'; });
+VZ.bind('boarding-4', 'click', function (event) { document.getElementById('newForm').style.display='none'; document.querySelector('.page-head button').style.display='inline-flex'; });
+VZ.bind('boarding-5', 'change', function (event) { document.getElementById('incidentContactFields').style.display = this.checked ? 'block' : 'none'; });
+VZ.bind('boarding-6', 'click', function (event) { document.getElementById('incidentModal').style.display='none'; });
+VZ.bind('boarding-7', 'click', function (event) { document.getElementById('paymentModal').style.display='none'; });
+VZ.bind('boarding-8', 'click', function (event) { openIncident(this); });
+VZ.bind('boarding-9', 'click', function (event) { openPayment(this); });
+VZ.bind('boarding-10', 'click', function (event) { toggleEdit(Number(this.dataset.vzArg)); });
+VZ.bind('boarding-11', 'change', function (event) { document.getElementById('specialNeedsNotesField-' + Number(this.dataset.vzArg)).style.display = this.checked ? 'block' : 'none'; });
+VZ.action('boarding-12', function (event) { selectPatient(window.__boardingSearchResults[this.dataset.idx]); });
 </script>
 {% endblock %}

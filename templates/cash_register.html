@@ -11,8 +11,8 @@
 
 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
   <div style="display:flex; gap:10px;">
-    <button class="btn secondary" type="button" onclick="document.getElementById('payoutModal').style.display='flex';">Pay From Cash Register</button>
-    <button class="btn" type="button" onclick="document.getElementById('auditModal').style.display='flex';">Perform Audit</button>
+    <button class="btn secondary" type="button" data-vzh="cash-register-1">Pay From Cash Register</button>
+    <button class="btn" type="button" data-vzh="cash-register-2">Perform Audit</button>
   </div>
   <form class="search-bar" method="get" style="margin:0;">
     <input type="date" name="date" value="{{ day }}">
@@ -105,7 +105,7 @@
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn secondary" type="button" onclick="document.getElementById('payoutModal').style.display='none';">Cancel</button>
+        <button class="btn secondary" type="button" data-vzh="cash-register-3">Cancel</button>
         <button class="btn" type="submit">Confirm</button>
       </div>
     </form>
@@ -132,10 +132,16 @@
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn secondary" type="button" onclick="document.getElementById('auditModal').style.display='none';">Cancel</button>
+        <button class="btn secondary" type="button" data-vzh="cash-register-4">Cancel</button>
         <button class="btn" type="submit">Confirm</button>
       </div>
     </form>
   </div>
 </div>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('cash-register-1', 'click', function (event) { document.getElementById('payoutModal').style.display='flex'; });
+VZ.bind('cash-register-2', 'click', function (event) { document.getElementById('auditModal').style.display='flex'; });
+VZ.bind('cash-register-3', 'click', function (event) { document.getElementById('payoutModal').style.display='none'; });
+VZ.bind('cash-register-4', 'click', function (event) { document.getElementById('auditModal').style.display='none'; });
+</script>
 {% endblock %}

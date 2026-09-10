@@ -28,7 +28,7 @@
     </form>
     {% if lockout_unlock_at %}
     <p class="small muted" id="lockoutCountdown" style="text-align:center; margin-top:14px;"></p>
-    <script>
+    <script nonce="{{ csp_nonce }}">
       (function() {
         var unlockAt = new Date("{{ lockout_unlock_at }}");
         var el = document.getElementById('lockoutCountdown');

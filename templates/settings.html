@@ -35,7 +35,7 @@
     <div class="field full"><label for="backupDirInput">Backup Folder (on this computer)</label>
       <div style="display:flex; gap:8px;">
         <input name="backup_dir" id="backupDirInput" placeholder="e.g. /Users/you/VetClinicSystemJOBackups or D:\VetClinicSystemJOBackups" value="{{ settings.backup_dir }}" style="flex:1;">
-        <button class="btn secondary" type="button" onclick="openFolderBrowser('backupDirInput', {filePicker:false})">Browse…</button>
+        <button class="btn secondary" type="button" data-vzh="settings-1">Browse…</button>
       </div>
     </div>
     <div class="field"><label for="settings-9-backup_time">Nightly Backup Time</label><input id="settings-9-backup_time" type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
@@ -161,7 +161,7 @@
   <div class="field full"><label for="restoreFileInput">Backup File To Restore</label>
     <div style="display:flex; gap:8px;">
       <input id="restoreFileInput" placeholder="Browse to a .dump backup file" value="" style="flex:1;" readonly>
-      <button class="btn secondary" type="button" onclick="openFolderBrowser('restoreFileInput', {filePicker:true, ext:'.dump'})">Browse…</button>
+      <button class="btn secondary" type="button" data-vzh="settings-2">Browse…</button>
     </div>
   </div>
 </div>
@@ -200,20 +200,20 @@
 <div id="updatesConfigured" style="display:none;">
   <div class="detail-item"><div class="k">Current Version</div><div class="v" id="updCurrentVersion">VetClinicSystem JO v{{ app_version }}</div></div>
   <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
-    <button class="btn secondary" type="button" id="updCheckBtn" onclick="checkForUpdates()">Check for Updates</button>
+    <button class="btn secondary" type="button" id="updCheckBtn" data-vzh="settings-3">Check for Updates</button>
     <span id="updCheckStatus" class="small muted"></span>
   </div>
   <div id="updAvailablePanel" style="display:none; margin-top:14px; padding:14px; border:1px solid var(--line-soft); border-radius:10px;">
     <div style="font-weight:600; margin-bottom:6px;">Version <span id="updLatestTag"></span> is available</div>
     <pre id="updChangelogBody" class="small" style="white-space:pre-wrap; font-family:inherit; margin:0 0 12px;"></pre>
     <div style="display:flex; gap:10px;">
-      <button class="btn" type="button" id="updApplyBtn" onclick="applyUpdate()">Update Now</button>
-      <button class="btn secondary" type="button" onclick="document.getElementById('updAvailablePanel').style.display='none';">Not Now</button>
+      <button class="btn" type="button" id="updApplyBtn" data-vzh="settings-4">Update Now</button>
+      <button class="btn secondary" type="button" data-vzh="settings-5">Not Now</button>
     </div>
   </div>
   <div id="updateProgress" class="small muted" style="display:none; margin-top:12px;"></div>
   <div style="margin-top:14px;">
-    <button class="btn secondary" type="button" id="updRollbackBtn" onclick="rollbackUpdate()">Rollback to Previous Version</button>
+    <button class="btn secondary" type="button" id="updRollbackBtn" data-vzh="settings-6">Rollback to Previous Version</button>
   </div>
 </div>
 <div id="updatesNotConfigured" class="small muted" style="display:none;">
@@ -242,7 +242,7 @@
         <input type="checkbox" name="autostart_enabled" id="autostartCheckbox"
                {% if autostart_enabled %}checked{% endif %}
                {% if not autostart_supported %}disabled{% endif %}
-               onchange="document.getElementById('autostartForm').requestSubmit();">
+               data-vzh="settings-7">
         Start VetClinicSystem JO automatically when this computer starts
       </label>
       {% if autostart_supported %}
@@ -260,7 +260,7 @@
 </form>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 async function loadUpdatesStatus() {
   // /status, not /check — this runs on every Settings page load, and /check
   // spends one of the 60 unauthenticated GitHub calls this network gets per
@@ -477,16 +477,16 @@ document.getElementById('restoreForm').addEventListener('submit', async function
     <div style="display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px; margin-top:14px;">
       <div id="folderBrowserNewFolderRow" style="display:flex; gap:8px; flex:1 1 260px;">
         <input type="text" id="folderBrowserNewName" placeholder="New folder name" style="flex:1 1 auto; min-width:120px;">
-        <button class="btn secondary" type="button" onclick="folderBrowserNewFolder()">+ New Folder</button>
+        <button class="btn secondary" type="button" data-vzh="settings-8">+ New Folder</button>
       </div>
       <div style="display:flex; gap:8px; flex:0 0 auto;">
-        <button class="btn secondary" type="button" onclick="window.VZSpring.present(document.getElementById('folderBrowserModal'), false, {});">Cancel</button>
-        <button class="btn" type="button" id="folderBrowserSelectBtn" onclick="folderBrowserSelect()">Select This Folder</button>
+        <button class="btn secondary" type="button" data-vzh="settings-9">Cancel</button>
+        <button class="btn" type="button" id="folderBrowserSelectBtn" data-vzh="settings-10">Select This Folder</button>
       </div>
     </div>
   </div>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 let folderBrowserCurrent = null;
 let folderBrowserTargetInputId = null;
 let folderBrowserFilePicker = false;
@@ -638,4 +638,16 @@ function folderBrowserSelectFile(fullPath) {
 }
 </script>
 <script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('settings-1', 'click', function (event) { openFolderBrowser('backupDirInput', {filePicker:false}); });
+VZ.bind('settings-2', 'click', function (event) { openFolderBrowser('restoreFileInput', {filePicker:true, ext:'.dump'}); });
+VZ.bind('settings-3', 'click', function (event) { checkForUpdates(); });
+VZ.bind('settings-4', 'click', function (event) { applyUpdate(); });
+VZ.bind('settings-5', 'click', function (event) { document.getElementById('updAvailablePanel').style.display='none'; });
+VZ.bind('settings-6', 'click', function (event) { rollbackUpdate(); });
+VZ.bind('settings-7', 'change', function (event) { document.getElementById('autostartForm').requestSubmit(); });
+VZ.bind('settings-8', 'click', function (event) { folderBrowserNewFolder(); });
+VZ.bind('settings-9', 'click', function (event) { window.VZSpring.present(document.getElementById('folderBrowserModal'), false, {}); });
+VZ.bind('settings-10', 'click', function (event) { folderBrowserSelect(); });
+</script>
 {% endblock %}

@@ -10,11 +10,11 @@
 </div>
 
 <div class="tabs">
-  <a href="#" class="tab-link active" data-tab="info" onclick="showTab('info');return false;">Info</a>
-  <a href="#" class="tab-link" data-tab="updates" onclick="showTab('updates');return false;">Daily Updates</a>
-  <a href="#" class="tab-link" data-tab="contact" onclick="showTab('contact');return false;">Contact Log</a>
-  <a href="#" class="tab-link" data-tab="billing" onclick="showTab('billing');return false;">Billing</a>
-  <a href="#" class="tab-link" data-tab="files" onclick="showTab('files');return false;">Attachments</a>
+  <a href="#" class="tab-link active" data-tab="info" data-vzh="inpatient-detail-1">Info</a>
+  <a href="#" class="tab-link" data-tab="updates" data-vzh="inpatient-detail-2">Daily Updates</a>
+  <a href="#" class="tab-link" data-tab="contact" data-vzh="inpatient-detail-3">Contact Log</a>
+  <a href="#" class="tab-link" data-tab="billing" data-vzh="inpatient-detail-4">Billing</a>
+  <a href="#" class="tab-link" data-tab="files" data-vzh="inpatient-detail-5">Attachments</a>
 </div>
 
 <div class="tab-pane" id="tab-info">
@@ -37,7 +37,7 @@
           <select id="inpatientdetail-7-supervising_vet_id" name="supervising_vet_id"><option value="">—</option>{% for v in vets %}<option value="{{ v.id }}" {{ 'selected' if fv(form, 'supervising_vet_id', case.supervising_vet_id)==v.id }}>{{ v.full_name }}</option>{% endfor %}</select>
         </div>
         <div class="field checkbox-row" style="margin-top:22px;">
-          <input type="checkbox" name="dismissed" id="dismissedBox" {{ 'checked' if fv(form, 'dismissed', 'on' if case.dismissed else '')=='on' }} onchange="toggleDismissal()">
+          <input type="checkbox" name="dismissed" id="dismissedBox" {{ 'checked' if fv(form, 'dismissed', 'on' if case.dismissed else '')=='on' }} data-vzh="inpatient-detail-6">
           <label for="dismissedBox" style="text-transform:none; font-weight:500;">Dismissed</label>
         </div>
         <div class="field dismissal-only"><label for="dismissalDate">Dismissal Date</label><input type="date" name="dismissal_date" id="dismissalDate" value="{{ fv(form, 'dismissal_date', case.dismissal_date or '') }}"></div>
@@ -63,7 +63,7 @@
         <div class="small muted">{{ u.timestamp[:16] }} · {{ u.full_name or "—" }}</div>
         <div class="update-note-text">{{ u.note }}</div>
       </div>
-      <button class="btn small secondary" type="button" onclick="const c=this.closest('.card'); c.querySelector('.update-note-text').style.display='none'; c.querySelector('.update-edit-form').style.display='block'; this.style.display='none';">Edit</button>
+      <button class="btn small secondary" type="button" data-vzh="inpatient-detail-7">Edit</button>
     </div>
     <form method="post" action="{{ url_for('clinical.inpatient_update_edit', case_id=case.id, update_id=u.id) }}" class="update-edit-form" style="display:none; margin-top:10px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -75,7 +75,7 @@
   {% if updates|length > 3 %}
   <div style="margin-top:14px;">
     <button class="btn secondary" type="button" id="fullLogBtn"
-            onclick="document.getElementById('fullDailyLog').style.display='block'; this.style.display='none';">
+            data-vzh="inpatient-detail-8">
       View Full Daily Log History ({{ updates|length }} entries)
     </button>
     <div id="fullDailyLog" style="display:none; margin-top:14px;">
@@ -87,7 +87,7 @@
             <div class="small muted">{{ u.timestamp[:16] }} · {{ u.full_name or "—" }}</div>
             <div class="update-note-text">{{ u.note }}</div>
           </div>
-          <button class="btn small secondary" type="button" onclick="const c=this.closest('.card'); c.querySelector('.update-note-text').style.display='none'; c.querySelector('.update-edit-form').style.display='block'; this.style.display='none';">Edit</button>
+          <button class="btn small secondary" type="button" data-vzh="inpatient-detail-7">Edit</button>
         </div>
         <form method="post" action="{{ url_for('clinical.inpatient_update_edit', case_id=case.id, update_id=u.id) }}" class="update-edit-form" style="display:none; margin-top:10px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -131,11 +131,11 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <p class="small muted">Check any procedure used and enter how many times it was given.</p>
       <input type="text" id="procSearch" placeholder="Search by code or service name…"
-             oninput="filterProcList()" style="width:100%; margin-bottom:10px;">
+             data-vzh="inpatient-detail-9" style="width:100%; margin-bottom:10px;">
       <div id="procList" style="display:flex; flex-direction:column; gap:8px; margin:10px 0;">
         {% for p in proc_items %}
         <label class="checkbox-row small" data-search="{{ (p.id ~ ' ' ~ p.name)|lower }}" style="text-transform:none; font-weight:500; gap:10px;">
-          <input type="checkbox" name="price_id" value="{{ p.id }}" onchange="document.getElementById('qty_{{ p.id }}').style.display = this.checked ? 'inline-block' : 'none';">
+          <input type="checkbox" name="price_id" value="{{ p.id }}" data-vzh="inpatient-detail-10" data-vz-arg="{{ p.id }}">
           <span class="muted small">{{ p.id }}</span> {{ p.name }} <span class="muted">({{ p.sale_price|money }} JOD)</span>
           <input type="number" id="qty_{{ p.id }}" name="qty_{{ p.id }}" min="1" value="1" style="display:none; width:60px;">
         </label>
@@ -208,7 +208,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function showTab(name) {
   document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
   document.getElementById('tab-' + name).style.display = 'block';
@@ -239,5 +239,17 @@ function filterProcList() {
   });
   document.getElementById('procEmpty').style.display = visible ? 'none' : '';
 }
+</script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('inpatient-detail-1', 'click', function (event) { showTab('info');return false; });
+VZ.bind('inpatient-detail-2', 'click', function (event) { showTab('updates');return false; });
+VZ.bind('inpatient-detail-3', 'click', function (event) { showTab('contact');return false; });
+VZ.bind('inpatient-detail-4', 'click', function (event) { showTab('billing');return false; });
+VZ.bind('inpatient-detail-5', 'click', function (event) { showTab('files');return false; });
+VZ.bind('inpatient-detail-6', 'change', function (event) { toggleDismissal(); });
+VZ.bind('inpatient-detail-7', 'click', function (event) { const c=this.closest('.card'); c.querySelector('.update-note-text').style.display='none'; c.querySelector('.update-edit-form').style.display='block'; this.style.display='none'; });
+VZ.bind('inpatient-detail-8', 'click', function (event) { document.getElementById('fullDailyLog').style.display='block'; this.style.display='none'; });
+VZ.bind('inpatient-detail-9', 'input', function (event) { filterProcList(); });
+VZ.bind('inpatient-detail-10', 'change', function (event) { document.getElementById('qty_' + this.dataset.vzArg).style.display = this.checked ? 'inline-block' : 'none'; });
 </script>
 {% endblock %}

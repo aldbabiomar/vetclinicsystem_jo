@@ -10,8 +10,8 @@
 </div>
 
 <div class="tabs" role="tablist">
-  <a href="#staff" class="tab-link active" data-tab="staff" role="tab" aria-selected="true" aria-controls="tab-staff" onclick="showURTab('staff');return false;">Staff</a>
-  <a href="#roles" class="tab-link" data-tab="roles" role="tab" aria-selected="false" aria-controls="tab-roles" onclick="showURTab('roles');return false;">Roles &amp; Permissions</a>
+  <a href="#staff" class="tab-link active" data-tab="staff" role="tab" aria-selected="true" aria-controls="tab-staff" data-vzh="admin-users-1">Staff</a>
+  <a href="#roles" class="tab-link" data-tab="roles" role="tab" aria-selected="false" aria-controls="tab-roles" data-vzh="admin-users-2">Roles &amp; Permissions</a>
 </div>
 
 <!-- ============ STAFF TAB ============ -->
@@ -27,7 +27,7 @@
           <td>
             <form method="post" action="{{ url_for('admin.admin_user_role', user_id=u.id) }}" class="inline-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <select name="role_id" onchange="this.form.submit()" class="small">
+              <select name="role_id" data-vzh="admin-users-3" class="small">
                 {% for r in roles %}<option value="{{ r.id }}" {{ 'selected' if u.role_id==r.id }}>{{ r.name }}</option>{% endfor %}
               </select>
             </form>
@@ -98,7 +98,7 @@
           <div class="role-card-actions">
             <span class="badge ok">Custom role</span>
             <button class="btn small danger" type="button" data-role-id="{{ role.id }}" data-role-name="{{ role.name }}" data-staff-count="{{ staff_counts.get(role.id, 0) }}"
-                    onclick="deleteRole(this.dataset.roleId, this.dataset.roleName, parseInt(this.dataset.staffCount, 10), this)">Delete</button>
+                    data-vzh="admin-users-4">Delete</button>
           </div>
         </div>
         {% for cat, perms in perm_categories %}
@@ -115,7 +115,7 @@
             <div class="staff-count">{{ staff_counts.get(role.id, 0) }} staff member{{ '' if staff_counts.get(role.id, 0) == 1 else 's' }}</div>
             <div class="role-card-save">
               <span class="role-card-dirty-note">Unsaved changes</span>
-              <button type="button" class="btn small secondary" onclick="window.location.reload();">Cancel</button>
+              <button type="button" class="btn small secondary" data-vzh="admin-users-5">Cancel</button>
               <button type="submit" class="btn small" data-saving-label="Saving…">Save</button>
             </div>
           </div>
@@ -152,8 +152,8 @@
       <div class="field" style="margin-top:15px;">
         <span id="discountLimitLabel" class="field-label">Discount Limit</span>
         <div role="group" aria-labelledby="discountLimitLabel" style="display:flex; flex-direction:column; gap:8px; margin-top:2px;">
-          <label class="radio-row"><input type="radio" name="capmode" value="inherit" checked onchange="document.getElementById('customCapInput').disabled = true;"><span>Inherit from role</span></label>
-          <label class="radio-row"><input type="radio" name="capmode" value="custom" onchange="document.getElementById('customCapInput').disabled = false;"><span>Custom override for this person:</span>
+          <label class="radio-row"><input type="radio" name="capmode" value="inherit" checked data-vzh="admin-users-6"><span>Inherit from role</span></label>
+          <label class="radio-row"><input type="radio" name="capmode" value="custom" data-vzh="admin-users-7"><span>Custom override for this person:</span>
             <input type="number" name="custom_discount_cap" id="customCapInput" style="width:70px;" placeholder="%" min="0" max="100" disabled></label>
         </div>
       </div>
@@ -229,7 +229,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
   // ---- Staff / Roles & Permissions tabs ----
   function showURTab(name) {
     document.getElementById('tab-staff').style.display = name === 'staff' ? '' : 'none';
@@ -283,5 +283,14 @@
 
     window.VZSpring.present(document.getElementById('deleteRoleModal'), true, { originEl: triggerEl });
   }
+</script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('admin-users-1', 'click', function (event) { showURTab('staff');return false; });
+VZ.bind('admin-users-2', 'click', function (event) { showURTab('roles');return false; });
+VZ.bind('admin-users-3', 'change', function (event) { this.form.submit(); });
+VZ.bind('admin-users-4', 'click', function (event) { deleteRole(this.dataset.roleId, this.dataset.roleName, parseInt(this.dataset.staffCount, 10), this); });
+VZ.bind('admin-users-5', 'click', function (event) { window.location.reload(); });
+VZ.bind('admin-users-6', 'change', function (event) { document.getElementById('customCapInput').disabled = true; });
+VZ.bind('admin-users-7', 'change', function (event) { document.getElementById('customCapInput').disabled = false; });
 </script>
 {% endblock %}

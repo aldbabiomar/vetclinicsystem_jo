@@ -27,7 +27,7 @@
   <div class="form-grid">
     <div class="field">
       <label for="followupNeeded">Follow-Up Needed?</label>
-      <select name="followup_needed" id="followupNeeded" onchange="toggleFollowup()">
+      <select name="followup_needed" id="followupNeeded" data-vzh="visit-form-edit-1">
         <option value="N" {{ 'selected' if fv(form, 'followup_needed', visit.followup_needed)=='N' }}>No</option>
         <option value="Y" {{ 'selected' if fv(form, 'followup_needed', visit.followup_needed)=='Y' }}>Yes</option>
       </select>
@@ -62,7 +62,7 @@
   </div>
 </form>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 function toggleFollowup() {
   const needed = document.getElementById('followupNeeded').value === 'Y';
   document.querySelectorAll('.followup-only').forEach(el => el.style.display = needed ? 'flex' : 'none');
@@ -70,4 +70,7 @@ function toggleFollowup() {
 toggleFollowup();
 </script>
 <script src="{{ url_for('static', filename='unsaved-changes-form.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
+VZ.bind('visit-form-edit-1', 'change', function (event) { toggleFollowup(); });
+</script>
 {% endblock %}

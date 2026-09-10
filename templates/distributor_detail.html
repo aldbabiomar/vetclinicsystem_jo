@@ -19,7 +19,7 @@
 
 <div class="page-head">
   <div class="section-title">Order Bills</div>
-  <button class="btn" id="newBillBtn" style="display:{{ 'none' if open_new_bill_form else 'inline-flex' }};" onclick="document.getElementById('newBillForm').style.display='block'; this.style.display='none';">+ Log Bill</button>
+  <button class="btn" id="newBillBtn" style="display:{{ 'none' if open_new_bill_form else 'inline-flex' }};" data-vzh="distributor-detail-1">+ Log Bill</button>
 </div>
 
 {% set bill_form = form if open_new_bill_form else None %}
@@ -34,7 +34,7 @@
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Save Bill</button>
-      <button class="btn secondary" type="button" onclick="document.getElementById('newBillForm').style.display='none'; document.getElementById('newBillBtn').style.display='inline-flex';">Cancel</button>
+      <button class="btn secondary" type="button" data-vzh="distributor-detail-2">Cancel</button>
     </div>
   </form>
 </div>
@@ -96,4 +96,8 @@
 {% else %}
 <p class="empty-note">No bills logged yet for this distributor.</p>
 {% endfor %}
+<script nonce="{{ csp_nonce }}">
+VZ.bind('distributor-detail-1', 'click', function (event) { document.getElementById('newBillForm').style.display='block'; this.style.display='none'; });
+VZ.bind('distributor-detail-2', 'click', function (event) { document.getElementById('newBillForm').style.display='none'; document.getElementById('newBillBtn').style.display='inline-flex'; });
+</script>
 {% endblock %}
