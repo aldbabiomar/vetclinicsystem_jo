@@ -5,7 +5,7 @@
   <div><h1>Logins and Changes</h1><p class="page-sub">Pick a date to review who logged in and what was changed.</p></div>
   <form method="get" style="display:flex; gap:10px; align-items:center;">
     <input type="date" name="date" value="{{ day }}" onchange="this.form.submit()">
-    {% if day != today %}<a class="btn secondary" href="{{ url_for('admin_logs') }}">Clear</a>{% endif %}
+    {% if day != today %}<a class="btn secondary" href="{{ url_for('admin.admin_logs') }}">Clear</a>{% endif %}
   </form>
 </div>
 

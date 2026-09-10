@@ -25,7 +25,7 @@
           <td><strong>{{ u.full_name }}</strong></td>
           <td class="muted">{{ u.username }}</td>
           <td>
-            <form method="post" action="{{ url_for('admin_user_role', user_id=u.id) }}" class="inline-form">
+            <form method="post" action="{{ url_for('admin.admin_user_role', user_id=u.id) }}" class="inline-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <select name="role_id" onchange="this.form.submit()" class="small">
                 {% for r in roles %}<option value="{{ r.id }}" {{ 'selected' if u.role_id==r.id }}>{{ r.name }}</option>{% endfor %}
@@ -41,14 +41,14 @@
           </td>
           <td><span class="badge {{ 'ok' if u.active else 'muted' }}">{{ 'Active' if u.active else 'Disabled' }}</span></td>
           <td>
-            <form method="post" action="{{ url_for('admin_user_reset_password', user_id=u.id) }}" class="inline-form" style="display:flex; gap:6px;">
+            <form method="post" action="{{ url_for('admin.admin_user_reset_password', user_id=u.id) }}" class="inline-form" style="display:flex; gap:6px;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="text" name="new_password" autocomplete="new-password" placeholder="New Password" minlength="8" required style="width:140px;">
               <button class="btn small secondary" type="submit">Reset</button>
             </form>
           </td>
           <td>
-            <form method="post" action="{{ url_for('admin_user_toggle', user_id=u.id) }}" class="inline-form">
+            <form method="post" action="{{ url_for('admin.admin_user_toggle', user_id=u.id) }}" class="inline-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn small {{ 'danger' if u.active else 'secondary' }}" type="submit" {{ 'disabled' if u.id == session_user_id }}>{{ 'Disable' if u.active else 'Enable' }}</button>
             </form>
@@ -88,7 +88,7 @@
         <div class="staff-count">{{ staff_counts.get(role.id, 0) }} staff member{{ '' if staff_counts.get(role.id, 0) == 1 else 's' }} · always keeps at least one Admin</div>
       </div>
       {% else %}
-      <form method="post" action="{{ url_for('admin_role_edit', role_id=role.id) }}" class="role-card-form" data-track-dirty>
+      <form method="post" action="{{ url_for('admin.admin_role_edit', role_id=role.id) }}" class="role-card-form" data-track-dirty>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="role-card-head">
           <div class="role-card-title">
@@ -137,7 +137,7 @@
        to its content and a max-width alone never widens it. -->
   <div class="modal-box" style="width:100%; max-width:560px;">
     <h3 style="margin-top:0;">New User</h3>
-    <form method="post" action="{{ url_for('admin_user_new') }}">
+    <form method="post" action="{{ url_for('admin.admin_user_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
         <div class="field"><label for="adminusers-1-full_name">Full Name</label><input id="adminusers-1-full_name" required name="full_name" placeholder="e.g. Jordan Lee"></div>
@@ -172,7 +172,7 @@
   <div class="modal-box" style="width:100%; max-width:640px;">
     <h3 style="margin-top:0;">Add Role</h3>
     <p class="small muted" style="margin-top:-6px;">New roles start with everything below unchecked — turn on only what this role needs.</p>
-    <form method="post" action="{{ url_for('admin_role_new') }}">
+    <form method="post" action="{{ url_for('admin.admin_role_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid" style="margin-bottom:6px;">
         <div class="field">
@@ -254,7 +254,7 @@
   // ---- Delete Role modal ----
   function deleteRole(roleId, roleName, staffCount, triggerEl) {
     document.getElementById('deleteRoleTitle').textContent = 'Delete ' + roleName + '?';
-    document.getElementById('deleteRoleForm').action = `{{ url_for('admin_role_delete', role_id='__ID__') }}`.replace('__ID__', encodeURIComponent(roleId));
+    document.getElementById('deleteRoleForm').action = `{{ url_for('admin.admin_role_delete', role_id='__ID__') }}`.replace('__ID__', encodeURIComponent(roleId));
     const reassignBlock = document.getElementById('deleteRoleReassignBlock');
     const simpleText = document.getElementById('deleteRoleSimpleText');
     const confirmBtn = document.getElementById('deleteRoleConfirmBtn');

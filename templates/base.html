@@ -149,10 +149,10 @@
       </button>
       <div class="nav-group-links">
         {% if has_permission('manage_users_roles') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin_users') }}">Users &amp; Roles</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin.admin_users') }}">Users &amp; Roles</a>
         {% endif %}
         {% if has_permission('view_logins_changes') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin_logs') }}">Logins and Changes</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin.admin_logs') }}">Logins and Changes</a>
         {% endif %}
         {% if has_permission('manage_settings') %}
         <a class="nav-link {{ 'active' if request.endpoint=='settings_page' }}" href="{{ url_for('settings.settings_page') }}">Settings</a>
