@@ -64,48 +64,12 @@ def _macos_bundle_path():
     return os.path.expanduser(f"~/Desktop/{APP_NAME}.app")
 
 
-def _windows_desktop_candidates():
-    """Windows Desktop is not reliably ~/Desktop — OneDrive's "back up your
-    folders" moves it. Check the redirected location first, since that's the
-    one that's actually on screen when it exists."""
-    profile = os.environ.get("USERPROFILE")
-    if not profile:
-        return []
-    candidates = []
-    onedrive = os.environ.get("OneDrive") or os.path.join(profile, "OneDrive")
-    candidates.append(os.path.join(onedrive, "Desktop"))
-    candidates.append(os.path.join(profile, "Desktop"))
-    return [c for c in candidates if os.path.isdir(c)]
-
-
-def _windows_shortcut_paths():
-    return [os.path.join(d, f"{APP_NAME}.lnk") for d in _windows_desktop_candidates()]
-
-
-def is_present():
-    system = platform.system()
-    if system == "Darwin":
-        return os.path.isdir(_macos_bundle_path())
-    if system == "Windows":
-        return any(os.path.isfile(p) for p in _windows_shortcut_paths())
-    return False
-
-
 def create(data_dir=None):
     system = platform.system()
     if system == "Darwin":
         return _macos_create(data_dir)
     if system == "Windows":
         return _windows_create(data_dir)
-    return False, "Desktop shortcuts aren't supported on this operating system."
-
-
-def remove():
-    system = platform.system()
-    if system == "Darwin":
-        return _macos_remove()
-    if system == "Windows":
-        return _windows_remove()
     return False, "Desktop shortcuts aren't supported on this operating system."
 
 
@@ -208,17 +172,6 @@ def _sh_quote(value):
     return "'" + str(value).replace("'", "'\"'\"'") + "'"
 
 
-def _macos_remove():
-    bundle = _macos_bundle_path()
-    if not os.path.isdir(bundle):
-        return True, "There's no Desktop shortcut to remove."
-    try:
-        shutil.rmtree(bundle)
-    except OSError as e:
-        return False, f"Could not remove the Desktop shortcut: {e}"
-    return True, "Desktop shortcut removed."
-
-
 # ---------------------------------------------------------------------------
 # Windows
 # ---------------------------------------------------------------------------
@@ -276,13 +229,3 @@ def _ps_quote(value):
     return "'" + str(value).replace("'", "''") + "'"
 
 
-def _windows_remove():
-    paths = [p for p in _windows_shortcut_paths() if os.path.isfile(p)]
-    if not paths:
-        return True, "There's no Desktop shortcut to remove."
-    for path in paths:
-        try:
-            os.remove(path)
-        except OSError as e:
-            return False, f"Could not remove the Desktop shortcut: {e}"
-    return True, "Desktop shortcut removed."
