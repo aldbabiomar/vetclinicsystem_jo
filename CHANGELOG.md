@@ -3,6 +3,52 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.11.0] - 2026-09-11
+
+### Added
+- **Refunds now cover boarding stays.** Money could be taken for a boarding
+  stay but never given back — the refund form only offered a visit or an
+  inpatient case. Boarding is now a third option, alongside them.
+- **Old log entries are cleared out automatically.** Login history, change
+  history, job history and health-check history were kept forever. They are
+  now trimmed on a schedule, so the database does not grow without limit.
+
+### Changed
+- **Installation maintenance is now separate from ordinary clinic settings.**
+  Backups, restore, updates and the folder browser sit behind their own
+  permission. A role that can edit clinic settings can no longer take a
+  backup, restore one, or apply an update unless it is given that permission
+  too. **Admin keeps everything it had** — no action needed after updating.
+- **Stronger password rules.** New and changed passwords now need more than a
+  minimum length. Existing passwords keep working; the rules apply the next
+  time one is set.
+- The Settings folder browser can no longer be pointed outside the app's own
+  data and backup folders.
+
+### Fixed
+- **A wrong password locked an account for the wrong length of time.** The
+  lockout barely grew for a steady stream of guesses: fifteen attempts in a row
+  cost about thirteen minutes, while the same fifteen spread into three batches
+  cost an hour. Pausing is no longer the cheaper option.
+- **Rollback could offer the wrong version.** With three or more releases
+  installed, "roll back" compared version numbers as text, so 1.9.0 looked
+  newer than 1.11.0. It now compares them as numbers.
+- **The service refund form said a field was optional when it was required.**
+  It said the visit or inpatient case was optional, then refused the refund
+  without one.
+- **Searching for a name containing `%` or `_` returned the wrong rows.**
+  Those characters were treated as wildcards instead of as themselves.
+- **Editing a record someone else had changed silently discarded your work.**
+  It now tells you rather than saving over it.
+- The login history now records the real device address when the app is behind
+  a reverse proxy, instead of the proxy's own.
+- A failed scheduled job now records why it failed.
+- Patient file attachments are no longer tracked in a way that could leave a
+  stale entry after the file was removed.
+- Form labels are now linked to the field they name, so tapping a label focuses
+  the right box and screen readers announce it correctly.
+- The health check no longer repeats a database driver's raw error text.
+
 ## [1.10.2] - 2026-09-10
 
 ### Removed
