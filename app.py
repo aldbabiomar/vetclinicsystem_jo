@@ -425,6 +425,43 @@ CLEANUP_CAP = Decimal("1.000")
 MAX_INT = 2_147_483_647  # widest value any INTEGER column in this schema can hold
 
 
+def discount_percent_error(percent, cap):
+    """Range-checks an already-parsed discount percent against the current
+    user's role cap. Shared by the visit/inpatient/boarding/POS discount-save
+    routes so the bound comparison lives in exactly one place — it was written
+    out four times, which is four chances to change three of them."""
+    if percent > cap or percent < 0:
+        return f"Discount must be between 0% and {cap}% for your role."
+    return None
+
+
+def cleanup_amount_error(new_amount, existing_amount, balance):
+    """Range-checks a Clean Up submission. Returns an error string, or None.
+
+    Shared by the four payment surfaces, which were each carrying their own
+    copy of these three checks. The two legitimate per-site differences are
+    arguments rather than special cases:
+
+      * POS passes existing_amount=0 — a brand-new sale has no prior Clean Up
+        to accumulate against, unlike the other three, which can be paid off
+        across several submissions.
+      * Boarding passes the balance as it would stand AFTER this submission's
+        discount, not before, so a discount-and-clean-up in one click cannot
+        write off more than the discounted bill.
+
+    JOD is exact three-decimal Decimal — no denomination rounding — so these
+    are straight comparisons. IQ's copy compares floats against a 250-rounded
+    cap; the two must not be merged (COMPARISON.md §1.1).
+    """
+    if new_amount < 0:
+        return "Clean Up amount can't be negative."
+    if existing_amount + new_amount > CLEANUP_CAP:
+        return f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill."
+    if new_amount > balance:
+        return "Clean Up can't exceed the remaining balance."
+    return None
+
+
 def parse_int(raw, required=False):
     """Same shape as parse_money(), for INTEGER columns (e.g. lead_time_days).
     Blank collapses to None; non-numeric input raises BadNumber instead of
@@ -2827,8 +2864,9 @@ def visit_discount_save(visit_id):
         flash("Discount must be a valid number.", "error")
         return redisplay()
     cap = auth.discount_cap_for()
-    if percent > cap or percent < 0:
-        flash(f"Discount must be between 0% and {cap}% for your role.", "error")
+    error = discount_percent_error(percent, cap)
+    if error:
+        flash(error, "error")
         return redisplay()
     # Locked before checking non-discountable items and before writing the
     # discount below — without this, a concurrent visit_billing_save() for
@@ -2904,14 +2942,9 @@ def visit_payment_add(visit_id):
     except BadNumber:
         flash("Clean Up amount must be a valid number.", "error")
         return redisplay()
-    if cleanup_amount < 0:
-        flash("Clean Up amount can't be negative.", "error")
-        return redisplay()
-    if summary["cleanup_amount"] + cleanup_amount > CLEANUP_CAP:
-        flash(f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill.", "error")
-        return redisplay()
-    if cleanup_amount > balance:
-        flash("Clean Up can't exceed the remaining balance.", "error")
+    error = cleanup_amount_error(cleanup_amount, summary["cleanup_amount"], balance)
+    if error:
+        flash(error, "error")
         return redisplay()
     try:
         payment_date = clean_date(f.get("date"), field="date") or date.today().isoformat()
@@ -5177,8 +5210,9 @@ def boarding_payment(boarding_id):
         flash("Discount must be a valid number.", "error")
         return redisplay()
     cap = auth.discount_cap_for()
-    if discount_percent > cap or discount_percent < 0:
-        flash(f"Discount must be between 0% and {cap}% for your role.", "error")
+    error = discount_percent_error(discount_percent, cap)
+    if error:
+        flash(error, "error")
         return redisplay()
     try:
         cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
@@ -5199,8 +5233,9 @@ def boarding_payment(boarding_id):
     # would let a discount-and-pay-in-full click overpay the discounted bill.
     _, _, balance_after_discount, _ = logic.compute_bill_totals(
         summary["subtotal"], discount_percent, summary["paid"], summary["cleanup_amount"])
-    if cleanup_amount > balance_after_discount:
-        flash("Clean Up can't exceed the remaining balance.", "error")
+    error = cleanup_amount_error(cleanup_amount, summary["cleanup_amount"], balance_after_discount)
+    if error:
+        flash(error, "error")
         return redisplay()
     _, _, balance, _ = logic.compute_bill_totals(
         summary["subtotal"], discount_percent, summary["paid"],
@@ -5300,8 +5335,9 @@ def pos_checkout():
         flash("Discount must be a valid number.", "error")
         return redisplay()
     cap = auth.discount_cap_for()
-    if discount_percent > cap or discount_percent < 0:
-        flash(f"Discount must be between 0% and {cap}% for your role.", "error")
+    error = discount_percent_error(discount_percent, cap)
+    if error:
+        flash(error, "error")
         return redisplay()
     if not item_ids:
         flash("Cart is empty.", "error")
@@ -5398,17 +5434,11 @@ def pos_checkout():
     except BadNumber:
         flash("Clean Up amount must be a valid number.", "error")
         return redisplay()
-    if cleanup_amount < 0:
-        flash("Clean Up amount can't be negative.", "error")
-        return redisplay()
-    # A brand-new sale has no prior cleanup_amount to accumulate against
-    # — unlike the other three surfaces, which can be paid off across
-    # multiple submissions.
-    if cleanup_amount > CLEANUP_CAP:
-        flash(f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill.", "error")
-        return redisplay()
-    if cleanup_amount > total:
-        flash("Clean Up can't exceed the remaining balance.", "error")
+    # existing_amount=0: a brand-new sale has no prior Clean Up to accumulate
+    # against, unlike the other three surfaces.
+    error = cleanup_amount_error(cleanup_amount, 0, total)
+    if error:
+        flash(error, "error")
         return redisplay()
     total = max(total - cleanup_amount, 0)
     payment_method = f.get("payment_method")
@@ -5831,8 +5861,9 @@ def inpatient_discount_save(case_id):
         flash("Discount must be a valid number.", "error")
         return redisplay()
     cap = auth.discount_cap_for()
-    if percent > cap or percent < 0:
-        flash(f"Discount must be between 0% and {cap}% for your role.", "error")
+    error = discount_percent_error(percent, cap)
+    if error:
+        flash(error, "error")
         return redisplay()
     # Locked before checking non-discountable items and before writing the
     # discount below — same reasoning as visit_discount_save(): without
@@ -5899,14 +5930,9 @@ def inpatient_payment_add(case_id):
     except BadNumber:
         flash("Clean Up amount must be a valid number.", "error")
         return redisplay()
-    if cleanup_amount < 0:
-        flash("Clean Up amount can't be negative.", "error")
-        return redisplay()
-    if summary["cleanup_amount"] + cleanup_amount > CLEANUP_CAP:
-        flash(f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill.", "error")
-        return redisplay()
-    if cleanup_amount > balance:
-        flash("Clean Up can't exceed the remaining balance.", "error")
+    error = cleanup_amount_error(cleanup_amount, summary["cleanup_amount"], balance)
+    if error:
+        flash(error, "error")
         return redisplay()
     try:
         payment_date = clean_date(f.get("date"), field="date") or date.today().isoformat()
@@ -6587,8 +6613,28 @@ def health():
     try:
         get_db().execute("SELECT 1")
         return {"status": "ok", "version": VERSION}, 200
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}, 503
+    except Exception:
+        # This endpoint is in OPEN_ENDPOINTS -- no login required -- so
+        # whatever it returns is readable by anyone who can reach the app.
+        # It used to return str(e), and psycopg's connection errors carry the
+        # database host, port and user inline:
+        #   connection to server at "127.0.0.1", port 5432 failed:
+        #   FATAL: password authentication failed for user "vetclinic"
+        # That path is reachable whenever the pool has no live connection --
+        # the app starting before Postgres is the obvious way. The reference
+        # id ties this response to the full traceback in logs/errors.log,
+        # which is already access-controlled.
+        #
+        # updater.py's _probe_health() only reads `status`, and the Settings
+        # page's restart poll only checks that the request succeeds, so
+        # nothing consumes the old free-text detail.
+        error_id = uuid.uuid4().hex[:8].upper()
+        error_logger.error(f"[{error_id}] /health check failed\n" + traceback.format_exc())
+        return {
+            "status": "error",
+            "detail": f"The application could not reach its database. "
+                      f"Reference {error_id} — see logs/errors.log on the server.",
+        }, 503
 
 
 # ---------------------------------------------------------------------------
