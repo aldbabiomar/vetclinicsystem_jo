@@ -51,7 +51,7 @@
 
   <div class="card">
     <div class="section-title" style="margin-top:0;">Service Refund</div>
-    <p class="small muted">Removes a revenue amount only — no stock is touched. Link it to a Visit or Inpatient case ID for your own records, if relevant (optional).</p>
+    <p class="small muted">Removes a revenue amount only — no stock is touched. Enter <strong>exactly one</strong> of Visit ID, Inpatient Case ID or Boarding ID: the refund reverses that specific record, and the amount is capped at what is still refundable against it. A goodwill refund with no record behind it belongs in Cash Register instead.</p>
     <form method="post" action="{{ url_for('refund_service_save') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
@@ -65,8 +65,9 @@
             <option {{ 'selected' if fv(service_form, 'refund_method')=='Transfer' }}>Transfer</option>
           </select>
         </div>
-        <div class="field"><label>Visit ID (required — or Inpatient Case ID below)</label><input type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
-        <div class="field"><label>Inpatient Case ID (required — or Visit ID above)</label><input type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
+        <div class="field"><label>Visit ID <span class="muted">(one of these three)</span></label><input type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
+        <div class="field"><label>Inpatient Case ID <span class="muted">(one of these three)</span></label><input type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
+        <div class="field"><label>Boarding ID <span class="muted">(one of these three)</span></label><input type="text" name="boarding_id" value="{{ fv(service_form, 'boarding_id') }}" placeholder="e.g. 7"></div>
         <div class="field" style="grid-column:1/-1;"><label>Reason (optional)</label><input type="text" name="reason" value="{{ fv(service_form, 'reason') }}" placeholder="e.g. service not completed"></div>
       </div>
       <div class="form-actions"><button class="btn" type="submit">Process Service Refund</button></div>
@@ -107,7 +108,8 @@
         {% else %}
           {% if r.visit_id %}Visit {{ r.visit_id }}{% endif %}
           {% if r.inpatient_case_id %}{{ ", " if r.visit_id }}Inpatient Case {{ r.inpatient_case_id }}{% endif %}
-          {% if not r.visit_id and not r.inpatient_case_id %}—{% endif %}
+          {% if r.boarding_id %}Boarding {{ r.boarding_id }}{% endif %}
+          {% if not r.visit_id and not r.inpatient_case_id and not r.boarding_id %}—{% endif %}
         {% endif %}
       </td>
       <td class="num-col">{{ r.amount|money }} JOD{% if r.cleanup_amount_at_refund %}<div class="meta small">Clean Up on original bill: {{ r.cleanup_amount_at_refund|money }} JOD</div>{% endif %}</td>
