@@ -42,7 +42,7 @@
         <div class="detail-item"><div class="k">Change Due</div><div class="v" style="font-size:18px; font-weight:700;" id="changeDue">—</div></div>
         <div class="meta small" id="changeNote" style="margin-top:2px;"></div>
       </div>
-      <form method="post" action="{{ url_for('pos_checkout') }}" id="checkoutForm">
+      <form method="post" action="{{ url_for('sales.pos_checkout') }}" id="checkoutForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
         <input type="hidden" name="discount_percent" id="discountHidden">

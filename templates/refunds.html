@@ -25,7 +25,7 @@
         <input type="checkbox" id="restockCheck" {{ 'checked' if fv(retail_form, 'restock', 'on')=='on' }}> Return item(s) to stock
       </label>
 
-      <form method="post" action="{{ url_for('refund_retail_save') }}" id="retailRefundForm">
+      <form method="post" action="{{ url_for('sales.refund_retail_save') }}" id="retailRefundForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="sale_id" id="refundSaleIdHidden">
         <div class="form-grid">
@@ -52,7 +52,7 @@
   <div class="card">
     <div class="section-title" style="margin-top:0;">Service Refund</div>
     <p class="small muted">Removes a revenue amount only — no stock is touched. Enter <strong>exactly one</strong> of Visit ID, Inpatient Case ID or Boarding ID: the refund reverses that specific record, and the amount is capped at what is still refundable against it. A goodwill refund with no record behind it belongs in Cash Register instead.</p>
-    <form method="post" action="{{ url_for('refund_service_save') }}">
+    <form method="post" action="{{ url_for('sales.refund_service_save') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
         <div class="field"><label for="refunds-4-amount">Refund Amount (JOD)</label><input id="refunds-4-amount" type="number" name="amount" min="1" step="0.001" required value="{{ fv(service_form, 'amount') }}"></div>
@@ -80,7 +80,7 @@
   <form class="search-bar" method="get" style="margin:0;">
     <input type="date" name="date" value="{{ date_filter or '' }}">
     <button class="btn secondary" type="submit">View by Date</button>
-    {% if date_filter %}<a class="btn secondary" href="{{ url_for('refunds_page') }}">Clear</a>{% endif %}
+    {% if date_filter %}<a class="btn secondary" href="{{ url_for('sales.refunds_page') }}">Clear</a>{% endif %}
   </form>
 </div>
 {% if date_filter %}<p class="small muted" style="margin:-6px 0 12px;">Showing refunds on {{ date_filter }} only.</p>{% endif %}
@@ -104,7 +104,7 @@
       </td>
       <td class="small">
         {% if r.refund_type == 'retail' %}
-          {% if r.sale_id %}<a href="{{ url_for('pos_receipt', sale_id=r.sale_id) }}">Sale #{{ r.sale_id }}</a> — {% endif %}{% for it in r.refund_lines %}{{ it.name }} × {{ it.quantity|int }}{{ ", " if not loop.last }}{% endfor %}
+          {% if r.sale_id %}<a href="{{ url_for('sales.pos_receipt', sale_id=r.sale_id) }}">Sale #{{ r.sale_id }}</a> — {% endif %}{% for it in r.refund_lines %}{{ it.name }} × {{ it.quantity|int }}{{ ", " if not loop.last }}{% endfor %}
         {% else %}
           {% if r.visit_id %}Visit {{ r.visit_id }}{% endif %}
           {% if r.inpatient_case_id %}{{ ", " if r.visit_id }}Inpatient Case {{ r.inpatient_case_id }}{% endif %}
@@ -133,7 +133,7 @@ function lookupRefundSale() {
   const saleId = input.value.trim();
   const linesDiv = document.getElementById('refundSaleLines');
   if (!saleId) { window.VZToast.show('Enter a sale ID first.', 'error'); return; }
-  fetch(`{{ url_for('api_sale_refundable_items', sale_id=999999999) }}`.replace('999999999', encodeURIComponent(saleId)))
+  fetch(`{{ url_for('sales.api_sale_refundable_items', sale_id=999999999) }}`.replace('999999999', encodeURIComponent(saleId)))
     .then(r => r.json().then(data => ({ ok: r.ok, data })))
     .then(({ ok, data }) => {
       if (!ok) { window.VZToast.show(data.error || 'Sale not found.', 'error'); refundSaleId = null; refundLines = []; linesDiv.innerHTML = '<div class="empty-note">Look up a sale to see its refundable items.</div>'; document.getElementById('refundSaleCleanupNote').style.display = 'none'; renderRefundTotal(); return; }

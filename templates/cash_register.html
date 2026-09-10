@@ -17,7 +17,7 @@
   <form class="search-bar" method="get" style="margin:0;">
     <input type="date" name="date" value="{{ day }}">
     <button class="btn secondary" type="submit">View by Date</button>
-    {% if day != today %}<a class="btn secondary" href="{{ url_for('cash_register_page') }}">Clear</a>{% endif %}
+    {% if day != today %}<a class="btn secondary" href="{{ url_for('sales.cash_register_page') }}">Clear</a>{% endif %}
   </form>
 </div>
 
@@ -93,7 +93,7 @@
     <h2 style="margin-top:0;">Pay From Cash Register</h2>
     <p class="small muted" style="margin-top:-6px;">Logs cash leaving the till on {{ day }} for a reason that isn't a
       refund — petty cash, paying a supplier directly out of the drawer, etc.</p>
-    <form method="post" action="{{ url_for('cash_register_payout_new') }}">
+    <form method="post" action="{{ url_for('sales.cash_register_payout_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="day" value="{{ fv(payout_form, 'day', day) }}">
       <div class="form-grid">
@@ -120,7 +120,7 @@
     <div class="detail-item"><div class="k">System Cash Total</div><div class="v">{{ totals.Cash|money }} JOD</div></div>
     <div class="detail-item"><div class="k">System Card Total</div><div class="v">{{ totals.Card|money }} JOD</div></div>
     <div class="detail-item"><div class="k">System Transfer Total</div><div class="v">{{ totals.Transfer|money }} JOD</div></div>
-    <form method="post" action="{{ url_for('cash_register_audit_new') }}" style="margin-top:14px;">
+    <form method="post" action="{{ url_for('sales.cash_register_audit_new') }}" style="margin-top:14px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="day" value="{{ fv(audit_form, 'day', day) }}">
       <div class="form-grid">

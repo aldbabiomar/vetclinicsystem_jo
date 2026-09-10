@@ -119,16 +119,16 @@
         <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
       <div class="nav-group-links">
-        <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('pos_page') }}">Point of Sale</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='pos_history' }}" href="{{ url_for('pos_history') }}">Sales History</a>
+        <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('sales.pos_page') }}">Point of Sale</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='pos_history' }}" href="{{ url_for('sales.pos_history') }}">Sales History</a>
         {% if has_permission('manage_price_list') %}
         <a class="nav-link {{ 'active' if request.endpoint=='price_list' }}" href="{{ url_for('inventory.price_list') }}">Price List</a>
         {% endif %}
         {% if has_permission('manage_refunds') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('refunds_page') }}">Refunds</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('sales.refunds_page') }}">Refunds</a>
         {% endif %}
         {% if has_permission('manage_cash_register') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='cash_register_page' }}" href="{{ url_for('cash_register_page') }}">Cash Register</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='cash_register_page' }}" href="{{ url_for('sales.cash_register_page') }}">Cash Register</a>
         {% endif %}
         {% if has_permission('view_financial_reports') %}
         <a class="nav-link {{ 'active' if request.endpoint=='reports' }}" href="{{ url_for('reports') }}">Monthly P&amp;L</a>

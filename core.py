@@ -351,3 +351,106 @@ def required_field(f, key, label):
 # what refunds.html already offers in its dropdown -- the list was only ever
 # in the template here, so the server accepted anything (including nothing).
 PAYMENT_METHODS = ["Cash", "Card", "Transfer"]
+
+
+def discount_percent_error(percent, cap):
+    """Range-checks an already-parsed discount percent against the current
+    user's role cap. Shared by the visit/inpatient/boarding/POS discount-save
+    routes so the bound comparison lives in exactly one place — it was written
+    out four times, which is four chances to change three of them."""
+    if percent > cap or percent < 0:
+        return f"Discount must be between 0% and {cap}% for your role."
+    return None
+
+
+def cleanup_amount_error(new_amount, existing_amount, balance):
+    """Range-checks a Clean Up submission. Returns an error string, or None.
+
+    Shared by the four payment surfaces, which were each carrying their own
+    copy of these three checks. The two legitimate per-site differences are
+    arguments rather than special cases:
+
+      * POS passes existing_amount=0 — a brand-new sale has no prior Clean Up
+        to accumulate against, unlike the other three, which can be paid off
+        across several submissions.
+      * Boarding passes the balance as it would stand AFTER this submission's
+        discount, not before, so a discount-and-clean-up in one click cannot
+        write off more than the discounted bill.
+
+    JOD is exact three-decimal Decimal — no denomination rounding — so these
+    are straight comparisons. IQ's copy compares floats against a 250-rounded
+    cap; the two must not be merged (COMPARISON.md §1.1).
+    """
+    if new_amount < 0:
+        return "Clean Up amount can't be negative."
+    if existing_amount + new_amount > CLEANUP_CAP:
+        return f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill."
+    if new_amount > balance:
+        return "Clean Up can't exceed the remaining balance."
+    return None
+
+
+def parse_quantity(raw, required=False):
+    """Same shape as parse_money(), for NUMERIC(10,3) quantity columns
+    (POS cart, refund lines, inpatient billing) — bounded at that column
+    type's own ceiling rather than MAX_MONEY's wider one. See
+    ERROR_500_AUDIT.md E-06."""
+    if raw is None or str(raw).strip() == "":
+        if required:
+            raise BadNumber("required")
+        return None
+    try:
+        val = Decimal(str(raw).strip())
+    except InvalidOperation:
+        raise BadNumber(raw)
+    if not val.is_finite():
+        raise BadNumber(raw)
+    if abs(val) > MAX_QUANTITY:
+        raise BadNumber(f"{raw} is too large — check for a typo.")
+    return val
+
+
+def clean_date_filter(v):
+    """For a read-side ?date= filter that's about to be compared against a
+    real DATE column (or used as a LIKE prefix against a text timestamp) —
+    clean()'s intent ("a bad filter should degrade to no hard error") isn't
+    actually met by clean() alone, since a malformed-but-non-empty string
+    still reaches the query. A DATE column then raises a raw Postgres cast
+    error instead of degrading to anything. Returns the value only if it's
+    a real YYYY-MM-DD date; a malformed one is silently dropped (treated
+    the same as no filter at all) rather than either crashing or being
+    passed through as a broken filter."""
+    v = clean(v)
+    if v is None:
+        return None
+    try:
+        datetime.strptime(v, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return v
+
+
+def date_filter_arg(name="date", message="That date wasn't valid — showing all dates instead."):
+    """clean_date_filter() with a heads-up for the user.
+
+    Dropping a malformed filter silently is the right default for a shared
+    context builder that several routes re-render through (see
+    _refunds_page_context) — a stray ?date= shouldn't add noise on top of a
+    real validation error. But on the page the user actually asked for,
+    silence is indistinguishable from "the filter worked and there's just a
+    lot of data". IQ has always said so on these pages; this is what brings
+    JO's list pages in line. Only speaks up when something was actually
+    thrown away — an absent or empty ?date= is not an error."""
+    raw = request.args.get(name)
+    value = clean_date_filter(raw)
+    if value is None and clean(raw) is not None:
+        flash(message, "error")
+    return value
+
+
+# Flat ceiling on the cumulative "Clean Up" write-off allowed per bill —
+# see CLEANUP_FEATURE_PLAN.md §3.3. Not per-role; a global constant.
+CLEANUP_CAP = Decimal("1.000")
+
+
+MAX_QUANTITY = Decimal("9999999.999")  # widest value any NUMERIC(10,3) column can hold
