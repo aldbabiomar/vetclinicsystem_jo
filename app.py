@@ -117,9 +117,16 @@ app.config["SESSION_COOKIE_SECURE"] = BEHIND_TLS_PROXY
 # doesn't happen on a front-desk machine where the browser is routinely
 # left open for an entire shift or longer. session.permanent is set at
 # successful login (see login() below) so this actually takes effect.
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
-    hours=float(os.environ.get("SESSION_LIFETIME_HOURS", "12"))
-)
+SESSION_LIFETIME_HOURS = float(os.environ.get("SESSION_LIFETIME_HOURS", "12"))
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=SESSION_LIFETIME_HOURS)
+# Flask-WTF defaults WTF_CSRF_TIME_LIMIT to 3600 seconds, and this app never
+# set it -- so the CSRF token expired after ONE hour inside a session that
+# stayed valid for TWELVE. A visit form, an inpatient bill or a POS cart left
+# open across a consultation then failed on submit, threw away everything
+# typed, and sent the person to the login page for what was a stale form
+# token, not an expired session. Tied to the same value so the two cannot
+# drift apart again; raising SESSION_LIFETIME_HOURS now raises both.
+app.config["WTF_CSRF_TIME_LIMIT"] = int(SESSION_LIFETIME_HOURS * 3600)
 
 # Optional network allowlist: comma-separated CIDR blocks (e.g.
 # "192.168.1.0/24,10.0.0.5/32"). Unset by default — no behavior change
@@ -853,7 +860,38 @@ app.jinja_env.globals["CLEANUP_CAP"] = CLEANUP_CAP
 # ---------------------------------------------------------------------------
 # Auth gate
 # ---------------------------------------------------------------------------
-OPEN_ENDPOINTS = {"login", "static", "health", "logout"}
+OPEN_ENDPOINTS = {"login", "static", "health", "logout", "favicon_ico"}
+
+
+@app.route("/favicon.ico")
+def favicon_ico():
+    # Safari (and some other browsers) probe this exact root-level path
+    # directly, independent of the <link rel="icon"> tag in base.html --
+    # without this route there is nothing at /favicon.ico at all (only at
+    # /static/favicon.svg), so the probe 404s and Safari can fall back to
+    # whatever it last had cached for this origin.
+    #
+    # Unlike IQ, this app ships a single SVG icon and no .ico, and has no
+    # palette to choose between -- so this serves that SVG with its real
+    # mimetype rather than pretending to be an ICO. Every browser that
+    # probes this path also understands SVG icons, and an SVG served
+    # honestly beats a 404.
+    return send_from_directory(app.static_folder, "favicon.svg", mimetype="image/svg+xml")
+
+
+def _warn_if_submission_will_be_lost():
+    """Say so when a signed-out request was carrying data.
+
+    require_login() redirects to /login with ?next=<path>, and login() then
+    redirects to that path with a GET -- so the body of a POST is gone. The
+    person sees an empty form and no indication that anything was lost, which
+    on a front desk means a whole visit or bill quietly typed twice. This does
+    not preserve the submission (see FULL_APP_REVIEW U2 for the stash option);
+    it makes the loss visible, which is the part that actually hurt.
+    """
+    if request.method != "GET":
+        flash("You were signed out before that could be saved, so nothing was stored. "
+              "Please sign in and enter it again.", "error")
 
 
 @app.before_request
@@ -861,6 +899,7 @@ def require_login():
     if request.endpoint in OPEN_ENDPOINTS or request.endpoint is None:
         return
     if not session.get("user_id"):
+        _warn_if_submission_will_be_lost()
         return redirect(url_for("login", next=request.path))
     db = get_db()
     user = auth.current_user(db)
@@ -1014,7 +1053,19 @@ def handle_http_exception(e):
     if request.method != "GET":
         mark_transaction_failed()
     if isinstance(e, CSRFError):
-        flash("Your session expired while this page was open. Please log in again — "
+        # A CSRF failure is not the same thing as an expired session, and
+        # saying it was sent people to a login screen they did not need --
+        # after discarding what they had typed. Now that the token lifetime
+        # matches the session lifetime this should be rare, but the two can
+        # still come apart (a server restart rotates SECRET_KEY on some
+        # deployments, invalidating every outstanding token while the browser
+        # still holds a valid-looking cookie). Tell the truth about which one
+        # happened, and only force a re-login when the session really is gone.
+        if session.get("user_id"):
+            flash("This page had been open too long to submit safely, so nothing was saved. "
+                  "Please check what you entered and submit it again.", "error")
+            return _fallback_redirect()
+        flash("You were signed out while this page was open. Please sign in again — "
               "you may need to re-enter what you were working on.", "error")
         return redirect(url_for("login"))
     if e.code == 400:
