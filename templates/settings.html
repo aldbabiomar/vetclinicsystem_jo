@@ -29,6 +29,7 @@
     <div class="field"><label>Slot Length (Minutes)</label><input type="number" name="appt_slot_minutes" value="{{ settings.appt_slot_minutes }}" min="5" max="240" step="1"></div>
   </div>
 
+  {% if has_permission("manage_maintenance") %}
   <div class="section-title">Backups</div>
   <div class="form-grid">
     <div class="field full"><label>Backup Folder (on this computer)</label>
@@ -40,6 +41,8 @@
     <div class="field"><label>Nightly Backup Time</label><input type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
     <div class="field"><label>Keep Last N Backups</label><input type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
   </div>
+
+  {% endif %}
 
   <div class="section-title">Health Check</div>
   <p class="small muted" style="margin-top:-6px;">
@@ -95,12 +98,14 @@
   </div>
 
   <div class="settings-save-bar">
-    <span class="what">Saves the six sections above.</span>
+    <span class="what">Saves the sections above.</span>
     <button class="btn" type="submit">Save Settings</button>
   </div>
 </form>
 </div>
 
+
+{% if has_permission("manage_maintenance") %}
 
 <div class="card">
 <div class="settings-card-head"><h2>Backups &amp; Restore</h2><span class="settings-tag now">Runs when you click</span></div>
@@ -455,6 +460,7 @@ document.getElementById('restoreForm').addEventListener('submit', async function
   }
 });
 </script>
+{% endif %}
 <script src="{{ url_for('static', filename='progress.js') }}"></script>
 
 

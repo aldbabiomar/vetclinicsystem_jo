@@ -11,9 +11,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # ---------------------------------------------------------------------------
 # Permissions — the app's fixed vocabulary of what *can* be gated. This list
-# itself is not admin-editable (it's re-synced into the `permissions` table
-# on every launch); which roles have which of these is what's editable, via
-# the `role_permissions` table.
+# itself is not admin-editable; which roles have which of these is what's
+# editable, via the `role_permissions` table.
+#
+# This list is re-synced into the `permissions` table by
+# seed_default_roles_and_permissions(), which runs from setup.apply_schema()
+# -- i.e. on a setup.py run and on every in-app update (updater.py's
+# _run_schema_sync), NOT on every app launch. This comment used to say "on
+# every launch", which is what makes adding a key here look free: on an
+# existing install the new key reaches the `permissions` table only at that
+# point, and the role-creation loop below skips roles that already exist, so
+# nothing would hold the new permission at all. See the backfill in
+# seed_default_roles_and_permissions().
 #
 # (key, label, category) — grouped the same way the sidebar groups pages, so
 # a role's checklist reads like a shorter version of the nav itself.
@@ -48,6 +57,7 @@ PERMISSIONS = [
     ("view_insights_retention", "View Insights & Retention", "Sales & Billing"),
     ("manage_users_roles", "Manage Users & Roles", "Admin"),
     ("manage_settings", "Manage Settings", "Admin"),
+    ("manage_maintenance", "Manage Backups, Updates & Startup", "Admin"),
     ("view_logins_changes", "View Logins & Change Log", "Admin"),
     ("view_consignment", "View Consignment", "Consignment"),
     ("manage_consignment_items", "Manage Consignment Items", "Consignment"),
@@ -65,6 +75,7 @@ PERMISSION_CATEGORIES = ["Patients & Visits", "Inpatient", "Inventory", "Sales &
 ADMIN_ONLY_TODAY = {
     "manage_price_list", "manage_refunds", "manage_cash_register", "view_financial_reports",
     "view_insights_retention", "manage_users_roles", "manage_settings",
+    "manage_maintenance",
     "view_logins_changes",
     "manage_consignment_settlements",
 }
@@ -178,6 +189,20 @@ def seed_default_roles_and_permissions(db):
             "sort_order=EXCLUDED.sort_order",
             (key, label, category, i),
         )
+
+    # The Admin role is is_system, and admin_role_edit() refuses to edit a
+    # system role at all -- so a permission key added to PERMISSIONS *after* an
+    # install already exists would be granted to nobody, with no way to grant
+    # it from the UI. The loop below only creates roles that don't exist yet,
+    # so it cannot fix that either. Re-asserting the system role's full grant
+    # on every launch closes it, for this key and for every future one.
+    # Must run after the permissions upsert above: role_permissions.permission_id
+    # references permissions(id).
+    db.execute(
+        "INSERT INTO role_permissions (role_id, permission_id) "
+        "SELECT r.id, p.id FROM roles r CROSS JOIN permissions p "
+        "WHERE r.is_system = true ON CONFLICT DO NOTHING"
+    )
 
     defaults = [
         ("Admin", "Full access to every area of the app, always. There must be at least one active Admin.",
