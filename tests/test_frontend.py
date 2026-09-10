@@ -335,3 +335,33 @@ def test_no_saved_page_has_been_committed_into_static():
         "saved rendered page(s) committed into static/, where they are served "
         f"publicly: {offenders}. Delete them; they are in git history if needed."
     )
+
+
+def test_no_patient_attachment_has_been_committed():
+    """uploads/ holds patient X-rays, bloodwork and test results.
+
+    attachments.py anchors UPLOAD_ROOT inside this directory whenever the
+    data-dir environment variable is unset, which is exactly the case for a
+    dev clone. Both repos are published to GitHub, so a `git add -A` in a
+    clone that has been run locally would commit clinical files. IQ's
+    .gitignore has covered uploads/ for a while; JO's did not until the full
+    review, and nothing would have reported it -- the same shape as the saved
+    pages above, but with real patient data.
+
+    .gitkeep is the one permitted entry: it is what keeps the empty directory
+    in the repo so a fresh clone has somewhere to write.
+    """
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "ls-files", "uploads"],
+        cwd=str(ROOT), capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        pytest.skip("not a git checkout")
+    tracked = [line for line in result.stdout.split("\n") if line.strip()]
+    offenders = [t for t in tracked if not t.endswith(".gitkeep")]
+    assert not offenders, (
+        f"patient attachment(s) are tracked in git: {offenders}. Remove them "
+        f"from the index and from history, and check .gitignore covers uploads/."
+    )

@@ -1,9 +1,34 @@
+# Local config / secrets — never committed
+.env
+.env.audit_backup_check
+
+# Python
 __pycache__/
 *.pyc
-.env
-.pytest_cache/
-logs/
-.coverage
-last_restore.json
 venv/
 .venv/
+
+# App-generated, machine-local. uploads/ is the important one: it holds
+# patient X-rays, bloodwork and test results, and attachments.py puts
+# UPLOAD_ROOT inside this directory whenever VETCLINICSYSTEMJO_DATA_DIR is
+# unset — which is the case for a dev clone. Without this line a `git add -A`
+# in a clone that has been run locally commits clinical files to the repo.
+logs/
+uploads/
+!uploads/.gitkeep
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# The versioned-release layout (setup.py --enable-updates) lives OUTSIDE
+# this folder as siblings (../vetclinicsystemjo-data, ../vetclinicsystemjo-releases),
+# so there's nothing of theirs to ignore here — but if either ever ends up
+# nested under this repo by mistake, never track it.
+/vetclinicsystemjo-data/
+/vetclinicsystemjo-releases/
+
+.coverage
+last_restore.json
+.pytest_cache/
