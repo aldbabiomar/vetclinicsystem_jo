@@ -288,7 +288,16 @@ def discount_cap_for():
 # ---------------------------------------------------------------------------
 def log_login(db, user_id, username, success):
     ua = request.headers.get("User-Agent", "")
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    # request.remote_addr only -- never the X-Forwarded-For header directly.
+    # The default deployment is plain HTTP on the clinic LAN with no proxy in
+    # front, so reading that header meant any client could choose the address
+    # written into login_log.ip and shown on Admin > Logins and Changes: the
+    # audit trail recorded whatever an attacker typed. When there IS a proxy,
+    # BEHIND_TLS_PROXY=1 installs ProxyFix (see app.py), which rewrites
+    # remote_addr from the header for us -- so the proxied case keeps working
+    # and the unproxied case stops being forgeable. Do not reinstate the
+    # header read here.
+    ip = request.remote_addr
     db.execute(
         "INSERT INTO login_log (user_id, username, success, timestamp, ip, user_agent) VALUES (?,?,?,?,?,?)",
         (user_id, username, 1 if success else 0, datetime.now().isoformat(timespec="seconds"), ip, ua),
