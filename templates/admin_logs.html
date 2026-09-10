@@ -12,7 +12,7 @@
 <div class="section-title">Changes On {{ day }}</div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
-  <thead><tr><th>Time</th><th>Who</th><th>Action</th><th>Table</th><th>Record</th><th>Field</th><th>Old → New</th></tr></thead>
+  <thead><tr><th scope="col">Time</th><th scope="col">Who</th><th scope="col">Action</th><th scope="col">Table</th><th scope="col">Record</th><th scope="col">Field</th><th scope="col">Old → New</th></tr></thead>
   <tbody>
     {% for c in changes %}
     <tr>
@@ -34,7 +34,7 @@
 <div class="section-title">Logins On {{ day }}</div>
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Time</th><th>Username</th><th>Result</th><th>IP</th><th>Device</th></tr></thead>
+  <thead><tr><th scope="col">Time</th><th scope="col">Username</th><th scope="col">Result</th><th scope="col">IP</th><th scope="col">Device</th></tr></thead>
   <tbody>
     {% for l in logins %}
     <tr>

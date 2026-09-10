@@ -16,17 +16,17 @@
   <form method="post" action="{{ url_for('consignment_receiving_new') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
-      <div class="field"><label>Item</label>
-        <select name="item_id" required>
+      <div class="field"><label for="consignmentreceiving-1-item_id">Item</label>
+        <select id="consignmentreceiving-1-item_id" name="item_id" required>
           <option value="">—</option>
           {% for i in items %}<option value="{{ i.id }}" {{ 'selected' if fv(form, 'item_id')==i.id }}>{{ i.name }} ({{ i.distributor_name }})</option>{% endfor %}
         </select>
       </div>
-      <div class="field"><label>Quantity</label><input type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
-      <div class="field"><label>Unit Cost (JOD)</label><input type="number" step="0.001" name="unit_cost" required value="{{ fv(form, 'unit_cost') }}"></div>
-      <div class="field"><label>Received Date</label><input type="date" name="received_date" value="{{ fv(form, 'received_date', today) }}"></div>
-      <div class="field"><label>Delivery Reference</label><input name="delivery_reference" value="{{ fv(form, 'delivery_reference') }}" placeholder="Invoice/delivery note #"></div>
-      <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes') }}"></div>
+      <div class="field"><label for="consignmentreceiving-2-quantity">Quantity</label><input id="consignmentreceiving-2-quantity" type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
+      <div class="field"><label for="consignmentreceiving-3-unit_cost">Unit Cost (JOD)</label><input id="consignmentreceiving-3-unit_cost" type="number" step="0.001" name="unit_cost" required value="{{ fv(form, 'unit_cost') }}"></div>
+      <div class="field"><label for="consignmentreceiving-4-received_date">Received Date</label><input id="consignmentreceiving-4-received_date" type="date" name="received_date" value="{{ fv(form, 'received_date', today) }}"></div>
+      <div class="field"><label for="consignmentreceiving-5-delivery_reference">Delivery Reference</label><input id="consignmentreceiving-5-delivery_reference" name="delivery_reference" value="{{ fv(form, 'delivery_reference') }}" placeholder="Invoice/delivery note #"></div>
+      <div class="field full"><label for="consignmentreceiving-6-notes">Notes</label><input id="consignmentreceiving-6-notes" name="notes" value="{{ fv(form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Log Receipt</button>
@@ -39,8 +39,8 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead class="sticky-header"><tr>
-    <th>Date</th><th>Item</th><th>Distributor</th><th class="num-col">Quantity</th>
-    <th class="num-col">Unit Cost (JOD)</th><th>Reference</th><th>Notes</th>
+    <th scope="col">Date</th><th scope="col">Item</th><th scope="col">Distributor</th><th scope="col" class="num-col">Quantity</th>
+    <th scope="col" class="num-col">Unit Cost (JOD)</th><th scope="col">Reference</th><th scope="col">Notes</th>
   </tr></thead>
   <tbody>
     {% for r in receipts %}

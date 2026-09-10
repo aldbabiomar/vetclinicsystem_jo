@@ -365,3 +365,91 @@ def test_no_patient_attachment_has_been_committed():
         f"patient attachment(s) are tracked in git: {offenders}. Remove them "
         f"from the index and from history, and check .gitignore covers uploads/."
     )
+
+
+def test_every_label_names_a_control():
+    """A <label> must be tied to the control it names — `for=` pointing at an
+    id, or the control nested inside it. Roughly 230 per app were neither:
+    siblings with no association at all, so a screen reader announced "edit
+    text, blank" and clicking the label did not focus the field.
+
+    A heading over a group of controls, or over a static value, is not a label
+    and must not be one — those are <span class="field-label"> plus, where it
+    heads a real group, role="group" with aria-labelledby.
+    """
+    offenders = []
+    for template in TEMPLATES:
+        txt = template.read_text(encoding="utf-8")
+        for m in re.finditer(r"<label([^>]*)>(.*?)</label>", txt, re.S):
+            if "for=" in m.group(1):
+                continue
+            if re.search(r"<(input|select|textarea)\b", m.group(2)):
+                continue
+            offenders.append(f"{template.name}: {re.sub(r'\\s+', ' ', m.group(2))[:40]!r}")
+    assert not offenders, (
+        f"{len(offenders)} label(s) name no control:\n  " + "\n  ".join(offenders[:20]))
+
+
+def test_every_label_points_at_an_id_that_exists():
+    """A `for=` aimed at nothing is worse than no `for=` — it reads as done.
+    Jinja-built ids are checked for shape only; the value depends on the row."""
+    offenders = []
+    for template in TEMPLATES:
+        txt = template.read_text(encoding="utf-8")
+        ids = set(re.findall(r'(?<![-\w])id="([^"]+)"', txt))
+        for target in re.findall(r'<label[^>]*\bfor="([^"]+)"', txt):
+            if "{{" in target:
+                if target not in ids:
+                    offenders.append(f"{template.name}: dynamic for={target!r} has no matching id")
+                continue
+            if target not in ids:
+                offenders.append(f"{template.name}: for={target!r} has no matching id")
+    assert not offenders, "dangling label targets:\n  " + "\n  ".join(offenders)
+
+
+def test_no_template_declares_the_same_id_twice():
+    """Duplicate ids break `for=` silently — the browser binds to the first.
+    The risk here is real: several pages carry two forms with the same field
+    names (Refunds has `amount` in both the retail and service forms), which is
+    why generated ids are keyed per file and position rather than per name."""
+    offenders = []
+    for template in TEMPLATES:
+        txt = template.read_text(encoding="utf-8")
+        seen = {}
+        # (?<![-\w]) so this does not also match data-role-id=", data-appt-id="
+        # and friends — '-' is a word boundary, so a bare \b matches inside them
+        # and reports every row's data attribute as a duplicate id.
+        for i in re.findall(r'(?<![-\w])id="([^"{]+)"', txt):
+            seen[i] = seen.get(i, 0) + 1
+        dupes = [i for i, c in seen.items() if c > 1]
+        if dupes:
+            offenders.append(f"{template.name}: {dupes}")
+    assert not offenders, "duplicate ids:\n  " + "\n  ".join(offenders)
+
+
+def test_every_table_header_declares_its_scope():
+    """349 <th> elements carried no scope, so assistive technology could not
+    tell which cells each header governs — on clinical and financial tables."""
+    offenders = []
+    for template in TEMPLATES:
+        txt = template.read_text(encoding="utf-8")
+        for m in re.finditer(r"<th(?:\s[^>]*)?>", txt):
+            if "scope=" not in m.group(0):
+                offenders.append(f"{template.name}: {m.group(0)[:60]}")
+    assert not offenders, (
+        f"{len(offenders)} <th> without scope:\n  " + "\n  ".join(offenders[:20]))
+
+
+def test_credential_fields_tell_the_password_manager_what_they_are():
+    """Without a hint the browser guesses, and on a shared front-desk machine
+    it guesses wrong — offering the admin's own saved credentials into a form
+    that creates someone else's account."""
+    offenders = []
+    for template in TEMPLATES:
+        txt = template.read_text(encoding="utf-8")
+        for m in re.finditer(
+                r'<input[^>]*\bname="(username|password|current_password|new_password|confirm_password)"[^>]*>',
+                txt):
+            if "autocomplete=" not in m.group(0):
+                offenders.append(f"{template.name}: {m.group(1)}")
+    assert not offenders, "credential field(s) with no autocomplete hint: " + ", ".join(offenders)

@@ -22,14 +22,14 @@
   {% if has_permission('manage_consignment_settlements') %}
   <form method="post" action="{{ url_for('consignment_settlement_new', distributor_id=distributor.id) }}" class="form-grid" style="margin-top:16px;" data-confirm="Record this settlement? The amount owed will be recalculated at the moment you submit.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="field"><label>Amount Paid (JOD)</label><input type="number" step="0.001" name="amount_paid" value="{{ fv(form, 'amount_paid', balance.amount_owed) }}" required></div>
-    <div class="field"><label>Payment Method</label>
-      <select name="payment_method">
+    <div class="field"><label for="consignmentsettlements-1-amount_paid">Amount Paid (JOD)</label><input id="consignmentsettlements-1-amount_paid" type="number" step="0.001" name="amount_paid" value="{{ fv(form, 'amount_paid', balance.amount_owed) }}" required></div>
+    <div class="field"><label for="consignmentsettlements-2-payment_method">Payment Method</label>
+      <select id="consignmentsettlements-2-payment_method" name="payment_method">
         <option value="" {{ 'selected' if fv(form, 'payment_method')=='' }}>—</option>
         <option {{ 'selected' if fv(form, 'payment_method')=='Cash' }}>Cash</option><option {{ 'selected' if fv(form, 'payment_method')=='Card' }}>Card</option><option {{ 'selected' if fv(form, 'payment_method')=='Transfer' }}>Transfer</option>
       </select>
     </div>
-    <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes') }}"></div>
+    <div class="field full"><label for="consignmentsettlements-3-notes">Notes</label><input id="consignmentsettlements-3-notes" name="notes" value="{{ fv(form, 'notes') }}"></div>
     <div class="field full">
       <button class="btn" type="submit">Record Settlement</button>
     </div>
@@ -42,8 +42,8 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th>Date</th><th>Period</th><th class="num-col">Owed (JOD)</th><th class="num-col">Paid (JOD)</th>
-    <th class="num-col">Residual (JOD)</th><th>Method</th><th>Recorded By</th><th></th>
+    <th scope="col">Date</th><th scope="col">Period</th><th scope="col" class="num-col">Owed (JOD)</th><th scope="col" class="num-col">Paid (JOD)</th>
+    <th scope="col" class="num-col">Residual (JOD)</th><th scope="col">Method</th><th scope="col">Recorded By</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for s in history %}

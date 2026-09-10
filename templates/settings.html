@@ -11,35 +11,35 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="section-title">Clinic</div>
   <div class="form-grid">
-    <div class="field"><label>Clinic Name</label><input name="clinic_name" value="{{ settings.clinic_name }}"></div>
-    <div class="field"><label>Location</label><input name="clinic_location" value="{{ settings.clinic_location }}"></div>
-    <div class="field"><label>Clinic Opening Date</label><input type="date" name="opening_date" value="{{ settings.opening_date }}"></div>
+    <div class="field"><label for="settings-1-clinic_name">Clinic Name</label><input id="settings-1-clinic_name" name="clinic_name" value="{{ settings.clinic_name }}"></div>
+    <div class="field"><label for="settings-2-clinic_location">Location</label><input id="settings-2-clinic_location" name="clinic_location" value="{{ settings.clinic_location }}"></div>
+    <div class="field"><label for="settings-3-opening_date">Clinic Opening Date</label><input id="settings-3-opening_date" type="date" name="opening_date" value="{{ settings.opening_date }}"></div>
   </div>
 
   <div class="section-title">Inventory Alerts</div>
   <div class="form-grid">
-    <div class="field"><label>Audit Overdue After (Days)</label><input type="number" name="audit_overdue_days" value="{{ settings.audit_overdue_days }}" min="1" max="3650" step="1"></div>
-    <div class="field"><label>Expiry Warning Window (Days)</label><input type="number" name="expiry_soon_days" value="{{ settings.expiry_soon_days }}" min="1" max="3650" step="1"></div>
+    <div class="field"><label for="settings-4-audit_overdue_days">Audit Overdue After (Days)</label><input id="settings-4-audit_overdue_days" type="number" name="audit_overdue_days" value="{{ settings.audit_overdue_days }}" min="1" max="3650" step="1"></div>
+    <div class="field"><label for="settings-5-expiry_soon_days">Expiry Warning Window (Days)</label><input id="settings-5-expiry_soon_days" type="number" name="expiry_soon_days" value="{{ settings.expiry_soon_days }}" min="1" max="3650" step="1"></div>
   </div>
 
   <div class="section-title">Appointments</div>
   <div class="form-grid">
-    <div class="field"><label>Day Starts At</label><input type="time" name="appt_start_time" value="{{ settings.appt_start_time }}"></div>
-    <div class="field"><label>Day Ends At</label><input type="time" name="appt_end_time" value="{{ settings.appt_end_time }}"></div>
-    <div class="field"><label>Slot Length (Minutes)</label><input type="number" name="appt_slot_minutes" value="{{ settings.appt_slot_minutes }}" min="5" max="240" step="1"></div>
+    <div class="field"><label for="settings-6-appt_start_time">Day Starts At</label><input id="settings-6-appt_start_time" type="time" name="appt_start_time" value="{{ settings.appt_start_time }}"></div>
+    <div class="field"><label for="settings-7-appt_end_time">Day Ends At</label><input id="settings-7-appt_end_time" type="time" name="appt_end_time" value="{{ settings.appt_end_time }}"></div>
+    <div class="field"><label for="settings-8-appt_slot_minutes">Slot Length (Minutes)</label><input id="settings-8-appt_slot_minutes" type="number" name="appt_slot_minutes" value="{{ settings.appt_slot_minutes }}" min="5" max="240" step="1"></div>
   </div>
 
   {% if has_permission("manage_maintenance") %}
   <div class="section-title">Backups</div>
   <div class="form-grid">
-    <div class="field full"><label>Backup Folder (on this computer)</label>
+    <div class="field full"><label for="backupDirInput">Backup Folder (on this computer)</label>
       <div style="display:flex; gap:8px;">
         <input name="backup_dir" id="backupDirInput" placeholder="e.g. /Users/you/VetClinicSystemJOBackups or D:\VetClinicSystemJOBackups" value="{{ settings.backup_dir }}" style="flex:1;">
         <button class="btn secondary" type="button" onclick="openFolderBrowser('backupDirInput', {filePicker:false})">Browse…</button>
       </div>
     </div>
-    <div class="field"><label>Nightly Backup Time</label><input type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
-    <div class="field"><label>Keep Last N Backups</label><input type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
+    <div class="field"><label for="settings-9-backup_time">Nightly Backup Time</label><input id="settings-9-backup_time" type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
+    <div class="field"><label for="settings-10-backup_retention">Keep Last N Backups</label><input id="settings-10-backup_retention" type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
   </div>
 
   {% endif %}
@@ -52,12 +52,12 @@
   </p>
   <div class="form-grid">
     <div class="field">
-      <label>Warn If No Backup For (Days)</label>
-      <input type="number" name="selfcheck_backup_max_age_days"
+      <label for="settings-11-selfcheck_backup_max_age_days">Warn If No Backup For (Days)</label>
+      <input id="settings-11-selfcheck_backup_max_age_days" type="number" name="selfcheck_backup_max_age_days"
              value="{{ settings.selfcheck_backup_max_age_days or 2 }}" min="1" max="30" step="1">
     </div>
     <div class="field">
-      <label>Daily Health Check</label>
+      <span class="field-label">Daily Health Check</span>
       <!-- An unchecked box submits nothing, so this hidden field is what tells
            the server the form was submitted with the box clear, rather than
            that the field wasn't on the page at all. -->
@@ -79,8 +79,8 @@
   </p>
   <div class="form-grid">
     <div class="field full">
-      <label>Monitoring Ping URL</label>
-      <input name="heartbeat_url" type="url" placeholder="https://… (leave blank to disable)"
+      <label for="settings-12-heartbeat_url">Monitoring Ping URL</label>
+      <input id="settings-12-heartbeat_url" name="heartbeat_url" type="url" placeholder="https://… (leave blank to disable)"
              value="{{ settings.heartbeat_url or '' }}" autocomplete="off" spellcheck="false">
       <p class="small muted" style="margin:6px 0 0;">
         Must start with <code>https://</code>. Use a different URL for each clinic, so an alert
@@ -90,7 +90,7 @@
     </div>
     {% if settings.heartbeat_install_id %}
     <div class="field full">
-      <label>This Install's ID</label>
+      <span class="field-label">This Install's ID</span>
       <div class="small" style="font-family:monospace; padding:8px 10px; background:var(--muted-tint); border-radius:6px;">{{ settings.heartbeat_install_id }}</div>
       <p class="small muted" style="margin:6px 0 0;">Included in every ping so one monitoring account can watch several clinics.</p>
     </div>
@@ -125,7 +125,7 @@
 <div class="section-title">Recent Backups</div>
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Started</th><th>Triggered By</th><th>Status</th><th>Size</th><th>File</th></tr></thead>
+  <thead><tr><th scope="col">Started</th><th scope="col">Triggered By</th><th scope="col">Status</th><th scope="col">Size</th><th scope="col">File</th></tr></thead>
   <tbody>
     {% for b in recent_backups %}
     <tr>
@@ -157,7 +157,7 @@
   to find and relink them safely.
 </p>
 <div class="form-grid">
-  <div class="field full"><label>Backup File To Restore</label>
+  <div class="field full"><label for="restoreFileInput">Backup File To Restore</label>
     <div style="display:flex; gap:8px;">
       <input id="restoreFileInput" placeholder="Browse to a .dump backup file" value="" style="flex:1;" readonly>
       <button class="btn secondary" type="button" onclick="openFolderBrowser('restoreFileInput', {filePicker:true, ext:'.dump'})">Browse…</button>
@@ -177,7 +177,7 @@
 <div class="section-title">Recent Restores</div>
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Started</th><th>Triggered By</th><th>Status</th><th>Source File</th></tr></thead>
+  <thead><tr><th scope="col">Started</th><th scope="col">Triggered By</th><th scope="col">Status</th><th scope="col">Source File</th></tr></thead>
   <tbody>
     {% for r in recent_restores %}
     <tr>

@@ -18,7 +18,7 @@
 <div id="tab-staff" role="tabpanel">
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Discount Limit</th><th>Status</th><th>Reset Password</th><th></th></tr></thead>
+      <thead><tr><th scope="col">Name</th><th scope="col">Username</th><th scope="col">Role</th><th scope="col">Discount Limit</th><th scope="col">Status</th><th scope="col">Reset Password</th><th scope="col"></th></tr></thead>
       <tbody>
         {% for u in users %}
         <tr>
@@ -43,7 +43,7 @@
           <td>
             <form method="post" action="{{ url_for('admin_user_reset_password', user_id=u.id) }}" class="inline-form" style="display:flex; gap:6px;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="text" name="new_password" placeholder="New Password" minlength="8" required style="width:140px;">
+              <input type="text" name="new_password" autocomplete="new-password" placeholder="New Password" minlength="8" required style="width:140px;">
               <button class="btn small secondary" type="submit">Reset</button>
             </form>
           </td>
@@ -83,7 +83,7 @@
       </div></div>
       {% endfor %}
       <div class="role-card-foot">
-        <div class="cap-field"><label class="small muted">Max Discount</label><input type="number" value="{{ role.discount_cap }}" disabled><span class="small muted">%</span></div>
+        <div class="cap-field"><label class="small muted" for="rolecap-{{ role.id }}">Max Discount</label><input id="rolecap-{{ role.id }}" type="number" value="{{ role.discount_cap }}" disabled><span class="small muted">%</span></div>
         <label class="perm-row" style="margin-left:16px;" title="Whether staff with this role show up as a vet to assign in Appointments, Visits, Grooming, and Inpatient"><input type="checkbox" {{ 'checked' if role.is_vet_role }} disabled><span>Can be assigned as a vet</span></label>
         <div class="staff-count">{{ staff_counts.get(role.id, 0) }} staff member{{ '' if staff_counts.get(role.id, 0) == 1 else 's' }} · always keeps at least one Admin</div>
       </div>
@@ -109,7 +109,7 @@
         </div></div>
         {% endfor %}
         <div class="role-card-foot">
-          <div class="cap-field"><label class="small muted">Max Discount</label><input type="number" name="discount_cap" value="{{ role.discount_cap }}" min="0" max="100"><span class="small muted">%</span></div>
+          <div class="cap-field"><label class="small muted" for="roleeditcap-{{ role.id }}">Max Discount</label><input id="roleeditcap-{{ role.id }}" type="number" name="discount_cap" value="{{ role.discount_cap }}" min="0" max="100"><span class="small muted">%</span></div>
           <label class="perm-row" style="margin-left:16px;" title="Whether staff with this role show up as a vet to assign in Appointments, Visits, Grooming, and Inpatient"><input type="checkbox" name="is_vet_role" {{ 'checked' if role.is_vet_role }}><span>Can be assigned as a vet</span></label>
           <div style="display:flex; align-items:center; gap:14px;">
             <div class="staff-count">{{ staff_counts.get(role.id, 0) }} staff member{{ '' if staff_counts.get(role.id, 0) == 1 else 's' }}</div>
@@ -140,18 +140,18 @@
     <form method="post" action="{{ url_for('admin_user_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
-        <div class="field"><label>Full Name</label><input required name="full_name" placeholder="e.g. Jordan Lee"></div>
-        <div class="field"><label>Username</label><input required name="username" placeholder="jlee"></div>
-        <div class="field"><label>Temporary Password</label><input required type="text" name="password" minlength="8" placeholder="min. 8 characters"></div>
-        <div class="field"><label>Role</label>
-          <select name="role_id" required>
+        <div class="field"><label for="adminusers-1-full_name">Full Name</label><input id="adminusers-1-full_name" required name="full_name" placeholder="e.g. Jordan Lee"></div>
+        <div class="field"><label for="adminusers-2-username">Username</label><input id="adminusers-2-username" required name="username" autocomplete="off" placeholder="jlee"></div>
+        <div class="field"><label for="adminusers-3-password">Temporary Password</label><input id="adminusers-3-password" required type="text" name="password" autocomplete="new-password" minlength="8" placeholder="min. 8 characters"></div>
+        <div class="field"><label for="adminusers-4-role_id">Role</label>
+          <select id="adminusers-4-role_id" name="role_id" required>
             {% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
           </select>
         </div>
       </div>
       <div class="field" style="margin-top:15px;">
-        <label>Discount Limit</label>
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:2px;">
+        <span id="discountLimitLabel" class="field-label">Discount Limit</span>
+        <div role="group" aria-labelledby="discountLimitLabel" style="display:flex; flex-direction:column; gap:8px; margin-top:2px;">
           <label class="radio-row"><input type="radio" name="capmode" value="inherit" checked onchange="document.getElementById('customCapInput').disabled = true;"><span>Inherit from role</span></label>
           <label class="radio-row"><input type="radio" name="capmode" value="custom" onchange="document.getElementById('customCapInput').disabled = false;"><span>Custom override for this person:</span>
             <input type="number" name="custom_discount_cap" id="customCapInput" style="width:70px;" placeholder="%" min="0" max="100" disabled></label>
@@ -176,10 +176,10 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid" style="margin-bottom:6px;">
         <div class="field">
-          <label>Role Name</label>
-          <input name="name" required placeholder="e.g. Vet Tech">
+          <label for="adminusers-5-name">Role Name</label>
+          <input id="adminusers-5-name" name="name" required placeholder="e.g. Vet Tech">
         </div>
-        <div class="field"><label>Description (optional)</label><input name="description" placeholder="e.g. Assists vets, no billing access"></div>
+        <div class="field"><label for="adminusers-6-description">Description (optional)</label><input id="adminusers-6-description" name="description" placeholder="e.g. Assists vets, no billing access"></div>
       </div>
       <div style="height:10px;"></div>
 
@@ -192,7 +192,7 @@
       {% endfor %}
 
       <div style="display:flex; align-items:center; gap:20px; margin-top:14px;">
-        <div class="field" style="max-width:160px; margin-top:0;"><label>Max Discount (%)</label><input type="number" name="discount_cap" value="0" min="0" max="100"></div>
+        <div class="field" style="max-width:160px; margin-top:0;"><label for="adminusers-7-discount_cap">Max Discount (%)</label><input id="adminusers-7-discount_cap" type="number" name="discount_cap" value="0" min="0" max="100"></div>
         <label class="perm-row" style="margin-top:18px;" title="Whether staff with this role show up as a vet to assign in Appointments, Visits, Grooming, and Inpatient"><input type="checkbox" name="is_vet_role"><span>Can be assigned as a vet</span></label>
       </div>
       <div class="form-actions">
@@ -214,7 +214,7 @@
           <strong id="deleteRoleStaffLine"></strong> Pick a role to move them to before this role can be deleted. Nobody is left without a role.
         </div>
         <div class="field">
-          <label>Move affected staff to</label>
+          <label for="reassignTarget">Move affected staff to</label>
           <select id="reassignTarget" name="reassign_to">
             {% for r in roles %}<option value="{{ r.id }}" data-name="{{ r.name }}">{{ r.name }}</option>{% endfor %}
           </select>

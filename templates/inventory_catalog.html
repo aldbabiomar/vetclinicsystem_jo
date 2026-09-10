@@ -35,15 +35,15 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if show_new_form else None %}
     <div class="form-grid">
-      <div class="field"><label>Item Name</label><input required name="name" value="{{ fv(new_form, 'name') }}"></div>
-      <div class="field"><label>Category</label><select name="category">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select></div>
-      <div class="field"><label>Unit</label><input name="unit" placeholder="Bottle, Box, Piece…" value="{{ fv(new_form, 'unit') }}"></div>
-      <div class="field"><label>Cost Price (JOD)</label><input type="number" step="0.001" name="cost_price" value="{{ fv(new_form, 'cost_price') }}"></div>
-      <div class="field"><label>Preferred Distributor</label>
-        <select name="distributor_id"><option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if fv(new_form, 'distributor_id')==d.id }}>{{ d.name }}</option>{% endfor %}</select>
+      <div class="field"><label for="inventorycatalog-1-name">Item Name</label><input id="inventorycatalog-1-name" required name="name" value="{{ fv(new_form, 'name') }}"></div>
+      <div class="field"><label for="inventorycatalog-2-category">Category</label><select id="inventorycatalog-2-category" name="category">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="inventorycatalog-3-unit">Unit</label><input id="inventorycatalog-3-unit" name="unit" placeholder="Bottle, Box, Piece…" value="{{ fv(new_form, 'unit') }}"></div>
+      <div class="field"><label for="inventorycatalog-4-cost_price">Cost Price (JOD)</label><input id="inventorycatalog-4-cost_price" type="number" step="0.001" name="cost_price" value="{{ fv(new_form, 'cost_price') }}"></div>
+      <div class="field"><label for="inventorycatalog-5-distributor_id">Preferred Distributor</label>
+        <select id="inventorycatalog-5-distributor_id" name="distributor_id"><option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if fv(new_form, 'distributor_id')==d.id }}>{{ d.name }}</option>{% endfor %}</select>
       </div>
       <div class="field checkbox-row" style="margin-top:22px;"><input type="checkbox" name="track_expiry" id="te" {{ 'checked' if fv(new_form, 'track_expiry', 'on')=='on' }}><label for="te" style="text-transform:none; font-weight:500;">Track Expiry Date</label></div>
-      <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(new_form, 'notes') }}"></div>
+      <div class="field full"><label for="inventorycatalog-6-notes">Notes</label><input id="inventorycatalog-6-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Add Item</button>
@@ -65,7 +65,7 @@
   <col style="width:11%;">
   <col style="width:14%;">
 </colgroup>
-  <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Unit</th><th>Barcode</th><th style="white-space:normal;">Track Expiry</th><th class="num-col">Cost (JOD)</th><th>Distributor</th><th></th></tr></thead>
+  <thead><tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Unit</th><th scope="col">Barcode</th><th scope="col" style="white-space:normal;">Track Expiry</th><th scope="col" class="num-col">Cost (JOD)</th><th scope="col">Distributor</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for i in items %}
     {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}

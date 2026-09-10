@@ -20,9 +20,9 @@
 <table class="cohort-table">
   <thead>
     <tr>
-      <th>Cohort (First Visit)</th>
-      <th class="num-col">Size</th>
-      {% for o in cohort.offsets %}<th class="num-col">+{{ o }}mo</th>{% endfor %}
+      <th scope="col">Cohort (First Visit)</th>
+      <th scope="col" class="num-col">Size</th>
+      {% for o in cohort.offsets %}<th scope="col" class="num-col">+{{ o }}mo</th>{% endfor %}
     </tr>
   </thead>
   <tbody>

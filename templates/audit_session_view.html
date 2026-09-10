@@ -30,9 +30,9 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead class="sticky-header"><tr>
-    <th>Item</th><th class="num-col">Stock Counted</th><th class="num-col">Received</th>
-    <th class="num-col">Reorder Threshold</th><th>Critical?</th><th class="num-col">Target Coverage (Days)</th>
-    <th>Nearest Expiry</th><th>Notes</th>
+    <th scope="col">Item</th><th scope="col" class="num-col">Stock Counted</th><th scope="col" class="num-col">Received</th>
+    <th scope="col" class="num-col">Reorder Threshold</th><th scope="col">Critical?</th><th scope="col" class="num-col">Target Coverage (Days)</th>
+    <th scope="col">Nearest Expiry</th><th scope="col">Notes</th>
   </tr></thead>
   <tbody>
     {% for it in items %}

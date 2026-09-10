@@ -99,7 +99,7 @@
           </label>
         </div>
         <div id="autoFields" class="field full" style="margin-bottom:12px;">
-          <label>Add Billed Items</label>
+          <label for="visitBillSearch">Add Billed Items</label>
           <input type="text" id="visitBillSearch" autocomplete="off"
                  placeholder="Search by service, medicine, or item name…">
           <div id="visitBillResults"></div>
@@ -107,11 +107,11 @@
           <div id="visitBillFieldsHidden"></div>
         </div>
         <div id="manualFields" class="field full" style="margin-bottom:12px;">
-          <label>Billed Amount (JOD) — Exported as "Veterinary Services"</label>
-          <input type="number" step="0.001" name="manual_amount" value="{{ fv(form, 'manual_amount', billing.manual_amount if billing and billing.manual_amount else '') }}">
+          <label for="visitdetail-1-manual_amount">Billed Amount (JOD) — Exported as "Veterinary Services"</label>
+          <input id="visitdetail-1-manual_amount" type="number" step="0.001" name="manual_amount" value="{{ fv(form, 'manual_amount', billing.manual_amount if billing and billing.manual_amount else '') }}">
         </div>
-        <div class="field full" style="margin-bottom:12px;"><label>Date Billed</label><input type="date" name="date_billed" required value="{{ fv(form, 'date_billed', billing.date_billed if billing else (visit.date or today)) }}"></div>
-        <div class="field full" style="margin-bottom:14px;"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes', billing.notes if billing else '') }}"></div>
+        <div class="field full" style="margin-bottom:12px;"><label for="visitdetail-2-date_billed">Date Billed</label><input id="visitdetail-2-date_billed" type="date" name="date_billed" required value="{{ fv(form, 'date_billed', billing.date_billed if billing else (visit.date or today)) }}"></div>
+        <div class="field full" style="margin-bottom:14px;"><label for="visitdetail-3-notes">Notes</label><input id="visitdetail-3-notes" name="notes" value="{{ fv(form, 'notes', billing.notes if billing else '') }}"></div>
         <button class="btn small" type="submit" onclick="return prepareBillingSubmit()">Save Billing</button>
       </form>
 
@@ -120,7 +120,7 @@
         <div class="detail-item" style="margin-top:8px;"><div class="k">Subtotal</div><div class="v">{{ summary.subtotal|money }} JOD</div></div>
         <form method="post" action="{{ url_for('visit_discount_save', visit_id=visit.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="field" style="flex:1;"><label>Discount % (Max {{ discount_cap }}%)</label><input type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ fv(form, 'discount_percent', summary.discount_percent) if discount_error else summary.discount_percent }}"></div>
+          <div class="field" style="flex:1;"><label for="visitdetail-4-discount_percent">Discount % (Max {{ discount_cap }}%)</label><input id="visitdetail-4-discount_percent" type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ fv(form, 'discount_percent', summary.discount_percent) if discount_error else summary.discount_percent }}"></div>
           <button class="btn small secondary" type="submit">Apply</button>
         </form>
         <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} JOD</div></div>
@@ -131,10 +131,10 @@
 
       <form method="post" action="{{ url_for('visit_payment_add', visit_id=visit.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="field" style="flex:1;"><label>Record Payment (JOD)</label><input type="number" step="0.001" name="amount" required value="{{ fv(form, 'amount') if payment_error else '' }}"></div>
-        <div class="field"><label>Clean Up (max {{ CLEANUP_CAP }} JOD)</label><input type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error else '0' }}"></div>
-        <div class="field"><label>Method</label>
-          <select name="method">
+        <div class="field" style="flex:1;"><label for="visitdetail-5-amount">Record Payment (JOD)</label><input id="visitdetail-5-amount" type="number" step="0.001" name="amount" required value="{{ fv(form, 'amount') if payment_error else '' }}"></div>
+        <div class="field"><label for="visitdetail-6-cleanup_amount">Clean Up (max {{ CLEANUP_CAP }} JOD)</label><input id="visitdetail-6-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error else '0' }}"></div>
+        <div class="field"><label for="visitdetail-7-method">Method</label>
+          <select id="visitdetail-7-method" name="method">
             {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}
             <option {{ 'selected' if m=='Cash' }}>Cash</option>
             <option {{ 'selected' if m=='Card' }}>Card</option>

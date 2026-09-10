@@ -14,7 +14,7 @@
 {% set new_form = form if open_new_form else None %}
 <div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:16px;">
   <div class="field" style="margin-bottom:12px;">
-    <label>Search Patient (Name, Patient ID, Owner Name, or Owner Phone)</label>
+    <label for="patientSearch">Search Patient (Name, Patient ID, Owner Name, or Owner Phone)</label>
     <input type="text" id="patientSearch" autocomplete="off" placeholder="Start Typing…">
   </div>
   <div id="searchResults" style="margin-bottom:10px;"></div>
@@ -24,12 +24,12 @@
     <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel">{{ new_form_patient_label or '' }}</strong></p>
     <input type="hidden" name="patient_id" id="patientIdField" value="{{ fv(new_form, 'patient_id') }}">
     <div class="form-grid">
-      <div class="field"><label>Entry Date</label><input required type="date" name="entry_date" value="{{ fv(new_form, 'entry_date', today) }}" onchange="suggestTotal()" id="entryDateField"></div>
-      <div class="field"><label>Expected Dismissal Date</label><input type="date" name="dismissal_date" value="{{ fv(new_form, 'dismissal_date') }}" onchange="suggestTotal()" id="dismissalDateField"></div>
-      <div class="field"><label>Allocated Room</label><input name="room" value="{{ fv(new_form, 'room') }}"></div>
-      <div class="field"><label>Admitted Items (Leash, Bed, Etc.)</label><input name="admitted_items" value="{{ fv(new_form, 'admitted_items') }}"></div>
-      <div class="field"><label>Price per Day (JOD)</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" value="{{ fv(new_form, 'price_per_day') }}" onchange="suggestTotal()"></div>
-      <div class="field"><label>Total (JOD)</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="Auto-suggested from price × nights"></div>
+      <div class="field"><label for="entryDateField">Entry Date</label><input required type="date" name="entry_date" value="{{ fv(new_form, 'entry_date', today) }}" onchange="suggestTotal()" id="entryDateField"></div>
+      <div class="field"><label for="dismissalDateField">Expected Dismissal Date</label><input type="date" name="dismissal_date" value="{{ fv(new_form, 'dismissal_date') }}" onchange="suggestTotal()" id="dismissalDateField"></div>
+      <div class="field"><label for="boarding-1-room">Allocated Room</label><input id="boarding-1-room" name="room" value="{{ fv(new_form, 'room') }}"></div>
+      <div class="field"><label for="boarding-2-admitted_items">Admitted Items (Leash, Bed, Etc.)</label><input id="boarding-2-admitted_items" name="admitted_items" value="{{ fv(new_form, 'admitted_items') }}"></div>
+      <div class="field"><label for="pricePerDayField">Price per Day (JOD)</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" value="{{ fv(new_form, 'price_per_day') }}" onchange="suggestTotal()"></div>
+      <div class="field"><label for="totalField">Total (JOD)</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="Auto-suggested from price × nights"></div>
       <div class="field full" id="boardingDateWarning" style="display:none; color:var(--danger);"></div>
       <div class="field full">
         <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
@@ -55,16 +55,16 @@
     <p class="small muted" id="incidentPatientLabel" style="margin-bottom:12px;"></p>
     <form method="post" id="incidentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field full" style="margin-bottom:12px;"><label>What's wrong?</label><textarea name="issue" required></textarea></div>
+      <div class="field full" style="margin-bottom:12px;"><label for="boarding-3-issue">What's wrong?</label><textarea id="boarding-3-issue" name="issue" required></textarea></div>
       <label class="checkbox-row small" style="text-transform:none; font-weight:500; margin-bottom:8px;">
         <input type="checkbox" name="contacted" id="incidentContactedCheck" onchange="document.getElementById('incidentContactFields').style.display = this.checked ? 'block' : 'none';">
         Contacted the owner?
       </label>
       <div id="incidentContactFields" style="display:none;">
-        <div class="field" style="margin-bottom:10px;"><label>How?</label>
-          <select name="contact_method"><option>Phone Call</option><option>Text Message</option></select>
+        <div class="field" style="margin-bottom:10px;"><label for="boarding-4-contact_method">How?</label>
+          <select id="boarding-4-contact_method" name="contact_method"><option>Phone Call</option><option>Text Message</option></select>
         </div>
-        <div class="field full" style="margin-bottom:12px;"><label>Owner's Response</label><textarea name="response"></textarea></div>
+        <div class="field full" style="margin-bottom:12px;"><label for="boarding-5-response">Owner's Response</label><textarea id="boarding-5-response" name="response"></textarea></div>
       </div>
       <div class="form-actions">
         <button class="btn small" type="submit">Log Incident</button>
@@ -80,18 +80,18 @@
     <p class="small muted" id="paymentPatientLabel" style="margin-bottom:12px;"></p>
     <form method="post" id="paymentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field" style="margin-bottom:10px;"><label>Amount (JOD)</label><input type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label>Discount (max {{ discount_cap }}%)</label><input type="number" step="0.01" min="0" max="{{ discount_cap }}" name="discount_percent" id="paymentDiscountInput" value="{{ fv(form, 'discount_percent') if payment_error_id else '0' }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label>Clean Up (max {{ CLEANUP_CAP }} JOD)</label><input type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error_id else '0' }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label>Method</label>
-        <select name="method">
+      <div class="field" style="margin-bottom:10px;"><label for="boarding-6-amount">Amount (JOD)</label><input id="boarding-6-amount" type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="paymentDiscountInput">Discount (max {{ discount_cap }}%)</label><input type="number" step="0.01" min="0" max="{{ discount_cap }}" name="discount_percent" id="paymentDiscountInput" value="{{ fv(form, 'discount_percent') if payment_error_id else '0' }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="boarding-7-cleanup_amount">Clean Up (max {{ CLEANUP_CAP }} JOD)</label><input id="boarding-7-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error_id else '0' }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="boarding-8-method">Method</label>
+        <select id="boarding-8-method" name="method">
           {% set m = fv(form, 'method', 'Cash') if payment_error_id else 'Cash' %}
           <option {{ 'selected' if m=='Cash' }}>Cash</option>
           <option {{ 'selected' if m=='Card' }}>Card</option>
           <option {{ 'selected' if m=='Transfer' }}>Transfer</option>
         </select>
       </div>
-      <div class="field full" style="margin-bottom:12px;"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes') if payment_error_id else '' }}"></div>
+      <div class="field full" style="margin-bottom:12px;"><label for="boarding-9-notes">Notes</label><input id="boarding-9-notes" name="notes" value="{{ fv(form, 'notes') if payment_error_id else '' }}"></div>
       <div class="form-actions">
         <button class="btn small" type="submit">Record Payment</button>
         <button class="btn small secondary" type="button" onclick="document.getElementById('paymentModal').style.display='none';">Cancel</button>
@@ -103,8 +103,8 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead><tr>
-    <th>Patient</th><th>Owner</th><th>Room</th><th>Entry</th><th>Dismissal</th>
-    <th class="num-col">Total (JOD)</th><th>Payment</th><th>Special Needs</th><th>Incidents</th><th></th>
+    <th scope="col">Patient</th><th scope="col">Owner</th><th scope="col">Room</th><th scope="col">Entry</th><th scope="col">Dismissal</th>
+    <th scope="col" class="num-col">Total (JOD)</th><th scope="col">Payment</th><th scope="col">Special Needs</th><th scope="col">Incidents</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for s in sessions %}
@@ -147,12 +147,12 @@
         <form method="post" action="{{ url_for('boarding_edit', boarding_id=s.id) }}" class="form-grid" style="padding:10px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="expected_updated_at" value="{{ s.updated_at or '' }}">
-          <div class="field"><label>Entry Date</label><input type="date" name="entry_date" value="{{ fv(row_form, 'entry_date', s.entry_date) }}"></div>
-          <div class="field"><label>Dismissal Date</label><input type="date" name="dismissal_date" value="{{ fv(row_form, 'dismissal_date', s.dismissal_date or '') }}"></div>
-          <div class="field"><label>Room</label><input name="room" value="{{ fv(row_form, 'room', s.room or '') }}"></div>
-          <div class="field"><label>Admitted Items</label><input name="admitted_items" value="{{ fv(row_form, 'admitted_items', s.admitted_items or '') }}"></div>
-          <div class="field"><label>Price per Day (JOD)</label><input type="number" step="0.001" name="price_per_day" value="{{ fv(row_form, 'price_per_day', s.price_per_day if s.price_per_day is not none else '') }}"></div>
-          <div class="field"><label>Total (JOD)</label><input type="number" step="0.001" name="total" placeholder="Auto-suggested from price × nights"
+          <div class="field"><label for="stay-entry_date-{{ s.id }}">Entry Date</label><input id="stay-entry_date-{{ s.id }}" type="date" name="entry_date" value="{{ fv(row_form, 'entry_date', s.entry_date) }}"></div>
+          <div class="field"><label for="stay-dismissal_date-{{ s.id }}">Dismissal Date</label><input id="stay-dismissal_date-{{ s.id }}" type="date" name="dismissal_date" value="{{ fv(row_form, 'dismissal_date', s.dismissal_date or '') }}"></div>
+          <div class="field"><label for="stay-room-{{ s.id }}">Room</label><input id="stay-room-{{ s.id }}" name="room" value="{{ fv(row_form, 'room', s.room or '') }}"></div>
+          <div class="field"><label for="stay-admitted_items-{{ s.id }}">Admitted Items</label><input id="stay-admitted_items-{{ s.id }}" name="admitted_items" value="{{ fv(row_form, 'admitted_items', s.admitted_items or '') }}"></div>
+          <div class="field"><label for="stay-price_per_day-{{ s.id }}">Price per Day (JOD)</label><input id="stay-price_per_day-{{ s.id }}" type="number" step="0.001" name="price_per_day" value="{{ fv(row_form, 'price_per_day', s.price_per_day if s.price_per_day is not none else '') }}"></div>
+          <div class="field"><label for="stay-total-{{ s.id }}">Total (JOD)</label><input id="stay-total-{{ s.id }}" type="number" step="0.001" name="total" placeholder="Auto-suggested from price × nights"
             value="{{ fv(row_form, 'total', s.total if (s.total is not none and not s.total_is_auto) else '') }}"></div>
           <div class="field full">
             <label class="checkbox-row small" style="text-transform:none; font-weight:500;">

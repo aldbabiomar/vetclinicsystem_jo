@@ -23,7 +23,7 @@
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th>Date</th><th>ID</th><th>Animal</th><th>Owner</th><th>Type</th><th>Doctor</th><th>Status</th><th>Payment</th><th class="num-col">Bill (JOD)</th></tr></thead>
+  <thead><tr><th scope="col">Date</th><th scope="col">ID</th><th scope="col">Animal</th><th scope="col">Owner</th><th scope="col">Type</th><th scope="col">Doctor</th><th scope="col">Status</th><th scope="col">Payment</th><th scope="col" class="num-col">Bill (JOD)</th></tr></thead>
   <tbody>
     {% for v in visits %}
     <tr onclick="window.location='{{ url_for('visit_detail', visit_id=v.id) }}'" onkeydown="if(event.key==='Enter'){window.location='{{ url_for('visit_detail', visit_id=v.id) }}'}" tabindex="0" role="link" style="cursor:pointer;">

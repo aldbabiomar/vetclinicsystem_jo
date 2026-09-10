@@ -10,7 +10,7 @@
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th>Patient ID</th><th>Animal</th><th>Owner</th><th>Phone</th><th>Admitted Items</th><th>Status</th><th>Contacted?</th><th></th></tr></thead>
+  <thead><tr><th scope="col">Patient ID</th><th scope="col">Animal</th><th scope="col">Owner</th><th scope="col">Phone</th><th scope="col">Admitted Items</th><th scope="col">Status</th><th scope="col">Contacted?</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for gr in rows %}
     <form id="g-{{ gr.visit_id }}" method="post" action="{{ url_for('grooming_update', visit_id=gr.visit_id) }}">

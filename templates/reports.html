@@ -16,8 +16,8 @@
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
   <thead><tr>
-    <th>Month</th><th class="num-col">Revenue</th><th class="num-col">COGS</th><th class="num-col">Gross Profit</th>
-    <th class="num-col">OpEx</th><th class="num-col">Net Profit</th><th class="num-col">Net Margin</th><th class="num-col">MoM Change</th>
+    <th scope="col">Month</th><th scope="col" class="num-col">Revenue</th><th scope="col" class="num-col">COGS</th><th scope="col" class="num-col">Gross Profit</th>
+    <th scope="col" class="num-col">OpEx</th><th scope="col" class="num-col">Net Profit</th><th scope="col" class="num-col">Net Margin</th><th scope="col" class="num-col">MoM Change</th>
   </tr></thead>
   <tbody>
     {% for r in pl %}
@@ -43,12 +43,12 @@
   <form method="post" action="{{ url_for('reports_opex_save') }}" id="opexForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
-      <div class="field"><label>Month</label><input required type="month" name="month" id="opexMonth" value="{{ fv(form, 'month', today[:7]) }}" onchange="loadOpexForMonth()"></div>
-      <div class="field"><label>Rent (JOD)</label><input type="number" step="0.001" name="rent" id="opexRent" value="{{ fv(form, 'rent', '0') }}"></div>
-      <div class="field"><label>Salaries / Payroll (JOD)</label><input type="number" step="0.001" name="salaries" id="opexSalaries" value="{{ fv(form, 'salaries', '0') }}"></div>
-      <div class="field"><label>Utilities (JOD)</label><input type="number" step="0.001" name="utilities" id="opexUtilities" value="{{ fv(form, 'utilities', '0') }}"></div>
-      <div class="field"><label>Marketing (JOD)</label><input type="number" step="0.001" name="marketing" id="opexMarketing" value="{{ fv(form, 'marketing', '0') }}"></div>
-      <div class="field"><label>Other OpEx (JOD)</label><input type="number" step="0.001" name="other" id="opexOther" value="{{ fv(form, 'other', '0') }}"></div>
+      <div class="field"><label for="opexMonth">Month</label><input required type="month" name="month" id="opexMonth" value="{{ fv(form, 'month', today[:7]) }}" onchange="loadOpexForMonth()"></div>
+      <div class="field"><label for="opexRent">Rent (JOD)</label><input type="number" step="0.001" name="rent" id="opexRent" value="{{ fv(form, 'rent', '0') }}"></div>
+      <div class="field"><label for="opexSalaries">Salaries / Payroll (JOD)</label><input type="number" step="0.001" name="salaries" id="opexSalaries" value="{{ fv(form, 'salaries', '0') }}"></div>
+      <div class="field"><label for="opexUtilities">Utilities (JOD)</label><input type="number" step="0.001" name="utilities" id="opexUtilities" value="{{ fv(form, 'utilities', '0') }}"></div>
+      <div class="field"><label for="opexMarketing">Marketing (JOD)</label><input type="number" step="0.001" name="marketing" id="opexMarketing" value="{{ fv(form, 'marketing', '0') }}"></div>
+      <div class="field"><label for="opexOther">Other OpEx (JOD)</label><input type="number" step="0.001" name="other" id="opexOther" value="{{ fv(form, 'other', '0') }}"></div>
     </div>
     <p class="small muted" id="opexHint" style="margin:6px 0 0;"></p>
     <div class="form-actions"><button class="btn" type="submit">Save Operating Costs</button></div>

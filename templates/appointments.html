@@ -17,7 +17,7 @@
   </p>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Date</th><th>Time</th><th>Pet</th><th>Owner</th><th>Assigned To</th><th>Why</th><th></th></tr></thead>
+      <thead><tr><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Pet</th><th scope="col">Owner</th><th scope="col">Assigned To</th><th scope="col">Why</th><th scope="col"></th></tr></thead>
       <tbody>
         {% for a in orphaned %}
         <tr>
@@ -89,12 +89,12 @@
       <input type="hidden" name="resource_type" id="addResourceType" value="{{ fv(form, 'resource_type') }}">
       <input type="hidden" name="resource_id" id="addResourceId" value="{{ fv(form, 'resource_id') }}">
       <p class="small muted" id="addSlotLabel">{{ (fv(form, 'appt_date') ~ ' · ' ~ fv(form, 'slot_label')) if open_add_modal else '' }}</p>
-      <div class="field" style="margin-bottom:10px;"><label>Pet Name</label><input required name="pet_name" value="{{ fv(form, 'pet_name') }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label>Owner Name</label><input required name="owner_name" value="{{ fv(form, 'owner_name') }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label>Type</label>
-        <select name="appointment_type"><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Medical' }}>Medical</option><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Grooming' }}>Grooming</option></select>
+      <div class="field" style="margin-bottom:10px;"><label for="appointments-1-pet_name">Pet Name</label><input id="appointments-1-pet_name" required name="pet_name" value="{{ fv(form, 'pet_name') }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="appointments-2-owner_name">Owner Name</label><input id="appointments-2-owner_name" required name="owner_name" value="{{ fv(form, 'owner_name') }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="appointments-3-appointment_type">Type</label>
+        <select id="appointments-3-appointment_type" name="appointment_type"><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Medical' }}>Medical</option><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Grooming' }}>Grooming</option></select>
       </div>
-      <div class="field" style="margin-bottom:14px;"><label>Reason</label><input name="reason" value="{{ fv(form, 'reason') }}"></div>
+      <div class="field" style="margin-bottom:14px;"><label for="appointments-4-reason">Reason</label><input id="appointments-4-reason" name="reason" value="{{ fv(form, 'reason') }}"></div>
       <div style="display:flex; gap:10px; justify-content:flex-end;">
         <button class="btn secondary" type="button" onclick="document.getElementById('addModal').style.display='none';">Cancel</button>
         <button class="btn" type="submit">Book</button>

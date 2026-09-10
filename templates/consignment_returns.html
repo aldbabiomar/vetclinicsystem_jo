@@ -17,16 +17,16 @@
   <form method="post" action="{{ url_for('consignment_returns_new') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
-      <div class="field"><label>Item</label>
-        <select name="item_id" required>
+      <div class="field"><label for="consignmentreturns-1-item_id">Item</label>
+        <select id="consignmentreturns-1-item_id" name="item_id" required>
           <option value="">—</option>
           {% for i in items %}<option value="{{ i.id }}" {{ 'selected' if fv(form, 'item_id')==i.id }}>{{ i.name }} ({{ i.distributor_name }})</option>{% endfor %}
         </select>
       </div>
-      <div class="field"><label>Quantity</label><input type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
-      <div class="field"><label>Return Date</label><input type="date" name="return_date" value="{{ fv(form, 'return_date', today) }}"></div>
-      <div class="field"><label>Reason</label><input name="reason" value="{{ fv(form, 'reason') }}" placeholder="E.g. slow-moving, discontinued"></div>
-      <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(form, 'notes') }}"></div>
+      <div class="field"><label for="consignmentreturns-2-quantity">Quantity</label><input id="consignmentreturns-2-quantity" type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
+      <div class="field"><label for="consignmentreturns-3-return_date">Return Date</label><input id="consignmentreturns-3-return_date" type="date" name="return_date" value="{{ fv(form, 'return_date', today) }}"></div>
+      <div class="field"><label for="consignmentreturns-4-reason">Reason</label><input id="consignmentreturns-4-reason" name="reason" value="{{ fv(form, 'reason') }}" placeholder="E.g. slow-moving, discontinued"></div>
+      <div class="field full"><label for="consignmentreturns-5-notes">Notes</label><input id="consignmentreturns-5-notes" name="notes" value="{{ fv(form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Log Return</button>
@@ -39,8 +39,8 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead class="sticky-header"><tr>
-    <th>Date</th><th>Item</th><th>Distributor</th><th class="num-col">Quantity</th>
-    <th class="num-col">Unit Cost (JOD)</th><th>Reason</th><th>Notes</th>
+    <th scope="col">Date</th><th scope="col">Item</th><th scope="col">Distributor</th><th scope="col" class="num-col">Quantity</th>
+    <th scope="col" class="num-col">Unit Cost (JOD)</th><th scope="col">Reason</th><th scope="col">Notes</th>
   </tr></thead>
   <tbody>
     {% for r in returns %}

@@ -6,22 +6,22 @@
 <form method="post" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="form-grid">
-    <div class="field"><label>Animal Name</label><input required name="animal_name" value="{{ patient.animal_name }}"></div>
-    <div class="field"><label>Species</label>
-      <select name="species">{% for sp in ['Dog','Cat','Bird','Rabbit','Other'] %}<option {{ 'selected' if patient.species==sp }}>{{ sp }}</option>{% endfor %}</select>
+    <div class="field"><label for="patientformedit-1-animal_name">Animal Name</label><input id="patientformedit-1-animal_name" required name="animal_name" value="{{ patient.animal_name }}"></div>
+    <div class="field"><label for="patientformedit-2-species">Species</label>
+      <select id="patientformedit-2-species" name="species">{% for sp in ['Dog','Cat','Bird','Rabbit','Other'] %}<option {{ 'selected' if patient.species==sp }}>{{ sp }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label>Sex</label>
-      <select name="sex"><option value="">—</option>{% for sx in ['M','F'] %}<option {{ 'selected' if patient.sex==sx }}>{{ sx }}</option>{% endfor %}</select>
+    <div class="field"><label for="patientformedit-3-sex">Sex</label>
+      <select id="patientformedit-3-sex" name="sex"><option value="">—</option>{% for sx in ['M','F'] %}<option {{ 'selected' if patient.sex==sx }}>{{ sx }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label>Reproductive Status</label>
-      <select name="repro_status"><option value="">—</option>{% for rs in ['Intact','Neutered','Spayed'] %}<option {{ 'selected' if patient.repro_status==rs }}>{{ rs }}</option>{% endfor %}</select>
+    <div class="field"><label for="patientformedit-4-repro_status">Reproductive Status</label>
+      <select id="patientformedit-4-repro_status" name="repro_status"><option value="">—</option>{% for rs in ['Intact','Neutered','Spayed'] %}<option {{ 'selected' if patient.repro_status==rs }}>{{ rs }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label>Age / DOB Note</label><input name="age_note" value="{{ patient.age_note or '' }}"></div>
-    <div class="field"><label>Housing</label>
-      <select name="housing"><option value="">—</option>{% for h in ['Indoor','Outdoor','Stray'] %}<option {{ 'selected' if patient.housing==h }}>{{ h }}</option>{% endfor %}</select>
+    <div class="field"><label for="patientformedit-5-age_note">Age / DOB Note</label><input id="patientformedit-5-age_note" name="age_note" value="{{ patient.age_note or '' }}"></div>
+    <div class="field"><label for="patientformedit-6-housing">Housing</label>
+      <select id="patientformedit-6-housing" name="housing"><option value="">—</option>{% for h in ['Indoor','Outdoor','Stray'] %}<option {{ 'selected' if patient.housing==h }}>{{ h }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label>Microchip Number (optional)</label><input name="microchip" autocomplete="off" placeholder="e.g. 985141000123456" value="{{ fv(form, 'microchip', patient.microchip or '') }}"></div>
-    <div class="field full"><label>Notes</label><textarea name="notes">{{ patient.notes or '' }}</textarea></div>
+    <div class="field"><label for="patientformedit-7-microchip">Microchip Number (optional)</label><input id="patientformedit-7-microchip" name="microchip" autocomplete="off" placeholder="e.g. 985141000123456" value="{{ fv(form, 'microchip', patient.microchip or '') }}"></div>
+    <div class="field full"><label for="patientformedit-8-notes">Notes</label><textarea id="patientformedit-8-notes" name="notes">{{ patient.notes or '' }}</textarea></div>
   </div>
   <div class="form-actions">
     <button class="btn" type="submit">Save Changes</button>

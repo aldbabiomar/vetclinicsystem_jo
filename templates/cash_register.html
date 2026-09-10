@@ -24,8 +24,8 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th>Date</th><th>Employee</th><th>Type</th><th class="num-col">Subtotal</th>
-    <th class="num-col">Discount</th><th class="num-col">Total (JOD)</th><th>Payment</th>
+    <th scope="col">Date</th><th scope="col">Employee</th><th scope="col">Type</th><th scope="col" class="num-col">Subtotal</th>
+    <th scope="col" class="num-col">Discount</th><th scope="col" class="num-col">Total (JOD)</th><th scope="col">Payment</th>
   </tr></thead>
   <tbody>
     {% for r in ledger %}
@@ -97,11 +97,11 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="day" value="{{ fv(payout_form, 'day', day) }}">
       <div class="form-grid">
-        <div class="field" style="grid-column:1/-1;"><label>Amount (JOD)</label>
-          <input type="number" name="amount" min="1" step="0.001" required autofocus value="{{ fv(payout_form, 'amount') }}">
+        <div class="field" style="grid-column:1/-1;"><label for="cashregister-1-amount">Amount (JOD)</label>
+          <input id="cashregister-1-amount" type="number" name="amount" min="1" step="0.001" required autofocus value="{{ fv(payout_form, 'amount') }}">
         </div>
-        <div class="field" style="grid-column:1/-1;"><label>Reason</label>
-          <input type="text" name="reason" value="{{ fv(payout_form, 'reason') }}" placeholder="e.g. paid the produce delivery driver" required>
+        <div class="field" style="grid-column:1/-1;"><label for="cashregister-2-reason">Reason</label>
+          <input id="cashregister-2-reason" type="text" name="reason" value="{{ fv(payout_form, 'reason') }}" placeholder="e.g. paid the produce delivery driver" required>
         </div>
       </div>
       <div class="form-actions">
@@ -124,11 +124,11 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="day" value="{{ fv(audit_form, 'day', day) }}">
       <div class="form-grid">
-        <div class="field" style="grid-column:1/-1;"><label>Cash Counted From the Register (JOD)</label>
-          <input type="number" name="counted_cash" min="0" step="0.001" required autofocus value="{{ fv(audit_form, 'counted_cash') }}">
+        <div class="field" style="grid-column:1/-1;"><label for="cashregister-3-counted_cash">Cash Counted From the Register (JOD)</label>
+          <input id="cashregister-3-counted_cash" type="number" name="counted_cash" min="0" step="0.001" required autofocus value="{{ fv(audit_form, 'counted_cash') }}">
         </div>
-        <div class="field" style="grid-column:1/-1;"><label>Notes (optional)</label>
-          <input type="text" name="notes" value="{{ fv(audit_form, 'notes') }}" placeholder="e.g. counted twice, drawer was short a note">
+        <div class="field" style="grid-column:1/-1;"><label for="cashregister-4-notes">Notes (optional)</label>
+          <input id="cashregister-4-notes" type="text" name="notes" value="{{ fv(audit_form, 'notes') }}" placeholder="e.g. counted twice, drawer was short a note">
         </div>
       </div>
       <div class="form-actions">

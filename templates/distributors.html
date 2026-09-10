@@ -25,7 +25,7 @@
 <div class="card" style="margin:16px 0;">
   <div class="section-title" style="margin-top:0;">Who You Owe Most</div>
   <table>
-    <thead><tr><th>Distributor</th><th class="num-col">Outstanding (JOD)</th></tr></thead>
+    <thead><tr><th scope="col">Distributor</th><th scope="col" class="num-col">Outstanding (JOD)</th></tr></thead>
     <tbody>
       {% for r in payables.top_outstanding %}
       <tr>
@@ -49,14 +49,14 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if open_new_form else None %}
     <div class="form-grid">
-      <div class="field"><label>Distributor Name</label><input required name="name" value="{{ fv(new_form, 'name') }}"></div>
-      <div class="field"><label>Contact Person</label><input name="contact_person" value="{{ fv(new_form, 'contact_person') }}"></div>
-      <div class="field"><label>Phone</label><input name="phone" value="{{ fv(new_form, 'phone') }}" data-phone-field></div>
-      <div class="field"><label>Email</label><input type="email" name="email" value="{{ fv(new_form, 'email') }}"></div>
-      <div class="field"><label>Product Catalog Link</label><input name="catalog_link" value="{{ fv(new_form, 'catalog_link') }}"></div>
-      <div class="field"><label>Lead Time (Days)</label><input type="number" name="lead_time_days" value="{{ fv(new_form, 'lead_time_days') }}"></div>
-      <div class="field"><label>Payment Terms</label><input name="payment_terms" value="{{ fv(new_form, 'payment_terms') }}" placeholder="E.g. Net 30"></div>
-      <div class="field full"><label>Notes</label><input name="notes" value="{{ fv(new_form, 'notes') }}"></div>
+      <div class="field"><label for="distributors-1-name">Distributor Name</label><input id="distributors-1-name" required name="name" value="{{ fv(new_form, 'name') }}"></div>
+      <div class="field"><label for="distributors-2-contact_person">Contact Person</label><input id="distributors-2-contact_person" name="contact_person" value="{{ fv(new_form, 'contact_person') }}"></div>
+      <div class="field"><label for="distributors-3-phone">Phone</label><input id="distributors-3-phone" name="phone" value="{{ fv(new_form, 'phone') }}" data-phone-field></div>
+      <div class="field"><label for="distributors-4-email">Email</label><input id="distributors-4-email" type="email" name="email" value="{{ fv(new_form, 'email') }}"></div>
+      <div class="field"><label for="distributors-5-catalog_link">Product Catalog Link</label><input id="distributors-5-catalog_link" name="catalog_link" value="{{ fv(new_form, 'catalog_link') }}"></div>
+      <div class="field"><label for="distributors-6-lead_time_days">Lead Time (Days)</label><input id="distributors-6-lead_time_days" type="number" name="lead_time_days" value="{{ fv(new_form, 'lead_time_days') }}"></div>
+      <div class="field"><label for="distributors-7-payment_terms">Payment Terms</label><input id="distributors-7-payment_terms" name="payment_terms" value="{{ fv(new_form, 'payment_terms') }}" placeholder="E.g. Net 30"></div>
+      <div class="field full"><label for="distributors-8-notes">Notes</label><input id="distributors-8-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
       <button class="btn" type="submit">Add Distributor</button>
@@ -68,7 +68,7 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th>ID</th><th>Name</th><th>Contact</th><th>Phone</th><th>Email</th><th class="num-col">Lead Time</th><th>Terms</th><th class="num-col">Outstanding (JOD)</th><th></th>
+    <th scope="col">ID</th><th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Phone</th><th scope="col">Email</th><th scope="col" class="num-col">Lead Time</th><th scope="col">Terms</th><th scope="col" class="num-col">Outstanding (JOD)</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for d in distributors %}

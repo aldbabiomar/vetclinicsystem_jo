@@ -9,7 +9,7 @@
     <p class="small muted">Look up the original sale by ID, then choose which items and quantities to refund. Stock is only put back if you check "Return to stock".</p>
 
     <div class="field" style="margin-bottom:14px;">
-      <label>Sale ID</label>
+      <label for="refundSaleId">Sale ID</label>
       <div style="display:flex; gap:8px;">
         <input type="text" id="refundSaleId" autocomplete="off" placeholder="e.g. 1042" style="flex:1;">
         <button type="button" class="btn secondary" onclick="lookupRefundSale()">Find Sale</button>
@@ -29,16 +29,16 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="sale_id" id="refundSaleIdHidden">
         <div class="form-grid">
-          <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="{{ fv(retail_form, 'refund_date', today) }}"></div>
-          <div class="field"><label>Method</label>
-            <select name="refund_method">
+          <div class="field"><label for="refunds-1-refund_date">Refund Date</label><input id="refunds-1-refund_date" type="date" name="refund_date" value="{{ fv(retail_form, 'refund_date', today) }}"></div>
+          <div class="field"><label for="refunds-2-refund_method">Method</label>
+            <select id="refunds-2-refund_method" name="refund_method">
               <option value="" {{ 'selected' if fv(retail_form, 'refund_method')=='' }}>—</option>
               <option {{ 'selected' if fv(retail_form, 'refund_method')=='Cash' }}>Cash</option>
               <option {{ 'selected' if fv(retail_form, 'refund_method')=='Card' }}>Card</option>
               <option {{ 'selected' if fv(retail_form, 'refund_method')=='Transfer' }}>Transfer</option>
             </select>
           </div>
-          <div class="field"><label>Reason (optional)</label><input type="text" name="reason" value="{{ fv(retail_form, 'reason') }}" placeholder="e.g. wrong item, customer changed mind"></div>
+          <div class="field"><label for="refunds-3-reason">Reason (optional)</label><input id="refunds-3-reason" type="text" name="reason" value="{{ fv(retail_form, 'reason') }}" placeholder="e.g. wrong item, customer changed mind"></div>
         </div>
         <input type="hidden" name="restock" id="restockHidden">
         <div id="refundFieldsHidden"></div>
@@ -55,20 +55,20 @@
     <form method="post" action="{{ url_for('refund_service_save') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
-        <div class="field"><label>Refund Amount (JOD)</label><input type="number" name="amount" min="1" step="0.001" required value="{{ fv(service_form, 'amount') }}"></div>
-        <div class="field"><label>Refund Date</label><input type="date" name="refund_date" value="{{ fv(service_form, 'refund_date', today) }}"></div>
-        <div class="field"><label>Method</label>
-          <select name="refund_method">
+        <div class="field"><label for="refunds-4-amount">Refund Amount (JOD)</label><input id="refunds-4-amount" type="number" name="amount" min="1" step="0.001" required value="{{ fv(service_form, 'amount') }}"></div>
+        <div class="field"><label for="refunds-5-refund_date">Refund Date</label><input id="refunds-5-refund_date" type="date" name="refund_date" value="{{ fv(service_form, 'refund_date', today) }}"></div>
+        <div class="field"><label for="refunds-6-refund_method">Method</label>
+          <select id="refunds-6-refund_method" name="refund_method">
             <option value="" {{ 'selected' if fv(service_form, 'refund_method')=='' }}>—</option>
             <option {{ 'selected' if fv(service_form, 'refund_method')=='Cash' }}>Cash</option>
             <option {{ 'selected' if fv(service_form, 'refund_method')=='Card' }}>Card</option>
             <option {{ 'selected' if fv(service_form, 'refund_method')=='Transfer' }}>Transfer</option>
           </select>
         </div>
-        <div class="field"><label>Visit ID <span class="muted">(one of these three)</span></label><input type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
-        <div class="field"><label>Inpatient Case ID <span class="muted">(one of these three)</span></label><input type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
-        <div class="field"><label>Boarding ID <span class="muted">(one of these three)</span></label><input type="text" name="boarding_id" value="{{ fv(service_form, 'boarding_id') }}" placeholder="e.g. 7"></div>
-        <div class="field" style="grid-column:1/-1;"><label>Reason (optional)</label><input type="text" name="reason" value="{{ fv(service_form, 'reason') }}" placeholder="e.g. service not completed"></div>
+        <div class="field"><label for="refunds-7-visit_id">Visit ID <span class="muted">(one of these three)</span></label><input id="refunds-7-visit_id" type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
+        <div class="field"><label for="refunds-8-inpatient_case_id">Inpatient Case ID <span class="muted">(one of these three)</span></label><input id="refunds-8-inpatient_case_id" type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
+        <div class="field"><label for="refunds-9-boarding_id">Boarding ID <span class="muted">(one of these three)</span></label><input id="refunds-9-boarding_id" type="text" name="boarding_id" value="{{ fv(service_form, 'boarding_id') }}" placeholder="e.g. 7"></div>
+        <div class="field" style="grid-column:1/-1;"><label for="refunds-10-reason">Reason (optional)</label><input id="refunds-10-reason" type="text" name="reason" value="{{ fv(service_form, 'reason') }}" placeholder="e.g. service not completed"></div>
       </div>
       <div class="form-actions"><button class="btn" type="submit">Process Service Refund</button></div>
     </form>
@@ -89,7 +89,7 @@
 {% else %}
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th>Date</th><th>Type</th><th>Details</th><th>Amount</th><th>Method</th><th>Reason</th><th>Processed By</th></tr></thead>
+  <thead><tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Details</th><th scope="col">Amount</th><th scope="col">Method</th><th scope="col">Reason</th><th scope="col">Processed By</th></tr></thead>
   <tbody>
     {% for r in refunds %}
     <tr>
