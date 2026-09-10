@@ -2156,8 +2156,17 @@ def revenue_by_category(db, months_back=12):
           WHERE bs.total IS NOT NULL AND bs.entry_date >= ?
         ),
         refund_lines AS (
+          -- A refund nets against the category it actually reverses. Boarding
+          -- revenue has its own column (boarding_lines above), so a boarding
+          -- refund has to land there and not in Service -- otherwise the two
+          -- columns drift in opposite directions and neither is right.
+          -- Boarding refunds only became possible on 2026-09-10; before that
+          -- every service refund was a visit or an inpatient case, which is
+          -- why this CASE had two arms.
           SELECT to_char(r.refund_date, 'YYYY-MM') AS month,
-                 CASE WHEN r.refund_type='retail' THEN 'Retail' ELSE 'Service' END AS category,
+                 CASE WHEN r.refund_type='retail' THEN 'Retail'
+                      WHEN r.boarding_id IS NOT NULL THEN 'Boarding'
+                      ELSE 'Service' END AS category,
                  -r.amount AS amount
           FROM refunds r
           WHERE r.refund_date >= ?

@@ -197,12 +197,24 @@ INCREMENTAL_SCHEMA_STATEMENTS = [
     # --- ORPHANED_RECORDS_AUDIT.md F-05/F-07/F-13/F-14 — CHECK constraints.
     # Postgres has no "ADD CONSTRAINT IF NOT EXISTS" — DROP IF EXISTS then
     # ADD, run every launch, is what makes each pair idempotent.
+    # Boarding stays became refundable on 2026-09-10. payments has anchored on
+    # visit / inpatient case / boarding since it existed; refunds only ever had
+    # the first two, so a boarding stay could be paid for and never refunded
+    # through the Refunds page. The column must be added BEFORE the CHECK that
+    # names it, and every existing row already satisfies the widened version
+    # ("exactly one of three" where it used to be "exactly one of two").
+    "ALTER TABLE refunds ADD COLUMN IF NOT EXISTS boarding_id INTEGER",
+    "ALTER TABLE refunds DROP CONSTRAINT IF EXISTS refunds_boarding_id_fkey",
+    "ALTER TABLE refunds ADD CONSTRAINT refunds_boarding_id_fkey "
+    "FOREIGN KEY (boarding_id) REFERENCES boarding_sessions(id)",
     "ALTER TABLE refunds DROP CONSTRAINT IF EXISTS refunds_anchor_ck",
     "ALTER TABLE refunds ADD CONSTRAINT refunds_anchor_ck CHECK ("
     "    (refund_type = 'retail'  AND sale_id IS NOT NULL"
-    "        AND visit_id IS NULL AND inpatient_case_id IS NULL)"
+    "        AND visit_id IS NULL AND inpatient_case_id IS NULL AND boarding_id IS NULL)"
     " OR (refund_type = 'service' AND sale_id IS NULL"
-    "        AND (visit_id IS NOT NULL) <> (inpatient_case_id IS NOT NULL))"
+    "        AND (visit_id IS NOT NULL)::int"
+    "          + (inpatient_case_id IS NOT NULL)::int"
+    "          + (boarding_id IS NOT NULL)::int = 1)"
     ")",
     "ALTER TABLE inventory_list DROP CONSTRAINT IF EXISTS inventory_consignment_needs_distributor_ck",
     "ALTER TABLE inventory_list ADD CONSTRAINT inventory_consignment_needs_distributor_ck "

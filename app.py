@@ -6432,6 +6432,7 @@ def refund_service_save():
         return redisplay()
     visit_id = (f.get("visit_id") or "").strip() or None
     case_id_raw = (f.get("inpatient_case_id") or "").strip()
+    boarding_id_raw = (f.get("boarding_id") or "").strip()
 
     if amount <= 0:
         flash("Refund amount must be greater than 0.", "error")
@@ -6440,8 +6441,13 @@ def refund_service_save():
     # inpatient case — never both at once, and never neither. A goodwill/
     # no-specific-record refund is handled through Cash Register instead,
     # not this table. See ORPHANED_RECORDS_AUDIT.md F-05.
-    if bool(visit_id) == bool(case_id_raw):
-        flash("A service refund must be linked to exactly one visit OR one inpatient case.", "error")
+    # Boarding was missing here until 2026-09-10: payments has anchored on
+    # visit / inpatient case / boarding since it existed, so a boarding stay
+    # could be paid for and there was no way to hand the money back through
+    # this page.
+    if [bool(visit_id), bool(case_id_raw), bool(boarding_id_raw)].count(True) != 1:
+        flash("A service refund must be linked to exactly one visit, inpatient case, "
+              "or boarding stay.", "error")
         return redisplay()
 
     # Locked before computing the cap — same reasoning as
@@ -6479,6 +6485,23 @@ def refund_service_save():
             flash(f"That's more than what's left refundable on this case ({logic.fmt_money(cap)} JOD).", "error")
             return redisplay()
 
+    boarding_id = None
+    if boarding_id_raw:
+        if not boarding_id_raw.isdigit() or not db.execute(
+            "SELECT 1 FROM boarding_sessions WHERE id=? FOR UPDATE", (int(boarding_id_raw),)
+        ).fetchone():
+            flash(f"Boarding stay {boarding_id_raw} not found.", "error")
+            return redisplay()
+        boarding_id = int(boarding_id_raw)
+        paid = logic.boarding_billing_summary(db, boarding_id)["paid"]
+        already_refunded = db.execute(
+            "SELECT COALESCE(SUM(amount),0) s FROM refunds WHERE refund_type='service' AND boarding_id=?", (boarding_id,)
+        ).fetchone()["s"]
+        cap = paid - already_refunded
+        if amount > cap:
+            flash(f"That's more than what's left refundable on this stay ({logic.fmt_money(cap)} JOD).", "error")
+            return redisplay()
+
     now = datetime.now().isoformat(timespec="seconds")
     # Snapshot, not a live lookup — see CLEANUP_FEATURE_PLAN.md §3.7/§4.5.
     # No cap change here: the paid-minus-already-refunded caps above
@@ -6491,10 +6514,14 @@ def refund_service_save():
     if case_id:
         c = db.execute("SELECT cleanup_amount FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
         cleanup_amount_at_refund += (c["cleanup_amount"] if c else 0) or 0
+    if boarding_id:
+        bs = db.execute("SELECT cleanup_amount FROM boarding_sessions WHERE id=?", (boarding_id,)).fetchone()
+        cleanup_amount_at_refund += (bs["cleanup_amount"] if bs else 0) or 0
     cur = db.execute(
-        "INSERT INTO refunds (refund_type, refund_date, amount, visit_id, inpatient_case_id, reason, refund_method, "
-        "processed_by, created_at, cleanup_amount_at_refund) VALUES ('service',?,?,?,?,?,?,?,?,?) RETURNING id",
-        (refund_date, round(amount, 3), visit_id, case_id, reason, refund_method, session["user_id"], now,
+        "INSERT INTO refunds (refund_type, refund_date, amount, visit_id, inpatient_case_id, boarding_id, reason, "
+        "refund_method, processed_by, created_at, cleanup_amount_at_refund) "
+        "VALUES ('service',?,?,?,?,?,?,?,?,?,?) RETURNING id",
+        (refund_date, round(amount, 3), visit_id, case_id, boarding_id, reason, refund_method, session["user_id"], now,
          cleanup_amount_at_refund),
     )
     refund_id = cur.fetchone()["id"]

@@ -820,8 +820,14 @@ CREATE TABLE IF NOT EXISTS refunds (
     -- refunded — see refund_items.sale_item_id for the per-line
     -- quantity/price tie-back.
     sale_id INTEGER,
-    visit_id TEXT,                          -- service only, optional link
-    inpatient_case_id INTEGER,              -- service only, optional link
+    -- Service refunds anchor on exactly one of these three, mirroring
+    -- payments.visit_id / inpatient_case_id / boarding_id. boarding_id was
+    -- missing until 2026-09-10: money could be taken for a boarding stay
+    -- (payments.boarding_id) and there was no way to give it back, because
+    -- refunds_anchor_ck below required a visit or an inpatient case.
+    visit_id TEXT,                          -- service only
+    inpatient_case_id INTEGER,              -- service only
+    boarding_id INTEGER,                    -- service only
     reason TEXT,
     -- How the money was actually handed back — 'Cash', 'Card', or
     -- 'Transfer' (same vocabulary as sales.payment_method). Not
@@ -836,18 +842,21 @@ CREATE TABLE IF NOT EXISTS refunds (
     -- even if the original bill's cleanup_amount changes afterward.
     cleanup_amount_at_refund NUMERIC(12,3) NOT NULL DEFAULT 0,
     -- A refund always reverses exactly one thing: a POS sale (retail), or
-    -- one visit or one inpatient case (service). A goodwill/no-specific-record
-    -- refund is handled through Cash Register instead, not this table.
-    -- See ORPHANED_RECORDS_AUDIT.md F-05.
+    -- one visit, one inpatient case, or one boarding stay (service). A
+    -- goodwill/no-specific-record refund is handled through Cash Register
+    -- instead, not this table. See ORPHANED_RECORDS_AUDIT.md F-05.
     CONSTRAINT refunds_anchor_ck CHECK (
         (refund_type = 'retail'  AND sale_id IS NOT NULL
-            AND visit_id IS NULL AND inpatient_case_id IS NULL)
+            AND visit_id IS NULL AND inpatient_case_id IS NULL AND boarding_id IS NULL)
      OR (refund_type = 'service' AND sale_id IS NULL
-            AND (visit_id IS NOT NULL) <> (inpatient_case_id IS NOT NULL))
+            AND (visit_id IS NOT NULL)::int
+              + (inpatient_case_id IS NOT NULL)::int
+              + (boarding_id IS NOT NULL)::int = 1)
     ),
     FOREIGN KEY (sale_id) REFERENCES sales(id),
     FOREIGN KEY (visit_id) REFERENCES visits(id),
     FOREIGN KEY (inpatient_case_id) REFERENCES inpatient_cases(id),
+    FOREIGN KEY (boarding_id) REFERENCES boarding_sessions(id),
     -- See F-19.
     FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE RESTRICT
 );
