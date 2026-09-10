@@ -281,6 +281,34 @@ server machine. If you ever need to move the database to its own server,
 just point `DATABASE_URL` in `.env` at that server instead of the local
 Docker container — nothing else in the app needs to change.
 
+## How the code is organised
+
+Since 2026-09-10 the routes live in a package rather than in one file:
+
+```
+app.py        1,277 lines — creates the Flask app, wires config and the
+              scheduler, registers the blueprints, and keeps the handful of
+              cross-cutting routes (login, health, dashboard, reports)
+core.py       456 lines — the seam: get_db(), the parsers and validators
+              (parse_money, parse_int, clean_date, normalize_phone), the
+              MAX_* bounds and the shared exception types
+routes/       5,658 lines across six blueprints — settings, admin,
+              consignment, inventory, sales, clinical
+```
+
+Three rules follow from that:
+
+- **A new route goes in the blueprint that owns its area**, not in `app.py`.
+- **Anything two blueprints both need goes in `core.py`.** A helper imported
+  from a sibling blueprint is a circular import waiting to happen.
+- **`core.py` reads its configuration from the environment at import time**,
+  so it must be imported *after* `load_dotenv()`. Move that import up and the
+  database timeout silently falls back to its default.
+
+Endpoint names are blueprint-prefixed — `settings.settings_page`, not
+`settings_page` — so a stale `url_for()` fails loudly when the page renders
+rather than producing a broken link.
+
 ## Running the tests
 
 The money math — totals, discounts, write-offs, and the Decimal
@@ -289,7 +317,8 @@ most worth checking on every change, and the part where a mistake is
 least visible: a wrong colour is obvious, a wrong total is a bill someone
 already paid. `tests/test_money.py` covers it.
 
-`tests/test_frontend.py` covers the other half: it reads `style.css` and
+`tests/test_frontend.py` is the other one worth knowing by name — the rest
+of the suite is described by tier below. It reads `style.css` and
 `templates/` and fails on the kinds of breakage that used to be found only
 by someone noticing them — a colour hardcoded instead of taken from the
 palette (so it stays wrong in dark mode), a `var(--token)` that no longer
@@ -302,18 +331,50 @@ tell you a page *looks* right — only that the specific things that have
 broken before have not broken again. Looking at the app on a phone is still
 the only way to know it works on a phone.
 
-The tests need no database, no Docker and no running app. From the repo
-root, with the same virtual environment you set up in Quick start:
+### The three tiers
+
+There are 679 tests in 37 files, and they are not all the same kind. Each
+tier **skips cleanly** when what it needs is absent, so the plain command below
+always works:
 
 ```
 venv/bin/python -m pip install pytest
 venv/bin/python -m pytest tests/ -q
 ```
 
+| Tier | Needs | Runtime |
+|---|---|---|
+| **Pure** — money, static template/CSS guards, updater ordering | nothing | a few seconds |
+| **Database** — routes, permissions, backups, migrations, concurrency | a throwaway Postgres in `TEST_DATABASE_URL` | ~15 seconds |
+| **Browser** — `test_browser.py` | Playwright and a running app in `APP_URL` | ~2 minutes |
+
 (They import `app.py`, so they need the app's own dependencies — which is
 why they run from that venv rather than a bare Python.)
 
-Everything should pass in well under a second. If something fails,
+**A clean skip is not a pass, and the skip count will not tell you which.** A
+tier whose import is missing collects *zero* tests and prints as a single
+skip, not as the number of tests it holds. Confirm a tier is alive by
+collecting it — `pytest tests/test_browser.py --collect-only` — rather than by
+reading totals.
+
+The database tier needs a throwaway Postgres, never a real one:
+
+```
+TEST_DATABASE_URL=postgresql://postgres:test@localhost:55491/vetclinicsystemjo \
+  venv/bin/python -m pytest tests/ -q
+```
+
+`TEST_DATABASE_URL` is deliberately a different variable from `DATABASE_URL`
+so that an exported shell variable can never point these tests, which write
+and delete rows, at a live install. If you have the shared workspace folder,
+`scripts/isolated_test_env.sh up jo` builds that database and a venv with
+pytest and Playwright already in it.
+
+Two tests are gated on the clock and skip between 00:00 and about 01:05 —
+they need today's 00:30 backup slot to have passed. A midnight run reporting
+`9 skipped` is that, not a broken tier.
+
+If something fails,
 **read what it says before changing it**: several of these tests exist
 because the bug they describe already happened once. The tests around a
 leftover balance are the clearest example — a threshold carried over
