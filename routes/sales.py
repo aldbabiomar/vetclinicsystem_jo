@@ -206,6 +206,171 @@ def pos_page():
     return render_template("pos.html", discount_cap=cap, idempotency_key=uuid.uuid4().hex)
 
 
+# ---------------------------------------------------------------------------
+# pos_checkout's steps, extracted (review finding M4)
+#
+# Each helper returns (value…, error) with `error` a message string or None,
+# matching the discount_percent_error() / cleanup_amount_error() convention
+# already in core.py. None of them flashes and none of them renders: the route
+# owns the response, so a helper cannot return a page from three frames down —
+# which is the failure mode that makes a long route hard to change safely.
+#
+# These are NOT shared with IQ, and must not become shared. JO prices in exact
+# 3-decimal `Decimal` with no denomination rounding anywhere, and parses cart
+# quantities with parse_quantity(); IQ prices in `float` and rounds every
+# payable figure to the nearest 250-IQD note. A line copied across in either
+# direction is a TypeError at best and a silent precision bug at worst.
+# COMPARISON.md §1.1 and CLAUDE.md §2.
+# ---------------------------------------------------------------------------
+
+
+def _merged_cart_quantities(item_ids, quantities):
+    """Sum the submitted lines per item.
+
+    The UI cart already merges duplicates client-side, but nothing on the
+    server enforced that — checking each submitted line against the *live*
+    current_stock independently meant two lines of the same item (3 + 3
+    against a stock of 5) could each individually pass and together oversell
+    it. Merging first is what makes the stock check below mean anything.
+    """
+    qty_by_item = {}
+    for iid, qty in zip(item_ids, quantities):
+        try:
+            qty = parse_quantity(qty, required=True)
+        except BadNumber:
+            return None, "Cart quantities must be valid numbers."
+        if qty <= 0:
+            continue
+        qty_by_item[iid] = qty_by_item.get(iid, 0) + qty
+    return qty_by_item, None
+
+
+def _lock_and_snapshot_cart_items(db, qty_by_item):
+    """Lock every cart item's row, then snapshot cost and distributor.
+
+    Locking in a *fixed* order — sorted by id, never "the order the items
+    happen to be in this cart" — is what closes the oversell race and what
+    stops two carts sharing two items from deadlocking on each other (cart A
+    locks item1 then waits on item2 while cart B does the reverse). Previously
+    two concurrent checkouts for the same item could both read "5 in stock"
+    before either had written its sale. Now the second SELECT ... FOR UPDATE
+    blocks until the first transaction commits or rolls back, and Postgres
+    gives that blocked SELECT a fresh read once it proceeds.
+
+    Cost basis is snapshotted alongside price at checkout time, so COGS
+    reporting reflects what this item actually cost when it was sold — not
+    whatever inventory_list.cost_price says whenever the report is later run
+    (see sale_items.unit_cost's own column comment). Read once, right after
+    locking: it is the cost that will be recorded against this sale.
+    Distributor is snapshotted for the same reason — it is what makes
+    consignment_balance()'s attribution stable against a later distributor
+    re-point. ORPHANED_RECORDS_AUDIT.md F-07.
+    """
+    for iid in sorted(qty_by_item.keys()):
+        db.execute("SELECT id FROM inventory_list WHERE id=? FOR UPDATE", (iid,))
+    if not qty_by_item:
+        return {}, {}
+    item_rows = {r["id"]: r for r in db.execute(
+        "SELECT id, cost_price, distributor_id FROM inventory_list WHERE id IN ("
+        + ",".join("?" * len(qty_by_item)) + ")",
+        list(qty_by_item.keys()),
+    ).fetchall()}
+    return ({iid: r["cost_price"] for iid, r in item_rows.items()},
+            {iid: r["distributor_id"] for iid, r in item_rows.items()})
+
+
+def _priced_cart_lines(db, qty_by_item, cost_by_item, distributor_by_item):
+    """Price each line and check it against stock.
+
+    Returns (subtotal, lines, notices, error). `notices` are non-fatal
+    messages the caller flashes in submitted order before any error, so the
+    "skipped, no sale price" message still arrives ahead of a later failure
+    exactly as it did when this was one long function.
+    """
+    subtotal, lines, notices = 0, [], []
+    for iid, qty in qty_by_item.items():
+        price = logic.item_sale_price(db, iid)
+        if price is None:
+            notices.append(f"Item {iid} has no sale price set in the Price List — skipped.")
+            continue
+        status = logic.inventory_status_by_id(db, iid)
+        # current_stock is None until this item has been through at least one
+        # confirmed inventory audit — treated as zero available stock here
+        # (fail closed) rather than skipping the check, since skipping it let
+        # a never-audited item be oversold via POS with no limit at all,
+        # silently and deterministically (not just under a race). A clinic
+        # sells a brand-new item for the first time by running a quick audit
+        # on it first, same as any other item.
+        if status and status["current_stock"] is None:
+            return 0, [], notices, (
+                f"{status['name']} hasn't been through an inventory audit yet — "
+                "run an audit before selling it.")
+        if status and qty > status["current_stock"]:
+            return 0, [], notices, (
+                f"Only {status['current_stock']} {status['unit'] or ''} of "
+                f"{status['name']} in stock — sale blocked.")
+        line_total = price * qty
+        subtotal += line_total
+        lines.append((iid, qty, price, line_total,
+                      cost_by_item.get(iid), distributor_by_item.get(iid)))
+    return subtotal, lines, notices, None
+
+
+def _cash_payment_for(f, total):
+    """Resolve cash received and change due. Returns (received, change, error).
+
+    Non-cash payments resolve to (None, None, None) — the columns stay null
+    rather than storing a zero that would look like "paid nothing in cash".
+
+    Change is exact to the fils: JOD has no denomination floor, so unlike IQ
+    there is nothing to round down to and no clinic-absorbed remainder.
+    """
+    if f.get("payment_method") != "Cash":
+        return None, None, None
+    try:
+        cash_received = parse_money(f.get("cash_received"))
+    except BadNumber:
+        return None, None, "Cash Received must be a valid number."
+    if cash_received is None:
+        return None, None, None
+    if cash_received < total:
+        return None, None, (f"Cash received ({cash_received:,.3f} JOD) is less than "
+                            f"the total ({total:,.3f} JOD).")
+    return cash_received, max(round(cash_received - total, 3), 0), None
+
+
+def _record_sale(db, lines, *, subtotal, discount_percent, total, cleanup_amount,
+                 payment_method, cash_received, change_given, idempotency_key, now):
+    """Write the sale, its lines, and the stock movements. Returns the sale id.
+
+    Caller commits — this deliberately does not, so the whole checkout stays
+    one transaction and the row locks taken above are still held while these
+    rows are written.
+    """
+    cur = db.execute(
+        "INSERT INTO sales (sale_date, cashier_id, subtotal, discount_percent, discount_applied_by, total, "
+        "payment_method, cash_received, change_given, idempotency_key, cleanup_amount, cleanup_applied_by) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
+        (now, session["user_id"], round(subtotal, 3), discount_percent,
+         session["user_id"] if discount_percent else None, total, payment_method,
+         cash_received, change_given, idempotency_key, cleanup_amount,
+         session["user_id"] if cleanup_amount else None),
+    )
+    sale_id = cur.fetchone()["id"]
+    for iid, qty, price, line_total, unit_cost, distributor_id in lines:
+        db.execute(
+            "INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost, distributor_id) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (sale_id, iid, qty, price, round(line_total, 3), unit_cost, distributor_id))
+        db.execute(
+            "INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
+            "VALUES (?,?,?,?,?,?)",
+            (iid, -qty, "sale", str(sale_id), now, session["user_id"]))
+    logic.recompute_month_summary(db, now[:7])
+    auth.log_change(db, "sales", str(sale_id), "create")
+    return sale_id
+
+
 @bp.route("/pos/checkout", methods=["POST"])
 @auth.permission_required("process_pos_sales")
 def pos_checkout():
@@ -226,6 +391,10 @@ def pos_checkout():
         return render_template("pos.html", discount_cap=cap,
                                 idempotency_key=f.get("idempotency_key") or uuid.uuid4().hex, form=f)
 
+    def refuse(message):
+        flash(message, "error")
+        return redisplay()
+
     # Friendly fast-path for a double-click on "Complete Sale" — the same
     # unchanged cart submitted twice previously created two separate,
     # fully valid sales (double-charge, double stock deduction). The
@@ -239,156 +408,66 @@ def pos_checkout():
         existing_sale = db.execute("SELECT id FROM sales WHERE idempotency_key=?", (idempotency_key,)).fetchone()
         if existing_sale:
             return redirect(url_for("sales.pos_receipt", sale_id=existing_sale["id"]))
+
     item_ids = request.form.getlist("item_id")
     quantities = request.form.getlist("quantity")
     try:
         discount_percent = parse_money(f.get("discount_percent")) or 0
     except BadNumber:
-        flash("Discount must be a valid number.", "error")
-        return redisplay()
+        return refuse("Discount must be a valid number.")
     cap = auth.discount_cap_for()
     error = discount_percent_error(discount_percent, cap)
     if error:
-        flash(error, "error")
-        return redisplay()
+        return refuse(error)
     if not item_ids:
-        flash("Cart is empty.", "error")
-        return redisplay()
+        return refuse("Cart is empty.")
     if discount_percent > 0:
         blocked = logic.non_discountable_line_names_for_items(db, item_ids)
         if blocked:
-            flash(f"Can't apply a discount — the cart includes item(s) marked as not discountable: {', '.join(blocked)}.", "error")
-            return redisplay()
+            return refuse("Can't apply a discount — the cart includes item(s) marked as "
+                          f"not discountable: {', '.join(blocked)}.")
 
-    # Merge quantities for any item that appears in more than one cart line
-    # before checking stock. The normal UI cart already merges duplicates
-    # client-side, but nothing on the server enforced that — checking each
-    # submitted line against the *live* current_stock independently meant
-    # two lines of the same item (e.g. 3 + 3 against a stock of 5) could
-    # each individually pass the check and together oversell the item.
-    qty_by_item = {}
-    for iid, qty in zip(item_ids, quantities):
-        try:
-            qty = parse_quantity(qty, required=True)
-        except BadNumber:
-            flash("Cart quantities must be valid numbers.", "error")
-            return redisplay()
-        if qty <= 0:
-            continue
-        qty_by_item[iid] = qty_by_item.get(iid, 0) + qty
+    qty_by_item, error = _merged_cart_quantities(item_ids, quantities)
+    if error:
+        return refuse(error)
 
-    subtotal, lines = 0, []
-    # Lock every cart item's inventory_list row up front, in a fixed order
-    # (sorted by id — never "the order items happen to be in this cart"),
-    # before computing or checking stock for any of them. This is what
-    # actually closes the oversell race: previously two concurrent
-    # checkouts for the same item could both read "5 in stock" before
-    # either had written its sale, and both would pass the check. Now the
-    # second checkout's SELECT ... FOR UPDATE blocks until the first
-    # checkout's transaction commits (or rolls back) and releases the
-    # lock, and Postgres gives that blocked SELECT a fresh read once it
-    # proceeds — so the stock check below always reflects any sale that
-    # just committed for the same item, not a stale snapshot from before
-    # this request started waiting. Locking every cart item in the same
-    # fixed order (regardless of the order either cart added them) is
-    # what prevents two carts sharing two items from deadlocking on each
-    # other (cart A locks item1 then waits on item2, while cart B locks
-    # item2 then waits on item1).
-    for iid in sorted(qty_by_item.keys()):
-        db.execute("SELECT id FROM inventory_list WHERE id=? FOR UPDATE", (iid,))
-
-    # Cost basis snapshotted alongside price at checkout time, so COGS
-    # reporting reflects what this item actually cost when it was sold —
-    # not whatever inventory_list.cost_price says whenever the report is
-    # later run (see sale_items.unit_cost's own column comment). Read
-    # once, right after locking, alongside the row lock above — this is
-    # the cost that will actually be recorded against this sale.
-    # Distributor snapshotted alongside cost, same reasoning — this is what
-    # makes consignment_balance()'s attribution historically stable against
-    # a later distributor re-point. See ORPHANED_RECORDS_AUDIT.md F-07.
-    item_rows = {r["id"]: r for r in db.execute(
-        "SELECT id, cost_price, distributor_id FROM inventory_list WHERE id IN (" + ",".join("?" * len(qty_by_item)) + ")",
-        list(qty_by_item.keys()),
-    ).fetchall()} if qty_by_item else {}
-    cost_by_item = {iid: r["cost_price"] for iid, r in item_rows.items()}
-    distributor_by_item = {iid: r["distributor_id"] for iid, r in item_rows.items()}
-
-    for iid, qty in qty_by_item.items():
-        price = logic.item_sale_price(db, iid)
-        if price is None:
-            flash(f"Item {iid} has no sale price set in the Price List — skipped.", "error")
-            continue
-        status = logic.inventory_status_by_id(db, iid)
-        # current_stock is None until this item has been through at least
-        # one confirmed inventory audit — treated as zero available stock
-        # here (fail closed) rather than skipping the check, since
-        # skipping it let a never-audited item be oversold via POS with
-        # no limit at all, silently and deterministically (not just under
-        # a race). A clinic sells a brand-new item for the first time by
-        # running a quick audit on it first, same as any other item.
-        if status and status["current_stock"] is None:
-            flash(f"{status['name']} hasn't been through an inventory audit yet — run an audit before selling it.", "error")
-            return redisplay()
-        if status and qty > status["current_stock"]:
-            flash(f"Only {status['current_stock']} {status['unit'] or ''} of {status['name']} in stock — sale blocked.", "error")
-            return redisplay()
-        line_total = price * qty
-        subtotal += line_total
-        lines.append((iid, qty, price, line_total, cost_by_item.get(iid), distributor_by_item.get(iid)))
-
+    cost_by_item, distributor_by_item = _lock_and_snapshot_cart_items(db, qty_by_item)
+    subtotal, lines, notices, error = _priced_cart_lines(
+        db, qty_by_item, cost_by_item, distributor_by_item)
+    for notice in notices:
+        flash(notice, "error")
+    if error:
+        return refuse(error)
     if not lines:
-        flash("Nothing to sell.", "error")
-        return redisplay()
+        return refuse("Nothing to sell.")
 
     total = round(subtotal * (1 - discount_percent / Decimal(100)), 3)
     try:
         cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
     except BadNumber:
-        flash("Clean Up amount must be a valid number.", "error")
-        return redisplay()
+        return refuse("Clean Up amount must be a valid number.")
     # existing_amount=0: a brand-new sale has no prior Clean Up to accumulate
     # against, unlike the other three surfaces.
     error = cleanup_amount_error(cleanup_amount, 0, total)
     if error:
-        flash(error, "error")
-        return redisplay()
+        return refuse(error)
     total = max(total - cleanup_amount, 0)
-    payment_method = f.get("payment_method")
-    cash_received = change_given = None
-    if payment_method == "Cash":
-        try:
-            cash_received = parse_money(f.get("cash_received"))
-        except BadNumber:
-            flash("Cash Received must be a valid number.", "error")
-            return redisplay()
-        if cash_received is not None:
-            if cash_received < total:
-                flash(f"Cash received ({cash_received:,.3f} JOD) is less than the total "
-                      f"({total:,.3f} JOD).", "error")
-                return redisplay()
-            change_given = max(round(cash_received - total, 3), 0)
+
+    cash_received, change_given, error = _cash_payment_for(f, total)
+    if error:
+        return refuse(error)
+
     # Microsecond precision — see the matching comment on audit_confirm's
     # confirmed_at write; a sale timestamped in the same second as an audit
     # confirmation would otherwise tie under the strict '>' stock-since-audit
     # comparison and get silently excluded from inventory_status()'s total.
     now = datetime.now().isoformat(timespec="microseconds")
     try:
-        cur = db.execute(
-            "INSERT INTO sales (sale_date, cashier_id, subtotal, discount_percent, discount_applied_by, total, "
-            "payment_method, cash_received, change_given, idempotency_key, cleanup_amount, cleanup_applied_by) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
-            (now, session["user_id"], round(subtotal, 3), discount_percent,
-             session["user_id"] if discount_percent else None, total, payment_method, cash_received, change_given,
-             idempotency_key, cleanup_amount, session["user_id"] if cleanup_amount else None),
-        )
-        sale_id = cur.fetchone()["id"]
-        for iid, qty, price, line_total, unit_cost, distributor_id in lines:
-            db.execute("INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost, distributor_id) VALUES (?,?,?,?,?,?,?)",
-                      (sale_id, iid, qty, price, round(line_total, 3), unit_cost, distributor_id))
-            db.execute("INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
-                      "VALUES (?,?,?,?,?,?)", (iid, -qty, "sale", str(sale_id), now, session["user_id"]))
-        logic.recompute_month_summary(db, now[:7])
-        auth.log_change(db, "sales", str(sale_id), "create")
+        sale_id = _record_sale(
+            db, lines, subtotal=subtotal, discount_percent=discount_percent, total=total,
+            cleanup_amount=cleanup_amount, payment_method=f.get("payment_method"),
+            cash_received=cash_received, change_given=change_given,
+            idempotency_key=idempotency_key, now=now)
         db.commit()
     except dbmod.IntegrityError:
         # The fast-path check above isn't atomic — two near-simultaneous
