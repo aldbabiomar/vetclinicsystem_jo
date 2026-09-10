@@ -146,7 +146,7 @@
     <h2>Low Stock <span class="count">{{ snap.low_stock|length }}</span></h2>
     {% if snap.low_stock %}
       {% for i in snap.low_stock[:6] %}<div class="list-line"><div class="who">{{ i.name }}</div><div class="meta">{{ i.current_stock }} {{ i.unit }} left (threshold {{ i.reorder_threshold }})</div></div>{% endfor %}
-      {% if snap.low_stock|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('ordering_sheet_page') }}">View ordering sheet →</a></div>{% endif %}
+      {% if snap.low_stock|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory.ordering_sheet_page') }}">View ordering sheet →</a></div>{% endif %}
     {% else %}<div class="empty-note">Nothing below threshold.</div>{% endif %}
   </div>
 
@@ -161,7 +161,7 @@
           <div class="list-line"><div class="who">{{ i.name }}</div><span class="badge warn">{{ i.expiry_status }}</span></div>
         {% endif %}
       {% endfor %}
-      {% if audit_expiry_combined|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory_status_page') }}">View inventory status →</a></div>{% endif %}
+      {% if audit_expiry_combined|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory.inventory_status_page') }}">View inventory status →</a></div>{% endif %}
     {% else %}<div class="empty-note">No audit or expiry issues.</div>{% endif %}
   </div>
 </div>

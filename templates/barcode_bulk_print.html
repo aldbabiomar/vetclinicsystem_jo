@@ -5,7 +5,7 @@
   <div><h1>Bulk Barcode Print</h1><p class="page-sub">{{ labels|sum(attribute='qty') }} label(s) across {{ labels|length }} item(s).</p></div>
   <div style="display:flex; gap:10px;">
     <button class="btn secondary" id="printBtn" onclick="window.print()" disabled>Print</button>
-    <a class="btn secondary" href="{{ url_for('inventory_catalog') }}">Back</a>
+    <a class="btn secondary" href="{{ url_for('inventory.inventory_catalog') }}">Back</a>
   </div>
 </div>
 <p class="small muted no-print" id="bulkPrintError" style="display:none; color:var(--danger);">

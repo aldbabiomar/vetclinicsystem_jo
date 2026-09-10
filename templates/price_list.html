@@ -4,14 +4,14 @@
 <div class="page-head">
   <div><h1>Price List</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items.{% endif %} Admin-only page — visible to Vet/Reception only as a read-only picker while billing.</p></div>
   <div style="display:flex; gap:10px;">
-    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('price_list_bulk_edit') }}">Save Changes</button>
+    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory.price_list_bulk_edit') }}">Save Changes</button>
     <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
   </div>
 </div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not active_cat }}" href="{{ url_for('price_list') }}">All</a>
-  {% for c in categories %}<a class="chip {{ 'active' if active_cat==c }}" href="{{ url_for('price_list', category=c) }}">{{ c }}</a>{% endfor %}
+  <a class="chip {{ 'active' if not active_cat }}" href="{{ url_for('inventory.price_list') }}">All</a>
+  {% for c in categories %}<a class="chip {{ 'active' if active_cat==c }}" href="{{ url_for('inventory.price_list', category=c) }}">{{ c }}</a>{% endfor %}
 </div>
 
 {% if flagged_price %}
@@ -23,11 +23,11 @@
   {% if active_cat %}<input type="hidden" name="category" value="{{ active_cat }}">{% endif %}
   <input type="text" name="q" value="{{ search }}" placeholder="Search by Product Name…">
   <button class="btn secondary" type="submit">Search</button>
-  {% if search %}<a class="btn secondary" href="{{ url_for('price_list', category=active_cat) }}">Clear</a>{% endif %}
+  {% if search %}<a class="btn secondary" href="{{ url_for('inventory.price_list', category=active_cat) }}">Clear</a>{% endif %}
 </form>
 
 <div class="card" id="newForm" style="display:{{ 'block' if show_new_form else 'none' }}; margin-bottom:16px;">
-  <form method="post" action="{{ url_for('price_list_new') }}">
+  <form method="post" action="{{ url_for('inventory.price_list_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if show_new_form else None %}
     <div class="form-grid">
@@ -59,7 +59,7 @@
   <tbody>
     {% for i in items %}
     {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}
-    <form id="edit-{{ i.id }}" method="post" action="{{ url_for('price_list_edit', item_id=i.id) }}">
+    <form id="edit-{{ i.id }}" method="post" action="{{ url_for('inventory.price_list_edit', item_id=i.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_price }}" {% if i.id in flagged_price %}title="Retail data inconsistency: this item's Linked Inventory Item doesn't match an active Retail item in Inventory Catalog."{% endif %}>
       <td class="muted">{{ i.id }}</td>
@@ -74,7 +74,7 @@
       <td><input form="edit-{{ i.id }}" name="notes" value="{{ fv(row_form, 'notes', i.notes or '') }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
       <td style="text-align:center;"><input form="edit-{{ i.id }}" type="checkbox" name="can_discount" {{ 'checked' if fv(row_form, 'can_discount', 'on' if i.can_discount else '')=='on' }}></td>
       <td style="white-space:nowrap;">
-        <form method="post" action="{{ url_for('price_list_delete', item_id=i.id) }}" style="display:inline;" data-confirm="Remove {{ i.name }}?">
+        <form method="post" action="{{ url_for('inventory.price_list_delete', item_id=i.id) }}" style="display:inline;" data-confirm="Remove {{ i.name }}?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn small danger" type="submit">Remove</button>
         </form>

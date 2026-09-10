@@ -5,7 +5,7 @@
   <div><h1>Barcode Label</h1><p class="page-sub">{{ item.name }}</p></div>
   <div style="display:flex; gap:10px;">
     <button class="btn secondary" id="printBtn" onclick="window.print()" disabled>Print</button>
-    <a class="btn secondary" href="{{ url_for('inventory_catalog') }}">Back</a>
+    <a class="btn secondary" href="{{ url_for('inventory.inventory_catalog') }}">Back</a>
   </div>
 </div>
 <div class="barcode-label-box">

@@ -6,22 +6,22 @@
     <h1>Inventory Status</h1>
     <p class="page-sub">Auto-calculated from audit history. Read-only — log a new count in Audit history.</p>
   </div>
-  <form method="post" action="{{ url_for('audit_session_start') }}" style="display:inline;">
+  <form method="post" action="{{ url_for('inventory.audit_session_start') }}" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">+ Start / Resume Today's Audit</button></form>
 </div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not filter_ }}" href="{{ url_for('inventory_status_page') }}">All</a>
-  <a class="chip {{ 'active' if filter_=='low_stock' }}" href="{{ url_for('inventory_status_page', filter='low_stock') }}">Low Stock</a>
-  <a class="chip {{ 'active' if filter_=='overdue' }}" href="{{ url_for('inventory_status_page', filter='overdue') }}">Audit Overdue</a>
-  <a class="chip {{ 'active' if filter_=='expiring' }}" href="{{ url_for('inventory_status_page', filter='expiring') }}">Expiring / Expired</a>
+  <a class="chip {{ 'active' if not filter_ }}" href="{{ url_for('inventory.inventory_status_page') }}">All</a>
+  <a class="chip {{ 'active' if filter_=='low_stock' }}" href="{{ url_for('inventory.inventory_status_page', filter='low_stock') }}">Low Stock</a>
+  <a class="chip {{ 'active' if filter_=='overdue' }}" href="{{ url_for('inventory.inventory_status_page', filter='overdue') }}">Audit Overdue</a>
+  <a class="chip {{ 'active' if filter_=='expiring' }}" href="{{ url_for('inventory.inventory_status_page', filter='expiring') }}">Expiring / Expired</a>
 </div>
 
 <form class="search-bar" method="get">
   {% if filter_ %}<input type="hidden" name="filter" value="{{ filter_ }}">{% endif %}
   <input type="text" name="q" value="{{ search }}" placeholder="Search by Item Name…">
   <button class="btn secondary" type="submit">Search</button>
-  {% if search %}<a class="btn secondary" href="{{ url_for('inventory_status_page', filter=filter_) }}">Clear</a>{% endif %}
+  {% if search %}<a class="btn secondary" href="{{ url_for('inventory.inventory_status_page', filter=filter_) }}">Clear</a>{% endif %}
 </form>
 
 <div class="table-wrap">

@@ -8,14 +8,14 @@
     {% if has_barcodes %}
     <button class="btn secondary" type="button" onclick="document.getElementById('bulkBarcodeModal').style.display='flex'; loadBulkBarcodeList();">Bulk Barcode Print</button>
     {% endif %}
-    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory_catalog_bulk_edit') }}">Save Changes</button>
+    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory.inventory_catalog_bulk_edit') }}">Save Changes</button>
     <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" onclick="document.getElementById('newForm').style.display='block'; this.style.display='none';">+ New Item</button>
   </div>
 </div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not show_inactive }}" href="{{ url_for('inventory_catalog') }}">Active</a>
-  <a class="chip {{ 'active' if show_inactive }}" href="{{ url_for('inventory_catalog', inactive=1) }}">Include Inactive</a>
+  <a class="chip {{ 'active' if not show_inactive }}" href="{{ url_for('inventory.inventory_catalog') }}">Active</a>
+  <a class="chip {{ 'active' if show_inactive }}" href="{{ url_for('inventory.inventory_catalog', inactive=1) }}">Include Inactive</a>
 </div>
 
 {% if flagged_inventory %}
@@ -27,11 +27,11 @@
   {% if show_inactive %}<input type="hidden" name="inactive" value="1">{% endif %}
   <input type="text" name="q" value="{{ search }}" placeholder="Search by Product Name…">
   <button class="btn secondary" type="submit">Search</button>
-  {% if search %}<a class="btn secondary" href="{{ url_for('inventory_catalog', inactive=1 if show_inactive else None) }}">Clear</a>{% endif %}
+  {% if search %}<a class="btn secondary" href="{{ url_for('inventory.inventory_catalog', inactive=1 if show_inactive else None) }}">Clear</a>{% endif %}
 </form>
 
 <div class="card" id="newForm" style="display:{{ 'block' if show_new_form else 'none' }}; margin-bottom:16px;">
-  <form method="post" action="{{ url_for('inventory_catalog_new') }}">
+  <form method="post" action="{{ url_for('inventory.inventory_catalog_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if show_new_form else None %}
     <div class="form-grid">
@@ -69,7 +69,7 @@
   <tbody>
     {% for i in items %}
     {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}
-    <form id="edit-{{ i.id }}" method="post" action="{{ url_for('inventory_catalog_edit', item_id=i.id) }}">
+    <form id="edit-{{ i.id }}" method="post" action="{{ url_for('inventory.inventory_catalog_edit', item_id=i.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_inventory }}" {% if i.id in flagged_inventory %}title="Retail data inconsistency: no active Retail Price List item is linked to this inventory item."{% endif %}>
       <td class="muted">{{ i.id }}</td>
@@ -77,7 +77,7 @@
       <td><select form="edit-{{ i.id }}" name="category" style="border:none; background:transparent;">{% for c in categories %}<option {{ 'selected' if fv(row_form, 'category', i.category)==c }}>{{ c }}</option>{% endfor %}</select></td>
       <td><input form="edit-{{ i.id }}" name="unit" value="{{ fv(row_form, 'unit', i.unit or '') }}" style="border:none; background:transparent; padding:2px; width:70px;"></td>
       <td class="small muted">
-        {% if i.barcode %}<span style="font-family:monospace;">{{ i.barcode }}</span> <a href="{{ url_for('inventory_barcode_label', item_id=i.id) }}">print</a><br>{% endif %}
+        {% if i.barcode %}<span style="font-family:monospace;">{{ i.barcode }}</span> <a href="{{ url_for('inventory.inventory_barcode_label', item_id=i.id) }}">print</a><br>{% endif %}
         <button class="btn small secondary" type="button" data-item-id="{{ i.id }}" data-item-name="{{ i.name }}"
                 onclick="openBarcodeManager(this.dataset.itemId, this.dataset.itemName)">{{ 'Manage Barcode' if i.barcode else 'Add Barcode' }}</button>
       </td>
@@ -92,7 +92,7 @@
         </select>
       </td>
       <td style="white-space:nowrap;">
-        <form method="post" action="{{ url_for('inventory_catalog_toggle', item_id=i.id) }}" style="display:inline;">
+        <form method="post" action="{{ url_for('inventory.inventory_catalog_toggle', item_id=i.id) }}" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn small {{ 'danger' if i.active else 'secondary' }}" type="submit">{{ 'Deactivate' if i.active else 'Reactivate' }}</button>
         </form>
@@ -175,7 +175,7 @@ async function loadBulkBarcodeList() {
   loading.style.display = 'block';
   printBtn.disabled = true;
   try {
-    var res = await fetch('{{ url_for("inventory_catalog_barcodes_generated") }}');
+    var res = await fetch('{{ url_for("inventory.inventory_catalog_barcodes_generated") }}');
     var items = await res.json();
     loading.style.display = 'none';
     if (!res.ok) {
@@ -246,7 +246,7 @@ function bulkBarcodePrint() {
   if (!items.length) return;
   var form = document.createElement('form');
   form.method = 'POST';
-  form.action = '{{ url_for("inventory_catalog_barcodes_bulk_print") }}';
+  form.action = '{{ url_for("inventory.inventory_catalog_barcodes_bulk_print") }}';
   // Same tab, not target="_blank" — a POST form opened into a new tab isn't
   // reliable across browsers. The print page has its own Back button, same
   // as the single-item barcode label page.
@@ -276,7 +276,7 @@ function openBarcodeManager(itemId, itemName) {
 
 async function barcodeManagerRefresh() {
   try {
-    const res = await fetch(`{{ url_for('inventory_catalog_barcode_status', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)));
+    const res = await fetch(`{{ url_for('inventory.inventory_catalog_barcode_status', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)));
     const data = await res.json();
     if (!res.ok) {
       window.VZToast.show(data.error || 'Could not load barcode status.', 'error');
@@ -337,7 +337,7 @@ async function barcodeManagerSaveManual() {
   const raw = input.value.trim();
   if (!raw) { window.VZToast.show('Enter a barcode.', 'error'); return; }
   try {
-    const res = await fetch(`{{ url_for('inventory_catalog_barcode_manual', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
+    const res = await fetch(`{{ url_for('inventory.inventory_catalog_barcode_manual', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -357,7 +357,7 @@ async function barcodeManagerSaveManual() {
 
 async function barcodeManagerGenerate() {
   try {
-    const res = await fetch(`{{ url_for('inventory_catalog_create_barcode', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
+    const res = await fetch(`{{ url_for('inventory.inventory_catalog_create_barcode', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
       method: 'POST',
       headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
     });
@@ -375,7 +375,7 @@ async function barcodeManagerRemove() {
   const ok = await window.VZDialog.confirm('Remove this barcode? You can add a new one afterward.');
   if (!ok) return;
   try {
-    const res = await fetch(`{{ url_for('inventory_catalog_barcode_remove', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
+    const res = await fetch(`{{ url_for('inventory.inventory_catalog_barcode_remove', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
       method: 'POST',
       headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
     });

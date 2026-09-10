@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div><h1>Audit History</h1><p class="page-sub">One session per shelf-walk. Only Confirmed audits count toward Inventory Status and the Ordering Sheet. {{ total_count }} shown.</p></div>
-  <form method="post" action="{{ url_for('audit_session_start') }}">
+  <form method="post" action="{{ url_for('inventory.audit_session_start') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">+ Start / Resume Today's Audit</button></form>
 </div>
 
@@ -18,9 +18,9 @@
       <td><span class="badge {{ 'ok' if s.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if s.status=='Confirmed' else 'Saved' }}</span></td>
       <td class="num-col">{{ s.lines_filled }}</td>
       <td style="display:flex; gap:6px;">
-        <a class="btn small secondary" href="{{ url_for('audit_session_view', session_id=s.id) }}">View</a>
+        <a class="btn small secondary" href="{{ url_for('inventory.audit_session_view', session_id=s.id) }}">View</a>
         {% if s.status != 'Confirmed' %}
-        <form method="post" action="{{ url_for('audit_session_delete', session_id=s.id) }}" style="display:inline;" data-confirm="Discard this draft audit? This can't be undone.">
+        <form method="post" action="{{ url_for('inventory.audit_session_delete', session_id=s.id) }}" style="display:inline;" data-confirm="Discard this draft audit? This can't be undone.">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn small danger" type="submit">Discard</button>
         </form>

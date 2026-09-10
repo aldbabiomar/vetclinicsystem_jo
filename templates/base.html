@@ -82,10 +82,10 @@
         <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
       <div class="nav-group-links">
-        <a class="nav-link {{ 'active' if request.endpoint=='inventory_status_page' }}" href="{{ url_for('inventory_status_page') }}">Inventory Status</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='ordering_sheet_page' }}" href="{{ url_for('ordering_sheet_page') }}">Ordering Sheet</a>
-        <a class="nav-link {{ 'active' if request.endpoint in ['audit_history_list','audit_session_view'] }}" href="{{ url_for('audit_history_list') }}">Audit History</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='inventory_catalog' }}" href="{{ url_for('inventory_catalog') }}">Inventory Catalog</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='inventory_status_page' }}" href="{{ url_for('inventory.inventory_status_page') }}">Inventory Status</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='ordering_sheet_page' }}" href="{{ url_for('inventory.ordering_sheet_page') }}">Ordering Sheet</a>
+        <a class="nav-link {{ 'active' if request.endpoint in ['audit_history_list','audit_session_view'] }}" href="{{ url_for('inventory.audit_history_list') }}">Audit History</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='inventory_catalog' }}" href="{{ url_for('inventory.inventory_catalog') }}">Inventory Catalog</a>
         <a class="nav-link {{ 'active' if request.endpoint=='distributors_list' }}" href="{{ url_for('consignment.distributors_list') }}">Distributors</a>
       </div>
     </div>
@@ -122,7 +122,7 @@
         <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('pos_page') }}">Point of Sale</a>
         <a class="nav-link {{ 'active' if request.endpoint=='pos_history' }}" href="{{ url_for('pos_history') }}">Sales History</a>
         {% if has_permission('manage_price_list') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='price_list' }}" href="{{ url_for('price_list') }}">Price List</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='price_list' }}" href="{{ url_for('inventory.price_list') }}">Price List</a>
         {% endif %}
         {% if has_permission('manage_refunds') %}
         <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('refunds_page') }}">Refunds</a>
