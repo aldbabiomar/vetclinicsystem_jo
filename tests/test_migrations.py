@@ -209,3 +209,92 @@ def test_no_index_in_the_schema_file_depends_on_a_migration_added_column():
     assert not offenders, (
         "schema_postgres.sql indexes a column that only a migration adds, which "
         "raises on every upgrade:\n  " + "\n  ".join(offenders))
+
+
+# ---------------------------------------------------------------------------
+# The stock-count constraints must reach an UPGRADED database, not just a
+# fresh one. COMPARISON.md §53: a CHECK written only into CREATE TABLE works
+# on every fresh install and silently does not exist on any upgraded one --
+# the split that is hardest to notice, because the developer's own machine is
+# usually the fresh install.
+# ---------------------------------------------------------------------------
+
+def _tag_without_stock_checks():
+    """The newest tag whose schema predates the stock-count CHECKs.
+
+    Deliberately not TAGS[-1]: once this release is tagged, the newest tag's
+    schema already carries the constraints, the bad row cannot be planted, and
+    the test would pass while proving nothing about the upgrade path.
+    """
+    for tag in reversed(TAGS):
+        sql = _schema_at(tag)
+        if sql and "stock_counted >= 0" not in sql:
+            return tag
+    return None
+
+
+def _stock_constraints(url):
+    import psycopg
+    with psycopg.connect(url) as con:
+        rows = con.execute(
+            "SELECT conname FROM pg_constraint "
+            "WHERE conrelid='audit_session_lines'::regclass AND contype='c'"
+        ).fetchall()
+    return {r[0] for r in rows}
+
+
+@needs_db
+@pytest.mark.skipif(not TAGS, reason="no tagged releases to upgrade from")
+def test_stock_count_constraints_exist_after_an_upgrade(scratch_db):
+    """Built from a PRE-constraint tag's schema, upgraded through the real path."""
+    tag = _tag_without_stock_checks()
+    if not tag:
+        pytest.skip("no tagged release predates the stock-count constraints")
+    url, _ = scratch_db
+    old = _schema_at(tag)
+    assert old, f"could not read schema at {tag}"
+    _apply_sql(url, old)
+    before = _stock_constraints(url)
+    result = _upgrade(url)
+    assert result.returncode == 0, f"upgrade failed:\n{result.stderr}"
+    after = _stock_constraints(url)
+    assert "audit_session_lines_stock_counted_check" in after, (
+        "the stock-count CHECK did not survive the upgrade path — it exists on "
+        f"a fresh install only. before={before} after={after}")
+
+
+@needs_db
+@pytest.mark.skipif(not TAGS, reason="no tagged releases to upgrade from")
+def test_an_upgrade_repairs_a_bad_count_instead_of_aborting(scratch_db):
+    """An ADD CONSTRAINT that trips on an existing row aborts the whole
+    update, and `_run_schema_sync()` uses check=True -- a clinic on that
+    version could then never update again. The repair runs first."""
+    import psycopg
+    tag = _tag_without_stock_checks()
+    if not tag:
+        pytest.skip("no tagged release predates the stock-count constraints")
+    url, _ = scratch_db
+    old = _schema_at(tag)
+    assert old
+    _apply_sql(url, old)
+    with psycopg.connect(url, autocommit=True) as con:
+        con.execute("INSERT INTO inventory_list (id, name, category, active) "
+                    "VALUES ('INVBAD', 'Bad Count Item', 'Retail', true)")
+        con.execute("INSERT INTO audit_sessions (id, audit_date, status, created_at) "
+                    "VALUES (9911, '2026-09-11', 'Confirmed', '2026-09-11T00:00:00')")
+        con.execute("INSERT INTO audit_session_lines (session_id, item_id, stock_counted, "
+                    "received_since_prior) VALUES (9911, 'INVBAD', 'NaN'::float8, -3)")
+        planted = con.execute("SELECT stock_counted FROM audit_session_lines "
+                              "WHERE item_id='INVBAD'").fetchone()[0]
+        assert str(planted).lower() == "nan", "could not plant the bad row"
+
+    result = _upgrade(url)
+    assert result.returncode == 0, (
+        "the upgrade aborted on a pre-existing bad count instead of repairing "
+        f"it — this is the failure that bricks a clinic's updater:\n{result.stderr}")
+    with psycopg.connect(url) as con:
+        row = con.execute("SELECT stock_counted, received_since_prior FROM "
+                          "audit_session_lines WHERE item_id='INVBAD'").fetchone()
+    assert row[0] is None, f"NaN count was not repaired: {row[0]}"
+    assert row[1] == 0, f"negative received was not repaired: {row[1]}"
+    assert "audit_session_lines_stock_counted_check" in _stock_constraints(url)

@@ -269,6 +269,43 @@ INCREMENTAL_SCHEMA_STATEMENTS = [
     "          + (inpatient_case_id IS NOT NULL)::int"
     "          + (boarding_id IS NOT NULL)::int = 1)"
     ")",
+    # Stock counts: never negative, never NaN or Infinity. In CREATE TABLE
+    # these apply to a fresh install and say nothing at all about an upgrade —
+    # the §6.2 split that once made 16 of 38 tagged releases unable to update,
+    # and the one COMPARISON.md §53 calls hardest to notice because the
+    # developer's own machine is usually the fresh install. Repaired first,
+    # then added: an ADD CONSTRAINT that trips on an existing bad row aborts
+    # the whole update, which is worse than the bug it closes. The repair is a
+    # no-op on any database that never stored one. NULL, not 0, because
+    # inventory_status() already treats a NULL count as "never audited" and
+    # fails closed with the right message; 0 would assert an empty shelf.
+    "UPDATE audit_session_lines SET stock_counted=NULL "
+    "WHERE stock_counted = 'NaN'::float8 OR stock_counted < 0 "
+    "OR stock_counted = 'Infinity'::float8 OR stock_counted = '-Infinity'::float8",
+    "UPDATE audit_session_lines SET received_since_prior=0 "
+    "WHERE received_since_prior = 'NaN'::float8 OR received_since_prior < 0 "
+    "OR received_since_prior = 'Infinity'::float8 OR received_since_prior = '-Infinity'::float8",
+    "UPDATE audit_session_lines SET reorder_threshold=NULL "
+    "WHERE reorder_threshold = 'NaN'::float8 OR reorder_threshold < 0 "
+    "OR reorder_threshold = 'Infinity'::float8 OR reorder_threshold = '-Infinity'::float8",
+    "UPDATE audit_session_lines SET target_coverage_days=NULL "
+    "WHERE target_coverage_days = 'NaN'::float8 OR target_coverage_days < 0 "
+    "OR target_coverage_days = 'Infinity'::float8 OR target_coverage_days = '-Infinity'::float8",
+    # Note a plain `>= 0` would NOT catch NaN: in Postgres NaN sorts above
+    # every other value, so 'NaN' >= 0 is true. `< 'Infinity'` is what
+    # excludes NaN and +Infinity together.
+    "ALTER TABLE audit_session_lines DROP CONSTRAINT IF EXISTS audit_session_lines_stock_counted_check",
+    "ALTER TABLE audit_session_lines ADD CONSTRAINT audit_session_lines_stock_counted_check "
+    "CHECK (stock_counted IS NULL OR (stock_counted >= 0 AND stock_counted < 'Infinity'::float8))",
+    "ALTER TABLE audit_session_lines DROP CONSTRAINT IF EXISTS audit_session_lines_received_since_prior_check",
+    "ALTER TABLE audit_session_lines ADD CONSTRAINT audit_session_lines_received_since_prior_check "
+    "CHECK (received_since_prior >= 0 AND received_since_prior < 'Infinity'::float8)",
+    "ALTER TABLE audit_session_lines DROP CONSTRAINT IF EXISTS audit_session_lines_reorder_threshold_check",
+    "ALTER TABLE audit_session_lines ADD CONSTRAINT audit_session_lines_reorder_threshold_check "
+    "CHECK (reorder_threshold IS NULL OR (reorder_threshold >= 0 AND reorder_threshold < 'Infinity'::float8))",
+    "ALTER TABLE audit_session_lines DROP CONSTRAINT IF EXISTS audit_session_lines_target_coverage_days_check",
+    "ALTER TABLE audit_session_lines ADD CONSTRAINT audit_session_lines_target_coverage_days_check "
+    "CHECK (target_coverage_days IS NULL OR (target_coverage_days >= 0 AND target_coverage_days < 'Infinity'::float8))",
     "ALTER TABLE inventory_list DROP CONSTRAINT IF EXISTS inventory_consignment_needs_distributor_ck",
     "ALTER TABLE inventory_list ADD CONSTRAINT inventory_consignment_needs_distributor_ck "
     "CHECK (ownership_type <> 'Consignment' OR distributor_id IS NOT NULL)",
