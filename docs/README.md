@@ -13,6 +13,8 @@ VetClinicSystem/                  <- the shared workspace
 ├── RELEASE_WORKFLOW.md           the tag/release checklist both apps follow
 ├── `SIMULATION_AUDIT_2026-09-11.md`  both apps driven as real users: a full
 │                                 clinic day plus rare/edge cases, six findings
+├── `SEAM_RULES.md`               rules that must hold on every sibling surface,
+│                                 and the register of every time one did not
 ├── scripts/simulation/           the harness behind it, one repro per finding
 ├── audits/
 │   ├── ERROR_500_AUDIT.md        every action that could raise an unhandled exception

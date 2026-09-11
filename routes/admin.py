@@ -18,7 +18,7 @@ from flask import (
     Blueprint, abort, flash, redirect, render_template, request, session, url_for
 )
 
-from core import get_db
+from core import date_filter_arg, get_db
 
 bp = Blueprint("admin", __name__)
 
@@ -386,7 +386,16 @@ def admin_user_reset_password(user_id):
 @auth.permission_required("view_logins_changes")
 def admin_logs():
     db = get_db()
-    day = request.args.get("date", date.today().isoformat())
+    # Validated, like every other date-filtered list page in this app --
+    # through date_filter_arg(), the helper the others already use. This one
+    # took the raw value: `?date=` (present but empty) or `?date=garbage`
+    # reached changes_on_date()/logins_on_date(), which compare it as a text
+    # timestamp prefix, so nothing matched and the page rendered an EMPTY log
+    # with no explanation -- indistinguishable from "nobody did anything that
+    # day", on the one screen whose whole job is showing what happened. See
+    # SEAM_RULES.md.
+    day = date_filter_arg("date", "That date wasn't valid — showing today instead.") \
+        or date.today().isoformat()
     changes = logic.changes_on_date(db, day)
     logins = logic.logins_on_date(db, day)
     return render_template("admin_logs.html", day=day, today=date.today().isoformat(), changes=changes, logins=logins)

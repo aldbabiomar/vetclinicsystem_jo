@@ -20,7 +20,7 @@ from flask import (
     Blueprint, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 )
 
-from core import BadDate, BadNumber, BadPhone, PER_PAGE, _render_with_progress, clean_date, get_db, get_page, normalize_phone, page_count, page_offset, parse_int, parse_money, required_field
+from core import BadDate, BadNumber, BadPhone, PER_PAGE, _render_with_progress, clean_date, date_filter_arg, get_db, get_page, normalize_phone, page_count, page_offset, parse_int, parse_money, required_field
 
 bp = Blueprint("consignment", __name__)
 
@@ -681,8 +681,13 @@ def consignment_returns_new():
 def consignment_sales_page():
     db = get_db()
     distributor_id = request.args.get("distributor_id") or None
-    date_from = request.args.get("date_from") or None
-    date_to = request.args.get("date_to") or None
+    # Validated like every other date-filtered list page, through the helper
+    # the others already use. These went straight into the query: a malformed
+    # date silently narrowed the report to nothing with no warning, which reads
+    # as "this distributor sold nothing in that period" rather than "that
+    # filter was not understood". See SEAM_RULES.md.
+    date_from = date_filter_arg("date_from", "That date wasn't valid — showing all dates instead.")
+    date_to = date_filter_arg("date_to", "That date wasn't valid — showing all dates instead.")
     all_rows = logic.consignment_sales_by_distributor(db, distributor_id, date_from, date_to)
     page = get_page()
     total = len(all_rows)
