@@ -637,10 +637,19 @@ def _copy_release_snapshot(dest):
     itself (venv, .git, __pycache__, and anything already destined for
     vetclinicsystemjo-data/)."""
     exclude = {"venv", ".git", "__pycache__", "logs", ".env", "vetclinicsystemjo-data", "vetclinicsystemjo-releases"}
-    shutil.copytree(
-        BASE_DIR, dest,
-        ignore=lambda src, names: [n for n in names if n in exclude or n.startswith(".env")],
-    )
+
+    def _skip(src, names):
+        # `.env*` is excluded to keep this machine's real .env out of a
+        # versioned release — but NOT .env.example, which is part of the app
+        # and which ensure_env_file() reads. Excluding it left every release
+        # built by this function without it, so running setup.py inside that
+        # release died with FileNotFoundError on .env.example. Releases
+        # unpacked by updater.py were unaffected, which is why this survived:
+        # the only way to see it is a fresh --enable-updates install.
+        return [n for n in names
+                if n in exclude or (n.startswith(".env") and n != ".env.example")]
+
+    shutil.copytree(BASE_DIR, dest, ignore=_skip)
 
 
 def enable_updates(data_dir=None, releases_dir=None):
