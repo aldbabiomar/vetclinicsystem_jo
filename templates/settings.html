@@ -47,9 +47,7 @@
 
   <div class="section-title">{{ _('Health Check') }}</div>
   <p class="small muted u-mt-tight">
-    {{ _('Once a day, shortly after the nightly backup, this app checks itself — that backups are
-    running and restorable, that the backup folder is writable, and that the disk isn\'t full —
-    and shows a warning on the Dashboard if something needs attention.') }}
+    {{ _('Once a day, shortly after the nightly backup, this app checks itself — that backups are running and restorable, that the backup folder is writable, and that the disk isn\'t full — and shows a warning on the Dashboard if something needs attention.') }}
   </p>
   <div class="form-grid">
     <div class="field">
@@ -73,10 +71,7 @@
 
   <div class="section-title">{{ _('Remote Monitoring (optional)') }}</div>
   <p class="small muted u-mt-tight">
-    {{ _('Off unless you fill this in. When set, this clinic sends a short daily status ping —
-    counts and statuses only, never patient, owner or staff details, and never any amounts.
-    The point is the') }} <em>{{ _('missing') }}</em> {{ _('ping: if this machine stops sending, whoever maintains
-    the system gets told, which is the one thing the app cannot report while it is switched off.') }}
+    {{ _('Off unless you fill this in. When set, this clinic sends a short daily status ping — counts and statuses only, never patient, owner or staff details, and never any amounts. The point is the') }} <em>{{ _('missing') }}</em> {{ _('ping: if this machine stops sending, whoever maintains the system gets told, which is the one thing the app cannot report while it is switched off.') }}
   </p>
   <div class="form-grid">
     <div class="field full">
@@ -84,9 +79,7 @@
       <input id="settings-12-heartbeat_url" name="heartbeat_url" type="url" placeholder="{{ _('https://… (leave blank to disable)') }}"
              value="{{ settings.heartbeat_url or '' }}" autocomplete="off" spellcheck="false">
       <p class="small muted u-stack-2">
-        {{ _('Must start with') }} <code>https://</code>{{ _('. Use a different URL for each clinic, so an alert
-        can say which one went quiet.') }} <strong>{{ _('Treat it like a password') }}</strong> {{ _('— anyone who has
-        it can send a fake ping and stop a real alert from ever reaching you.') }}
+        {{ _('Must start with') }} <code>https://</code>{{ _('. Use a different URL for each clinic, so an alert can say which one went quiet.') }} <strong>{{ _('Treat it like a password') }}</strong> {{ _('— anyone who has it can send a fake ping and stop a real alert from ever reaching you.') }}
       </p>
     </div>
     {% if settings.heartbeat_install_id %}
@@ -146,16 +139,11 @@
 <div class="section-title">{{ _('Restore From Backup') }}</div>
 {% if incomplete_restore %}
 <div class="flash warn notice-warn">
-  {{ _('A restore may not have completed — the app was stopped or crashed partway through the last one.
-  Check the database carefully before continuing to use the app.') }}
+  {{ _('A restore may not have completed — the app was stopped or crashed partway through the last one. Check the database carefully before continuing to use the app.') }}
 </div>
 {% endif %}
 <p class="small muted u-mt-tight">
-  {{ _('Replaces') }} <strong>{{ _('all') }}</strong> {{ _('current data in VetClinicSystem JO with the contents of a backup file. This can\'t be undone —
-  take a fresh backup first if you\'re not sure. Uploaded files (X-rays, lab results) aren\'t part of the backup
-  itself and are unaffected by a restore, but any that were attached') }} <em>{{ _('after') }}</em> {{ _('the backup being restored was
-  taken will need reconnecting — run') }} <code>{{ _('python3 reconcile_attachments.py') }}</code> {{ _('from the app folder afterward
-  to find and relink them safely.') }}
+  {{ _('Replaces') }} <strong>{{ _('all') }}</strong> {{ _('current data in VetClinicSystem JO with the contents of a backup file. This can\'t be undone — take a fresh backup first if you\'re not sure. Uploaded files (X-rays, lab results) aren\'t part of the backup itself and are unaffected by a restore, but any that were attached') }} <em>{{ _('after') }}</em> {{ _('the backup being restored was taken will need reconnecting — run') }} <code>{{ _('python3 reconcile_attachments.py') }}</code> {{ _('from the app folder afterward to find and relink them safely.') }}
 </p>
 <div class="form-grid">
   <div class="field full"><label for="restoreFileInput">{{ _('Backup File To Restore') }}</label>
@@ -246,8 +234,7 @@
       </label>
       {% if autostart_supported %}
       <p class="small muted u-stack-1">
-        {{ _('On shutdown or restart, the app closes its database connections cleanly before the
-        computer powers off, so nothing is left mid-write.') }}
+        {{ _('On shutdown or restart, the app closes its database connections cleanly before the computer powers off, so nothing is left mid-write.') }}
       </p>
       {% else %}
       <p class="small muted u-stack-1">

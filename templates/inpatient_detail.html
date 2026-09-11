@@ -23,7 +23,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="expected_updated_at" value="{{ case.updated_at or '' }}">
       <div class="form-grid">
-        <div class="field"><span class="field-label">{{ _('Species / Sex / Age') }}</span><div class="v" style="padding-top:8px;">{{ case.species }}{% if case.sex %} · {{ case.sex }}{% endif %}{% if case.age_note %} · {{ case.age_note }}{% endif %}</div></div>
+        <div class="field"><span class="field-label">{{ _('Species / Sex / Age') }}</span><div class="v" style="padding-top:8px;">{{ case.species|tr }}{% if case.sex %} · {{ case.sex|tr }}{% endif %}{% if case.age_note %} · {{ case.age_note }}{% endif %}</div></div>
         <div class="field"><span class="field-label">{{ _('Owner') }}</span><div class="v" style="padding-top:8px;">{{ case.owner_name }} · {{ case.owner_phone or "no phone" }}</div></div>
         <div class="field"><label for="inpatientdetail-1-weight_kg">{{ _('Weight (KG)') }}</label><input id="inpatientdetail-1-weight_kg" type="number" step="0.1" min="0" name="weight_kg" value="{{ fv(form, 'weight_kg', case.weight_kg if case.weight_kg is not none else '') }}"></div>
         <div class="field"><label for="inpatientdetail-2-bcs">{{ _('BCS (1–9)') }}</label><input id="inpatientdetail-2-bcs" type="number" step="1" min="1" max="9" name="bcs" value="{{ fv(form, 'bcs', case.bcs if case.bcs is not none else '') }}"></div>
@@ -167,7 +167,7 @@
     </form>
     <div class="detail-item"><div class="k">{{ _('Total') }}</div><div class="v" style="font-size:20px; font-weight:700;">{{ billing.total|money }} {{ currency_label() }}</div></div>
     {% if billing.cleanup_amount %}<div class="detail-item"><div class="k">{{ _('Clean Up applied') }}</div><div class="v">{{ billing.cleanup_amount|money }} {{ currency_label() }}</div></div>{% endif %}
-    <span class="badge {{ 'ok' if billing.status=='Fully Paid' else ('danger' if billing.status=='Unpaid' else 'muted') }}">{{ billing.status }}</span>
+    <span class="badge {{ 'ok' if billing.status=='Fully Paid' else ('danger' if billing.status=='Unpaid' else 'muted') }}">{{ billing.status|tr }}</span>
 
     <form method="post" action="{{ url_for('clinical.inpatient_payment_add', case_id=case.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -183,7 +183,7 @@
       </div>
       <button class="btn small secondary" type="submit">{{ _('Add') }}</button>
     </form>
-    {% for p in payments %}<div class="list-line small"><div>{{ p.date|localdate }} — {{ p.method }}</div><div>{{ p.amount|money }} {{ currency_label() }}</div></div>{% endfor %}
+    {% for p in payments %}<div class="list-line small"><div>{{ p.date|localdate }} — {{ p.method|tr }}</div><div>{{ p.amount|money }} {{ currency_label() }}</div></div>{% endfor %}
   </div>
 </div>
 

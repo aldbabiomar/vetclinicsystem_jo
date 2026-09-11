@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1>{{ patient.animal_name }} <span class="muted" style="font-weight:400;font-size:16px;">— <a href="{{ url_for('clinical.owner_detail', owner_id=patient.owner_id) }}">{{ patient.owner_name }}</a></span></h1>
-    <p class="page-sub">{{ patient.id }} · {{ patient.species }}{% if patient.sex %} · {{ patient.sex }}{% endif %}{% if patient.repro_status %} · {{ patient.repro_status }}{% endif %}</p>
+    <p class="page-sub">{{ patient.id }} · {{ patient.species|tr }}{% if patient.sex %} · {{ patient.sex|tr }}{% endif %}{% if patient.repro_status %} · {{ patient.repro_status|tr }}{% endif %}</p>
   </div>
   <div style="display:flex; gap:10px; flex-wrap:wrap;">
     <a class="btn secondary" href="{{ url_for('clinical.patient_edit', patient_id=patient.id) }}">{{ _('Edit Patient Details') }}</a>
@@ -86,9 +86,9 @@
   <tbody>
     {% for v in visits %}
     <tr data-vz-href="{{ url_for('clinical.visit_detail', visit_id=v.id) }}" tabindex="0" role="link" style="cursor:pointer;">
-      <td>{{ v.date|localdate or "—" }}</td><td>{{ v.visit_type }}</td><td>{{ v.doctor or "—" }}</td><td>{{ v.complaint or "—" }}</td>
-      <td><span class="badge {{ 'ok' if v.case_status=='Resolved' else ('danger' if v.case_status=='Deceased/Euthanized' else 'warn') }}">{{ v.case_status }}</span></td>
-      <td>{% if v.followup_needed=='Y' %}<span class="badge {{ 'warn' if v.followup_status=='Pending' else 'ok' }}">{{ v.followup_status }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>{{ v.date|localdate or "—" }}</td><td>{{ v.visit_type|tr }}</td><td>{{ v.doctor or "—" }}</td><td>{{ v.complaint or "—" }}</td>
+      <td><span class="badge {{ 'ok' if v.case_status=='Resolved' else ('danger' if v.case_status=='Deceased/Euthanized' else 'warn') }}">{{ v.case_status|tr }}</span></td>
+      <td>{% if v.followup_needed=='Y' %}<span class="badge {{ 'warn' if v.followup_status=='Pending' else 'ok' }}">{{ v.followup_status|tr }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td class="num-col">{{ v.billing.total|money }}</td>
     </tr>
     {% else %}<tr><td colspan="7" class="empty-note">{{ _('No visits logged yet.') }}</td></tr>{% endfor %}

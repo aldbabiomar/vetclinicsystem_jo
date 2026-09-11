@@ -464,6 +464,26 @@ def money_filter(v):
     return formatted
 
 
+@app.template_filter("tr")
+def tr_filter(v):
+    """Translate a value that came out of the DATABASE for display.
+
+    Stored enums -- case_status, payment_status, visit_type, species, sex,
+    payment_method and friends -- are written to the database in English and
+    read back as-is, so wrapping the template literal does nothing for them:
+    the text on the page came from a row, not from the markup. This looks the
+    stored value up in the catalogue and falls back to it unchanged when there
+    is no entry, which is what keeps a value the clinic typed themselves (a
+    custom species, say) from turning into a blank.
+
+    Display only. The stored value is never changed, so every route that
+    validates against the English constant keeps working.
+    """
+    if not v or not isinstance(v, str):
+        return v
+    return _(v)
+
+
 @app.template_filter("localdate")
 def localdate_filter(d):
     """Read-only date display. Named `localdate` rather than `date` so it

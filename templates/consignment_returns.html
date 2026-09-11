@@ -4,8 +4,7 @@
 <div class="page-head">
   <div>
     <h1>{{ _('Consignment Returns') }}</h1>
-    <p class="page-sub">{{ _('Unsold stock handed back to the distributor. %(total_count)s return(s) on file. No revenue,
-      COGS, or settlement impact — nothing sold, so nothing owed either way.', total_count=total_count) }}</p>
+    <p class="page-sub">{{ _('Unsold stock handed back to the distributor. %(total_count)s return(s) on file. No revenue, COGS, or settlement impact — nothing sold, so nothing owed either way.', total_count=total_count) }}</p>
   </div>
   {% if has_permission('manage_consignment_stock') %}
   <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="consignment-returns-1">{{ _('+ Log Return') }}</button>

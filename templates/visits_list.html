@@ -28,9 +28,9 @@
     {% for v in visits %}
     <tr data-vz-href="{{ url_for('clinical.visit_detail', visit_id=v.id) }}" tabindex="0" role="link" style="cursor:pointer;">
       <td>{{ v.date|localdate or "—" }}</td><td class="muted">{{ v.id }}</td><td><strong>{{ v.animal_name }}</strong></td><td>{{ v.owner_name }}</td>
-      <td>{{ v.visit_type }}{% if v.grooming_needed=='Y' %} <span class="badge primary">{{ _('Grooming') }}</span>{% endif %}</td>
+      <td>{{ v.visit_type|tr }}{% if v.grooming_needed=='Y' %} <span class="badge primary">{{ _('Grooming') }}</span>{% endif %}</td>
       <td>{{ v.doctor or "—" }}</td>
-      <td><span class="badge {{ 'ok' if v.case_status=='Resolved' else ('danger' if v.case_status=='Deceased/Euthanized' else 'warn') }}">{{ v.case_status }}</span></td>
+      <td><span class="badge {{ 'ok' if v.case_status=='Resolved' else ('danger' if v.case_status=='Deceased/Euthanized' else 'warn') }}">{{ v.case_status|tr }}</span></td>
       <td><span class="badge {{ 'ok' if v.billing.status=='Fully Paid' else ('danger' if v.billing.status=='Unpaid' else 'muted') }}">{{ v.billing.status }}</span></td>
       <td class="num-col">{{ v.billing.total|money }}</td>
     </tr>

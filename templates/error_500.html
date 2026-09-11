@@ -8,8 +8,7 @@
   {% with variant = "broken" %}{% include "_error_dog.html" %}{% endwith %}
   <h1>{{ _('Something went wrong on our end.') }}</h1>
   <p class="page-sub">
-    {{ _('This wasn\'t your fault — an unexpected error happened while handling that page.
-    Copy the box below and send it along and it can be looked into.') }}
+    {{ _('This wasn\'t your fault — an unexpected error happened while handling that page. Copy the box below and send it along and it can be looked into.') }}
   </p>
 
   <div class="error-report">
@@ -17,13 +16,7 @@
       <span class="small muted">{{ _('Details for support — safe to copy and send') }}</span>
       <button type="button" class="btn small secondary" data-copy-target="error-report-box">{{ _('Copy') }}</button>
     </div>
-    <pre id="error-report-box" class="error-report-box error-report-box-full">{{ _('Error ID:  %(error_id)s
-Time:      %(error_time)s
-Page:      %(request_line)s
-Type:      %(exc_type)s
-Message:   %(exc_message)s
-
-%(traceback_text)s', error_id=error_id, error_time=error_time, request_line=request_line, exc_type=exc_type, exc_message=exc_message, traceback_text=traceback_text) }}</pre>
+    <pre id="error-report-box" class="error-report-box error-report-box-full">{{ _('Error ID: %(error_id)s Time: %(error_time)s Page: %(request_line)s Type: %(exc_type)s Message: %(exc_message)s %(traceback_text)s', error_id=error_id, error_time=error_time, request_line=request_line, exc_type=exc_type, exc_message=exc_message, traceback_text=traceback_text) }}</pre>
   </div>
 
   <div class="error-actions" style="margin-top:18px;">

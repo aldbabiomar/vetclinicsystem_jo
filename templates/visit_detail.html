@@ -16,11 +16,11 @@
   <div class="card">
     <div class="section-title" style="margin-top:0;">{{ _('Case') }}</div>
     <div class="detail-grid">
-      <div class="detail-item"><div class="k">{{ _('Visit Type') }}</div><div class="v">{{ visit.visit_type }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('Visit Type') }}</div><div class="v">{{ visit.visit_type|tr }}</div></div>
       <div class="detail-item"><div class="k">{{ _('Doctor') }}</div><div class="v">{{ visit.doctor or "—" }}</div></div>
       <div class="detail-item"><div class="k">{{ _('Weight') }}</div><div class="v">{{ (visit.weight_kg ~ " kg") if visit.weight_kg is not none else "—" }}</div></div>
       <div class="detail-item"><div class="k">{{ _('BCS') }}</div><div class="v">{{ (visit.bcs ~ "/9") if visit.bcs is not none else "—" }}</div></div>
-      <div class="detail-item"><div class="k">{{ _('Case Status') }}</div><div class="v"><span class="badge {{ 'ok' if visit.case_status=='Resolved' else ('danger' if visit.case_status=='Deceased/Euthanized' else 'warn') }}">{{ visit.case_status }}</span></div></div>
+      <div class="detail-item"><div class="k">{{ _('Case Status') }}</div><div class="v"><span class="badge {{ 'ok' if visit.case_status=='Resolved' else ('danger' if visit.case_status=='Deceased/Euthanized' else 'warn') }}">{{ visit.case_status|tr }}</span></div></div>
     </div>
     <div class="detail-item"><div class="k">{{ _('Presenting Complaint') }}</div><div class="v">{{ visit.complaint or "—" }}</div></div>
     <div class="detail-item"><div class="k">{{ _('History') }}</div><div class="v">{{ visit.history or "—" }}</div></div>
@@ -61,7 +61,7 @@
         <div class="detail-item"><div class="k">{{ _('Method') }}</div><div class="v">{{ visit.followup_method or "—" }}</div></div>
         <div class="detail-item"><div class="k">{{ _('Reason') }}</div><div class="v">{{ visit.followup_reason or "—" }}</div></div>
         <div class="detail-item"><div class="k">{{ _('Date') }}</div><div class="v">{{ visit.followup_date|localdate or "—" }}</div></div>
-        <div class="detail-item"><div class="k">{{ _('Status') }}</div><div class="v"><span class="badge {{ 'warn' if visit.followup_status=='Pending' else 'ok' }}">{{ visit.followup_status }}</span></div></div>
+        <div class="detail-item"><div class="k">{{ _('Status') }}</div><div class="v"><span class="badge {{ 'warn' if visit.followup_status=='Pending' else 'ok' }}">{{ visit.followup_status|tr }}</span></div></div>
       </div>
     </div>
     {% endif %}
@@ -126,7 +126,7 @@
         <div class="detail-item"><div class="k">{{ _('Total') }}</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} {{ currency_label() }}</div></div>
         <div class="detail-item"><div class="k">{{ _('Paid') }}</div><div class="v">{{ summary.paid|money }} {{ currency_label() }}</div></div>
         {% if summary.cleanup_amount %}<div class="detail-item"><div class="k">{{ _('Clean Up applied') }}</div><div class="v">{{ summary.cleanup_amount|money }} {{ currency_label() }}</div></div>{% endif %}
-        <span class="badge {{ 'ok' if summary.status=='Fully Paid' else ('danger' if summary.status=='Unpaid' else 'muted') }}">{{ summary.status }}</span>
+        <span class="badge {{ 'ok' if summary.status=='Fully Paid' else ('danger' if summary.status=='Unpaid' else 'muted') }}">{{ summary.status|tr }}</span>
       </div>
 
       <form method="post" action="{{ url_for('clinical.visit_payment_add', visit_id=visit.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
@@ -145,7 +145,7 @@
       </form>
       {% if payments %}
       <div style="margin-top:10px;">
-        {% for p in payments %}<div class="list-line small"><div>{{ p.date|localdate }} — {{ p.method }}</div><div>{{ p.amount|money }} {{ currency_label() }}</div></div>{% endfor %}
+        {% for p in payments %}<div class="list-line small"><div>{{ p.date|localdate }} — {{ p.method|tr }}</div><div>{{ p.amount|money }} {{ currency_label() }}</div></div>{% endfor %}
       </div>
       {% endif %}
     </div>

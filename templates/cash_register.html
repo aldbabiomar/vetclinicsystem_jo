@@ -115,8 +115,7 @@
 <div id="auditModal" class="modal-overlay" style="display:{{ 'flex' if audit_form else 'none' }};">
   <div class="modal-box" style="max-width:460px;">
     <h2 style="margin-top:0;">{{ _('Perform Audit — %(day)s', day=day) }}</h2>
-    <p class="small muted" style="margin-top:-6px;">{{ _('Only Cash is audited here — Card and Transfer settle
-      electronically and can\'t be counted out of a drawer.') }}</p>
+    <p class="small muted" style="margin-top:-6px;">{{ _('Only Cash is audited here — Card and Transfer settle electronically and can\'t be counted out of a drawer.') }}</p>
     <div class="detail-item"><div class="k">{{ _('System Cash Total') }}</div><div class="v">{{ totals.Cash|money }} {{ currency_label() }}</div></div>
     <div class="detail-item"><div class="k">{{ _('System Card Total') }}</div><div class="v">{{ totals.Card|money }} {{ currency_label() }}</div></div>
     <div class="detail-item"><div class="k">{{ _('System Transfer Total') }}</div><div class="v">{{ totals.Transfer|money }} {{ currency_label() }}</div></div>

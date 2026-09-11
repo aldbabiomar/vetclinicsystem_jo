@@ -109,7 +109,7 @@
   <tbody>
     {% for s in sessions %}
     <tr>
-      <td>{{ s.animal_name }} <span class="small muted">({{ s.species }})</span></td>
+      <td>{{ s.animal_name }} <span class="small muted">({{ s.species|tr }})</span></td>
       <td class="small">{{ s.owner_name }}{% if s.owner_phone %}<br><span class="muted">{{ s.owner_phone }}</span>{% endif %}</td>
       <td>{{ s.room or "—" }}</td>
       <td class="small">{{ s.entry_date|localdate }}</td>

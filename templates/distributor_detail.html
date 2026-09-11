@@ -45,7 +45,7 @@
     <div>
       <strong>{{ bill.id }}</strong>{% if bill.bill_reference %} · {{ bill.bill_reference }}{% endif %}
       · {{ bill.bill_date|localdate }}
-      <span class="badge {{ 'ok' if bill.status=='Paid' else ('warn' if bill.status=='Partial' else 'danger') }}">{{ bill.status }}</span>
+      <span class="badge {{ 'ok' if bill.status=='Paid' else ('warn' if bill.status=='Partial' else 'danger') }}">{{ bill.status|tr }}</span>
     </div>
     <div>
       {{ _('Total %(bill)s · Paid %(bill2)s · Balance %(bill3)s %(currency_label)s', bill=bill.total_amount|money, bill2=bill.paid|money, bill3=bill.balance|money, currency_label=currency_label()) }}

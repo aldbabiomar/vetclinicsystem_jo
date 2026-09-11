@@ -20,7 +20,7 @@
       <td><a href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}"><strong>{{ f.animal_name }}</strong></a></td>
       <td>{{ f.owner_name }}</td><td>{{ f.phone or "—" }}</td>
       <td>{{ f.followup_method or "—" }}</td><td>{{ f.followup_reason or "—" }}</td>
-      <td><span class="badge {{ 'warn' if f.followup_status=='Pending' else ('ok' if f.followup_status=='Completed' else 'muted') }}">{{ f.followup_status }}</span></td>
+      <td><span class="badge {{ 'warn' if f.followup_status=='Pending' else ('ok' if f.followup_status=='Completed' else 'muted') }}">{{ f.followup_status|tr }}</span></td>
       <td>
         <form method="post" class="inline-form" action="{{ url_for('clinical.followup_status_update', visit_id=f.visit_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
