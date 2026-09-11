@@ -3,6 +3,29 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.13.0] - 2026-09-11
+
+### Added
+- **Arabic.** The whole app now runs in Arabic — every page, every message,
+  every button, and the text inside pop-ups and search boxes as well. Switch
+  with the "العربية" link in the header; the choice sticks per browser, and
+  nobody else's screen changes. Numbers and dates show in Arabic-Indic
+  digits, currency reads د.أ, and the layout flips right-to-left.
+- Stored values now read in Arabic too — a visit's status, a payment method,
+  a species, the roles and permissions list, the cash register's ledger and
+  the inventory badges. Only the display changes; what is saved is unchanged,
+  so nothing about your existing records or reports is affected.
+
+### Fixed
+- **A payment recorded while the app was in Arabic could be missed by the
+  end-of-day cash count.** The payment method was saved in Arabic rather than
+  as "Cash", so the Cash Register did not count it as cash and the drawer
+  looked to have more money in it than the system expected. Every such form
+  now saves the same value it always did, whichever language you are using.
+  Any payment already recorded this way will need its method set again.
+- The Dashboard and Settings told staff to reach the app on port 5050 even
+  when it was running on a different one.
+
 ## [1.12.1] - 2026-09-11
 
 ### Fixed
