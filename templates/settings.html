@@ -204,7 +204,7 @@
       <button class="btn secondary" type="button" data-vzh="settings-5">{{ _('Not Now') }}</button>
     </div>
   </div>
-  <div id="updateProgress" class="small muted" style="display:none; margin-top:12px;"></div>
+  <div id="updateProgress" class="vz-progress-panel" style="display:none; margin-top:12px;"></div>
   <div class="u-mt-6">
     <button class="btn secondary" type="button" id="updRollbackBtn" data-vzh="settings-6">{{ _('Rollback to Previous Version') }}</button>
   </div>
@@ -297,7 +297,9 @@ async function checkForUpdates() {
 function waitForRestart(successMessage) {
   const panel = document.getElementById('updateProgress');
   panel.style.display = 'block';
-  panel.textContent = {{ _('Restarting VetClinicSystem JO — this page will reconnect automatically.')|tojson }};
+  window.VZProgress.render(panel, { status: 'running',
+    steps: [{{ _('Restarting VetClinicSystem JO')|tojson }}], current: 0,
+    message: {{ _('The app is restarting — this page will reconnect automatically.')|tojson }} });
   let attempts = 0;
   const poll = setInterval(async () => {
     attempts++;
@@ -305,47 +307,53 @@ function waitForRestart(successMessage) {
       const res = await fetch('{{ url_for('health') }}', { cache: 'no-store' });
       if (res.ok) {
         clearInterval(poll);
-        panel.textContent = successMessage;
+        window.VZToast.show(successMessage || {{ _('Done — reloading.')|tojson }}, 'success');
         setTimeout(() => window.location.reload(), 800);
       }
     } catch (err) { /* still restarting — keep polling */ }
     if (attempts > 60) {  // ~2 minutes
       clearInterval(poll);
-      panel.textContent = {{ _('Taking longer than expected to come back — check with whoever manages this computer.')|tojson }};
+      window.VZProgress.render(panel, { status: 'error',
+        steps: [{{ _('Restarting VetClinicSystem JO')|tojson }}], current: 0,
+        message: {{ _('Taking longer than expected to come back — check with whoever manages this computer.')|tojson }} });
     }
   }, 2000);
 }
 
-function runUpdateJob(startUrl, actionLabel) {
+function runUpdateJob(startUrl, actionLabel, failedMessage) {
+  // VZProgress, like this page's own Backup and Restore handlers below — it
+  // draws the step label, the bar and the elapsed time. This path used to
+  // poll by hand and write plain text into the panel, which made the longest
+  // job in the app the one with the least feedback.
   const panel = document.getElementById('updateProgress');
   panel.style.display = 'block';
-  panel.textContent = actionLabel + ' starting…';
   fetch(startUrl, {
     method: 'POST',
     headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
   })
     .then(res => res.json().then(data => ({ ok: res.ok, data })))
     .then(({ ok, data }) => {
-      if (!ok || !data.job_id) { panel.textContent = data.error || {{ _('{job} failed to start.')|tojson }}.replace('{job}', actionLabel); return; }
-      const poll = setInterval(async () => {
-        const res = await fetch('{{ url_for('settings.settings_job_status') }}?job_id=' + data.job_id);
-        const s = await res.json();
-        if (s.status === 'not_found') { clearInterval(poll); return; }
-        if (s.status === 'running') {
-          const label = s.steps[s.current] || actionLabel + '…';
-          panel.textContent = label + ' (' + (s.current + 1) + '/' + s.steps.length + ')';
-        } else if (s.status === 'done') {
-          clearInterval(poll);
-          if (s.ok) {
-            waitForRestart(s.message || (actionLabel + ' complete.'));
+      if (!ok || !data.job_id) {
+        const msg = data.error || {{ _('{job} failed to start.')|tojson }}.replace('{job}', actionLabel);
+        window.VZProgress.render(panel, { status: 'error', steps: [actionLabel], current: 0, message: msg });
+        window.VZToast.show(msg, 'error');
+        return;
+      }
+      window.VZProgress.poll(data.job_id, '{{ url_for('settings.settings_job_status') }}', {}, {
+        onUpdate: (d) => window.VZProgress.render(panel, d),
+        onDone: (d) => {
+          if (d.ok) {
+            waitForRestart(d.message);
           } else {
-            panel.textContent = s.message || (actionLabel + ' failed.');
+            window.VZProgress.render(panel, { status: 'error', steps: [actionLabel], current: 0, message: d.message });
+            window.VZToast.show(d.message || failedMessage, 'error');
           }
-        } else if (s.status === 'error') {
-          clearInterval(poll);
-          panel.textContent = s.message || (actionLabel + ' failed.');
-        }
-      }, 1500);
+        },
+        onError: (d) => {
+          window.VZProgress.render(panel, { status: 'error', steps: [actionLabel], current: 0, message: d.message });
+          window.VZToast.show(d.message || failedMessage, 'error');
+        },
+      });
     })
     .catch(() => { panel.textContent = {{ _('{job} failed to start.')|tojson }}.replace('{job}', actionLabel); });
 }
@@ -353,13 +361,15 @@ function runUpdateJob(startUrl, actionLabel) {
 async function applyUpdate() {
   const ok = await window.VZDialog.confirm({{ _('This will restart VetClinicSystem JO for everyone for about 30 seconds. A backup will be taken first. Continue?')|tojson }});
   if (!ok) return;
-  runUpdateJob('{{ url_for('settings.settings_updates_apply') }}', 'Update');
+  runUpdateJob('{{ url_for('settings.settings_updates_apply') }}',
+              {{ _('Update')|tojson }}, {{ _('Update failed.')|tojson }});
 }
 
 async function rollbackUpdate() {
   const ok = await window.VZDialog.confirm({{ _('This will roll back to the previous version and restart VetClinicSystem JO for everyone for about 30 seconds. Continue?')|tojson }});
   if (!ok) return;
-  runUpdateJob('{{ url_for('settings.settings_updates_rollback') }}', 'Rollback');
+  runUpdateJob('{{ url_for('settings.settings_updates_rollback') }}',
+              {{ _('Rollback')|tojson }}, {{ _('Rollback failed.')|tojson }});
 }
 
 // --------------------------------------------------------------------

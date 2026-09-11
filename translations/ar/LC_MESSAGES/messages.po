@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-12 01:08+0300\n"
+"POT-Creation-Date: 2026-09-12 02:32+0300\n"
 "PO-Revision-Date: 2026-09-11 12:18+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ar\n"
@@ -113,23 +113,55 @@ msgstr "تم تحديث كلمة المرور."
 msgid "Report data rebuilt from current billing, sales, and cost data."
 msgstr "تمت إعادة بناء بيانات التقارير من الفوترة والمبيعات والتكاليف الحالية."
 
-#: app.py:1275
+#: app.py:1226
+msgid "Revenue by category"
+msgstr "الإيرادات حسب الفئة"
+
+#: app.py:1226
+msgid "Vet performance"
+msgstr "أداء الأطباء"
+
+#: app.py:1226
+msgid "Client value"
+msgstr "قيمة العملاء"
+
+#: app.py:1227
+msgid "Weekday appointment load"
+msgstr "حِمل المواعيد حسب أيام الأسبوع"
+
+#: app.py:1227
+msgid "Inpatient/boarding occupancy"
+msgstr "إشغال الإقامة المرضية والفندقية"
+
+#: app.py:1228
+msgid "Payment mix"
+msgstr "توزيع طرق الدفع"
+
+#: app.py:1228
+msgid "Cash Register health"
+msgstr "سلامة صندوق النقد"
+
+#: app.py:1258
+msgid "Computing cohort retention grid"
+msgstr "جارٍ حساب جدول الاحتفاظ بالعملاء"
+
+#: app.py:1276
 msgid "Pick a month first."
 msgstr "اختر الشهر أولًا."
 
-#: app.py:1278
+#: app.py:1279
 msgid "That's not a valid month."
 msgstr "هذا ليس شهرًا صالحًا."
 
-#: app.py:1287
+#: app.py:1288
 msgid "Operating costs must be valid numbers."
 msgstr "يجب أن تكون التكاليف التشغيلية أرقامًا صالحة."
 
-#: app.py:1295
+#: app.py:1296
 msgid "Operating costs can't be negative."
 msgstr "لا يمكن أن تكون التكاليف التشغيلية سالبة."
 
-#: app.py:1305
+#: app.py:1306
 #, python-format
 msgid "Operating costs saved for %(month)s."
 msgstr "تم حفظ التكاليف التشغيلية لشهر %(month)s."
@@ -665,7 +697,7 @@ msgstr "عرض حالة المخزون"
 
 #: enum_labels.py:142
 msgid "Manage Ordering Sheet"
-msgstr "إدارة كشف الطلبات"
+msgstr "إدارة كشف النواقص"
 
 #: enum_labels.py:142
 msgid "Manage Audit History"
@@ -827,17 +859,23 @@ msgstr "الرسالة"
 msgid ""
 "No database backup has ever run yet — set a backup folder on the Settings"
 " page."
-msgstr "لم تُشغَّل أي نسخة احتياطية لقاعدة البيانات بعد — عيّن مجلدًا للنسخ الاحتياطي من صفحة الإعدادات."
+msgstr ""
+"لم تُشغَّل أي نسخة احتياطية لقاعدة البيانات بعد — عيّن مجلدًا للنسخ "
+"الاحتياطي من صفحة الإعدادات."
+
 #: logic.py:103
 #, python-format
 msgid "The last database backup failed: %(error)s."
 msgstr "فشلت آخر نسخة احتياطية لقاعدة البيانات: %(error)s."
+
 #: logic.py:118
 msgid "The last backup started but never finished — check the Settings page."
 msgstr "بدأت آخر نسخة احتياطية ولم تكتمل — راجع صفحة الإعدادات."
+
 #: logic.py:123
 msgid "The database hasn't been backed up in 2+ days — check the Settings page."
 msgstr "لم تُنسخ قاعدة البيانات احتياطيًا منذ يومين أو أكثر — راجع صفحة الإعدادات."
+
 #: selfcheck.py:121
 msgid "No database backup has ever run on this install."
 msgstr "لم تُشغَّل أي نسخة احتياطية لقاعدة البيانات على هذا التثبيت قط."
@@ -1551,6 +1589,10 @@ msgstr "الدفعة غير موجودة."
 msgid "Payment deleted."
 msgstr "تم حذف الدفعة."
 
+#: routes/consignment.py:383
+msgid "Computing distributor balances"
+msgstr "جارٍ حساب أرصدة الموردين"
+
 #: routes/consignment.py:522 routes/consignment.py:583
 #: routes/consignment.py:653
 msgid "Pick a Consignment item first."
@@ -1766,7 +1808,7 @@ msgstr ""
 msgid ""
 "Audit confirmed and locked. Inventory Status and Ordering Sheet now "
 "reflect these counts."
-msgstr "تم تأكيد الجرد وقفله. تعكس الآن حالة المخزون وكشف الطلبات هذه الأعداد."
+msgstr "تم تأكيد الجرد وقفله. تعكس الآن حالة المخزون وكشف النواقص هذه الأعداد."
 
 #: routes/inventory.py:961
 msgid "Only a draft audit can be discarded."
@@ -1972,6 +2014,66 @@ msgstr "يجب أن يبدأ رابط المراقبة بـ https://"
 #: routes/settings.py:303
 msgid "Settings saved."
 msgstr "تم حفظ الإعدادات."
+
+#: routes/settings.py:360
+msgid "Checking backup folder"
+msgstr "جارٍ فحص مجلد النسخ الاحتياطي"
+
+#: routes/settings.py:360
+msgid "Dumping database"
+msgstr "جارٍ تفريغ قاعدة البيانات"
+
+#: routes/settings.py:361
+msgid "Applying retention policy"
+msgstr "جارٍ تطبيق سياسة الاحتفاظ"
+
+#: routes/settings.py:361 routes/settings.py:409
+msgid "Done"
+msgstr "تم"
+
+#: routes/settings.py:408
+msgid "Checking backup file"
+msgstr "جارٍ فحص ملف النسخة الاحتياطية"
+
+#: routes/settings.py:408
+msgid "Restoring database"
+msgstr "جارٍ استعادة قاعدة البيانات"
+
+#: routes/settings.py:408
+msgid "Reconciling schema"
+msgstr "جارٍ مطابقة بنية قاعدة البيانات"
+
+#: routes/settings.py:409
+msgid "Recording result"
+msgstr "جارٍ تسجيل النتيجة"
+
+#: routes/settings.py:523
+msgid "Backing up database"
+msgstr "جارٍ أخذ نسخة احتياطية لقاعدة البيانات"
+
+#: routes/settings.py:523
+msgid "Downloading release"
+msgstr "جارٍ تنزيل الإصدار"
+
+#: routes/settings.py:523
+msgid "Validating release"
+msgstr "جارٍ التحقق من الإصدار"
+
+#: routes/settings.py:524
+msgid "Applying database changes"
+msgstr "جارٍ تطبيق تغييرات قاعدة البيانات"
+
+#: routes/settings.py:524
+msgid "Verifying the new version"
+msgstr "جارٍ التحقق من الإصدار الجديد"
+
+#: routes/settings.py:525
+msgid "Switching to the new version"
+msgstr "جارٍ التحويل إلى الإصدار الجديد"
+
+#: routes/settings.py:546
+msgid "Rolling back"
+msgstr "جارٍ التراجع"
 
 #: templates/_loading_shell.html:18
 msgid "Something went wrong loading this page."
@@ -2348,7 +2450,7 @@ msgstr "تغييرات غير محفوظة"
 #: templates/distributors.html:63 templates/inpatient_new.html:35
 #: templates/inventory_catalog.html:50 templates/inventory_catalog.html:116
 #: templates/owner_form.html:16 templates/patient_form_edit.html:28
-#: templates/price_list.html:51 templates/settings.html:475
+#: templates/price_list.html:51 templates/settings.html:485
 #: templates/visit_form_edit.html:61 templates/visit_new_existing.html:23
 #: templates/visit_new_patient.html:35
 msgid "Cancel"
@@ -2768,7 +2870,7 @@ msgid ""
 "Status and the Ordering Sheet. %(total_count)s shown."
 msgstr ""
 "جلسة واحدة لكل جولة على الرفوف. تُحتسب عمليات الجرد المؤكدة فقط في حالة "
-"المخزون وكشف الطلبات. المعروض %(total_count)s."
+"المخزون وكشف النواقص. المعروض %(total_count)s."
 
 #: templates/audit_sessions_list.html:7 templates/inventory_status.html:10
 msgid "+ Start / Resume Today's Audit"
@@ -2888,7 +2990,7 @@ msgstr "حالة المخزون"
 #: templates/base.html:87 templates/ordering_sheet.html:2
 #: templates/ordering_sheet.html:6
 msgid "Ordering Sheet"
-msgstr "كشف الطلبات"
+msgstr "كشف النواقص"
 
 #: templates/base.html:89 templates/inventory_catalog.html:2
 #: templates/inventory_catalog.html:6
@@ -3929,7 +4031,7 @@ msgstr "المتبقي %(i)s %(i2)s (الحد %(i3)s)"
 
 #: templates/dashboard.html:149
 msgid "View ordering sheet →"
-msgstr "عرض كشف الطلبات →"
+msgstr "عرض كشف النواقص →"
 
 #: templates/dashboard.html:150
 msgid "Nothing below threshold."
@@ -4835,7 +4937,7 @@ msgstr ""
 "كل صنف له باركود. حدد عدد الملصقات التي يحتاجها كل صنف، وأزل ما لا تريده "
 "في هذه الطباعة، ثم اطبعها جميعًا معًا."
 
-#: templates/inventory_catalog.html:112 templates/settings.html:520
+#: templates/inventory_catalog.html:112 templates/settings.html:530
 msgid "Loading…"
 msgstr "جارٍ التحميل…"
 
@@ -4900,8 +5002,8 @@ msgstr "تعذّر تحميل الباركودات."
 
 #: templates/inventory_catalog.html:230 templates/inventory_catalog.html:283
 #: templates/inventory_catalog.html:350 templates/inventory_catalog.html:366
-#: templates/inventory_catalog.html:384 templates/settings.html:582
-#: templates/settings.html:611
+#: templates/inventory_catalog.html:384 templates/settings.html:592
+#: templates/settings.html:621
 msgid "Could not reach the server."
 msgstr "تعذّر الوصول إلى الخادم."
 
@@ -6120,22 +6222,30 @@ msgstr "أنت على أحدث إصدار."
 msgid "Couldn't check for updates."
 msgstr "تعذّر التحقق من التحديثات."
 
-#: templates/settings.html:300
-msgid "Restarting VetClinicSystem JO — this page will reconnect automatically."
-msgstr "جارٍ إعادة تشغيل VetClinicSystem JO — ستُعاد هذه الصفحة تلقائيًا."
+#: templates/settings.html:301 templates/settings.html:317
+msgid "Restarting VetClinicSystem JO"
+msgstr "جارٍ إعادة تشغيل VetClinicSystem JO"
 
-#: templates/settings.html:314
+#: templates/settings.html:302
+msgid "The app is restarting — this page will reconnect automatically."
+msgstr "التطبيق قيد إعادة التشغيل — ستُعاد هذه الصفحة تلقائيًا."
+
+#: templates/settings.html:310
+msgid "Done — reloading."
+msgstr "تم — جارٍ إعادة التحميل."
+
+#: templates/settings.html:318
 msgid ""
 "Taking longer than expected to come back — check with whoever manages "
 "this computer."
 msgstr "العودة تستغرق وقتًا أطول من المتوقع — راجع المسؤول عن هذا الجهاز."
 
-#: templates/settings.html:329 templates/settings.html:350
+#: templates/settings.html:337 templates/settings.html:358
 #, python-brace-format
 msgid "{job} failed to start."
 msgstr "تعذّر بدء {job}."
 
-#: templates/settings.html:354
+#: templates/settings.html:362
 msgid ""
 "This will restart VetClinicSystem JO for everyone for about 30 seconds. A"
 " backup will be taken first. Continue?"
@@ -6143,7 +6253,15 @@ msgstr ""
 "سيؤدي هذا إلى إعادة تشغيل VetClinicSystem JO للجميع لنحو ٣٠ ثانية. ستُؤخذ"
 " نسخة احتياطية أولًا. هل تريد المتابعة؟"
 
-#: templates/settings.html:360
+#: templates/settings.html:365
+msgid "Update"
+msgstr "تحديث"
+
+#: templates/settings.html:365
+msgid "Update failed."
+msgstr "فشل التحديث."
+
+#: templates/settings.html:369
 msgid ""
 "This will roll back to the previous version and restart VetClinicSystem "
 "JO for everyone for about 30 seconds. Continue?"
@@ -6151,36 +6269,44 @@ msgstr ""
 "سيؤدي هذا إلى التراجع إلى الإصدار السابق وإعادة تشغيل VetClinicSystem JO "
 "للجميع لنحو ٣٠ ثانية. هل تريد المتابعة؟"
 
-#: templates/settings.html:391 templates/settings.html:408
+#: templates/settings.html:372
+msgid "Rollback"
+msgstr "تراجع"
+
+#: templates/settings.html:372
+msgid "Rollback failed."
+msgstr "فشل التراجع."
+
+#: templates/settings.html:401 templates/settings.html:418
 msgid "Could not start the backup."
 msgstr "تعذّر بدء النسخ الاحتياطي."
 
-#: templates/settings.html:396
+#: templates/settings.html:406
 msgid "Backup complete."
 msgstr "اكتمل النسخ الاحتياطي."
 
-#: templates/settings.html:396 templates/settings.html:402
+#: templates/settings.html:406 templates/settings.html:412
 msgid "Backup failed."
 msgstr "فشل النسخ الاحتياطي."
 
-#: templates/settings.html:431 templates/settings.html:452
+#: templates/settings.html:441 templates/settings.html:462
 msgid "Could not start the restore."
 msgstr "تعذّر بدء الاستعادة."
 
-#: templates/settings.html:436
+#: templates/settings.html:446
 #, python-brace-format
 msgid "{message}. Please log in again."
 msgstr "{message}. يرجى تسجيل الدخول مرة أخرى."
 
-#: templates/settings.html:440 templates/settings.html:446
+#: templates/settings.html:450 templates/settings.html:456
 msgid "Restore failed."
 msgstr "فشلت الاستعادة."
 
-#: templates/settings.html:464 templates/settings.html:508
+#: templates/settings.html:474 templates/settings.html:518
 msgid "Choose Backup Folder"
 msgstr "اختيار مجلد النسخ الاحتياطي"
 
-#: templates/settings.html:465
+#: templates/settings.html:475
 msgid ""
 "Browsing this computer's folders — the one running VetClinicSystem JO, "
 "since that's where backups are actually read and written."
@@ -6188,35 +6314,35 @@ msgstr ""
 "تصفح مجلدات هذا الجهاز — الجهاز الذي يشغّل VetClinicSystem JO، لأنه "
 "المكان الذي تُقرأ منه النسخ الاحتياطية وتُكتب إليه فعليًا."
 
-#: templates/settings.html:471
+#: templates/settings.html:481
 msgid "New folder name"
 msgstr "اسم المجلد الجديد"
 
-#: templates/settings.html:472
+#: templates/settings.html:482
 msgid "+ New Folder"
 msgstr "+ مجلد جديد"
 
-#: templates/settings.html:476 templates/settings.html:500
+#: templates/settings.html:486 templates/settings.html:510
 msgid "Select This Folder"
 msgstr "اختيار هذا المجلد"
 
-#: templates/settings.html:508
+#: templates/settings.html:518
 msgid "Choose Backup File"
 msgstr "اختيار ملف النسخة الاحتياطية"
 
-#: templates/settings.html:530
+#: templates/settings.html:540
 msgid "Could not open that folder."
 msgstr "تعذّر فتح هذا المجلد."
 
-#: templates/settings.html:547
+#: templates/settings.html:557
 msgid "↑ .. (up one level)"
 msgstr "↑ .. (مستوى للأعلى)"
 
-#: templates/settings.html:557
+#: templates/settings.html:567
 msgid "backup files"
 msgstr "ملفات النسخ الاحتياطي"
 
-#: templates/settings.html:604
+#: templates/settings.html:614
 msgid "Could not create that folder."
 msgstr "تعذّر إنشاء هذا المجلد."
 
@@ -6925,4 +7051,7 @@ msgstr "لا توجد تذكيرات رعاية وقائية مسجلة."
 
 #~ msgid "Switch language"
 #~ msgstr "تغيير اللغة"
+
+#~ msgid "Restarting VetClinicSystem JO — this page will reconnect automatically."
+#~ msgstr "جارٍ إعادة تشغيل VetClinicSystem JO — ستُعاد هذه الصفحة تلقائيًا."
 

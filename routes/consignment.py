@@ -380,7 +380,7 @@ def consignment_overview():
 
     return _render_with_progress(
         "consignment_overview.html",
-        ["Computing distributor balances"],
+        [_("Computing distributor balances")],
         compute,
         page_title="Loading Consignment Overview",
         page_note="Computing shelf stock and amount owed for every distributor with Consignment items.",

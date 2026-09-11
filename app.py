@@ -1223,8 +1223,9 @@ def insights():
 
     return _render_with_progress(
         "insights.html",
-        ["Revenue by category", "Vet performance", "Client value",
-         "Weekday appointment load", "Inpatient/boarding occupancy", "Payment mix", "Cash Register health"],
+        [_("Revenue by category"), _("Vet performance"), _("Client value"),
+         _("Weekday appointment load"), _("Inpatient/boarding occupancy"),
+         _("Payment mix"), _("Cash Register health")],
         compute,
         page_title="Loading Insights",
         page_note="Running six report queries in parallel.",
@@ -1254,7 +1255,7 @@ def retention():
 
     return _render_with_progress(
         "retention.html",
-        ["Computing cohort retention grid"],
+        [_("Computing cohort retention grid")],
         compute,
         page_title="Loading Retention",
         page_note="Computing cohort retention across every month with visit history.",
