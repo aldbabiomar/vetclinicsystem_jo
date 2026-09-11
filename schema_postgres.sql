@@ -320,6 +320,19 @@ CREATE TABLE IF NOT EXISTS audit_session_lines (
     notes TEXT,
     FOREIGN KEY (session_id) REFERENCES audit_sessions(id),
     FOREIGN KEY (item_id) REFERENCES inventory_list(id),
+    -- Counts are physical quantities: never negative, never NaN or
+    -- Infinity. NaN is the one that matters -- it is not just bad data, it
+    -- disables the guards that read it. `>= 0 AND < 'Infinity'` rejects all
+    -- four bad cases in one expression; note a plain `>= 0` would NOT catch
+    -- NaN, because in Postgres NaN sorts above every other value and
+    -- 'NaN' >= 0 is true. See SIMULATION_AUDIT_2026-09-11.md F2/F5.
+    CHECK (stock_counted IS NULL
+           OR (stock_counted >= 0 AND stock_counted < 'Infinity'::float8)),
+    CHECK (received_since_prior >= 0 AND received_since_prior < 'Infinity'::float8),
+    CHECK (reorder_threshold IS NULL
+           OR (reorder_threshold >= 0 AND reorder_threshold < 'Infinity'::float8)),
+    CHECK (target_coverage_days IS NULL
+           OR (target_coverage_days >= 0 AND target_coverage_days < 'Infinity'::float8)),
     -- One line per item per session — lets _save_audit_lines() use a
     -- single INSERT ... ON CONFLICT DO UPDATE instead of a
     -- check-then-insert, closing the race where two concurrent saves for

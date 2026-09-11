@@ -189,7 +189,11 @@ def cash_register_audit_new():
     if status == "Perfect":
         flash(f"Audit recorded for {day}: Perfect — counted cash matches the system exactly.", "success")
     else:
-        flash(f"Audit recorded for {day}: {status} of {logic.fmt_money(abs(difference))} JOD.", "error")
+        # "warning", not "error": the audit DID save. Flashing a saved
+        # record in the same red as a failure reads as "that did not work"
+        # and invites staff to re-run the count. The discrepancy still
+        # needs attention, which is what the warning state is for.
+        flash(f"Audit recorded for {day}: {status} of {logic.fmt_money(abs(difference))} JOD.", "warning")
     return redirect(url_for("sales.cash_register_page", date=day))
 
 
@@ -301,7 +305,16 @@ def _priced_cart_lines(db, qty_by_item, cost_by_item, distributor_by_item):
         # silently and deterministically (not just under a race). A clinic
         # sells a brand-new item for the first time by running a quick audit
         # on it first, same as any other item.
-        if status and status["current_stock"] is None:
+        # `!= itself` is the NaN test, and it has to happen BEFORE the
+        # comparison below: here `qty` is a Decimal, so `qty > nan` does not
+        # quietly return False the way it does in IQ -- it raises
+        # decimal.InvalidOperation and 500s the whole checkout.
+        # _save_audit_lines() now rejects NaN at entry; this is the second
+        # layer, so a count that predates that fix fails closed with the
+        # same message as a never-audited item instead of taking the till
+        # down. "No usable count" is what both branches mean.
+        if status and (status["current_stock"] is None
+                       or status["current_stock"] != status["current_stock"]):
             return 0, [], notices, (
                 f"{status['name']} hasn't been through an inventory audit yet — "
                 "run an audit before selling it.")
