@@ -18,6 +18,7 @@ import json
 import logic
 import re
 
+from flask_babel import gettext as _
 from flask import (
     Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 )
@@ -104,7 +105,7 @@ def _price_list_context(db):
     q = f"SELECT * FROM price_list{where_sql} ORDER BY category, name LIMIT ? OFFSET ?"
     rows = db.execute(q, params + [PER_PAGE, page_offset(page)]).fetchall()
     inv_items = db.execute("SELECT id, name, cost_price FROM inventory_list WHERE active=true AND category='Retail' ORDER BY name").fetchall()
-    flagged_price, _ = logic.retail_consistency_flags(db)
+    flagged_price, _unused = logic.retail_consistency_flags(db)
     return dict(items=rows, categories=PRICE_CATEGORIES, active_cat=cat,
                 inv_items=inv_items, search=search, flagged_price=flagged_price,
                 page=page, total_pages=page_count(total), total_count=total)
@@ -130,10 +131,10 @@ def price_list_new():
         cost_price = parse_money(f.get("cost_price"))
         sale_price = parse_money(f.get("sale_price"))
     except BadNumber:
-        flash("Cost Price and Sale Price must be valid numbers.", "error")
+        flash(_("Cost Price and Sale Price must be valid numbers."), "error")
         return redisplay()
     if has_negative(cost_price, sale_price):
-        flash("Cost Price and Sale Price can't be negative.", "error")
+        flash(_("Cost Price and Sale Price can't be negative."), "error")
         return redisplay()
     if f.get("category") not in PRICE_CATEGORIES:
         flash("Category must be one of: " + ", ".join(PRICE_CATEGORIES) + ".", "error")
@@ -141,7 +142,7 @@ def price_list_new():
     linked_item_id = f.get("linked_item_id") or None
     if linked_item_id and not db.execute(
             "SELECT 1 FROM inventory_list WHERE id=?", (linked_item_id,)).fetchone():
-        flash("That inventory item no longer exists — reload the page and pick again.", "error")
+        flash(_("That inventory item no longer exists — reload the page and pick again."), "error")
         return redisplay()
     if linked_item_id:
         # Two active rows linking to the same inventory item makes POS
@@ -153,8 +154,7 @@ def price_list_new():
             "SELECT id, name FROM price_list WHERE linked_item_id=? AND active=true", (linked_item_id,)
         ).fetchone()
         if existing_link:
-            flash(f"That inventory item is already linked to {existing_link['id']} ({existing_link['name']}) — "
-                  f"an item can only be linked from one active Price List row at a time.", "error")
+            flash(_("That inventory item is already linked to %(id)s (%(name)s) — an item can only be linked from one active Price List row at a time.", id=existing_link['id'], name=existing_link['name']), "error")
             return redisplay()
     name = required_field(f, "name", "Name")
     if name is None:
@@ -168,7 +168,7 @@ def price_list_new():
     )
     auth.log_change(db, "price_list", pid, "create")
     db.commit()
-    flash(f"{pid} added to price list.", "success")
+    flash(_("%(pid)s added to price list.", pid=pid), "success")
     return redirect(url_for("inventory.price_list"))
 
 
@@ -185,22 +185,22 @@ def price_list_edit(item_id):
         cost_price = parse_money(f.get("cost_price"))
         sale_price = parse_money(f.get("sale_price"))
     except BadNumber:
-        flash("Cost Price and Sale Price must be valid numbers.", "error")
+        flash(_("Cost Price and Sale Price must be valid numbers."), "error")
         return redisplay()
     if has_negative(cost_price, sale_price):
-        flash("Cost Price and Sale Price can't be negative.", "error")
+        flash(_("Cost Price and Sale Price can't be negative."), "error")
         return redisplay()
     if f.get("category") not in PRICE_CATEGORIES:
         flash("Category must be one of: " + ", ".join(PRICE_CATEGORIES) + ".", "error")
         return redisplay()
     old = db.execute("SELECT * FROM price_list WHERE id=?", (item_id,)).fetchone()
     if not old:
-        flash("Price list item not found.", "error")
+        flash(_("Price list item not found."), "error")
         return redirect(url_for("inventory.price_list"))
     new_linked_item_id = (f.get("linked_item_id") or None) if "linked_item_id" in f else old["linked_item_id"]
     if new_linked_item_id and not db.execute(
             "SELECT 1 FROM inventory_list WHERE id=?", (new_linked_item_id,)).fetchone():
-        flash("That inventory item no longer exists — reload the page and pick again.", "error")
+        flash(_("That inventory item no longer exists — reload the page and pick again."), "error")
         return redisplay()
     if new_linked_item_id and new_linked_item_id != old["linked_item_id"]:
         dup = db.execute(
@@ -208,8 +208,7 @@ def price_list_edit(item_id):
             (new_linked_item_id, item_id),
         ).fetchone()
         if dup:
-            flash(f"That inventory item is already linked to {dup['id']} ({dup['name']}) — "
-                  f"an item can only be linked from one active Price List row at a time.", "error")
+            flash(_("That inventory item is already linked to %(id)s (%(name)s) — an item can only be linked from one active Price List row at a time.", id=dup['id'], name=dup['name']), "error")
             return redisplay()
     name = required_field(f, "name", "Name")
     if name is None:
@@ -230,7 +229,7 @@ def price_list_edit(item_id):
         logic.recompute_full_summary(db)
     auth.log_change(db, "price_list", item_id, "update", changes)
     db.commit()
-    flash("Price updated.", "success")
+    flash(_("Price updated."), "success")
     return redirect(url_for("inventory.price_list"))
 
 
@@ -323,7 +322,7 @@ def price_list_delete(item_id):
     db.execute("UPDATE price_list SET active=false WHERE id=?", (item_id,))
     auth.log_change(db, "price_list", item_id, "delete")
     db.commit()
-    flash("Item removed from price list.", "success")
+    flash(_("Item removed from price list."), "success")
     return redirect(url_for("inventory.price_list"))
 
 
@@ -349,7 +348,7 @@ def _inventory_catalog_context(db):
          + where_sql + " ORDER BY i.category, i.name LIMIT ? OFFSET ?")
     rows = db.execute(q, params + [PER_PAGE, page_offset(page)]).fetchall()
     distributors = db.execute("SELECT * FROM distributors ORDER BY name").fetchall()
-    _, flagged_inventory = logic.retail_consistency_flags(db)
+    _unused, flagged_inventory = logic.retail_consistency_flags(db)
     has_barcodes = db.execute(
         "SELECT EXISTS(SELECT 1 FROM inventory_list WHERE barcode_source='generated' AND active=true) AS e"
     ).fetchone()["e"]
@@ -378,12 +377,12 @@ def inventory_catalog_new():
     try:
         cost_price = parse_money(f.get("cost_price"))
     except BadNumber:
-        flash("Cost Price must be a valid number.", "error")
+        flash(_("Cost Price must be a valid number."), "error")
         return redisplay()
     # A negative cost makes an item look infinitely profitable everywhere
     # margin and COGS are calculated. IQ guards this; JO did not.
     if has_negative(cost_price):
-        flash("Cost Price can't be negative.", "error")
+        flash(_("Cost Price can't be negative."), "error")
         return redisplay()
     if f.get("category", "Medical") not in INVENTORY_CATEGORIES:
         flash("Category must be one of: " + ", ".join(INVENTORY_CATEGORIES) + ".", "error")
@@ -391,7 +390,7 @@ def inventory_catalog_new():
     distributor_id = f.get("distributor_id") or None
     if distributor_id and not db.execute(
             "SELECT 1 FROM distributors WHERE id=?", (distributor_id,)).fetchone():
-        flash("That distributor no longer exists — reload the page and pick again.", "error")
+        flash(_("That distributor no longer exists — reload the page and pick again."), "error")
         return redisplay()
     name = required_field(f, "name", "Name")
     if name is None:
@@ -405,7 +404,7 @@ def inventory_catalog_new():
     )
     auth.log_change(db, "inventory_list", iid, "create")
     db.commit()
-    flash(f"{iid} added to inventory catalog.", "success")
+    flash(_("%(iid)s added to inventory catalog.", iid=iid), "success")
     return redirect(url_for("inventory.inventory_catalog"))
 
 
@@ -421,30 +420,30 @@ def inventory_catalog_edit(item_id):
     try:
         cost_price = parse_money(f.get("cost_price"))
     except BadNumber:
-        flash("Cost Price must be a valid number.", "error")
+        flash(_("Cost Price must be a valid number."), "error")
         return redisplay()
     if has_negative(cost_price):
-        flash("Cost Price can't be negative.", "error")
+        flash(_("Cost Price can't be negative."), "error")
         return redisplay()
     if f.get("category", "Medical") not in INVENTORY_CATEGORIES:
         flash("Category must be one of: " + ", ".join(INVENTORY_CATEGORIES) + ".", "error")
         return redisplay()
     old = db.execute("SELECT * FROM inventory_list WHERE id=?", (item_id,)).fetchone()
     if not old:
-        flash("Inventory item not found.", "error")
+        flash(_("Inventory item not found."), "error")
         return redirect(url_for("inventory.inventory_catalog"))
     category = f.get("category", "Medical")
     if category != old["category"] and old["ownership_type"] == "Consignment":
-        flash("Set this item back to Owned on the Consignment Items page before changing its category.", "error")
+        flash(_("Set this item back to Owned on the Consignment Items page before changing its category."), "error")
         return redisplay()
     distributor_id = f.get("distributor_id") or None
     if distributor_id and not db.execute(
             "SELECT 1 FROM distributors WHERE id=?", (distributor_id,)).fetchone():
-        flash("That distributor no longer exists — reload the page and pick again.", "error")
+        flash(_("That distributor no longer exists — reload the page and pick again."), "error")
         return redisplay()
     if distributor_id != old["distributor_id"] and logic.consignment_item_locked(db, item_id):
-        flash("This item has consignment activity against it — its distributor can't be "
-              "changed here. Create a new inventory item for the new supply source.", "error")
+        flash(_("This item has consignment activity against it — its distributor can't be "
+              "changed here. Create a new inventory item for the new supply source."), "error")
         return redisplay()
     name = required_field(f, "name", "Name")
     if name is None:
@@ -465,7 +464,7 @@ def inventory_catalog_edit(item_id):
         logic.recompute_full_summary(db)
     auth.log_change(db, "inventory_list", item_id, "update", changes)
     db.commit()
-    flash("Inventory item updated.", "success")
+    flash(_("Inventory item updated."), "success")
     return redirect(url_for("inventory.inventory_catalog"))
 
 
@@ -542,7 +541,7 @@ def inventory_catalog_toggle(item_id):
     db = get_db()
     row = db.execute("SELECT active FROM inventory_list WHERE id=?", (item_id,)).fetchone()
     if row is None:
-        flash("Item not found.", "error")
+        flash(_("Item not found."), "error")
         return redirect(url_for("inventory.inventory_catalog"))
     new_val = not row["active"]
     db.execute("UPDATE inventory_list SET active=? WHERE id=?", (new_val, item_id))
@@ -652,7 +651,7 @@ def inventory_barcode_label(item_id):
     db = get_db()
     item = db.execute("SELECT * FROM inventory_list WHERE id=?", (item_id,)).fetchone()
     if not item or not item["barcode"]:
-        flash("This item doesn't have a barcode yet.", "error")
+        flash(_("This item doesn't have a barcode yet."), "error")
         return redirect(url_for("inventory.inventory_catalog"))
     return render_template("barcode_label.html", item=item)
 
@@ -704,7 +703,7 @@ def inventory_catalog_barcodes_bulk_print():
         if item and item["barcode"]:
             labels.append({"id": item["id"], "name": item["name"], "barcode": item["barcode"], "qty": qty})
     if not labels:
-        flash("No barcodes selected to print.", "error")
+        flash(_("No barcodes selected to print."), "error")
         return redirect(url_for("inventory.inventory_catalog"))
     return render_template("barcode_bulk_print.html", labels=labels)
 
@@ -794,7 +793,7 @@ def audit_session_view(session_id):
     db = get_db()
     ctx = _audit_session_context(db, session_id)
     if ctx is None:
-        flash("Audit session not found.", "error")
+        flash(_("Audit session not found."), "error")
         return redirect(url_for("inventory.audit_history_list"))
     return render_template("audit_session_view.html", **ctx)
 
@@ -879,7 +878,7 @@ def audit_session_save(session_id):
     db = get_db()
     sess = db.execute("SELECT * FROM audit_sessions WHERE id=?", (session_id,)).fetchone()
     if not sess or sess["status"] != "Draft":
-        flash("This audit is confirmed and can no longer be edited.", "error")
+        flash(_("This audit is confirmed and can no longer be edited."), "error")
         return redirect(url_for("inventory.audit_history_list"))
 
     try:
@@ -891,14 +890,14 @@ def audit_session_save(session_id):
         # an open transaction, so a save that overall failed can't
         # partially apply.
         db.rollback()
-        flash("Audit counts must be valid numbers. The draft was not saved — please correct the highlighted value(s).", "error")
+        flash(_("Audit counts must be valid numbers. The draft was not saved — please correct the highlighted value(s)."), "error")
         ctx = _audit_session_context(db, session_id)
         if ctx is None:
             return redirect(url_for("inventory.audit_history_list"))
         return render_template("audit_session_view.html", **ctx, form=request.form)
     auth.log_change(db, "audit_sessions", str(session_id), "update")
     db.commit()
-    flash("Audit saved. You can come back and finish it later, or confirm it once it's complete.", "success")
+    flash(_("Audit saved. You can come back and finish it later, or confirm it once it's complete."), "success")
     return redirect(url_for("inventory.audit_session_view", session_id=session_id))
 
 
@@ -908,13 +907,13 @@ def audit_session_confirm(session_id):
     db = get_db()
     sess = db.execute("SELECT * FROM audit_sessions WHERE id=?", (session_id,)).fetchone()
     if not sess or sess["status"] != "Draft":
-        flash("This audit is already confirmed.", "error")
+        flash(_("This audit is already confirmed."), "error")
         return redirect(url_for("inventory.audit_history_list"))
     try:
         _save_audit_lines(db, session_id)
     except BadNumber:
         db.rollback()
-        flash("Audit counts must be valid numbers. Nothing was confirmed — please correct the highlighted value(s).", "error")
+        flash(_("Audit counts must be valid numbers. Nothing was confirmed — please correct the highlighted value(s)."), "error")
         ctx = _audit_session_context(db, session_id)
         if ctx is None:
             return redirect(url_for("inventory.audit_history_list"))
@@ -927,8 +926,8 @@ def audit_session_confirm(session_id):
         "SELECT COUNT(*) c FROM audit_session_lines WHERE session_id=? AND stock_counted IS NOT NULL",
         (session_id,)).fetchone()["c"]
     if not filled:
-        flash("Nothing has been counted in this audit yet — fill in at least one item "
-              "before confirming.", "error")
+        flash(_("Nothing has been counted in this audit yet — fill in at least one item "
+              "before confirming."), "error")
         return redirect(url_for("inventory.audit_session_view", session_id=session_id))
     # Microsecond precision (not seconds) — inventory_status()'s stock
     # calculation compares inventory_transactions.timestamp against this
@@ -943,7 +942,7 @@ def audit_session_confirm(session_id):
               (datetime.now().isoformat(timespec="microseconds"), session_id))
     auth.log_change(db, "audit_sessions", str(session_id), "update", {"status": ("Draft", "Confirmed")})
     db.commit()
-    flash("Audit confirmed and locked. Inventory Status and Ordering Sheet now reflect these counts.", "success")
+    flash(_("Audit confirmed and locked. Inventory Status and Ordering Sheet now reflect these counts."), "success")
     return redirect(url_for("inventory.audit_session_view", session_id=session_id))
 
 
@@ -959,11 +958,11 @@ def audit_session_delete(session_id):
     db = get_db()
     sess = db.execute("SELECT status FROM audit_sessions WHERE id=?", (session_id,)).fetchone()
     if not sess or sess["status"] != "Draft":
-        flash("Only a draft audit can be discarded.", "error")
+        flash(_("Only a draft audit can be discarded."), "error")
         return redirect(url_for("inventory.audit_history_list"))
     db.execute("DELETE FROM audit_session_lines WHERE session_id=?", (session_id,))
     db.execute("DELETE FROM audit_sessions WHERE id=?", (session_id,))
     auth.log_change(db, "audit_sessions", str(session_id), "delete")
     db.commit()
-    flash("Draft audit discarded.", "success")
+    flash(_("Draft audit discarded."), "success")
     return redirect(url_for("inventory.audit_history_list"))

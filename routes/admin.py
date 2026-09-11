@@ -14,6 +14,7 @@ from datetime import datetime
 import auth
 import logic
 
+from flask_babel import gettext as _
 from flask import (
     Blueprint, abort, flash, redirect, render_template, request, session, url_for
 )
@@ -103,14 +104,14 @@ def admin_user_new():
     role_id = f.get("role_id", "")
     role = db.execute("SELECT id FROM roles WHERE id=?", (role_id,)).fetchone()
     if not username or not full_name or not role:
-        flash("Fill in a username, full name, and role.", "error")
+        flash(_("Fill in a username, full name, and role."), "error")
         return redirect(url_for("admin.admin_users"))
     pw_error = auth.password_error(password, username)
     if pw_error:
         flash(pw_error, "error")
         return redirect(url_for("admin.admin_users"))
     if db.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
-        flash("That username is already taken.", "error")
+        flash(_("That username is already taken."), "error")
         return redirect(url_for("admin.admin_users"))
 
     custom_cap = None
@@ -118,10 +119,10 @@ def admin_user_new():
         try:
             custom_cap = int(f.get("custom_discount_cap", ""))
         except ValueError:
-            flash("Custom discount override must be a whole number.", "error")
+            flash(_("Custom discount override must be a whole number."), "error")
             return redirect(url_for("admin.admin_users"))
         if custom_cap < 0 or custom_cap > 100:
-            flash("Custom discount override must be between 0 and 100.", "error")
+            flash(_("Custom discount override must be between 0 and 100."), "error")
             return redirect(url_for("admin.admin_users"))
 
     uid = auth.new_user_id()
@@ -133,7 +134,7 @@ def admin_user_new():
     )
     auth.log_change(db, "users", uid, "create")
     db.commit()
-    flash(f"User {username} created. They'll be asked to set a new password on first login.", "success")
+    flash(_("User %(username)s created. They'll be asked to set a new password on first login.", username=username), "success")
     return redirect(url_for("admin.admin_users"))
 
 
@@ -142,24 +143,24 @@ def admin_user_new():
 def admin_user_toggle(user_id):
     db = get_db()
     if user_id == session["user_id"]:
-        flash("You can't disable your own account.", "error")
+        flash(_("You can't disable your own account."), "error")
         return redirect(url_for("admin.admin_users"))
     row = db.execute(
         "SELECT u.active, r.is_system FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id=?",
         (user_id,),
     ).fetchone()
     if row is None:
-        flash("User not found.", "error")
+        flash(_("User not found."), "error")
         return redirect(url_for("admin.admin_users"))
     new_val = not row["active"]
     if new_val is False and row["is_system"] and _active_admin_count(db) <= 1:
-        flash("Can't disable the last active Admin.", "error")
+        flash(_("Can't disable the last active Admin."), "error")
         return redirect(url_for("admin.admin_users"))
     db.execute("UPDATE users SET active=? WHERE id=?", (new_val, user_id))
     auth.bump_permissions_version(db)
     auth.log_change(db, "users", user_id, "update", {"active": (row["active"], new_val)})
     db.commit()
-    flash("User updated.", "success")
+    flash(_("User updated."), "success")
     if new_val is False:
         _warn_orphaned_appointments(db, user_id)
     return redirect(url_for("admin.admin_users"))
@@ -172,7 +173,7 @@ def admin_user_role(user_id):
     new_role_id = request.form.get("role_id", "")
     new_role = db.execute("SELECT id, name, is_system, is_vet_role FROM roles WHERE id=?", (new_role_id,)).fetchone()
     if not new_role:
-        flash("Not a valid role.", "error")
+        flash(_("Not a valid role."), "error")
         return redirect(url_for("admin.admin_users"))
     row = db.execute(
         "SELECT u.role_id, r.name AS role_name, r.is_system, r.is_vet_role FROM users u "
@@ -180,16 +181,16 @@ def admin_user_role(user_id):
         (user_id,),
     ).fetchone()
     if row is None:
-        flash("User not found.", "error")
+        flash(_("User not found."), "error")
         return redirect(url_for("admin.admin_users"))
     if row["is_system"] and not new_role["is_system"] and _active_admin_count(db) <= 1:
-        flash("Can't move the last active Admin out of the Admin role.", "error")
+        flash(_("Can't move the last active Admin out of the Admin role."), "error")
         return redirect(url_for("admin.admin_users"))
     db.execute("UPDATE users SET role_id=? WHERE id=?", (new_role_id, user_id))
     auth.bump_permissions_version(db)
     auth.log_change(db, "users", user_id, "update", {"role": (row["role_name"], new_role["name"])})
     db.commit()
-    flash("Role updated.", "success")
+    flash(_("Role updated."), "success")
     # admin_user_toggle() gets this right (moving a vet to a non-vet role
     # produces the identical day_grid() outcome — is_vet_role=true is what
     # decides whether a column is built for them) — this route used to say
@@ -209,7 +210,7 @@ def admin_role_new():
     name = f.get("name", "").strip()
     description = f.get("description", "").strip() or None
     if not name:
-        flash("Give the new role a name.", "error")
+        flash(_("Give the new role a name."), "error")
         return redirect(url_for("admin.admin_users"))
     if db.execute("SELECT 1 FROM roles WHERE lower(name)=lower(?)", (name,)).fetchone():
         flash(f'A role named "{name}" already exists.', "error")
@@ -217,10 +218,10 @@ def admin_role_new():
     try:
         cap = int(f.get("discount_cap", "0") or "0")
     except ValueError:
-        flash("Max Discount must be a whole number.", "error")
+        flash(_("Max Discount must be a whole number."), "error")
         return redirect(url_for("admin.admin_users"))
     if cap < 0 or cap > 100:
-        flash("Max Discount must be between 0 and 100.", "error")
+        flash(_("Max Discount must be between 0 and 100."), "error")
         return redirect(url_for("admin.admin_users"))
 
     perms = [p for p in f.getlist("permissions") if p in auth.PERMISSION_KEY_SET]
@@ -238,9 +239,9 @@ def admin_role_new():
     db.commit()
     flash(f'"{name}" role added.', "success")
     if auth.no_vet_role_configured(db):
-        flash("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
+        flash(_("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
               "New Visit, Grooming, and Inpatient vet pickers will show no options until "
-              "at least one role has this turned on.", "error")
+              "at least one role has this turned on."), "error")
     return redirect(url_for("admin.admin_users"))
 
 
@@ -250,13 +251,13 @@ def admin_role_edit(role_id):
     db = get_db()
     role = _role_or_404(db, role_id)
     if role["is_system"]:
-        flash("The Admin role can't be edited.", "error")
+        flash(_("The Admin role can't be edited."), "error")
         return redirect(url_for("admin.admin_users"))
     f = request.form
     name = f.get("name", "").strip()
     description = f.get("description", "").strip() or None
     if not name:
-        flash("A role needs a name.", "error")
+        flash(_("A role needs a name."), "error")
         return redirect(url_for("admin.admin_users"))
     if db.execute("SELECT 1 FROM roles WHERE lower(name)=lower(?) AND id<>?", (name, role_id)).fetchone():
         flash(f'A role named "{name}" already exists.', "error")
@@ -264,10 +265,10 @@ def admin_role_edit(role_id):
     try:
         cap = int(f.get("discount_cap", "0") or "0")
     except ValueError:
-        flash("Max Discount must be a whole number.", "error")
+        flash(_("Max Discount must be a whole number."), "error")
         return redirect(url_for("admin.admin_users"))
     if cap < 0 or cap > 100:
-        flash("Max Discount must be between 0 and 100.", "error")
+        flash(_("Max Discount must be between 0 and 100."), "error")
         return redirect(url_for("admin.admin_users"))
 
     perms = set(p for p in f.getlist("permissions") if p in auth.PERMISSION_KEY_SET)
@@ -290,9 +291,9 @@ def admin_role_edit(role_id):
     db.commit()
     flash(f'"{name}" role saved.', "success")
     if auth.no_vet_role_configured(db):
-        flash("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
+        flash(_("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
               "New Visit, Grooming, and Inpatient vet pickers will show no options until "
-              "at least one role has this turned on.", "error")
+              "at least one role has this turned on."), "error")
     # Flipping a role's own is_vet_role flag affects every active user on
     # it at once, not just one person — admin_user_role()'s per-user
     # warning (F-17) doesn't fire here, since no single user's role_id
@@ -317,14 +318,14 @@ def admin_role_delete(role_id):
     db = get_db()
     role = _role_or_404(db, role_id)
     if role["is_system"]:
-        flash("The Admin role can't be deleted.", "error")
+        flash(_("The Admin role can't be deleted."), "error")
         return redirect(url_for("admin.admin_users"))
     assigned = db.execute("SELECT id FROM users WHERE role_id=?", (role_id,)).fetchall()
     reassign_to = request.form.get("reassign_to") or None
     if assigned:
         target = db.execute("SELECT id, name, is_system, is_vet_role FROM roles WHERE id=?", (reassign_to,)).fetchone()
         if not target or target["id"] == role_id:
-            flash("Pick a role to move the affected staff to before deleting this one.", "error")
+            flash(_("Pick a role to move the affected staff to before deleting this one."), "error")
             return redirect(url_for("admin.admin_users"))
         for u in assigned:
             db.execute("UPDATE users SET role_id=? WHERE id=?", (target["id"], u["id"]))
@@ -350,9 +351,9 @@ def admin_role_delete(role_id):
         db.commit()
         flash(f'"{role["name"]}" deleted.', "success")
     if auth.no_vet_role_configured(db):
-        flash("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
+        flash(_("No role is currently marked \"Can be assigned as a vet\" — Appointments, "
               "New Visit, Grooming, and Inpatient vet pickers will show no options until "
-              "at least one role has this turned on.", "error")
+              "at least one role has this turned on."), "error")
     return redirect(url_for("admin.admin_users"))
 
 
@@ -375,7 +376,7 @@ def admin_user_reset_password(user_id):
                (auth.hash_password(new_pw), datetime.now().isoformat(timespec="seconds"), user_id))
     auth.log_change(db, "users", user_id, "update", {"password": ("(hidden)", "(reset by admin)")})
     db.commit()
-    flash("Password reset. The user will be asked to set a new one on next login.", "success")
+    flash(_("Password reset. The user will be asked to set a new one on next login."), "success")
     return redirect(url_for("admin.admin_users"))
 
 

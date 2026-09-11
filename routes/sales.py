@@ -18,6 +18,7 @@ import logic
 import pdf_export
 import uuid
 
+from flask_babel import gettext as _
 from flask import (
     Blueprint, abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 )
@@ -89,7 +90,7 @@ def cash_register_page():
     try:
         logic.parse_date(day)
     except ValueError:
-        flash("That date wasn't valid — showing today instead.", "error")
+        flash(_("That date wasn't valid — showing today instead."), "error")
         day = date.today().isoformat()
     return render_template("cash_register.html", **_cash_register_page_context(day))
 
@@ -113,21 +114,21 @@ def cash_register_payout_new():
     try:
         amount = parse_money(f.get("amount"), required=True)
     except BadNumber:
-        flash("Amount must be a valid number.", "error")
+        flash(_("Amount must be a valid number."), "error")
         return redisplay(day)
     if amount <= 0:
-        flash("Amount must be greater than 0.", "error")
+        flash(_("Amount must be greater than 0."), "error")
         return redisplay(day)
     reason = (f.get("reason") or "").strip()
     if not reason:
-        flash("Enter a reason for this payout.", "error")
+        flash(_("Enter a reason for this payout."), "error")
         return redisplay(day)
     # Recomputed fresh at submit time — cash_register_totals() already
     # subtracts every payout already logged for this day, so this is
     # exactly how much is left in the drawer before this new one.
     drawer_cash = logic.cash_register_totals(db, day)["Cash"]
     if amount > drawer_cash:
-        flash(f"That's more than the {logic.fmt_money(drawer_cash)} JOD currently expected in the drawer for this day.", "error")
+        flash(_("That's more than the %(fmt_money)s JOD currently expected in the drawer for this day.", fmt_money=logic.fmt_money(drawer_cash)), "error")
         return redisplay(day)
     cur = db.execute(
         "INSERT INTO cash_register_payouts (payout_date, amount, reason, logged_by, created_at) "
@@ -137,7 +138,7 @@ def cash_register_payout_new():
     payout_id = cur.fetchone()["id"]
     auth.log_change(db, "cash_register_payouts", str(payout_id), "create")
     db.commit()
-    flash(f"{logic.fmt_money(amount)} JOD logged out of the register.", "success")
+    flash(_("%(fmt_money)s JOD logged out of the register.", fmt_money=logic.fmt_money(amount)), "success")
     return redirect(url_for("sales.cash_register_page", date=day))
 
 
@@ -160,10 +161,10 @@ def cash_register_audit_new():
     try:
         counted_cash = parse_money(f.get("counted_cash"), required=True)
     except BadNumber:
-        flash("Counted cash must be a valid number.", "error")
+        flash(_("Counted cash must be a valid number."), "error")
         return redisplay(day)
     if counted_cash < 0:
-        flash("Counted cash can't be negative.", "error")
+        flash(_("Counted cash can't be negative."), "error")
         return redisplay(day)
     # Recomputed fresh here, never trusted from the form — same reasoning
     # as consignment_settlement_new(): this is the figure the audit result
@@ -187,13 +188,13 @@ def cash_register_audit_new():
     auth.log_change(db, "cash_register_audits", str(audit_id), "create")
     db.commit()
     if status == "Perfect":
-        flash(f"Audit recorded for {day}: Perfect — counted cash matches the system exactly.", "success")
+        flash(_("Audit recorded for %(day)s: Perfect — counted cash matches the system exactly.", day=day), "success")
     else:
         # "warning", not "error": the audit DID save. Flashing a saved
         # record in the same red as a failure reads as "that did not work"
         # and invites staff to re-run the count. The discrepancy still
         # needs attention, which is what the warning state is for.
-        flash(f"Audit recorded for {day}: {status} of {logic.fmt_money(abs(difference))} JOD.", "warning")
+        flash(_("Audit recorded for %(day)s: %(status)s of %(fmt_money)s JOD.", day=day, status=status, fmt_money=logic.fmt_money(abs(difference))), "warning")
     return redirect(url_for("sales.cash_register_page", date=day))
 
 
@@ -495,7 +496,7 @@ def pos_checkout():
             if existing_sale:
                 return redirect(url_for("sales.pos_receipt", sale_id=existing_sale["id"]))
         raise
-    flash(f"Sale #{sale_id} completed — total {logic.fmt_money(total)} JOD.", "success")
+    flash(_("Sale #%(sale_id)s completed — total %(fmt_money)s JOD.", sale_id=sale_id, fmt_money=logic.fmt_money(total)), "success")
     return redirect(url_for("sales.pos_receipt", sale_id=sale_id))
 
 
@@ -505,7 +506,7 @@ def pos_receipt(sale_id):
     db = get_db()
     sale = db.execute("SELECT * FROM sales WHERE id=?", (sale_id,)).fetchone()
     if sale is None:
-        flash("Sale not found.", "error")
+        flash(_("Sale not found."), "error")
         return redirect(url_for("sales.pos_history"))
     items = db.execute(
         "SELECT si.*, i.name FROM sale_items si JOIN inventory_list i ON i.id=si.item_id WHERE si.sale_id=?", (sale_id,)
@@ -581,7 +582,7 @@ def refund_retail_save():
     try:
         sale_id = int(f.get("sale_id", ""))
     except (TypeError, ValueError):
-        flash("Look up a sale first — a retail refund must be linked to the sale it's refunding.", "error")
+        flash(_("Look up a sale first — a retail refund must be linked to the sale it's refunding."), "error")
         return redisplay()
     sale_item_ids_raw = f.getlist("sale_item_id")
     quantities = f.getlist("quantity")
@@ -602,12 +603,12 @@ def refund_retail_save():
         return redisplay()
 
     if not sale_item_ids_raw:
-        flash("No items selected — nothing to refund.", "error")
+        flash(_("No items selected — nothing to refund."), "error")
         return redisplay()
     try:
         sale_item_ids = [int(sid) for sid in sale_item_ids_raw]
     except ValueError:
-        flash("Invalid item selection.", "error")
+        flash(_("Invalid item selection."), "error")
         return redisplay()
 
     # Lock every sale_items row being refunded, in a fixed order, before
@@ -620,7 +621,7 @@ def refund_retail_save():
 
     sale, refundable = logic.refundable_sale_items(db, sale_id)
     if not sale:
-        flash("Sale not found.", "error")
+        flash(_("Sale not found."), "error")
         return redisplay()
     remaining_by_id = {l["sale_item_id"]: l for l in refundable}
 
@@ -629,7 +630,7 @@ def refund_retail_save():
         try:
             qty = parse_quantity(qty_raw, required=True)
         except BadNumber:
-            flash("Refund quantities must be valid numbers.", "error")
+            flash(_("Refund quantities must be valid numbers."), "error")
             return redisplay()
         if qty <= 0:
             continue
@@ -639,10 +640,10 @@ def refund_retail_save():
         # since the sale.
         line = remaining_by_id.get(sid)
         if not line:
-            flash("One of the selected items isn't part of that sale.", "error")
+            flash(_("One of the selected items isn't part of that sale."), "error")
             return redisplay()
         if qty > line["remaining"]:
-            flash(f"Can't refund {qty:g} {line['name']} — only {line['remaining']:g} left refundable from this sale.", "error")
+            flash(_("Can't refund %(qty)s %(name)s — only %(remaining)s left refundable from this sale.", qty=f"{qty:g}", name=line['name'], remaining=f"{line['remaining']:g}"), "error")
             return redisplay()
         price = line["unit_price"]
         line_total = round(price * qty, 3)
@@ -650,7 +651,7 @@ def refund_retail_save():
         lines.append((line["item_id"], sid, qty, price, line_total))
 
     if not lines:
-        flash("Nothing to refund.", "error")
+        flash(_("Nothing to refund."), "error")
         return redisplay()
 
     # Microsecond precision — same reasoning as pos_checkout()'s `now`
@@ -667,8 +668,7 @@ def refund_retail_save():
         "SELECT COALESCE(SUM(amount),0) s FROM refunds WHERE sale_id=? AND refund_type='retail'", (sale_id,)
     ).fetchone()["s"]
     if already_refunded_total + rounded_total > sale["total"]:
-        flash(f"That's more than this sale actually collected ({logic.fmt_money(sale['total'])} JOD, after any "
-              f"Clean Up applied at sale time) minus what's already been refunded.", "error")
+        flash(_("That's more than this sale actually collected (%(fmt_money)s JOD, after any Clean Up applied at sale time) minus what's already been refunded.", fmt_money=logic.fmt_money(sale['total'])), "error")
         return redisplay()
     cur = db.execute(
         "INSERT INTO refunds (refund_type, refund_date, amount, restocked, sale_id, reason, refund_method, "
@@ -712,7 +712,7 @@ def refund_service_save():
     try:
         amount = parse_money(f.get("amount")) or 0
     except BadNumber:
-        flash("Refund amount must be a valid number.", "error")
+        flash(_("Refund amount must be a valid number."), "error")
         return redisplay()
     reason = (f.get("reason") or "").strip()
     # Same reasoning as the retail refund above: a recorded refund with no
@@ -731,7 +731,7 @@ def refund_service_save():
     boarding_id_raw = (f.get("boarding_id") or "").strip()
 
     if amount <= 0:
-        flash("Refund amount must be greater than 0.", "error")
+        flash(_("Refund amount must be greater than 0."), "error")
         return redisplay()
     # A service refund always reverses one specific visit or one specific
     # inpatient case — never both at once, and never neither. A goodwill/
@@ -742,8 +742,8 @@ def refund_service_save():
     # could be paid for and there was no way to hand the money back through
     # this page.
     if [bool(visit_id), bool(case_id_raw), bool(boarding_id_raw)].count(True) != 1:
-        flash("A service refund must be linked to exactly one visit, inpatient case, "
-              "or boarding stay.", "error")
+        flash(_("A service refund must be linked to exactly one visit, inpatient case, "
+              "or boarding stay."), "error")
         return redisplay()
 
     # Locked before computing the cap — same reasoning as
@@ -753,7 +753,7 @@ def refund_service_save():
     # either commits, and both pass a cap check that together they exceed.
     if visit_id:
         if not db.execute("SELECT 1 FROM visits WHERE id=? FOR UPDATE", (visit_id,)).fetchone():
-            flash(f"Visit {visit_id} not found.", "error")
+            flash(_("Visit %(visit_id)s not found.", visit_id=visit_id), "error")
             return redisplay()
         paid = logic.visit_billing_summary(db, visit_id)["paid"]
         already_refunded = db.execute(
@@ -761,7 +761,7 @@ def refund_service_save():
         ).fetchone()["s"]
         cap = paid - already_refunded
         if amount > cap:
-            flash(f"That's more than what's left refundable on this visit ({logic.fmt_money(cap)} JOD).", "error")
+            flash(_("That's more than what's left refundable on this visit (%(fmt_money)s JOD).", fmt_money=logic.fmt_money(cap)), "error")
             return redisplay()
 
     case_id = None
@@ -769,7 +769,7 @@ def refund_service_save():
         if not case_id_raw.isdigit() or not db.execute(
             "SELECT 1 FROM inpatient_cases WHERE id=? FOR UPDATE", (int(case_id_raw),)
         ).fetchone():
-            flash(f"Inpatient case {case_id_raw} not found.", "error")
+            flash(_("Inpatient case %(case_id_raw)s not found.", case_id_raw=case_id_raw), "error")
             return redisplay()
         case_id = int(case_id_raw)
         paid = logic.inpatient_billing_summary(db, case_id)["paid"]
@@ -778,7 +778,7 @@ def refund_service_save():
         ).fetchone()["s"]
         cap = paid - already_refunded
         if amount > cap:
-            flash(f"That's more than what's left refundable on this case ({logic.fmt_money(cap)} JOD).", "error")
+            flash(_("That's more than what's left refundable on this case (%(fmt_money)s JOD).", fmt_money=logic.fmt_money(cap)), "error")
             return redisplay()
 
     boarding_id = None
@@ -786,7 +786,7 @@ def refund_service_save():
         if not boarding_id_raw.isdigit() or not db.execute(
             "SELECT 1 FROM boarding_sessions WHERE id=? FOR UPDATE", (int(boarding_id_raw),)
         ).fetchone():
-            flash(f"Boarding stay {boarding_id_raw} not found.", "error")
+            flash(_("Boarding stay %(boarding_id_raw)s not found.", boarding_id_raw=boarding_id_raw), "error")
             return redisplay()
         boarding_id = int(boarding_id_raw)
         paid = logic.boarding_billing_summary(db, boarding_id)["paid"]
@@ -795,7 +795,7 @@ def refund_service_save():
         ).fetchone()["s"]
         cap = paid - already_refunded
         if amount > cap:
-            flash(f"That's more than what's left refundable on this stay ({logic.fmt_money(cap)} JOD).", "error")
+            flash(_("That's more than what's left refundable on this stay (%(fmt_money)s JOD).", fmt_money=logic.fmt_money(cap)), "error")
             return redisplay()
 
     now = datetime.now().isoformat(timespec="seconds")
@@ -824,5 +824,5 @@ def refund_service_save():
     logic.recompute_month_summary(db, logic.month_key(refund_date))
     auth.log_change(db, "refunds", str(refund_id), "create")
     db.commit()
-    flash(f"Service refund of {amount:,.3f} JOD recorded.", "success")
+    flash(_("Service refund of %(amount)s JOD recorded.", amount=f"{amount:,.3f}"), "success")
     return redirect(url_for("sales.refunds_page"))

@@ -31,7 +31,7 @@ from flask import (
     session, send_from_directory, send_file, abort
 )
 from flask.json.provider import DefaultJSONProvider
-from flask_babel import Babel, get_locale
+from flask_babel import Babel, get_locale, gettext as _
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
@@ -582,8 +582,8 @@ def _warn_if_submission_will_be_lost():
     it makes the loss visible, which is the part that actually hurt.
     """
     if request.method != "GET":
-        flash("You were signed out before that could be saved, so nothing was stored. "
-              "Please sign in and enter it again.", "error")
+        flash(_("You were signed out before that could be saved, so nothing was stored. "
+              "Please sign in and enter it again."), "error")
 
 
 @app.before_request
@@ -608,7 +608,7 @@ def require_login():
     # "nothing to compare against yet" rather than an automatic mismatch.
     if user["password_changed_at"] and session.get("password_changed_at") != user["password_changed_at"]:
         session.clear()
-        flash("Your password was changed — please log in again.", "error")
+        flash(_("Your password was changed — please log in again."), "error")
         return redirect(url_for("login"))
     auth.refresh_session_permissions(db, user)
     if user["must_change_password"] and request.endpoint != "change_password":
@@ -684,7 +684,7 @@ def too_large(e):
     browsers/XHR don't auto-follow a redirect that's paired with a non-3xx
     status code, and we want the flash message to actually surface on the
     page the user lands on, not get silently stranded in the session."""
-    flash(f"That file is too large — the limit is {MAX_UPLOAD_MB} MB per upload.", "error")
+    flash(_("That file is too large — the limit is %(MAX_UPLOAD_MB)s MB per upload.", MAX_UPLOAD_MB=MAX_UPLOAD_MB), "error")
     from urllib.parse import urlparse
     ref_path = urlparse(request.referrer or "").path
     target = ref_path if is_safe_local_path(ref_path) else None
@@ -711,7 +711,7 @@ def handle_bad_number(e):
     number.'); this exists so a route that forgets to catch it degrades to
     a flashed error instead of an uncaught 500."""
     mark_transaction_failed()
-    flash("One of the number fields on that form wasn't valid. Please check the amounts and try again.", "error")
+    flash(_("One of the number fields on that form wasn't valid. Please check the amounts and try again."), "error")
     return _fallback_redirect()
 
 
@@ -719,7 +719,7 @@ def handle_bad_number(e):
 def handle_bad_phone(e):
     """Safety net for BadPhone — same idea as handle_bad_number() above."""
     mark_transaction_failed()
-    flash("That phone number doesn't look valid. Please check it and try again.", "error")
+    flash(_("That phone number doesn't look valid. Please check it and try again."), "error")
     return _fallback_redirect()
 
 
@@ -755,15 +755,15 @@ def handle_http_exception(e):
         # still holds a valid-looking cookie). Tell the truth about which one
         # happened, and only force a re-login when the session really is gone.
         if session.get("user_id"):
-            flash("This page had been open too long to submit safely, so nothing was saved. "
-                  "Please check what you entered and submit it again.", "error")
+            flash(_("This page had been open too long to submit safely, so nothing was saved. "
+                  "Please check what you entered and submit it again."), "error")
             return _fallback_redirect()
-        flash("You were signed out while this page was open. Please sign in again — "
-              "you may need to re-enter what you were working on.", "error")
+        flash(_("You were signed out while this page was open. Please sign in again — "
+              "you may need to re-enter what you were working on."), "error")
         return redirect(url_for("login"))
     if e.code == 400:
-        flash("That form was missing something the server needed. "
-              "Please reload the page and try again.", "error")
+        flash(_("That form was missing something the server needed. "
+              "Please reload the page and try again."), "error")
         return _fallback_redirect()
     return e
 
@@ -775,7 +775,7 @@ def handle_numeric_out_of_range(e):
     would legitimately have — instead of a bad-but-plausible value
     BadNumber's validation would have already caught client-side. Same
     friendly-degrade pattern as BadNumber/BadPhone above."""
-    flash("That number is too large to be a valid value here.", "error")
+    flash(_("That number is too large to be a valid value here."), "error")
     return _fallback_redirect()
 
 
@@ -891,15 +891,14 @@ def login():
         return redirect(url_for("dashboard"))
     if request.method == "POST":
         if not _login_rate_limit_check(request.remote_addr):
-            flash("Too many login attempts from this network. Please wait a few minutes and try again.", "error")
+            flash(_("Too many login attempts from this network. Please wait a few minutes and try again."), "error")
             return render_template("login.html")
         db = get_db()
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         locked, minutes_left, unlock_at = auth.login_lock_status(db, username)
         if locked:
-            flash(f"Too many failed attempts for that account. Try again in about {minutes_left} minute(s) "
-                  f"(around {unlock_at.strftime('%H:%M')}).", "error")
+            flash(_("Too many failed attempts for that account. Try again in about %(minutes_left)s minute(s) (around %(strftime)s).", minutes_left=minutes_left, strftime=unlock_at.strftime('%H:%M')), "error")
             return render_template("login.html", lockout_unlock_at=unlock_at.isoformat(timespec="seconds"))
         row = db.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
         # verify_password() runs unconditionally, even for a username that
@@ -911,7 +910,7 @@ def login():
         ok = row and row["active"] and password_ok
         auth.log_login(db, row["id"] if row else None, username, bool(ok))
         if not ok:
-            flash("Incorrect username or password, or account is disabled.", "error")
+            flash(_("Incorrect username or password, or account is disabled."), "error")
             return render_template("login.html")
         # Clears any pre-auth session state (e.g. a CSRF token issued to
         # the anonymous login page) rather than letting it survive into
@@ -949,11 +948,11 @@ def change_password():
         confirm = request.form.get("confirm_password", "")
         user = db.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
         if not auth.verify_password(user["password_hash"], current):
-            flash("Current password is incorrect.", "error")
+            flash(_("Current password is incorrect."), "error")
         elif auth.password_error(new, user["username"]):
             flash(auth.password_error(new, user["username"]), "error")
         elif new != confirm:
-            flash("New password and confirmation don't match.", "error")
+            flash(_("New password and confirmation don't match."), "error")
         else:
             changed_at = datetime.now().isoformat(timespec="seconds")
             db.execute("UPDATE users SET password_hash=?, must_change_password=false, password_changed_at=? WHERE id=?",
@@ -964,7 +963,7 @@ def change_password():
             # OTHER sessions for this user (e.g. a stolen cookie elsewhere)
             # get invalidated by require_login()'s mismatch check.
             session["password_changed_at"] = changed_at
-            flash("Password updated.", "success")
+            flash(_("Password updated."), "success")
             return redirect(url_for("dashboard"))
     return render_template("change_password.html", forced=forced)
 
@@ -1094,7 +1093,7 @@ def reports_rebuild_summary():
     db = get_db()
     logic.recompute_full_summary(db)
     db.commit()
-    flash("Report data rebuilt from current billing, sales, and cost data.", "success")
+    flash(_("Report data rebuilt from current billing, sales, and cost data."), "success")
     return redirect(request.form.get("return_to") or url_for("reports"))
 
 
@@ -1210,10 +1209,10 @@ def reports_opex_save():
 
     month = f.get("month", "").strip()
     if not month:
-        flash("Pick a month first.", "error")
+        flash(_("Pick a month first."), "error")
         return redisplay()
     if not re.fullmatch(r"\d{4}-\d{2}", month):
-        flash("That's not a valid month.", "error")
+        flash(_("That's not a valid month."), "error")
         return redisplay()
     try:
         rent = parse_money(f.get("rent")) or 0
@@ -1222,7 +1221,7 @@ def reports_opex_save():
         marketing = parse_money(f.get("marketing")) or 0
         other = parse_money(f.get("other")) or 0
     except BadNumber:
-        flash("Operating costs must be valid numbers.", "error")
+        flash(_("Operating costs must be valid numbers."), "error")
         return redisplay()
     # A negative operating cost does not reduce spending, it reads as income:
     # yearly_pl() computes net_profit = gross_profit - total_opex, so a
@@ -1230,7 +1229,7 @@ def reports_opex_save():
     # A single mistyped "-100,000" rent moved the annual net profit figure by
     # +200,000 in testing.
     if has_negative(rent, salaries, utilities, marketing, other):
-        flash("Operating costs can't be negative.", "error")
+        flash(_("Operating costs can't be negative."), "error")
         return redisplay()
     db.execute(
         """INSERT INTO monthly_opex (month, rent, salaries, utilities, marketing, other) VALUES (?,?,?,?,?,?)
@@ -1240,7 +1239,7 @@ def reports_opex_save():
     )
     auth.log_change(db, "monthly_opex", month, "update")
     db.commit()
-    flash(f"Operating costs saved for {month}.", "success")
+    flash(_("Operating costs saved for %(month)s.", month=month), "success")
     return redirect(url_for("reports"))
 
 

@@ -20,6 +20,7 @@ import os
 import pdf_export
 import re
 
+from flask_babel import gettext as _
 from flask import (
     Blueprint, abort, flash, jsonify, redirect, render_template, request, send_file, send_from_directory, session, url_for
 )
@@ -180,7 +181,7 @@ def owner_new():
         try:
             phone = normalize_phone(f.get("phone"))
         except BadPhone:
-            flash("That phone number doesn't look valid — check the digits and try again.", "error")
+            flash(_("That phone number doesn't look valid — check the digits and try again."), "error")
             return render_template("owner_form.html", owner=None, form=f)
         # Friendly fast-path — not the real guarantee (see the IntegrityError
         # catch below for that): an owner with this phone already on file
@@ -189,8 +190,7 @@ def owner_new():
         if phone:
             existing = db.execute("SELECT id FROM owners WHERE phone=?", (phone,)).fetchone()
             if existing:
-                flash(f"Owner {existing['id']} already has this phone number on file — "
-                      f"add the pet to them instead of creating a new owner.", "error")
+                flash(_("Owner %(id)s already has this phone number on file — add the pet to them instead of creating a new owner.", id=existing['id']), "error")
                 return redirect(url_for("clinical.owner_detail", owner_id=existing["id"]))
         name = required_field(f, "name", "Owner name")
         if name is None:
@@ -211,12 +211,11 @@ def owner_new():
             db.rollback()
             existing = db.execute("SELECT id FROM owners WHERE phone=?", (phone,)).fetchone()
             if existing:
-                flash(f"Owner {existing['id']} already has this phone number on file — "
-                      f"add the pet to them instead of creating a new owner.", "error")
+                flash(_("Owner %(id)s already has this phone number on file — add the pet to them instead of creating a new owner.", id=existing['id']), "error")
                 return redirect(url_for("clinical.owner_detail", owner_id=existing["id"]))
-            flash("That phone number is already on file for another owner.", "error")
+            flash(_("That phone number is already on file for another owner."), "error")
             return render_template("owner_form.html", owner=None, form=f)
-        flash(f"Owner {oid} added.", "success")
+        flash(_("Owner %(oid)s added.", oid=oid), "success")
         return redirect(url_for("clinical.owner_detail", owner_id=oid))
     return render_template("owner_form.html", owner=None)
 
@@ -227,7 +226,7 @@ def owner_detail(owner_id):
     db = get_db()
     owner = db.execute("SELECT * FROM owners WHERE id=?", (owner_id,)).fetchone()
     if not owner:
-        flash("Owner not found.", "error")
+        flash(_("Owner not found."), "error")
         return redirect(url_for("clinical.owners_list"))
     patients = db.execute("SELECT * FROM patients WHERE owner_id=? ORDER BY animal_name", (owner_id,)).fetchall()
     return render_template("owner_detail.html", owner=owner, patients=patients)
@@ -239,14 +238,14 @@ def owner_edit(owner_id):
     db = get_db()
     owner = db.execute("SELECT * FROM owners WHERE id=?", (owner_id,)).fetchone()
     if not owner:
-        flash("Owner not found.", "error")
+        flash(_("Owner not found."), "error")
         return redirect(url_for("clinical.owners_list"))
     if request.method == "POST":
         f = request.form
         try:
             phone = normalize_phone(f.get("phone"))
         except BadPhone:
-            flash("That phone number doesn't look valid — check the digits and try again.", "error")
+            flash(_("That phone number doesn't look valid — check the digits and try again."), "error")
             return render_template("owner_form.html", owner=owner, form=f)
         name = required_field(f, "name", "Owner name")
         if name is None:
@@ -257,7 +256,7 @@ def owner_edit(owner_id):
                   (new_vals["name"], new_vals["phone"], new_vals["address"], new_vals["notes"], owner_id))
         auth.log_change(db, "owners", owner_id, "update", changes)
         db.commit()
-        flash("Owner updated.", "success")
+        flash(_("Owner updated."), "success")
         return redirect(url_for("clinical.owner_detail", owner_id=owner_id))
     return render_template("owner_form.html", owner=owner)
 
@@ -308,7 +307,7 @@ def patient_detail(patient_id):
         "JOIN owners o ON o.id=p.owner_id WHERE p.id=?", (patient_id,)
     ).fetchone()
     if not patient:
-        flash("Patient not found.", "error")
+        flash(_("Patient not found."), "error")
         return redirect(url_for("clinical.patients_list"))
     visits = db.execute("SELECT * FROM visits WHERE patient_id=? ORDER BY date DESC", (patient_id,)).fetchall()
     visits = [dict(v) for v in visits]
@@ -327,7 +326,7 @@ def patient_edit(patient_id):
     db = get_db()
     patient = db.execute("SELECT * FROM patients WHERE id=?", (patient_id,)).fetchone()
     if not patient:
-        flash("Patient not found.", "error")
+        flash(_("Patient not found."), "error")
         return redirect(url_for("clinical.patients_list"))
     if request.method == "POST":
         f = request.form
@@ -344,7 +343,7 @@ def patient_edit(patient_id):
         try:
             microchip = normalize_microchip(f.get("microchip"))
         except BadMicrochip:
-            flash("That microchip number doesn't look valid — check the digits and try again.", "error")
+            flash(_("That microchip number doesn't look valid — check the digits and try again."), "error")
             return redisplay()
         # Excluding this patient matters: re-saving the form without touching
         # the chip would otherwise report the animal as a duplicate of itself.
@@ -367,11 +366,11 @@ def patient_edit(patient_id):
             # the check above is not atomic and a concurrent save can win the
             # race. Without this the update 500s on a duplicate chip.
             db.rollback()
-            flash("That microchip number is already on another patient's record.", "error")
+            flash(_("That microchip number is already on another patient's record."), "error")
             return redisplay()
         auth.log_change(db, "patients", patient_id, "update", changes)
         db.commit()
-        flash("Patient updated.", "success")
+        flash(_("Patient updated."), "success")
         return redirect(url_for("clinical.patient_detail", patient_id=patient_id))
     return render_template("patient_form_edit.html", patient=patient)
 
@@ -384,7 +383,7 @@ def patient_history(patient_id):
         "SELECT p.*, o.name as owner_name FROM patients p JOIN owners o ON o.id=p.owner_id WHERE p.id=?", (patient_id,)
     ).fetchone()
     if not patient:
-        flash("Patient not found.", "error")
+        flash(_("Patient not found."), "error")
         return redirect(url_for("clinical.patients_list"))
     events = logic.patient_history(db, patient_id)
     return render_template("patient_history.html", patient=patient, events=events)
@@ -457,7 +456,7 @@ def visit_new_existing():
             (patient_id,),
         ).fetchone() if patient_id else None
         if not patient_id or not patient_row:
-            flash("Pick a patient from the search results before logging a visit.", "error")
+            flash(_("Pick a patient from the search results before logging a visit."), "error")
             return redirect(url_for("clinical.visit_new_existing"))
         try:
             vid = _create_visit(db, patient_id, request.form)
@@ -485,7 +484,7 @@ def visit_new_patient():
         try:
             owner_phone = normalize_phone(f.get("owner_phone"))
         except BadPhone:
-            flash("That owner phone number doesn't look valid — check the digits and try again.", "error")
+            flash(_("That owner phone number doesn't look valid — check the digits and try again."), "error")
             return redisplay()
         try:
             _parse_visit_fields(f)
@@ -493,7 +492,7 @@ def visit_new_patient():
             flash(str(e), "error")
             return redisplay()
         except BadNumber:
-            flash("Weight and BCS must be valid numbers.", "error")
+            flash(_("Weight and BCS must be valid numbers."), "error")
             return redisplay()
         owner_name = required_field(f, "owner_name", "Owner name")
         if owner_name is None:
@@ -512,7 +511,7 @@ def visit_new_patient():
         try:
             microchip = normalize_microchip(f.get("microchip"))
         except BadMicrochip:
-            flash("That microchip number doesn't look valid — check the digits and try again.", "error")
+            flash(_("That microchip number doesn't look valid — check the digits and try again."), "error")
             return redisplay()
         held_by = patient_with_microchip(db, microchip)
         if held_by:
@@ -533,7 +532,7 @@ def visit_new_patient():
         existing_owner = db.execute("SELECT id FROM owners WHERE phone=?", (owner_phone,)).fetchone() if owner_phone else None
         if existing_owner:
             oid = existing_owner["id"]
-            flash(f"Owner {oid} already has this phone number on file — the new pet was added to their existing profile.", "success")
+            flash(_("Owner %(oid)s already has this phone number on file — the new pet was added to their existing profile.", oid=oid), "success")
         else:
             oid = dbmod.next_id(db, "OW")
             try:
@@ -556,11 +555,11 @@ def visit_new_patient():
                 existing = db.execute("SELECT id FROM owners WHERE phone=?", (owner_phone,)).fetchone() \
                     if owner_phone else None
                 if not existing:
-                    flash("That owner couldn't be saved — check the name and phone number "
-                          "and try again.", "error")
+                    flash(_("That owner couldn't be saved — check the name and phone number "
+                          "and try again."), "error")
                     return redisplay()
                 oid = existing["id"]
-                flash(f"Owner {oid} already has this phone number on file — the new pet was added to their existing profile.", "success")
+                flash(_("Owner %(oid)s already has this phone number on file — the new pet was added to their existing profile.", oid=oid), "success")
 
         pid = dbmod.next_id(db, "PT")
         try:
@@ -577,7 +576,7 @@ def visit_new_patient():
             # which is the point: a half-written owner with no patient is
             # exactly the orphan shape ORPHANED_RECORDS_AUDIT.md F-03 covers.
             db.rollback()
-            flash("That microchip number is already on another patient's record.", "error")
+            flash(_("That microchip number is already on another patient's record."), "error")
             return redisplay()
         auth.log_change(db, "patients", pid, "create")
         db.commit()
@@ -727,7 +726,7 @@ def visit_detail(visit_id):
     db = get_db()
     ctx = _visit_detail_context(db, visit_id)
     if ctx is None:
-        flash("Visit not found.", "error")
+        flash(_("Visit not found."), "error")
         return redirect(url_for("clinical.visits_list"))
     return render_template("visit_detail.html", **ctx)
 
@@ -738,7 +737,7 @@ def visit_edit(visit_id):
     db = get_db()
     visit = db.execute("SELECT * FROM visits WHERE id=?", (visit_id,)).fetchone()
     if not visit:
-        flash("Visit not found.", "error")
+        flash(_("Visit not found."), "error")
         return redirect(url_for("clinical.visits_list"))
     if request.method == "POST":
         f = request.form
@@ -761,7 +760,7 @@ def visit_edit(visit_id):
             return redisplay()
         new_visit_type = f.get("visit_type")
         if new_visit_type not in ("Outpatient", "Inpatient"):
-            flash("Visit type must be Outpatient or Inpatient.", "error")
+            flash(_("Visit type must be Outpatient or Inpatient."), "error")
             return redisplay()
         status_changed_at = visit["case_status_changed_at"]
         if new_case_status != visit["case_status"]:
@@ -777,10 +776,10 @@ def visit_edit(visit_id):
             flash(str(e), "error")
             return redisplay()
         except BadNumber:
-            flash("Weight and BCS must be valid numbers.", "error")
+            flash(_("Weight and BCS must be valid numbers."), "error")
             return redisplay()
         if has_negative(edited_weight_kg):
-            flash("Weight can't be negative.", "error")
+            flash(_("Weight can't be negative."), "error")
             return redisplay()
 
         new_vals = {
@@ -815,8 +814,7 @@ def visit_edit(visit_id):
             "SELECT id, dismissed FROM inpatient_cases WHERE visit_id=? ORDER BY id DESC LIMIT 1",
             (visit_id,)).fetchone()
         if was_admitted and not now_admitted and existing_case and not existing_case["dismissed"]:
-            flash(f"Inpatient case #{existing_case['id']} is still open for this visit — "
-                  f"dismiss it there first, or leave the status as Admitted to Inpatient.", "error")
+            flash(_("Inpatient case #%(id)s is still open for this visit — dismiss it there first, or leave the status as Admitted to Inpatient.", id=existing_case['id']), "error")
             return redisplay()
 
         changes = auth.diff_dict(visit, new_vals)
@@ -833,9 +831,9 @@ def visit_edit(visit_id):
         if now_admitted and not existing_case:
             _create_inpatient_case(db, visit["patient_id"], visit_id, f.get("complaint"),
                                     edited_date or visit["date"], edited_weight_kg, edited_bcs)
-            flash("An inpatient case was opened for this visit.", "success")
+            flash(_("An inpatient case was opened for this visit."), "success")
         db.commit()
-        flash("Visit updated.", "success")
+        flash(_("Visit updated."), "success")
         return redirect(url_for("clinical.visit_detail", visit_id=visit_id))
     return render_template("visit_form_edit.html", visit=visit, case_statuses=CASE_STATUSES,
                             followup_reasons=FOLLOWUP_REASONS, wellness_types=WELLNESS_TYPES,
@@ -860,7 +858,7 @@ def visit_billing_save(visit_id):
     def redisplay():
         ctx = _visit_detail_context(db, visit_id)
         if ctx is None:
-            flash("Visit not found.", "error")
+            flash(_("Visit not found."), "error")
             return redirect(url_for("clinical.visits_list"))
         return render_template("visit_detail.html", **ctx, form=f)
 
@@ -868,7 +866,7 @@ def visit_billing_save(visit_id):
     # see the comment there. A pure mutex against a concurrent discount
     # save on the same visit; nothing about the visits row itself changes.
     if not db.execute("SELECT id FROM visits WHERE id=? FOR UPDATE", (visit_id,)).fetchone():
-        flash("Visit not found.", "error")
+        flash(_("Visit not found."), "error")
         return redirect(url_for("clinical.visits_list"))
     billing_type = f.get("billing_type", "Automatic")
     if billing_type not in BILLING_TYPES:
@@ -901,7 +899,7 @@ def visit_billing_save(visit_id):
                 "quantity": qty, "unit_price": price_row["sale_price"], "unit_cost": price_row["cost_price"],
             })
         if not priced_lines:
-            flash("Add at least one billed item.", "error")
+            flash(_("Add at least one billed item."), "error")
             return redirect(url_for("clinical.visit_detail", visit_id=visit_id))
         # visit_discount_save() only checks non-discountable items against
         # whatever's on the bill *at the moment a discount is applied* — it
@@ -915,17 +913,15 @@ def visit_billing_save(visit_id):
         if existing_discount and (existing_discount["discount_percent"] or 0) > 0:
             blocked = logic.non_discountable_line_names(db, [l["price_id"] for l in priced_lines])
             if blocked:
-                flash(f"Can't save — this bill has a {existing_discount['discount_percent']:.0f}% discount applied, "
-                      f"but includes item(s) marked as not discountable: {', '.join(blocked)}. "
-                      "Remove the discount first, or leave these items off this bill.", "error")
+                flash(_("Can't save — this bill has a %(discount_percent)s%% discount applied, but includes item(s) marked as not discountable: %(join)s. Remove the discount first, or leave these items off this bill.", discount_percent=f"{existing_discount['discount_percent']:.0f}", join=', '.join(blocked)), "error")
                 return redirect(url_for("clinical.visit_detail", visit_id=visit_id))
     try:
         manual_amount = parse_money(f.get("manual_amount")) if billing_type == "Manual" else None
     except BadNumber:
-        flash("Manual amount must be a valid number.", "error")
+        flash(_("Manual amount must be a valid number."), "error")
         return redisplay()
     if billing_type == "Manual" and (manual_amount is None or manual_amount <= 0):
-        flash("Manual Entry requires a Billed Amount greater than 0.", "error")
+        flash(_("Manual Entry requires a Billed Amount greater than 0."), "error")
         return redisplay()
     try:
         date_billed = clean_date(f.get("date_billed"), field="date_billed")
@@ -950,12 +946,10 @@ def visit_billing_save(visit_id):
     if existing:
         new_subtotal = manual_amount if billing_type == "Manual" else sum(l["quantity"] * l["unit_price"] for l in priced_lines)
         paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE visit_id=?", (visit_id,)).fetchone()
-        new_total, _, _, _ = logic.compute_bill_totals(
+        new_total, _unused, _unused, _unused = logic.compute_bill_totals(
             new_subtotal or 0, existing["discount_percent"], 0, existing["cleanup_amount"])
         if paid_row["s"] > new_total:
-            flash(f"That change would leave {logic.fmt_money(paid_row['s'])} paid against a "
-                  f"{logic.fmt_money(new_total)} JOD bill. Process a service refund for the "
-                  f"difference first.", "error")
+            flash(_("That change would leave %(fmt_money)s paid against a %(fmt_money2)s JOD bill. Process a service refund for the difference first.", fmt_money=logic.fmt_money(paid_row['s']), fmt_money2=logic.fmt_money(new_total)), "error")
             return redisplay()
     old_month = logic.month_key(existing["date_billed"]) if existing else None
     # UPSERT rather than a SELECT-then-branch INSERT/UPDATE — visit_id is
@@ -986,10 +980,10 @@ def visit_billing_save(visit_id):
     auth.log_change(db, "billing", visit_id, "update" if existing else "create")
     db.commit()
     if had_bad_number:
-        flash("Some quantities weren't valid numbers and were skipped.", "error")
+        flash(_("Some quantities weren't valid numbers and were skipped."), "error")
     if had_bad_price:
-        flash("Some selected items no longer exist in the Price List and were skipped.", "error")
-    flash("Billing saved.", "success")
+        flash(_("Some selected items no longer exist in the Price List and were skipped."), "error")
+    flash(_("Billing saved."), "success")
     return redirect(url_for("clinical.visit_detail", visit_id=visit_id))
 
 
@@ -1002,14 +996,14 @@ def visit_discount_save(visit_id):
     def redisplay():
         ctx = _visit_detail_context(db, visit_id)
         if ctx is None:
-            flash("Visit not found.", "error")
+            flash(_("Visit not found."), "error")
             return redirect(url_for("clinical.visits_list"))
         return render_template("visit_detail.html", **ctx, form=f, discount_error=True)
 
     try:
         percent = parse_money(f.get("discount_percent")) or 0
     except BadNumber:
-        flash("Discount must be a valid number.", "error")
+        flash(_("Discount must be a valid number."), "error")
         return redisplay()
     cap = auth.discount_cap_for()
     error = discount_percent_error(percent, cap)
@@ -1023,13 +1017,13 @@ def visit_discount_save(visit_id):
     # requests' writes would land having each only validated against a
     # snapshot the other had already invalidated.
     if not db.execute("SELECT id FROM visits WHERE id=? FOR UPDATE", (visit_id,)).fetchone():
-        flash("Visit not found.", "error")
+        flash(_("Visit not found."), "error")
         return redirect(url_for("clinical.visits_list"))
     if percent > 0:
         summary = logic.visit_billing_summary(db, visit_id)
         blocked = logic.non_discountable_line_names(db, [l["id"] for l in summary["lines"]])
         if blocked:
-            flash(f"Can't apply a discount — this bill includes item(s) marked as not discountable: {', '.join(blocked)}.", "error")
+            flash(_("Can't apply a discount — this bill includes item(s) marked as not discountable: %(join)s.", join=', '.join(blocked)), "error")
             return redisplay()
     existing = db.execute("SELECT * FROM billing WHERE visit_id=?", (visit_id,)).fetchone()
     if not existing:
@@ -1037,7 +1031,7 @@ def visit_discount_save(visit_id):
         # otherwise create a childless billing row (total=0, no lines, no
         # date_billed) for a visit that was never billed at all. See
         # ORPHANED_RECORDS_AUDIT.md F-16.
-        flash("Save the bill first — a discount needs something to apply to.", "error")
+        flash(_("Save the bill first — a discount needs something to apply to."), "error")
         return redisplay()
     db.execute(
         "UPDATE billing SET discount_percent=?, discount_applied_by=? WHERE visit_id=?",
@@ -1048,7 +1042,7 @@ def visit_discount_save(visit_id):
         logic.recompute_month_summary(db, logic.month_key(existing["date_billed"]))
     auth.log_change(db, "billing", visit_id, "update", {"discount_percent": (existing["discount_percent"] if existing else 0, percent)})
     db.commit()
-    flash(f"{percent:.0f}% discount applied.", "success")
+    flash(_("%(percent)s%% discount applied.", percent=f"{percent:.0f}"), "success")
     return redirect(url_for("clinical.visit_detail", visit_id=visit_id))
 
 
@@ -1061,7 +1055,7 @@ def visit_payment_add(visit_id):
     def redisplay():
         ctx = _visit_detail_context(db, visit_id)
         if ctx is None:
-            flash("Visit not found.", "error")
+            flash(_("Visit not found."), "error")
             return redirect(url_for("clinical.visits_list"))
         return render_template("visit_detail.html", **ctx, form=f, payment_error=True)
 
@@ -1070,25 +1064,25 @@ def visit_payment_add(visit_id):
     # recorded, so an overpayment here can never be undone, only journaled
     # around.
     if not db.execute("SELECT id FROM visits WHERE id=? FOR UPDATE", (visit_id,)).fetchone():
-        flash("Visit not found.", "error")
+        flash(_("Visit not found."), "error")
         return redirect(url_for("clinical.visits_list"))
     try:
         amount = parse_money(f.get("amount"), required=True)
     except BadNumber:
-        flash("Payment amount must be a valid number.", "error")
+        flash(_("Payment amount must be a valid number."), "error")
         return redisplay()
     if amount <= 0:
-        flash("Payment amount must be greater than 0.", "error")
+        flash(_("Payment amount must be greater than 0."), "error")
         return redisplay()
     summary = logic.visit_billing_summary(db, visit_id)
     balance = summary["balance"]
     if amount > balance:
-        flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this visit.", "error")
+        flash(_("That's more than the remaining balance of %(fmt_money)s JOD on this visit.", fmt_money=logic.fmt_money(balance)), "error")
         return redisplay()
     try:
         cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
     except BadNumber:
-        flash("Clean Up amount must be a valid number.", "error")
+        flash(_("Clean Up amount must be a valid number."), "error")
         return redisplay()
     error = cleanup_amount_error(cleanup_amount, summary["cleanup_amount"], balance)
     if error:
@@ -1114,7 +1108,7 @@ def visit_payment_add(visit_id):
             "cleanup_amount": (summary["cleanup_amount"], summary["cleanup_amount"] + cleanup_amount)})
         logic.refresh_visit_billing_total(db, visit_id)
     db.commit()
-    flash("Payment recorded.", "success")
+    flash(_("Payment recorded."), "success")
     return redirect(url_for("clinical.visit_detail", visit_id=visit_id))
 
 
@@ -1124,13 +1118,13 @@ def visit_attachment_upload(visit_id):
     db = get_db()
     patient_row = db.execute("SELECT patient_id FROM visits WHERE id=?", (visit_id,)).fetchone()
     if patient_row is None:
-        flash("Visit not found.", "error")
+        flash(_("Visit not found."), "error")
         return redirect(url_for("clinical.visits_list"))
     file = request.files.get("file")
     if not file or not file.filename:
-        flash("No file selected.", "error")
+        flash(_("No file selected."), "error")
         return redirect(url_for("clinical.visit_detail", visit_id=visit_id))
-    _, err = attach_mod.save_attachment(db, patient_row["patient_id"], "visit", visit_id, file, session["user_id"])
+    _unused, err = attach_mod.save_attachment(db, patient_row["patient_id"], "visit", visit_id, file, session["user_id"])
     flash(err if err else "File uploaded.", "error" if err else "success")
     return redirect(url_for("clinical.visit_detail", visit_id=visit_id))
 
@@ -1141,7 +1135,7 @@ def serve_attachment(relpath):
     db = get_db()
     row = db.execute("SELECT relative_path FROM attachments WHERE relative_path=?", (relpath,)).fetchone()
     if row is None:
-        flash("File not found.", "error")
+        flash(_("File not found."), "error")
         return redirect(url_for("dashboard"))
     disk_path = os.path.join(attach_mod.UPLOAD_ROOT, relpath)
     if not os.path.isfile(disk_path):
@@ -1150,9 +1144,9 @@ def serve_attachment(relpath):
         # part of the database backup at all). send_from_directory would
         # otherwise raise a bare 404 with no indication the record is
         # intact. See ORPHANED_RECORDS_AUDIT.md F-12.
-        flash("This file's record exists but the file itself is missing from the uploads "
+        flash(_("This file's record exists but the file itself is missing from the uploads "
               "folder — it may not have been included in a backup/restore. "
-              "Check with whoever manages backups before re-uploading.", "error")
+              "Check with whoever manages backups before re-uploading."), "error")
         return redirect(request.referrer or url_for("dashboard"))
     return send_from_directory(attach_mod.UPLOAD_ROOT, relpath)
 
@@ -1171,7 +1165,7 @@ def attachment_delete(attachment_id):
     db = get_db()
     row = attach_mod.get_attachment(db, attachment_id)
     if row is None:
-        flash("File not found — it may have already been deleted.", "error")
+        flash(_("File not found — it may have already been deleted."), "error")
         return redirect(request.referrer or url_for("dashboard"))
 
     if row["visit_id"]:
@@ -1186,11 +1180,11 @@ def attachment_delete(attachment_id):
         flash(err, "error")
         return redirect(redirect_target)
     if deleted is None:
-        flash("File not found — it may have already been deleted.", "error")
+        flash(_("File not found — it may have already been deleted."), "error")
         return redirect(redirect_target)
     auth.log_change(db, "attachments", str(attachment_id), "delete")
     db.commit()
-    flash(f"Deleted {deleted['original_name']}.", "success")
+    flash(_("Deleted %(original_name)s.", original_name=deleted['original_name']), "success")
     return redirect(redirect_target)
 
 
@@ -1215,12 +1209,12 @@ def followup_status_update(visit_id):
     status = request.form.get("status")
     old = db.execute("SELECT followup_status FROM visits WHERE id=?", (visit_id,)).fetchone()
     if not old:
-        flash("Visit not found.", "error")
+        flash(_("Visit not found."), "error")
         return redirect(request.referrer or url_for("clinical.followups_list"))
     db.execute("UPDATE visits SET followup_status=? WHERE id=?", (status, visit_id))
     auth.log_change(db, "visits", visit_id, "update", {"followup_status": (old["followup_status"], status)})
     db.commit()
-    flash("Follow-up status updated.", "success")
+    flash(_("Follow-up status updated."), "success")
     return redirect(request.referrer or url_for("clinical.followups_list"))
 
 
@@ -1244,13 +1238,13 @@ def wellness_update(visit_id):
     f = request.form
     old = db.execute("SELECT wellness_contacted, wellness_contact_method FROM visits WHERE id=?", (visit_id,)).fetchone()
     if not old:
-        flash("Visit not found.", "error")
+        flash(_("Visit not found."), "error")
         return redirect(url_for("clinical.wellness_list"))
     db.execute("UPDATE visits SET wellness_contacted=?, wellness_contact_method=? WHERE id=?",
               (f.get("wellness_contacted", "N"), f.get("wellness_contact_method") or None, visit_id))
     auth.log_change(db, "visits", visit_id, "update", {"wellness_contacted": (old["wellness_contacted"], f.get("wellness_contacted", "N"))})
     db.commit()
-    flash("Wellness reminder updated.", "success")
+    flash(_("Wellness reminder updated."), "success")
     return redirect(url_for("clinical.wellness_list"))
 
 
@@ -1275,13 +1269,13 @@ def grooming_update(visit_id):
     f = request.form
     old = db.execute("SELECT grooming_status, grooming_contacted FROM visits WHERE id=?", (visit_id,)).fetchone()
     if not old:
-        flash("Visit not found.", "error")
+        flash(_("Visit not found."), "error")
         return redirect(url_for("clinical.grooming_list"))
     db.execute("UPDATE visits SET grooming_status=?, grooming_contacted=? WHERE id=?",
               (f.get("grooming_status"), f.get("grooming_contacted", "N"), visit_id))
     auth.log_change(db, "visits", visit_id, "update", {"grooming_status": (old["grooming_status"], f.get("grooming_status"))})
     db.commit()
-    flash("Grooming entry updated.", "success")
+    flash(_("Grooming entry updated."), "success")
     return redirect(url_for("clinical.grooming_list"))
 
 
@@ -1364,16 +1358,16 @@ def boarding_new():
 
     patient_id = f.get("patient_id")
     if not patient_id or not db.execute("SELECT 1 FROM patients WHERE id=?", (patient_id,)).fetchone():
-        flash("Pick a patient from the search results first.", "error")
+        flash(_("Pick a patient from the search results first."), "error")
         return redisplay()
     try:
         price_per_day = parse_money(f.get("price_per_day"))
         total = parse_money(f.get("total"))
     except BadNumber:
-        flash("Price per Day and Total must be valid numbers.", "error")
+        flash(_("Price per Day and Total must be valid numbers."), "error")
         return redisplay()
     if has_negative(price_per_day, total):
-        flash("Price per Day and Total can't be negative.", "error")
+        flash(_("Price per Day and Total can't be negative."), "error")
         return redisplay()
     try:
         entry_date = clean_date(f.get("entry_date"), field="entry_date") or date.today().isoformat()
@@ -1398,7 +1392,7 @@ def boarding_new():
     logic.recompute_month_summary(db, logic.month_key(entry_date))
     auth.log_change(db, "boarding_sessions", str(boarding_id), "create")
     db.commit()
-    flash("Boarding session added.", "success")
+    flash(_("Boarding session added."), "success")
     return redirect(url_for("clinical.boarding_page"))
 
 
@@ -1409,7 +1403,7 @@ def boarding_edit(boarding_id):
     f = request.form
     old = db.execute("SELECT * FROM boarding_sessions WHERE id=?", (boarding_id,)).fetchone()
     if not old:
-        flash("Boarding session not found.", "error")
+        flash(_("Boarding session not found."), "error")
         return redirect(url_for("clinical.boarding_page"))
 
     def redisplay():
@@ -1429,10 +1423,10 @@ def boarding_edit(boarding_id):
         price_per_day = parse_money(f.get("price_per_day"))
         total = parse_money(f.get("total"))
     except BadNumber:
-        flash("Price per Day and Total must be valid numbers.", "error")
+        flash(_("Price per Day and Total must be valid numbers."), "error")
         return redisplay()
     if has_negative(price_per_day, total):
-        flash("Price per Day and Total can't be negative.", "error")
+        flash(_("Price per Day and Total can't be negative."), "error")
         return redisplay()
     try:
         entry_date = clean_date(f.get("entry_date"), field="entry_date") or old["entry_date"]
@@ -1445,7 +1439,7 @@ def boarding_edit(boarding_id):
     # does leave a nonsensical stay in the occupancy and boarding reports,
     # billed for a night it was never here.
     if dismissal_date and entry_date and str(dismissal_date) < str(entry_date):
-        flash("A stay can't end before it starts — check the dates.", "error")
+        flash(_("A stay can't end before it starts — check the dates."), "error")
         return redisplay()
     total_is_auto = total is None
     if total_is_auto:
@@ -1475,10 +1469,10 @@ def boarding_edit(boarding_id):
     logic.recompute_months_summary(db, [old_month, new_month])
     auth.log_change(db, "boarding_sessions", str(boarding_id), "update", changes)
     db.commit()
-    flash("Boarding session updated.", "success")
+    flash(_("Boarding session updated."), "success")
     if old["dismissed"]:
-        flash("This stay is already picked up, so dates/price/total stayed locked at the billed figure — "
-              "only room, admitted items, and special needs were changed.", "error")
+        flash(_("This stay is already picked up, so dates/price/total stayed locked at the billed figure — "
+              "only room, admitted items, and special needs were changed."), "error")
     return redirect(url_for("clinical.boarding_page"))
 
 
@@ -1491,7 +1485,7 @@ def boarding_dismiss(boarding_id):
         (boarding_id,),
     ).fetchone()
     if not row:
-        flash("Boarding session not found.", "error")
+        flash(_("Boarding session not found."), "error")
         return redirect(url_for("clinical.boarding_page"))
     dismissal_date = row["dismissal_date"] or date.today().isoformat()
     final_total = row["total"]
@@ -1514,7 +1508,7 @@ def boarding_dismiss(boarding_id):
     logic.recompute_month_summary(db, logic.month_key(row["entry_date"]))
     auth.log_change(db, "boarding_sessions", str(boarding_id), "update", {"dismissed": (False, True)})
     db.commit()
-    flash("Marked as picked up.", "success")
+    flash(_("Marked as picked up."), "success")
     return redirect(url_for("clinical.boarding_page"))
 
 
@@ -1523,12 +1517,12 @@ def boarding_dismiss(boarding_id):
 def boarding_incident(boarding_id):
     db = get_db()
     if not db.execute("SELECT 1 FROM boarding_sessions WHERE id=?", (boarding_id,)).fetchone():
-        flash("Boarding session not found.", "error")
+        flash(_("Boarding session not found."), "error")
         return redirect(url_for("clinical.boarding_page"))
     f = request.form
     issue = (f.get("issue") or "").strip()
     if not issue:
-        flash("Describe what's wrong before submitting.", "error")
+        flash(_("Describe what's wrong before submitting."), "error")
         return redirect(url_for("clinical.boarding_page"))
     contacted = "Y" if f.get("contacted") == "on" else "N"
     cur = db.execute(
@@ -1540,7 +1534,7 @@ def boarding_incident(boarding_id):
     incident_id = cur.fetchone()["id"]
     auth.log_change(db, "boarding_incidents", str(incident_id), "create")
     db.commit()
-    flash("Incident logged.", "success")
+    flash(_("Incident logged."), "success")
     return redirect(url_for("clinical.boarding_page"))
 
 
@@ -1560,21 +1554,21 @@ def boarding_payment(boarding_id):
     # can never be undone, only journaled around.
     session_row = db.execute("SELECT id FROM boarding_sessions WHERE id=? FOR UPDATE", (boarding_id,)).fetchone()
     if not session_row:
-        flash("Boarding session not found.", "error")
+        flash(_("Boarding session not found."), "error")
         return redirect(url_for("clinical.boarding_page"))
     try:
         amount = parse_money(f.get("amount")) or 0
     except BadNumber:
-        flash("Payment amount must be a valid number.", "error")
+        flash(_("Payment amount must be a valid number."), "error")
         return redisplay()
     if amount <= 0:
-        flash("Payment amount must be greater than 0.", "error")
+        flash(_("Payment amount must be greater than 0."), "error")
         return redisplay()
     summary = logic.boarding_billing_summary(db, boarding_id)
     try:
         discount_percent = parse_money(f.get("discount_percent")) or 0
     except BadNumber:
-        flash("Discount must be a valid number.", "error")
+        flash(_("Discount must be a valid number."), "error")
         return redisplay()
     cap = auth.discount_cap_for()
     error = discount_percent_error(discount_percent, cap)
@@ -1584,13 +1578,13 @@ def boarding_payment(boarding_id):
     try:
         cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
     except BadNumber:
-        flash("Clean Up amount must be a valid number.", "error")
+        flash(_("Clean Up amount must be a valid number."), "error")
         return redisplay()
     if cleanup_amount < 0:
-        flash("Clean Up amount can't be negative.", "error")
+        flash(_("Clean Up amount can't be negative."), "error")
         return redisplay()
     if summary["cleanup_amount"] + cleanup_amount > CLEANUP_CAP:
-        flash(f"Clean Up can't exceed {CLEANUP_CAP} JOD total on this bill.", "error")
+        flash(_("Clean Up can't exceed %(CLEANUP_CAP)s JOD total on this bill.", CLEANUP_CAP=CLEANUP_CAP), "error")
         return redisplay()
 
     # The discount and the Clean Up both change the balance this payment is
@@ -1598,17 +1592,17 @@ def boarding_payment(boarding_id):
     # validate against the bill as this submission would leave it, not as it
     # stands now. Checking the payment against the pre-submission balance
     # would let a discount-and-pay-in-full click overpay the discounted bill.
-    _, _, balance_after_discount, _ = logic.compute_bill_totals(
+    _unused, _unused, balance_after_discount, _unused = logic.compute_bill_totals(
         summary["subtotal"], discount_percent, summary["paid"], summary["cleanup_amount"])
     error = cleanup_amount_error(cleanup_amount, summary["cleanup_amount"], balance_after_discount)
     if error:
         flash(error, "error")
         return redisplay()
-    _, _, balance, _ = logic.compute_bill_totals(
+    _unused, _unused, balance, _unused = logic.compute_bill_totals(
         summary["subtotal"], discount_percent, summary["paid"],
         summary["cleanup_amount"] + cleanup_amount)
     if amount > balance:
-        flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this stay.", "error")
+        flash(_("That's more than the remaining balance of %(fmt_money)s JOD on this stay.", fmt_money=logic.fmt_money(balance)), "error")
         return redisplay()
     cur = db.execute(
         "INSERT INTO payments (boarding_id, amount, method, date, user_id, notes) VALUES (?,?,?,?,?,?) RETURNING id",
@@ -1634,7 +1628,7 @@ def boarding_payment(boarding_id):
     if cleanup_amount > 0 or discount_percent != summary["discount_percent"]:
         logic.refresh_boarding_total(db, boarding_id)
     db.commit()
-    flash("Payment recorded.", "success")
+    flash(_("Payment recorded."), "success")
     return redirect(url_for("clinical.boarding_page"))
 
 
@@ -1707,7 +1701,7 @@ def inpatient_new():
             new_bcs = parse_bcs(f.get("bcs"))
             new_admission_date = clean_date(f.get("admission_date"), field="admission_date")
         except BadNumber:
-            flash("Weight and BCS must be valid numbers.", "error")
+            flash(_("Weight and BCS must be valid numbers."), "error")
             return redisplay()
         except BadDate as e:
             flash(str(e), "error")
@@ -1715,11 +1709,11 @@ def inpatient_new():
         # IQ has guarded this since the fork; JO did not, so a negative
         # admission weight reached the chart and every trend built on it.
         if has_negative(new_weight_kg):
-            flash("Weight can't be negative.", "error")
+            flash(_("Weight can't be negative."), "error")
             return redisplay()
         patient_id = (f.get("patient_id") or "").strip()
         if not patient_id or not db.execute("SELECT 1 FROM patients WHERE id=?", (patient_id,)).fetchone():
-            flash("Pick a patient from the search results first.", "error")
+            flash(_("Pick a patient from the search results first."), "error")
             return redisplay()
         case_id = _create_inpatient_case(db, patient_id, None, f.get("complaint"), new_admission_date,
                                           new_weight_kg, new_bcs)
@@ -1729,7 +1723,7 @@ def inpatient_new():
              f.get("supervising_vet_id") or None, case_id),
         )
         db.commit()
-        flash("Patient admitted.", "success")
+        flash(_("Patient admitted."), "success")
         return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
     return render_template("inpatient_new.html", vets=vet_users(db))
 
@@ -1762,7 +1756,7 @@ def inpatient_detail(case_id):
     db = get_db()
     ctx = _inpatient_detail_context(db, case_id)
     if ctx is None:
-        flash("Inpatient case not found.", "error")
+        flash(_("Inpatient case not found."), "error")
         return redirect(url_for("clinical.inpatient_list"))
     return render_template("inpatient_detail.html", **ctx)
 
@@ -1776,7 +1770,7 @@ def inpatient_edit(case_id):
     def redisplay():
         ctx = _inpatient_detail_context(db, case_id)
         if ctx is None:
-            flash("Inpatient case not found.", "error")
+            flash(_("Inpatient case not found."), "error")
             return redirect(url_for("clinical.inpatient_list"))
         return render_template("inpatient_detail.html", **ctx, form=f)
 
@@ -1794,7 +1788,7 @@ def inpatient_edit(case_id):
         flash(str(e) if isinstance(e, BadDate) else "Weight and BCS must be valid numbers.", "error")
         return redisplay()
     if has_negative(edited_weight_kg):
-        flash("Weight can't be negative.", "error")
+        flash(_("Weight can't be negative."), "error")
         return redisplay()
     # A stay cannot end before it began — the same rule boarding_edit() has
     # always enforced, which this route was missing entirely: a mistyped year
@@ -1804,7 +1798,7 @@ def inpatient_edit(case_id):
     # See SIMULATION_AUDIT_2026-09-11.md F6.
     if (dismissed and edited_dismissal_date and old["admission_date"]
             and str(edited_dismissal_date) < str(old["admission_date"])):
-        flash("A case can't be discharged before it was admitted — check the dates.", "error")
+        flash(_("A case can't be discharged before it was admitted — check the dates."), "error")
         return redisplay()
     new_vals = {
         "complaint": f.get("complaint"), "exam_findings": f.get("exam_findings"),
@@ -1821,7 +1815,7 @@ def inpatient_edit(case_id):
     )
     auth.log_change(db, "inpatient_cases", str(case_id), "update", changes)
     db.commit()
-    flash("Case updated.", "success")
+    flash(_("Case updated."), "success")
     return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
 
 
@@ -1835,7 +1829,7 @@ def inpatient_update_add(case_id):
                   (case_id, datetime.now().isoformat(timespec="seconds"), note, session["user_id"]))
         auth.log_change(db, "inpatient_updates", str(case_id), "create")
         db.commit()
-        flash("Update logged.", "success")
+        flash(_("Update logged."), "success")
     return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
 
 
@@ -1849,7 +1843,7 @@ def inpatient_update_edit(case_id, update_id):
         db.execute("UPDATE inpatient_updates SET note=? WHERE id=?", (note, update_id))
         auth.log_change(db, "inpatient_updates", str(update_id), "update", {"note": (old["note"], note)})
         db.commit()
-        flash("Update edited.", "success")
+        flash(_("Update edited."), "success")
     return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
 
 
@@ -1863,7 +1857,7 @@ def inpatient_contact_add(case_id):
               (case_id, datetime.now().isoformat(timespec="seconds"), picked_up, session["user_id"], f.get("notes")))
     auth.log_change(db, "inpatient_contact_log", str(case_id), "create")
     db.commit()
-    flash("Contact attempt logged.", "success")
+    flash(_("Contact attempt logged."), "success")
     return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
 
 
@@ -1876,7 +1870,7 @@ def inpatient_billing_add(case_id):
     # save on the same case; nothing about the inpatient_cases row itself
     # changes here.
     if not db.execute("SELECT id FROM inpatient_cases WHERE id=? FOR UPDATE", (case_id,)).fetchone():
-        flash("Inpatient case not found.", "error")
+        flash(_("Inpatient case not found."), "error")
         return redirect(url_for("clinical.inpatient_list"))
     price_ids = request.form.getlist("price_id")
     now = datetime.now().isoformat(timespec="seconds")
@@ -1931,14 +1925,14 @@ def inpatient_billing_add(case_id):
         auth.log_change(db, "inpatient_billing", str(case_id), "create")
     db.commit()
     if had_bad_number:
-        flash("Some quantities weren't valid numbers and were skipped.", "error")
+        flash(_("Some quantities weren't valid numbers and were skipped."), "error")
     if had_bad_price:
-        flash("Some selected items no longer exist in the Price List and were skipped.", "error")
+        flash(_("Some selected items no longer exist in the Price List and were skipped."), "error")
     if had_blocked:
-        flash("Some selected items are marked as not discountable and can't be added to a bill "
-              "that already has a discount applied — remove the discount first, or leave them off this bill.", "error")
+        flash(_("Some selected items are marked as not discountable and can't be added to a bill "
+              "that already has a discount applied — remove the discount first, or leave them off this bill."), "error")
     if added:
-        flash(f"{added} procedure(s) added to the bill.", "success")
+        flash(_("%(added)s procedure(s) added to the bill.", added=added), "success")
     return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
 
 
@@ -1948,7 +1942,7 @@ def inpatient_billing_delete(case_id, line_id):
     db = get_db()
     row = db.execute("SELECT timestamp FROM inpatient_billing WHERE id=? AND case_id=?", (line_id, case_id)).fetchone()
     if not row:
-        flash("That billing line was already removed.", "error")
+        flash(_("That billing line was already removed."), "error")
         return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
     # Deleting a line can zero out (or shrink) the case's total while
     # payments already taken against it stay on the books — nothing else
@@ -1957,12 +1951,10 @@ def inpatient_billing_delete(case_id, line_id):
     summary = logic.inpatient_billing_summary(db, case_id)
     this_line = next((l for l in summary["lines"] if l["id"] == line_id), None)
     remaining_subtotal = summary["subtotal"] - (this_line["line_total"] if this_line else 0)
-    remaining_total, _, _, _ = logic.compute_bill_totals(
+    remaining_total, _unused, _unused, _unused = logic.compute_bill_totals(
         remaining_subtotal, summary["discount_percent"], 0, summary["cleanup_amount"])
     if summary["paid"] > remaining_total:
-        flash(f"Removing this line would leave {logic.fmt_money(summary['paid'])} paid against a "
-              f"{logic.fmt_money(remaining_total)} JOD bill. Process a service refund for the "
-              f"difference first.", "error")
+        flash(_("Removing this line would leave %(fmt_money)s paid against a %(fmt_money2)s JOD bill. Process a service refund for the difference first.", fmt_money=logic.fmt_money(summary['paid']), fmt_money2=logic.fmt_money(remaining_total)), "error")
         return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
     db.execute("DELETE FROM inpatient_billing WHERE id=? AND case_id=?", (line_id, case_id))
     logic.refresh_inpatient_total(db, case_id)
@@ -1970,7 +1962,7 @@ def inpatient_billing_delete(case_id, line_id):
         logic.recompute_month_summary(db, row["timestamp"][:7])
     auth.log_change(db, "inpatient_billing", str(line_id), "delete")
     db.commit()
-    flash("Line removed.", "success")
+    flash(_("Line removed."), "success")
     return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
 
 
@@ -1983,14 +1975,14 @@ def inpatient_discount_save(case_id):
     def redisplay():
         ctx = _inpatient_detail_context(db, case_id)
         if ctx is None:
-            flash("Inpatient case not found.", "error")
+            flash(_("Inpatient case not found."), "error")
             return redirect(url_for("clinical.inpatient_list"))
         return render_template("inpatient_detail.html", **ctx, form=f, discount_error=True)
 
     try:
         percent = parse_money(f.get("discount_percent")) or 0
     except BadNumber:
-        flash("Discount must be a valid number.", "error")
+        flash(_("Discount must be a valid number."), "error")
         return redisplay()
     cap = auth.discount_cap_for()
     error = discount_percent_error(percent, cap)
@@ -2003,7 +1995,7 @@ def inpatient_discount_save(case_id):
     # read the bill's lines before this request's check but write a new
     # (non-discountable) line after it.
     if not db.execute("SELECT id FROM inpatient_cases WHERE id=? FOR UPDATE", (case_id,)).fetchone():
-        flash("Inpatient case not found.", "error")
+        flash(_("Inpatient case not found."), "error")
         return redirect(url_for("clinical.inpatient_list"))
     if percent > 0:
         price_ids = [r["price_id"] for r in db.execute(
@@ -2011,7 +2003,7 @@ def inpatient_discount_save(case_id):
         ).fetchall()]
         blocked = logic.non_discountable_line_names(db, price_ids)
         if blocked:
-            flash(f"Can't apply a discount — this bill includes item(s) marked as not discountable: {', '.join(blocked)}.", "error")
+            flash(_("Can't apply a discount — this bill includes item(s) marked as not discountable: %(join)s.", join=', '.join(blocked)), "error")
             return redisplay()
     old = db.execute("SELECT discount_percent FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
     db.execute("UPDATE inpatient_cases SET discount_percent=?, discount_applied_by=? WHERE id=?",
@@ -2020,7 +2012,7 @@ def inpatient_discount_save(case_id):
     logic.recompute_months_summary(db, logic.months_touched_by_inpatient_case(db, case_id))
     auth.log_change(db, "inpatient_cases", str(case_id), "update", {"discount_percent": (old["discount_percent"], percent)})
     db.commit()
-    flash(f"{percent:.0f}% discount applied.", "success")
+    flash(_("%(percent)s%% discount applied.", percent=f"{percent:.0f}"), "success")
     return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
 
 
@@ -2033,7 +2025,7 @@ def inpatient_payment_add(case_id):
     def redisplay():
         ctx = _inpatient_detail_context(db, case_id)
         if ctx is None:
-            flash("Inpatient case not found.", "error")
+            flash(_("Inpatient case not found."), "error")
             return redirect(url_for("clinical.inpatient_list"))
         return render_template("inpatient_detail.html", **ctx, form=f, payment_error=True)
 
@@ -2042,25 +2034,25 @@ def inpatient_payment_add(case_id):
     # for a payment once recorded, so an overpayment here can never be
     # undone, only journaled around.
     if not db.execute("SELECT id FROM inpatient_cases WHERE id=? FOR UPDATE", (case_id,)).fetchone():
-        flash("Inpatient case not found.", "error")
+        flash(_("Inpatient case not found."), "error")
         return redirect(url_for("clinical.inpatient_list"))
     try:
         amount = parse_money(f.get("amount"), required=True)
     except BadNumber:
-        flash("Payment amount must be a valid number.", "error")
+        flash(_("Payment amount must be a valid number."), "error")
         return redisplay()
     if amount <= 0:
-        flash("Payment amount must be greater than 0.", "error")
+        flash(_("Payment amount must be greater than 0."), "error")
         return redisplay()
     summary = logic.inpatient_billing_summary(db, case_id)
     balance = summary["balance"]
     if amount > balance:
-        flash(f"That's more than the remaining balance of {logic.fmt_money(balance)} JOD on this case.", "error")
+        flash(_("That's more than the remaining balance of %(fmt_money)s JOD on this case.", fmt_money=logic.fmt_money(balance)), "error")
         return redisplay()
     try:
         cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
     except BadNumber:
-        flash("Clean Up amount must be a valid number.", "error")
+        flash(_("Clean Up amount must be a valid number."), "error")
         return redisplay()
     error = cleanup_amount_error(cleanup_amount, summary["cleanup_amount"], balance)
     if error:
@@ -2086,7 +2078,7 @@ def inpatient_payment_add(case_id):
             "cleanup_amount": (summary["cleanup_amount"], summary["cleanup_amount"] + cleanup_amount)})
         logic.refresh_inpatient_total(db, case_id)
     db.commit()
-    flash("Payment recorded.", "success")
+    flash(_("Payment recorded."), "success")
     return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
 
 
@@ -2096,13 +2088,13 @@ def inpatient_attachment_upload(case_id):
     db = get_db()
     case = db.execute("SELECT patient_id FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
     if not case:
-        flash("Inpatient case not found.", "error")
+        flash(_("Inpatient case not found."), "error")
         return redirect(url_for("clinical.inpatient_list"))
     file = request.files.get("file")
     if not file or not file.filename:
-        flash("No file selected.", "error")
+        flash(_("No file selected."), "error")
         return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
-    _, err = attach_mod.save_attachment(db, case["patient_id"], "inpatient", case_id, file, session["user_id"])
+    _unused, err = attach_mod.save_attachment(db, case["patient_id"], "inpatient", case_id, file, session["user_id"])
     flash(err if err else "File uploaded.", "error" if err else "success")
     return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
 
@@ -2131,7 +2123,7 @@ def _appointments_page_context():
         if logic.parse_date(week_anchor) is None:
             raise ValueError(week_anchor)
     except ValueError:
-        flash("That week link wasn't valid, showing the current week instead.", "error")
+        flash(_("That week link wasn't valid, showing the current week instead."), "error")
         week_anchor = today_iso
     days = logic.week_dates(week_anchor)
     selected_day = request.args.get("day") or today_iso
@@ -2139,7 +2131,7 @@ def _appointments_page_context():
         if logic.parse_date(selected_day) is None:
             raise ValueError(selected_day)
     except ValueError:
-        flash("That date wasn't valid, showing today instead.", "error")
+        flash(_("That date wasn't valid, showing today instead."), "error")
         selected_day = today_iso
     columns, grid = logic.day_grid(db, selected_day)
     prev_week = (days[0] - timedelta(days=7)).isoformat()
@@ -2175,7 +2167,7 @@ def appointment_new():
         flash(str(e), "error")
         return redisplay()
     if appt_date is None:
-        flash("Appointment date is required.", "error")
+        flash(_("Appointment date is required."), "error")
         return redisplay()
     slot_label = required_field(f, "slot_label", "Time slot")
     if slot_label is None:
@@ -2198,14 +2190,14 @@ def appointment_new():
         # type where the value has to be forced rather than merely validated.
         resource_id = None
     elif not resource_id or not any(v["id"] == resource_id for v in vet_users(db)):
-        flash("Pick a valid, active vet for this appointment.", "error")
+        flash(_("Pick a valid, active vet for this appointment."), "error")
         return redisplay()
     if not any(s["label"] == slot_label for s in logic.generate_slots(db)):
-        flash("That's not a valid time slot — the schedule may have changed. Reload and try again.", "error")
+        flash(_("That's not a valid time slot — the schedule may have changed. Reload and try again."), "error")
         return redisplay()
 
     if logic.slot_conflict(db, appt_date, slot_label, resource_type, resource_id):
-        flash("That slot is already booked for this vet/groomer.", "error")
+        flash(_("That slot is already booked for this vet/groomer."), "error")
         return redisplay()
 
     pet_name = required_field(f, "pet_name", "Pet name")
@@ -2234,9 +2226,9 @@ def appointment_new():
         db.commit()
     except dbmod.IntegrityError:
         db.rollback()
-        flash("That slot is already booked for this vet/groomer.", "error")
+        flash(_("That slot is already booked for this vet/groomer."), "error")
         return redisplay()
-    flash("Appointment booked.", "success")
+    flash(_("Appointment booked."), "success")
     return redirect(url_for("clinical.appointments_page", day=appt_date))
 
 
@@ -2246,10 +2238,10 @@ def appointment_cancel(appt_id):
     db = get_db()
     row = db.execute("SELECT appt_date FROM appointments WHERE id=?", (appt_id,)).fetchone()
     if not row:
-        flash("Appointment not found.", "error")
+        flash(_("Appointment not found."), "error")
         return redirect(url_for("clinical.appointments_page"))
     db.execute("DELETE FROM appointments WHERE id=?", (appt_id,))
     auth.log_change(db, "appointments", str(appt_id), "delete")
     db.commit()
-    flash("Appointment cancelled.", "success")
+    flash(_("Appointment cancelled."), "success")
     return redirect(url_for("clinical.appointments_page", day=str(row["appt_date"])))

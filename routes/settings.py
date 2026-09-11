@@ -19,6 +19,7 @@ Endpoint names carry the `settings.` prefix Flask gives every blueprint route:
 import os
 from datetime import datetime
 
+from flask_babel import gettext as _
 from flask import (
     Blueprint, flash, g, jsonify, redirect, render_template, request, session, url_for
 )
@@ -193,10 +194,10 @@ def settings_page():
             try:
                 n = int(val)
             except ValueError:
-                flash(f"{key.replace('_', ' ').title()} must be a whole number.", "error")
+                flash(_("%(title)s must be a whole number.", title=key.replace('_', ' ').title()), "error")
                 return redirect(url_for("settings.settings_page"))
             if n < lo or n > hi:
-                flash(f"{key.replace('_', ' ').title()} must be between {lo} and {hi}.", "error")
+                flash(_("%(title)s must be between %(lo)s and %(hi)s.", title=key.replace('_', ' ').title(), lo=lo, hi=hi), "error")
                 return redirect(url_for("settings.settings_page"))
 
         # Time-of-day fields — validated as real HH:MM before anything else
@@ -219,13 +220,13 @@ def settings_page():
             try:
                 datetime.strptime(val.strip(), "%H:%M")
             except ValueError:
-                flash(f"{key.replace('_', ' ').title()} must be a valid time (HH:MM).", "error")
+                flash(_("%(title)s must be a valid time (HH:MM).", title=key.replace('_', ' ').title()), "error")
                 return redirect(url_for("settings.settings_page"))
 
         start = request.form.get("appt_start_time")
         end = request.form.get("appt_end_time")
         if start and end and start >= end:
-            flash("Day Ends At must be after Day Starts At.", "error")
+            flash(_("Day Ends At must be after Day Starts At."), "error")
             return redirect(url_for("settings.settings_page"))
 
         # The heartbeat URL is a credential — for a healthchecks.io-style
@@ -235,7 +236,7 @@ def settings_page():
         # which is the default.
         hb_url = request.form.get("heartbeat_url")
         if hb_url is not None and hb_url.strip() and not hb_url.strip().lower().startswith("https://"):
-            flash("The monitoring ping URL must start with https://", "error")
+            flash(_("The monitoring ping URL must start with https://"), "error")
             return redirect(url_for("settings.settings_page"))
         # Snapshot before the change — appt_start_time/appt_end_time/
         # appt_slot_minutes feed generate_slots(), which day_grid() (and
@@ -288,7 +289,7 @@ def settings_page():
         if request.form.get("backup_time"):
             import scheduler
             scheduler.reschedule(request.form.get("backup_time"))
-        flash("Settings saved.", "success")
+        flash(_("Settings saved."), "success")
         newly_orphaned = len(logic.orphaned_appointments(db)) - orphaned_before
         if newly_orphaned > 0:
             flash(f"Heads up: changing the scheduling hours/slot length just made {newly_orphaned} upcoming "
