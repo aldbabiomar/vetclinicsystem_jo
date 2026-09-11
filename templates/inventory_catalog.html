@@ -356,7 +356,7 @@ async function barcodeManagerSaveManual() {
 
 async function barcodeManagerGenerate() {
   try {
-    const res = await fetch(`{{ url_for('inventory.inventory_catalog_create_barcode', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
+    const res = await fetch(`{{ url_for('inventory.inventory_catalog_barcode_generate', item_id='__ID__') }}`.replace('__ID__', encodeURIComponent(barcodeManagerItemId)), {
       method: 'POST',
       headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
     });

@@ -1796,6 +1796,16 @@ def inpatient_edit(case_id):
     if has_negative(edited_weight_kg):
         flash("Weight can't be negative.", "error")
         return redisplay()
+    # A stay cannot end before it began — the same rule boarding_edit() has
+    # always enforced, which this route was missing entirely: a mistyped year
+    # (2024 for 2026) stored a negative-length stay with no complaint, and it
+    # feeds length-of-stay reporting and the case's own billing period.
+    # admission_date is not editable here, so `old` is the authority for it.
+    # See SIMULATION_AUDIT_2026-09-11.md F6.
+    if (dismissed and edited_dismissal_date and old["admission_date"]
+            and str(edited_dismissal_date) < str(old["admission_date"])):
+        flash("A case can't be discharged before it was admitted — check the dates.", "error")
+        return redisplay()
     new_vals = {
         "complaint": f.get("complaint"), "exam_findings": f.get("exam_findings"),
         "weight_kg": edited_weight_kg, "bcs": edited_bcs,
@@ -2108,16 +2118,26 @@ def _appointments_page_context():
     redirect."""
     db = get_db()
     today_iso = date.today().isoformat()
-    week_anchor = request.args.get("week", today_iso)
+    # `or today_iso`, not a get() default: the default only applies when the
+    # parameter is ABSENT. "?day=" (present but empty) left selected_day as
+    # "", and parse_date("") RETURNS None rather than raising -- so the guard
+    # never fired and "" reached Postgres as a date parameter, which is an
+    # unhandled InvalidDatetimeFormat, i.e. a 500 on a page reachable by
+    # clearing the date filter. Checking the parse RESULT as well as catching
+    # ValueError is what stops this recurring if parse_date grows another
+    # None-returning case. See SIMULATION_AUDIT_2026-09-11.md F4.
+    week_anchor = request.args.get("week") or today_iso
     try:
-        logic.parse_date(week_anchor)
+        if logic.parse_date(week_anchor) is None:
+            raise ValueError(week_anchor)
     except ValueError:
         flash("That week link wasn't valid, showing the current week instead.", "error")
         week_anchor = today_iso
     days = logic.week_dates(week_anchor)
-    selected_day = request.args.get("day", today_iso)
+    selected_day = request.args.get("day") or today_iso
     try:
-        logic.parse_date(selected_day)
+        if logic.parse_date(selected_day) is None:
+            raise ValueError(selected_day)
     except ValueError:
         flash("That date wasn't valid, showing today instead.", "error")
         selected_day = today_iso

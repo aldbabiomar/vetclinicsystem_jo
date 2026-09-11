@@ -60,9 +60,27 @@ def check_docker():
     print("  Docker is installed and running.")
 
 
+def _env_dir():
+    """Where this install's real .env lives.
+
+    On the versioned-release layout that is the data directory, NOT the release
+    folder — app.py resolves it the same way. setup.py used to look only in
+    BASE_DIR, with two consequences on a managed install: load_dotenv_now()
+    loaded nothing, so DATABASE_URL was absent and the database work ran
+    against defaults; and ensure_env_file() found no .env and helpfully created
+    one, inventing a fresh SECRET_KEY and a DATABASE_URL on the default port.
+    That second file sat in the release folder shadowing nothing in normal
+    operation (the launcher exports the data dir) but ready to be picked up by
+    anyone running `python3 app.py` from that folder — pointing at the wrong
+    port, with a secret key that would sign everybody out.
+    """
+    data_dir = os.environ.get("VETCLINICSYSTEMJO_DATA_DIR")
+    return data_dir if data_dir and os.path.isdir(data_dir) else BASE_DIR
+
+
 def ensure_env_file():
     step("Checking configuration (.env)")
-    env_path = os.path.join(BASE_DIR, ".env")
+    env_path = os.path.join(_env_dir(), ".env")
     example_path = os.path.join(BASE_DIR, ".env.example")
     if os.path.exists(env_path):
         print("  .env already exists — leaving it as-is.")
@@ -75,19 +93,54 @@ def ensure_env_file():
     print("  Created .env with a fresh secret key.")
 
 
+def _compose_env():
+    """Environment for `docker compose`, with the host port taken from
+    DATABASE_URL.
+
+    docker-compose.yml publishes the database on ${POSTGRES_HOST_PORT:-5432}.
+    DATABASE_URL is what the app actually connects to. If those two disagree
+    the container comes up on one port and every connection goes to another,
+    which looks exactly like "Postgres didn't become ready in time" and sends
+    you reading Docker logs that show a perfectly healthy database.
+
+    Deriving one from the other means they cannot drift. An explicit
+    POSTGRES_HOST_PORT already in the environment still wins, so an admin can
+    override deliberately.
+    """
+    env = dict(os.environ)
+    if env.get("POSTGRES_HOST_PORT"):
+        return env
+    url = env.get("DATABASE_URL")
+    if url:
+        try:
+            from urllib.parse import urlparse
+            port = urlparse(url).port
+            if port:
+                env["POSTGRES_HOST_PORT"] = str(port)
+        except ValueError:
+            # A malformed DATABASE_URL is the app's problem to report, not
+            # this helper's — fall through to the compose default.
+            pass
+    return env
+
+
 def start_postgres():
     step("Starting PostgreSQL (Docker)")
     compose = ["docker", "compose"]
     result = run(compose + ["version"], capture_output=True, text=True)
     if result.returncode != 0:
         compose = ["docker-compose"]  # older standalone binary
-    run(compose + ["up", "-d"], check=True)
+    env = _compose_env()
+    host_port = env.get("POSTGRES_HOST_PORT", "5432")
+    if host_port != "5432":
+        print(f"  Publishing Postgres on host port {host_port} (from DATABASE_URL).")
+    run(compose + ["up", "-d"], check=True, env=env)
 
     print("  Waiting for the database to be ready...")
     for _ in range(60):
         r = run(
             compose + ["exec", "-T", "db", "pg_isready", "-U", "vetclinicsystemjo", "-d", "vetclinicsystemjo"],
-            capture_output=True, text=True,
+            capture_output=True, text=True, env=env,
         )
         if r.returncode == 0:
             print("  PostgreSQL is ready.")
@@ -99,7 +152,7 @@ def start_postgres():
 
 def load_dotenv_now():
     from dotenv import load_dotenv
-    load_dotenv(os.path.join(BASE_DIR, ".env"))
+    load_dotenv(os.path.join(_env_dir(), ".env"))
 
 
 def apply_schema():
@@ -602,10 +655,19 @@ def _copy_release_snapshot(dest):
     itself (venv, .git, __pycache__, and anything already destined for
     vetclinicsystemjo-data/)."""
     exclude = {"venv", ".git", "__pycache__", "logs", ".env", "vetclinicsystemjo-data", "vetclinicsystemjo-releases"}
-    shutil.copytree(
-        BASE_DIR, dest,
-        ignore=lambda src, names: [n for n in names if n in exclude or n.startswith(".env")],
-    )
+
+    def _skip(src, names):
+        # `.env*` is excluded to keep this machine's real .env out of a
+        # versioned release — but NOT .env.example, which is part of the app
+        # and which ensure_env_file() reads. Excluding it left every release
+        # built by this function without it, so running setup.py inside that
+        # release died with FileNotFoundError on .env.example. Releases
+        # unpacked by updater.py were unaffected, which is why this survived:
+        # the only way to see it is a fresh --enable-updates install.
+        return [n for n in names
+                if n in exclude or (n.startswith(".env") and n != ".env.example")]
+
+    shutil.copytree(BASE_DIR, dest, ignore=_skip)
 
 
 def enable_updates(data_dir=None, releases_dir=None):

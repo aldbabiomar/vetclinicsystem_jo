@@ -3,6 +3,27 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.12.0] - 2026-09-11
+
+### Fixed
+- **A stock count can no longer be saved as a nonsense number.** "nan",
+  "infinity" and negative counts were accepted and could be confirmed into a
+  locked audit. A count like that broke the till outright: every attempt to
+  sell that item failed with a server error until the count was corrected.
+  Counts must now be a real number of zero or more.
+- **The appointment book no longer errors when the date filter is cleared.**
+  Emptying the date box produced a server error page instead of returning to
+  today.
+- **An inpatient case can no longer be discharged before it was admitted.** A
+  mistyped year recorded a stay of negative length, which fed length-of-stay
+  figures and the case's billing period. Boarding already refused this.
+
+### Changed
+- **A cash-drawer count that comes out over or short now shows in amber, not
+  red.** The count was always saved, but it was reported in the same red as a
+  failure, so staff re-ran counts that had already been recorded. A genuine
+  failure is still red.
+
 ## [1.11.0] - 2026-09-11
 
 ### Added

@@ -396,6 +396,11 @@ textarea { resize: vertical; min-height: 72px; }
 .flash { padding: 11px 15px; border-radius: var(--radius-sm); margin-bottom: 18px; font-size: 13.5px; font-weight: 500; }
 .flash.success { background: var(--ok-tint); color: var(--ok); }
 .flash.error { background: var(--danger-tint); color: var(--danger); }
+/* A third state, for an action that SUCCEEDED but carries something the
+   user must act on — a cash-drawer count that saved and came out short is
+   the case this was added for. It was previously flashed as .error, so a
+   saved audit looked identical to a failed one and staff re-ran it. */
+.flash.warning { background: var(--warn-tint); color: var(--warn-ink); }
 
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 20px; overflow-x: auto; }
 .tabs a { padding: 9px 14px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); border-bottom: 2px solid transparent; white-space: nowrap; }

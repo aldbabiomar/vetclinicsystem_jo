@@ -22,7 +22,7 @@ from flask import (
     Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 )
 
-from core import BadNumber, PER_PAGE, get_db, get_page, has_negative, page_count, page_offset, parse_money, required_field
+from core import BadNumber, PER_PAGE, get_db, get_page, has_negative, page_count, page_offset, parse_money, parse_quantity, required_field
 
 bp = Blueprint("inventory", __name__)
 
@@ -554,7 +554,7 @@ def inventory_catalog_toggle(item_id):
 
 @bp.route("/inventory-catalog/<item_id>/create-barcode", methods=["POST"])
 @auth.permission_required("manage_inventory_catalog")
-def inventory_catalog_create_barcode(item_id):
+def inventory_catalog_barcode_generate(item_id):
     db = get_db()
     item = db.execute("SELECT barcode FROM inventory_list WHERE id=?", (item_id,)).fetchone()
     if not item:
@@ -825,16 +825,38 @@ def _save_audit_lines(db, session_id):
         expiry = request.form.get(f"expiry_{iid}", "").strip()
         notes = request.form.get(f"notes_{iid}", "").strip()
 
+        # parse_money(), not float(). float() accepts "nan"/"inf" without
+        # raising, and a NaN count was confirmable and then poisoned every
+        # downstream comparison: in this app `qty > current_stock` is a
+        # Decimal against a float NaN, which raises decimal.InvalidOperation
+        # and turns every POS checkout of that item into a 500 -- the till
+        # stops working until the count is corrected. (The same NaN in IQ
+        # fails the opposite way, silently passing the oversell check;
+        # one root cause, two symptoms, per CLAUDE.md §1.)
+        # This was also the one numeric entry point still putting a raw
+        # Python float into a column, against this app's Decimal rule.
+        # has_negative() covers the other half: -5 is not a physical count.
+        # parse_quantity(), not parse_money(): these are counts, and it is the
+        # same parser _merged_cart_quantities() uses for the POS cart, so both
+        # sides of the `qty > current_stock` comparison share one ceiling.
+        # (IQ has no parse_quantity and uses parse_money on both sides for the
+        # same reason -- same intent, each app's own helper. CLAUDE.md §1.)
         try:
-            vals = (
-                float(stock), float(received),
-                float(threshold) if threshold else None,
-                (1 if critical == "Y" else (0 if critical == "N" else None)),
-                float(target) if target else None,
-                expiry or None, notes or None,
-            )
-        except ValueError:
+            stock_v = parse_quantity(stock, required=True)
+            received_v = parse_quantity(received)
+            threshold_v = parse_quantity(threshold) if threshold else None
+            target_v = parse_quantity(target) if target else None
+        except BadNumber:
             raise BadNumber(iid)
+        if has_negative(stock_v, received_v, threshold_v, target_v):
+            raise BadNumber(iid)
+        vals = (
+            stock_v, received_v if received_v is not None else 0,
+            threshold_v,
+            (1 if critical == "Y" else (0 if critical == "N" else None)),
+            target_v,
+            expiry or None, notes or None,
+        )
         # UPSERT rather than a SELECT-then-branch INSERT/UPDATE — closes
         # the race where two concurrent saves for the same item could
         # both read no existing row and both attempt an INSERT, the

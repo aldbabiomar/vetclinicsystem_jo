@@ -11,7 +11,16 @@ services:
       # Bound only to localhost — the app connects locally; other devices on
       # the clinic WiFi keep talking to the Flask app on port 5050 as before,
       # never directly to the database.
-      - "127.0.0.1:5432:5432"
+      #
+      # The HOST port is overridable because IQ and JO both shipped this file
+      # hardcoded to 5432, which means the two apps cannot both have a running
+      # database on one machine — the second `docker compose up` fails with
+      # "port is already allocated" and its setup aborts. That is not
+      # hypothetical: this machine runs both. Set POSTGRES_HOST_PORT (and make
+      # DATABASE_URL agree) on the install that is not on the default port.
+      # The container port stays 5432, so nothing inside the container or in
+      # any other install changes.
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - vetclinicsystemjo_pgdata:/var/lib/postgresql/data
     healthcheck:
