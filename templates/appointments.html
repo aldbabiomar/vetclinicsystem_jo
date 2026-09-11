@@ -10,7 +10,7 @@
 
 {% if orphaned %}
 <div class="card" style="margin-bottom:16px; border-left:3px solid var(--warn);">
-  <div style="font-weight:650; margin-bottom:6px;">{{ orphaned|length }} appointment(s) need attention — not shown on the grid below</div>
+  <div style="font-weight:650; margin-bottom:6px;">{{ _('%(orphaned)s appointment(s) need attention — not shown on the grid below', orphaned=orphaned|length) }}</div>
   <p class="small muted" style="margin:0 0 10px;">
     {{ _('Still booked, but either the vet assigned is no longer active, or the appointment\'s time no longer matches
     the clinic\'s current scheduling hours/slot length (Settings). Cancel and rebook to fix.') }}

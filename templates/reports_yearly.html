@@ -2,7 +2,7 @@
 {% block title %}Yearly P&amp;L — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Yearly P&L') }}</h1><p class="page-sub">Same figures as Monthly P&amp;L, rolled up by year. {{ total_count }} year(s) shown.</p></div>
+  <div><h1>{{ _('Yearly P&L') }}</h1><p class="page-sub">{{ _('Same figures as Monthly P&L, rolled up by year. %(total_count)s year(s) shown.', total_count=total_count) }}</p></div>
   <div style="display:flex; gap:10px;">
     <form method="post" action="{{ url_for('reports_rebuild_summary') }}" data-confirm="Rebuild all report data from scratch? This re-checks every month against current billing, sales, and cost data. It can take a few seconds on a large database.">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

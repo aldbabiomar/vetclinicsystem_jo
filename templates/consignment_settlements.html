@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Settle with {{ distributor.name }}</h1>
+    <h1>{{ _('Settle with %(distributor)s', distributor=distributor.name) }}</h1>
     <p class="page-sub">{{ distributor.contact_person or '' }}{% if distributor.phone %} · {{ distributor.phone }}{% endif %}</p>
   </div>
   <a class="btn secondary" href="{{ url_for('consignment.consignment_overview') }}">{{ _('← Back to Overview') }}</a>
@@ -22,7 +22,7 @@
   {% if has_permission('manage_consignment_settlements') %}
   <form method="post" action="{{ url_for('consignment.consignment_settlement_new', distributor_id=distributor.id) }}" class="form-grid" style="margin-top:16px;" data-confirm="Record this settlement? The amount owed will be recalculated at the moment you submit.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="field"><label for="consignmentsettlements-1-amount_paid">Amount Paid ({{ currency_label() }})</label><input id="consignmentsettlements-1-amount_paid" type="number" step="0.001" name="amount_paid" value="{{ fv(form, 'amount_paid', balance.amount_owed) }}" required></div>
+    <div class="field"><label for="consignmentsettlements-1-amount_paid">{{ _('Amount Paid (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="consignmentsettlements-1-amount_paid" type="number" step="0.001" name="amount_paid" value="{{ fv(form, 'amount_paid', balance.amount_owed) }}" required></div>
     <div class="field"><label for="consignmentsettlements-2-payment_method">{{ _('Payment Method') }}</label>
       <select id="consignmentsettlements-2-payment_method" name="payment_method">
         <option value="" {{ 'selected' if fv(form, 'payment_method')=='' }}>—</option>

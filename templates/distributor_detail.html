@@ -29,7 +29,7 @@
     <div class="form-grid">
       <div class="field"><label for="distributordetail-1-bill_date">{{ _('Bill Date') }}</label><input id="distributordetail-1-bill_date" required type="date" name="bill_date" value="{{ fv(bill_form, 'bill_date', today) }}"></div>
       <div class="field"><label for="distributordetail-2-bill_reference">{{ _('Bill / Invoice #') }}</label><input id="distributordetail-2-bill_reference" name="bill_reference" value="{{ fv(bill_form, 'bill_reference') }}" placeholder="{{ _('Distributor\'s own reference, optional') }}"></div>
-      <div class="field"><label for="distributordetail-3-total_amount">Total Amount ({{ currency_label() }})</label><input id="distributordetail-3-total_amount" required type="number" step="0.001" min="1" name="total_amount" value="{{ fv(bill_form, 'total_amount') }}"></div>
+      <div class="field"><label for="distributordetail-3-total_amount">{{ _('Total Amount (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="distributordetail-3-total_amount" required type="number" step="0.001" min="1" name="total_amount" value="{{ fv(bill_form, 'total_amount') }}"></div>
       <div class="field full"><label for="distributordetail-4-notes">{{ _('Notes') }}</label><input id="distributordetail-4-notes" name="notes" value="{{ fv(bill_form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
@@ -48,7 +48,7 @@
       <span class="badge {{ 'ok' if bill.status=='Paid' else ('warn' if bill.status=='Partial' else 'danger') }}">{{ bill.status }}</span>
     </div>
     <div>
-      Total {{ bill.total_amount|money }} · Paid {{ bill.paid|money }} · Balance {{ bill.balance|money }} {{ currency_label() }}
+      {{ _('Total %(bill)s · Paid %(bill2)s · Balance %(bill3)s %(currency_label)s', bill=bill.total_amount|money, bill2=bill.paid|money, bill3=bill.balance|money, currency_label=currency_label()) }}
     </div>
   </div>
   {% if bill.notes %}<p class="muted">{{ bill.notes }}</p>{% endif %}

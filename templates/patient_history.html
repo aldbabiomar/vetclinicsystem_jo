@@ -2,7 +2,7 @@
 {% block title %}{{ patient.animal_name }} History — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ patient.animal_name }} — Full History</h1><p class="page-sub">{{ patient.id }} · Owner: {{ patient.owner_name }}</p></div>
+  <div><h1>{{ _('%(patient)s — Full History', patient=patient.animal_name) }}</h1><p class="page-sub">{{ patient.id }} · Owner: {{ patient.owner_name }}</p></div>
   <a class="btn secondary" href="{{ url_for('clinical.patient_detail', patient_id=patient.id) }}">{{ _('Back to Patient') }}</a>
 </div>
 

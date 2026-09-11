@@ -34,7 +34,7 @@
           </td>
           <td class="small {{ '' if u.custom_discount_cap is none else 'primary' }}">
             {% if u.custom_discount_cap is none %}
-              <span class="muted">Role default ({{ u.role_discount_cap }}%)</span>
+              <span class="muted">{{ _('Role default (%(u)s%%)', u=u.role_discount_cap) }}</span>
             {% else %}
               <span class="badge primary">Custom: {{ u.custom_discount_cap }}%</span>
             {% endif %}
@@ -58,7 +58,7 @@
       </tbody>
     </table>
   </div>
-  <p class="small muted" style="margin-top:12px;">{{ _('The Role dropdown always reflects whatever roles exist in the Roles &amp; Permissions tab. A per-user discount override (set at creation, in the New User form) shows here as "Custom" — most staff just inherit their role\'s limit.') }}</p>
+  <p class="small muted" style="margin-top:12px;">{{ _('The Role dropdown always reflects whatever roles exist in the Roles & Permissions tab. A per-user discount override (set at creation, in the New User form) shows here as "Custom" — most staff just inherit their role\'s limit.') }}</p>
 </div>
 
 <!-- ============ ROLES TAB ============ -->

@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1>{{ _('Consignment') }}</h1>
-    <p class="page-sub">Distributor-owned stock on your shelves. {{ rows|length }} distributor(s) with Consignment items.</p>
+    <p class="page-sub">{{ _('Distributor-owned stock on your shelves. %(rows)s distributor(s) with Consignment items.', rows=rows|length) }}</p>
   </div>
 </div>
 
@@ -13,8 +13,8 @@
   <thead><tr>
     <th scope="col">{{ _('Distributor') }}</th>
     <th scope="col" class="num-col">{{ _('Shelf Units') }}</th>
-    <th scope="col" class="num-col">Shelf Value ({{ currency_label() }})</th>
-    <th scope="col" class="num-col">Amount Owed ({{ currency_label() }})</th>
+    <th scope="col" class="num-col">{{ _('Shelf Value (%(currency_label)s)', currency_label=currency_label()) }}</th>
+    <th scope="col" class="num-col">{{ _('Amount Owed (%(currency_label)s)', currency_label=currency_label()) }}</th>
     <th scope="col">{{ _('Last Settlement') }}</th>
     <th scope="col" class="num-col">{{ _('Sold This Month') }}</th>
     <th scope="col"></th>

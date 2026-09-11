@@ -17,13 +17,13 @@
       <span class="small muted">{{ _('Details for support — safe to copy and send') }}</span>
       <button type="button" class="btn small secondary" data-copy-target="error-report-box">{{ _('Copy') }}</button>
     </div>
-    <pre id="error-report-box" class="error-report-box error-report-box-full">Error ID:  {{ error_id }}
-Time:      {{ error_time }}
-Page:      {{ request_line }}
-Type:      {{ exc_type }}
-Message:   {{ exc_message }}
+    <pre id="error-report-box" class="error-report-box error-report-box-full">{{ _('Error ID:  %(error_id)s
+Time:      %(error_time)s
+Page:      %(request_line)s
+Type:      %(exc_type)s
+Message:   %(exc_message)s
 
-{{ traceback_text }}</pre>
+%(traceback_text)s', error_id=error_id, error_time=error_time, request_line=request_line, exc_type=exc_type, exc_message=exc_message, traceback_text=traceback_text) }}</pre>
   </div>
 
   <div class="error-actions" style="margin-top:18px;">

@@ -9,7 +9,7 @@
   </form>
 </div>
 
-<div class="section-title">Changes On {{ day }}</div>
+<div class="section-title">{{ _('Changes On %(day)s', day=day) }}</div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
   <thead><tr><th scope="col">{{ _('Time') }}</th><th scope="col">{{ _('Who') }}</th><th scope="col">{{ _('Action') }}</th><th scope="col">{{ _('Table') }}</th><th scope="col">{{ _('Record') }}</th><th scope="col">{{ _('Field') }}</th><th scope="col">{{ _('Old → New') }}</th></tr></thead>
@@ -31,7 +31,7 @@
 </table>
 </div>
 
-<div class="section-title">Logins On {{ day }}</div>
+<div class="section-title">{{ _('Logins On %(day)s', day=day) }}</div>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">{{ _('Time') }}</th><th scope="col">{{ _('Username') }}</th><th scope="col">{{ _('Result') }}</th><th scope="col">{{ _('IP') }}</th><th scope="col">{{ _('Device') }}</th></tr></thead>

@@ -38,7 +38,7 @@
       <div class="field"><label for="inventorycatalog-1-name">{{ _('Item Name') }}</label><input id="inventorycatalog-1-name" required name="name" value="{{ fv(new_form, 'name') }}"></div>
       <div class="field"><label for="inventorycatalog-2-category">{{ _('Category') }}</label><select id="inventorycatalog-2-category" name="category">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select></div>
       <div class="field"><label for="inventorycatalog-3-unit">{{ _('Unit') }}</label><input id="inventorycatalog-3-unit" name="unit" placeholder="{{ _('Bottle, Box, Piece…') }}" value="{{ fv(new_form, 'unit') }}"></div>
-      <div class="field"><label for="inventorycatalog-4-cost_price">Cost Price ({{ currency_label() }})</label><input id="inventorycatalog-4-cost_price" type="number" step="0.001" name="cost_price" value="{{ fv(new_form, 'cost_price') }}"></div>
+      <div class="field"><label for="inventorycatalog-4-cost_price">{{ _('Cost Price (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="inventorycatalog-4-cost_price" type="number" step="0.001" name="cost_price" value="{{ fv(new_form, 'cost_price') }}"></div>
       <div class="field"><label for="inventorycatalog-5-distributor_id">{{ _('Preferred Distributor') }}</label>
         <select id="inventorycatalog-5-distributor_id" name="distributor_id"><option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if fv(new_form, 'distributor_id')==d.id }}>{{ d.name }}</option>{% endfor %}</select>
       </div>

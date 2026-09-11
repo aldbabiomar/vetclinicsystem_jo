@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Grooming — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>{{ _('Grooming Queue') }}</h1><p class="page-sub">Ongoing grooming requests logged as part of a visit. {{ total_count }} shown.</p></div></div>
+<div class="page-head"><div><h1>{{ _('Grooming Queue') }}</h1><p class="page-sub">{{ _('Ongoing grooming requests logged as part of a visit. %(total_count)s shown.', total_count=total_count) }}</p></div></div>
 
 <div class="filter-chips">
   <a class="chip {{ 'active' if not include_finished }}" href="{{ url_for('clinical.grooming_list') }}">{{ _('In Progress') }}</a>

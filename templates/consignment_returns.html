@@ -4,8 +4,8 @@
 <div class="page-head">
   <div>
     <h1>{{ _('Consignment Returns') }}</h1>
-    <p class="page-sub">Unsold stock handed back to the distributor. {{ total_count }} return(s) on file. No revenue,
-      COGS, or settlement impact — nothing sold, so nothing owed either way.</p>
+    <p class="page-sub">{{ _('Unsold stock handed back to the distributor. %(total_count)s return(s) on file. No revenue,
+      COGS, or settlement impact — nothing sold, so nothing owed either way.', total_count=total_count) }}</p>
   </div>
   {% if has_permission('manage_consignment_stock') %}
   <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="consignment-returns-1">{{ _('+ Log Return') }}</button>
@@ -40,7 +40,7 @@
 <table>
   <thead class="sticky-header"><tr>
     <th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Item') }}</th><th scope="col">{{ _('Distributor') }}</th><th scope="col" class="num-col">{{ _('Quantity') }}</th>
-    <th scope="col" class="num-col">Unit Cost ({{ currency_label() }})</th><th scope="col">{{ _('Reason') }}</th><th scope="col">{{ _('Notes') }}</th>
+    <th scope="col" class="num-col">{{ _('Unit Cost (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col">{{ _('Reason') }}</th><th scope="col">{{ _('Notes') }}</th>
   </tr></thead>
   <tbody>
     {% for r in returns %}

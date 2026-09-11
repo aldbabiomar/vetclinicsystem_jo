@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1>{{ _('Distributors') }}</h1>
-    <p class="page-sub">{{ distributors|length }} on file.</p>
+    <p class="page-sub">{{ _('%(distributors)s on file.', distributors=distributors|length) }}</p>
   </div>
   <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="distributors-1">{{ _('+ New Distributor') }}</button>
 </div>
@@ -12,7 +12,7 @@
 <div class="stat-grid">
   <div class="stat-card {{ 'alert' if payables.total_outstanding else 'ok' }}">
     <div class="num">{{ payables.total_outstanding|money }}</div>
-    <div class="label">Total Outstanding ({{ currency_label() }})</div>
+    <div class="label">{{ _('Total Outstanding (%(currency_label)s)', currency_label=currency_label()) }}</div>
   </div>
   <div class="stat-card"><div class="num">{{ payables.distributors_with_balance }}</div><div class="label">{{ _('Distributors With a Balance') }}</div></div>
   <div class="stat-card {{ 'warn' if payables.unpaid_bill_count }}">

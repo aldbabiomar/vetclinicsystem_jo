@@ -197,7 +197,7 @@
 <div class="settings-card-head"><h2>{{ _('Updates') }}</h2><span class="settings-tag now">{{ _('Runs when you click') }}</span></div>
 <div class="section-title">{{ _('Updates') }}</div>
 <div id="updatesConfigured" style="display:none;">
-  <div class="detail-item"><div class="k">{{ _('Current Version') }}</div><div class="v" id="updCurrentVersion">VetClinicSystem JO v{{ app_version }}</div></div>
+  <div class="detail-item"><div class="k">{{ _('Current Version') }}</div><div class="v" id="updCurrentVersion">{{ _('VetClinicSystem JO v%(app_version)s', app_version=app_version) }}</div></div>
   <div class="u-row-center-mt">
     <button class="btn secondary" type="button" id="updCheckBtn" data-vzh="settings-3">{{ _('Check for Updates') }}</button>
     <span id="updCheckStatus" class="small muted"></span>

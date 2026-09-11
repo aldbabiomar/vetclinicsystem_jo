@@ -45,10 +45,10 @@
     <div class="form-grid">
       <div class="field"><label for="opexMonth">{{ _('Month') }}</label><input required type="month" name="month" id="opexMonth" value="{{ fv(form, 'month', today[:7]) }}" data-vzh="reports-1"></div>
       <div class="field"><label for="opexRent">Rent ({{ currency_label() }})</label><input type="number" step="0.001" name="rent" id="opexRent" value="{{ fv(form, 'rent', '0') }}"></div>
-      <div class="field"><label for="opexSalaries">Salaries / Payroll ({{ currency_label() }})</label><input type="number" step="0.001" name="salaries" id="opexSalaries" value="{{ fv(form, 'salaries', '0') }}"></div>
+      <div class="field"><label for="opexSalaries">{{ _('Salaries / Payroll (%(currency_label)s)', currency_label=currency_label()) }}</label><input type="number" step="0.001" name="salaries" id="opexSalaries" value="{{ fv(form, 'salaries', '0') }}"></div>
       <div class="field"><label for="opexUtilities">Utilities ({{ currency_label() }})</label><input type="number" step="0.001" name="utilities" id="opexUtilities" value="{{ fv(form, 'utilities', '0') }}"></div>
       <div class="field"><label for="opexMarketing">Marketing ({{ currency_label() }})</label><input type="number" step="0.001" name="marketing" id="opexMarketing" value="{{ fv(form, 'marketing', '0') }}"></div>
-      <div class="field"><label for="opexOther">Other OpEx ({{ currency_label() }})</label><input type="number" step="0.001" name="other" id="opexOther" value="{{ fv(form, 'other', '0') }}"></div>
+      <div class="field"><label for="opexOther">{{ _('Other OpEx (%(currency_label)s)', currency_label=currency_label()) }}</label><input type="number" step="0.001" name="other" id="opexOther" value="{{ fv(form, 'other', '0') }}"></div>
     </div>
     <p class="small muted" id="opexHint" style="margin:6px 0 0;"></p>
     <div class="form-actions"><button class="btn" type="submit">{{ _('Save Operating Costs') }}</button></div>

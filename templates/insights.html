@@ -2,33 +2,33 @@
 {% block title %}Insights — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Insights') }}</h1><p class="page-sub">Management-level view over the last {{ months_back }} months. Admin only.</p></div>
+  <div><h1>{{ _('Insights') }}</h1><p class="page-sub">{{ _('Management-level view over the last %(months_back)s months. Admin only.', months_back=months_back) }}</p></div>
   <div style="display:flex; gap:10px;">
     <a class="btn secondary" href="{{ url_for('retention') }}">{{ _('Retention →') }}</a>
   </div>
 </div>
 
 <div class="stat-grid">
-  <div class="stat-card ok"><div class="num">{{ revenue.totals_by_month.values()|sum|money }}</div><div class="label">Revenue, Last {{ months_back }} Months ({{ currency_label() }})</div></div>
+  <div class="stat-card ok"><div class="num">{{ revenue.totals_by_month.values()|sum|money }}</div><div class="label">{{ _('Revenue, Last %(months_back)s Months (%(currency_label)s)', months_back=months_back, currency_label=currency_label()) }}</div></div>
   <div class="stat-card"><div class="num">{{ active_client_count }}</div><div class="label">{{ _('Clients With Paid Visits (Lifetime)') }}</div></div>
-  <div class="stat-card"><div class="num">{{ avg_spend|money }}</div><div class="label">Avg. Lifetime Spend / Client ({{ currency_label() }})</div></div>
+  <div class="stat-card"><div class="num">{{ avg_spend|money }}</div><div class="label">{{ _('Avg. Lifetime Spend / Client (%(currency_label)s)', currency_label=currency_label()) }}</div></div>
   <div class="stat-card"><div class="num">{{ vets|length }}</div><div class="label">{{ _('Vets Billing This Window') }}</div></div>
 </div>
 
 <div class="panel-grid">
   <div class="card panel">
     <h2>{{ _('Revenue by Service Category') }}</h2>
-    <p class="small muted" style="margin-top:-6px;">Net of refunds, per month, in {{ currency_label() }}.</p>
+    <p class="small muted" style="margin-top:-6px;">{{ _('Net of refunds, per month, in %(currency_label)s.', currency_label=currency_label()) }}</p>
     <canvas id="revenueChart" height="220"></canvas>
   </div>
   <div class="card panel">
     <h2>{{ _('Payment Method Mix') }}</h2>
-    <p class="small muted" style="margin-top:-6px;">Cash vs. card, last {{ months_back }} months — a useful trust/adoption signal for a new clinic.</p>
+    <p class="small muted" style="margin-top:-6px;">{{ _('Cash vs. card, last %(months_back)s months — a useful trust/adoption signal for a new clinic.', months_back=months_back) }}</p>
     <canvas id="paymentChart" height="220"></canvas>
   </div>
 </div>
 
-<div class="section-title">Revenue by Category — Monthly Breakdown ({{ currency_label() }})</div>
+<div class="section-title">{{ _('Revenue by Category — Monthly Breakdown (%(currency_label)s)', currency_label=currency_label()) }}</div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
   <thead><tr>
@@ -58,7 +58,7 @@
 <div class="panel-grid">
   <div class="card panel">
     <h2>{{ _('Vet Performance') }}</h2>
-    <p class="small muted" style="margin-top:-6px;">Visit count &amp; billings generated, last {{ months_back }} months.</p>
+    <p class="small muted" style="margin-top:-6px;">{{ _('Visit count & billings generated, last %(months_back)s months.', months_back=months_back) }}</p>
     <div class="table-wrap">
     <table>
       <thead><tr><th scope="col">{{ _('Vet') }}</th><th scope="col" class="num-col">{{ _('Visits') }}</th><th scope="col" class="num-col">Revenue ({{ currency_label() }})</th><th scope="col" class="num-col">{{ _('Avg / Visit') }}</th></tr></thead>
@@ -80,10 +80,10 @@
 
   <div class="card panel">
     <h2>{{ _('Top Clients by Lifetime Spend') }}</h2>
-    <p class="small muted" style="margin-top:-6px;">{{ _('From visit, inpatient &amp; boarding payments (walk-in POS retail sales aren\'t linked to a client in this system).') }}</p>
+    <p class="small muted" style="margin-top:-6px;">{{ _('From visit, inpatient & boarding payments (walk-in POS retail sales aren\'t linked to a client in this system).') }}</p>
     <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">{{ _('Owner') }}</th><th scope="col" class="num-col">{{ _('Payments') }}</th><th scope="col" class="num-col">Total Paid ({{ currency_label() }})</th></tr></thead>
+      <thead><tr><th scope="col">{{ _('Owner') }}</th><th scope="col" class="num-col">{{ _('Payments') }}</th><th scope="col" class="num-col">{{ _('Total Paid (%(currency_label)s)', currency_label=currency_label()) }}</th></tr></thead>
       <tbody>
         {% for c in top_clients %}
         <tr>

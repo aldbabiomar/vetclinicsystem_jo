@@ -26,7 +26,7 @@
 </div>
 
 {% if cases %}
-<div class="section-title">Inpatient Stays ({{ cases|length }})</div>
+<div class="section-title">{{ _('Inpatient Stays (%(cases)s)', cases=cases|length) }}</div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
   <thead><tr><th scope="col">{{ _('Admitted') }}</th><th scope="col">{{ _('Discharged') }}</th><th scope="col">{{ _('Complaint') }}</th><th scope="col">{{ _('Status') }}</th></tr></thead>
@@ -43,7 +43,7 @@
 {% endif %}
 
 {% if boarding_sessions %}
-<div class="section-title">Boarding Sessions ({{ boarding_sessions|length }})</div>
+<div class="section-title">{{ _('Boarding Sessions (%(boarding_sessions)s)', boarding_sessions=boarding_sessions|length) }}</div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
   <thead><tr><th scope="col">{{ _('Entry') }}</th><th scope="col">{{ _('Dismissal') }}</th><th scope="col">{{ _('Room') }}</th><th scope="col" class="num-col">Total ({{ currency_label() }})</th></tr></thead>
@@ -62,7 +62,7 @@
 {% endif %}
 
 {% if grooming_sessions %}
-<div class="section-title">Grooming Sessions ({{ grooming_sessions|length }})</div>
+<div class="section-title">{{ _('Grooming Sessions (%(grooming_sessions)s)', grooming_sessions=grooming_sessions|length) }}</div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
   <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Services') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col">{{ _('Notes') }}</th></tr></thead>
@@ -79,7 +79,7 @@
 </div>
 {% endif %}
 
-<div class="section-title">Visit History ({{ visits|length }})</div>
+<div class="section-title">{{ _('Visit History (%(visits)s)', visits=visits|length) }}</div>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Type') }}</th><th scope="col">{{ _('Doctor') }}</th><th scope="col">{{ _('Complaint') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col">{{ _('Follow-Up') }}</th><th scope="col" class="num-col">Bill ({{ currency_label() }})</th></tr></thead>

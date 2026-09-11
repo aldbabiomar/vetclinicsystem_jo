@@ -30,7 +30,7 @@
 
     <div style="margin-top:10px;">
       <button class="btn small secondary" type="button" data-vzh="visit-detail-1">{{ _('Additional Tests / X-Rays') }}</button>
-      <span class="small muted">({{ files|length }} file(s) on record)</span>
+      <span class="small muted">{{ _('(%(files)s file(s) on record)', files=files|length) }}</span>
     </div>
     <div id="uploadBox" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
       {% for file in files %}
@@ -120,7 +120,7 @@
         <div class="detail-item" style="margin-top:8px;"><div class="k">{{ _('Subtotal') }}</div><div class="v">{{ summary.subtotal|money }} {{ currency_label() }}</div></div>
         <form method="post" action="{{ url_for('clinical.visit_discount_save', visit_id=visit.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="field" style="flex:1;"><label for="visitdetail-4-discount_percent">Discount % (Max {{ discount_cap }}%)</label><input id="visitdetail-4-discount_percent" type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ fv(form, 'discount_percent', summary.discount_percent) if discount_error else summary.discount_percent }}"></div>
+          <div class="field" style="flex:1;"><label for="visitdetail-4-discount_percent">{{ _('Discount %% (Max %(discount_cap)s%%)', discount_cap=discount_cap) }}</label><input id="visitdetail-4-discount_percent" type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ fv(form, 'discount_percent', summary.discount_percent) if discount_error else summary.discount_percent }}"></div>
           <button class="btn small secondary" type="submit">{{ _('Apply') }}</button>
         </form>
         <div class="detail-item"><div class="k">{{ _('Total') }}</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} {{ currency_label() }}</div></div>
@@ -131,8 +131,8 @@
 
       <form method="post" action="{{ url_for('clinical.visit_payment_add', visit_id=visit.id) }}" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="field" style="flex:1;"><label for="visitdetail-5-amount">Record Payment ({{ currency_label() }})</label><input id="visitdetail-5-amount" type="number" step="0.001" name="amount" required value="{{ fv(form, 'amount') if payment_error else '' }}"></div>
-        <div class="field"><label for="visitdetail-6-cleanup_amount">Clean Up (max {{ CLEANUP_CAP }} {{ currency_label() }})</label><input id="visitdetail-6-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error else '0' }}"></div>
+        <div class="field" style="flex:1;"><label for="visitdetail-5-amount">{{ _('Record Payment (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="visitdetail-5-amount" type="number" step="0.001" name="amount" required value="{{ fv(form, 'amount') if payment_error else '' }}"></div>
+        <div class="field"><label for="visitdetail-6-cleanup_amount">{{ _('Clean Up (max %(CLEANUP_CAP)s %(currency_label)s)', CLEANUP_CAP=CLEANUP_CAP, currency_label=currency_label()) }}</label><input id="visitdetail-6-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error else '0' }}"></div>
         <div class="field"><label for="visitdetail-7-method">{{ _('Method') }}</label>
           <select id="visitdetail-7-method" name="method">
             {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}

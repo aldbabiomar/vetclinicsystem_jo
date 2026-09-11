@@ -18,11 +18,11 @@
     <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
       <div class="detail-item"><div class="k">{{ _('Subtotal') }}</div><div class="v" id="cartSubtotal">0 {{ currency_label() }}</div></div>
       <div class="field" style="margin:10px 0;">
-        <label for="discountInput">Discount % (Max {{ discount_cap }}%)</label>
+        <label for="discountInput">{{ _('Discount %% (Max %(discount_cap)s%%)', discount_cap=discount_cap) }}</label>
         <input type="number" id="discountInput" min="0" max="{{ discount_cap }}" value="{{ fv(form, 'discount_percent', '0') }}" data-vzh="pos-1">
       </div>
       <div class="field" style="margin:10px 0;">
-        <label for="cleanupInput">Clean Up (max {{ CLEANUP_CAP }} {{ currency_label() }})</label>
+        <label for="cleanupInput">{{ _('Clean Up (max %(CLEANUP_CAP)s %(currency_label)s)', CLEANUP_CAP=CLEANUP_CAP, currency_label=currency_label()) }}</label>
         <input type="number" id="cleanupInput" step="0.001" min="0" value="{{ fv(form, 'cleanup_amount', '0') }}" data-vzh="pos-1">
       </div>
       <div class="detail-item"><div class="k">{{ _('Total') }}</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 {{ currency_label() }}</div></div>
@@ -36,7 +36,7 @@
       </div>
       <div id="cashFields" style="display:{{ 'none' if form and fv(form, 'payment_method', 'Cash')!='Cash' else '' }};">
         <div class="field" style="margin:10px 0;">
-          <label for="cashReceivedInput">Cash Received ({{ currency_label() }})</label>
+          <label for="cashReceivedInput">{{ _('Cash Received (%(currency_label)s)', currency_label=currency_label()) }}</label>
           <input type="number" id="cashReceivedInput" step="0.001" min="0" value="{{ fv(form, 'cash_received') }}" data-vzh="pos-1">
         </div>
         <div class="detail-item"><div class="k">{{ _('Change Due') }}</div><div class="v" style="font-size:18px; font-weight:700;" id="changeDue">—</div></div>

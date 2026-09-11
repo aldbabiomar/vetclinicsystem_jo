@@ -13,7 +13,7 @@
 
 {% if opex_due %}
 <div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
-  {{ _('This month\'s operating costs haven\'t been entered yet — add them on the Monthly P&amp;L page before the month closes.') }}
+  {{ _('This month\'s operating costs haven\'t been entered yet — add them on the Monthly P&L page before the month closes.') }}
 </div>
 {% endif %}
 
@@ -109,7 +109,7 @@
     {% if snap.reminders_tomorrow %}
       {% for f in snap.reminders_tomorrow[:6] %}
       <div class="list-line">
-        <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }}, {{ f.phone or "no phone on file" }})</span></div><div class="meta">Visit set for {{ f.followup_date|localdate }}</div></div>
+        <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }}, {{ f.phone or "no phone on file" }})</span></div><div class="meta">{{ _('Visit set for %(f)s', f=f.followup_date|localdate) }}</div></div>
         <a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}">{{ _('Open') }}</a>
       </div>
       {% endfor %}
@@ -145,7 +145,7 @@
   <div class="card panel">
     <h2>{{ _('Low Stock') }} <span class="count">{{ snap.low_stock|length }}</span></h2>
     {% if snap.low_stock %}
-      {% for i in snap.low_stock[:6] %}<div class="list-line"><div class="who">{{ i.name }}</div><div class="meta">{{ i.current_stock }} {{ i.unit }} left (threshold {{ i.reorder_threshold }})</div></div>{% endfor %}
+      {% for i in snap.low_stock[:6] %}<div class="list-line"><div class="who">{{ i.name }}</div><div class="meta">{{ _('%(i)s %(i2)s left (threshold %(i3)s)', i=i.current_stock, i2=i.unit, i3=i.reorder_threshold) }}</div></div>{% endfor %}
       {% if snap.low_stock|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory.ordering_sheet_page') }}">{{ _('View ordering sheet →') }}</a></div>{% endif %}
     {% else %}<div class="empty-note">{{ _('Nothing below threshold.') }}</div>{% endif %}
   </div>

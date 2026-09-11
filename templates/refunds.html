@@ -55,7 +55,7 @@
     <form method="post" action="{{ url_for('sales.refund_service_save') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
-        <div class="field"><label for="refunds-4-amount">Refund Amount ({{ currency_label() }})</label><input id="refunds-4-amount" type="number" name="amount" min="1" step="0.001" required value="{{ fv(service_form, 'amount') }}"></div>
+        <div class="field"><label for="refunds-4-amount">{{ _('Refund Amount (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="refunds-4-amount" type="number" name="amount" min="1" step="0.001" required value="{{ fv(service_form, 'amount') }}"></div>
         <div class="field"><label for="refunds-5-refund_date">{{ _('Refund Date') }}</label><input id="refunds-5-refund_date" type="date" name="refund_date" value="{{ fv(service_form, 'refund_date', today) }}"></div>
         <div class="field"><label for="refunds-6-refund_method">{{ _('Method') }}</label>
           <select id="refunds-6-refund_method" name="refund_method">
@@ -83,7 +83,7 @@
     {% if date_filter %}<a class="btn secondary" href="{{ url_for('sales.refunds_page') }}">{{ _('Clear') }}</a>{% endif %}
   </form>
 </div>
-{% if date_filter %}<p class="small muted" style="margin:-6px 0 12px;">Showing refunds on {{ date_filter }} only.</p>{% endif %}
+{% if date_filter %}<p class="small muted" style="margin:-6px 0 12px;">{{ _('Showing refunds on %(date_filter)s only.', date_filter=date_filter) }}</p>{% endif %}
 {% if not refunds %}
 <p class="empty-note">{% if date_filter %}No refunds recorded on {{ date_filter }}.{% else %}No refunds recorded yet.{% endif %}</p>
 {% else %}
@@ -112,7 +112,7 @@
           {% if not r.visit_id and not r.inpatient_case_id and not r.boarding_id %}—{% endif %}
         {% endif %}
       </td>
-      <td class="num-col">{{ r.amount|money }} {{ currency_label() }}{% if r.cleanup_amount_at_refund %}<div class="meta small">Clean Up on original bill: {{ r.cleanup_amount_at_refund|money }} {{ currency_label() }}</div>{% endif %}</td>
+      <td class="num-col">{{ r.amount|money }} {{ currency_label() }}{% if r.cleanup_amount_at_refund %}<div class="meta small">{{ _('Clean Up on original bill: %(r)s %(currency_label)s', r=r.cleanup_amount_at_refund|money, currency_label=currency_label()) }}</div>{% endif %}</td>
       <td class="small">{{ r.refund_method or "—" }}</td>
       <td class="small muted">{{ r.reason or "—" }}</td>
       <td class="small">{{ r.processed_by_name or "—" }}</td>

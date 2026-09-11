@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1>Audit — {{ sess.audit_date|localdate }}</h1>
-    <p class="page-sub">Performed by {{ sess.performed_by_name or "—" }} · <span class="badge {{ 'ok' if sess.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if sess.status=='Confirmed' else 'Saved' }}</span></p>
+    <p class="page-sub">{{ _('Performed by %(sess)s ·', sess=sess.performed_by_name or "—") }} <span class="badge {{ 'ok' if sess.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if sess.status=='Confirmed' else 'Saved' }}</span></p>
   </div>
   {% if not readonly %}
   <div style="display:flex; gap:10px;">
