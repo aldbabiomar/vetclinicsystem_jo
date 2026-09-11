@@ -3,6 +3,31 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.14.1] - 2026-09-12
+
+### Fixed
+- **Create Barcode now actually prints a barcode.** The label page was showing
+  the item name and the clinic name with an empty space where the barcode
+  should be, in both languages, every time. Bulk barcode printing was affected
+  the same way.
+- **The "Grooming" tag no longer prints over the next column in Arabic.** Its
+  Arabic wording is several words long and was being forced onto one line, so
+  it ran across the vet's name beside it. It wraps now.
+- **The Add Role window fits the screen.** It was barely fitting a laptop and
+  did not fit a phone at all — the Add Role button sat below the bottom of the
+  screen with no way to scroll to it, so a role could not be created on a
+  phone. Permissions are now laid out in up to three columns, and the window
+  scrolls if it ever needs to.
+- **The Insights charts fill their cards** instead of one being squeezed while
+  the other grew far too large.
+- **An empty chart now says it is empty** rather than showing a blank white
+  card, which looked like something had broken. The Payment Method chart is
+  empty until payments have been recorded.
+- **The health banner is in Arabic.** The messages about backups failing, a
+  missing backup folder or a restore that could not be verified were still in
+  English — the ones that matter most when they appear. File paths and error
+  details inside them stay exactly as the system reported them.
+
 ## [1.14.0] - 2026-09-11
 
 ### Changed
