@@ -11,6 +11,9 @@ VetClinicSystem/                  <- the shared workspace
 ├── CLAUDE.md                     the ground rules for working on both apps
 ├── COMPARISON.md                 the dated, append-only diff between the two
 ├── RELEASE_WORKFLOW.md           the tag/release checklist both apps follow
+├── `SIMULATION_AUDIT_2026-09-11.md`  both apps driven as real users: a full
+│                                 clinic day plus rare/edge cases, six findings
+├── scripts/simulation/           the harness behind it, one repro per finding
 ├── audits/
 │   ├── ERROR_500_AUDIT.md        every action that could raise an unhandled exception
 │   └── ORPHANED_RECORDS_AUDIT.md every way a row could be left unreachable

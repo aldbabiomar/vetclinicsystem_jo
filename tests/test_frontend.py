@@ -516,8 +516,20 @@ def test_every_cited_document_can_be_found():
     in_repo = {p.name for p in root.rglob("*.md") if ".git" not in p.parts}
 
     cited, unresolved = set(), []
-    for path in list(root.glob("*.py")) + list(root.glob("*.sql")):
-        for name in re.findall(r"\b([A-Za-z0-9_]+\.md)\b", path.read_text(encoding="utf-8")):
+    # routes/*.py as well as the top level: after the blueprint split most of
+    # the code -- and most of the citations -- moved there, and a glob that
+    # stops at the root would check a fraction of the surface while still
+    # passing. CLAUDE.md makes this point about source-parsing tests generally.
+    #
+    # The filename pattern allows `-` and `.` after the first character, so a
+    # dated document (SIMULATION_AUDIT_2026-09-11.md) matches whole. Without
+    # that it matched only the tail, "11.md", and reported an unresolvable
+    # citation no entry in docs/README.md could ever satisfy.
+    sources = (list(root.glob("*.py")) + list(root.glob("*.sql"))
+               + sorted((root / "routes").glob("*.py")))
+    for path in sources:
+        for name in re.findall(r"\b([A-Za-z0-9_][A-Za-z0-9_.-]*\.md)\b",
+                               path.read_text(encoding="utf-8")):
             cited.add(name)
             if name not in listed and name not in in_repo:
                 unresolved.append(f"{path.name} -> {name}")
