@@ -158,7 +158,7 @@ h1, h2, h3 { letter-spacing: -0.015em; font-weight: 650; }
   width: 30px; height: 30px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.28);
   background: rgba(255,255,255,0.12); color: var(--sidebar-ink); cursor: pointer; padding: 0;
   transition: background 0.15s ease;
-  flex: none; margin-left: auto;
+  flex: none; margin-inline-start: auto;
 }
 .theme-toggle-btn:hover { background: rgba(255,255,255,0.22); }
 .theme-toggle-btn svg { width: 16px; height: 16px; display: block; }
@@ -246,7 +246,7 @@ html[data-theme="dark"] .chip.active { color: var(--bg); }
   height: 100%; width: 0%; background: var(--primary);
   transition: width 0.15s ease;
 }
-.upload-progress-pct { min-width: 34px; text-align: right; }
+.upload-progress-pct { min-width: 34px; text-align: end; }
 
 /* ---------------- Error pages (404 / 403 / 500) ---------------- */
 .error-page { display: flex; justify-content: center; padding-top: 4vh; }
@@ -261,7 +261,7 @@ html[data-theme="dark"] .chip.active { color: var(--bg); }
 .error-card-wide .page-sub { max-width: 420px; }
 .error-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
-.error-report { text-align: left; }
+.error-report { text-align: start; }
 .error-report-head {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 6px;
@@ -330,14 +330,14 @@ html[data-theme="dark"] .chip.active { color: var(--bg); }
 }
 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 thead th {
-  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.7px;
+  text-align: start; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.7px;
   color: var(--ink-soft); background: var(--muted-tint); padding: 11px 14px;
   border-bottom: 1px solid var(--line); white-space: nowrap; position: sticky; top: 0; font-weight: 650;
 }
 tbody td { padding: 11px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--line-soft); }
-.row-dirty td { background: var(--primary-tint) !important; border-left: 3px solid var(--primary); }
+.row-dirty td { background: var(--primary-tint) !important; border-inline-start: 3px solid var(--primary); }
 tfoot td {
   padding: 11px 14px; border-top: 2px solid var(--line); background: var(--muted-tint);
   font-weight: 700; color: var(--ink); position: sticky; bottom: 0;
@@ -345,8 +345,8 @@ tfoot td {
 tfoot tr:first-child td { border-top: 2px solid var(--line); }
 .table-wrap.sticky-scroll { overflow: visible; }
 .sticky-header th { z-index: 2; }
-.row-flag-mismatch td { background: var(--warn-tint) !important; border-left: 3px solid var(--warn); }
-.num-col { text-align: right; font-variant-numeric: tabular-nums; }
+.row-flag-mismatch td { background: var(--warn-tint) !important; border-inline-start: 3px solid var(--warn); }
+.num-col { text-align: end; font-variant-numeric: tabular-nums; }
 
 /* ---------------- Badges ---------------- */
 .badge {
@@ -444,9 +444,9 @@ textarea { resize: vertical; min-height: 72px; }
 
 /* ---------------- Appointments grid ---------------- */
 .appt-grid { display: grid; border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; background: var(--paper); }
-.appt-cell { border-bottom: 1px solid var(--line-soft); border-right: 1px solid var(--line-soft); padding: 6px; min-height: 46px; font-size: 12.5px; }
-.appt-head-cell { background: var(--muted-tint); font-weight: 700; font-size: 12px; padding: 9px 6px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line-soft); text-align: center; }
-.appt-slot-label { background: var(--muted-tint); font-size: 11px; color: var(--ink-soft); font-weight: 700; display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line-soft); }
+.appt-cell { border-bottom: 1px solid var(--line-soft); border-inline-end: 1px solid var(--line-soft); padding: 6px; min-height: 46px; font-size: 12.5px; }
+.appt-head-cell { background: var(--muted-tint); font-weight: 700; font-size: 12px; padding: 9px 6px; border-bottom: 1px solid var(--line); border-inline-end: 1px solid var(--line-soft); text-align: center; }
+.appt-slot-label { background: var(--muted-tint); font-size: 11px; color: var(--ink-soft); font-weight: 700; display: flex; align-items: center; justify-content: center; border-inline-end: 1px solid var(--line); border-bottom: 1px solid var(--line-soft); }
 .appt-chip { background: var(--primary-tint); color: var(--primary-dark); border-radius: 6px; padding: 3px 6px; font-size: 11px; font-weight: 600; margin-bottom: 3px; cursor: pointer; }
 .appt-chip.grooming { background: var(--warn-tint); color: var(--warn-ink); }
 .appt-add-btn { width: 100%; border: 1px dashed var(--line); background: none; color: var(--muted); border-radius: 6px; font-size: 11px; padding: 3px; cursor: pointer; }
@@ -501,8 +501,8 @@ textarea { resize: vertical; min-height: 72px; }
   .mobile-topbar {
     display: flex; align-items: center; gap: 12px;
     background: var(--sidebar-bg); color: #fff; padding: 14px 16px;
-    padding-left: calc(16px + env(safe-area-inset-left));
-    padding-right: calc(16px + env(safe-area-inset-right));
+    padding-inline-start: calc(16px + env(safe-area-inset-left));
+    padding-inline-end: calc(16px + env(safe-area-inset-right));
     position: fixed; top: 0; left: 0; width: 100vw; z-index: 30;
     height: var(--topbar-h);
   }
@@ -575,7 +575,7 @@ textarea { resize: vertical; min-height: 72px; }
 .vz-progress-bar-fill.error { background: var(--danger); }
 .vz-progress-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 6px; }
 .vz-progress-shell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 60px 20px; text-align: center; }
-.vz-progress-shell .vz-progress-panel { width: 100%; max-width: 420px; text-align: left; }
+.vz-progress-shell .vz-progress-panel { width: 100%; max-width: 420px; text-align: start; }
 
 /* Inline validation message */
 .field-invalid { border-color: var(--danger) !important; box-shadow: 0 0 0 3px var(--danger-tint) !important; }
@@ -698,7 +698,7 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 .perm-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--primary); flex: none; }
 .role-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; margin-top: 2px; border-top: 1px solid var(--line-soft); flex-wrap: wrap; }
 .cap-field { display: flex; align-items: center; gap: 8px; }
-.cap-field input { width: 74px; text-align: right; }
+.cap-field input { width: 74px; text-align: end; }
 .staff-count { font-size: 12.5px; color: var(--ink-soft); }
 .new-role-card { border: 1.5px dashed var(--line); background: transparent; box-shadow: none; display: flex; align-items: center; justify-content: center; padding: 22px; cursor: pointer; color: var(--ink-soft); font-weight: 650; font-size: 13.5px; }
 .new-role-card:hover { background: var(--line-soft); border-color: var(--primary-tint); color: var(--primary-dark); }
@@ -783,7 +783,7 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
   background: var(--danger-tint); color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 32%, transparent);
 }
-.selfcheck-banner ul { margin: 6px 0 0; padding-left: 20px; }
+.selfcheck-banner ul { margin: 6px 0 0; padding-inline-start: 20px; }
 .selfcheck-banner a { color: inherit; }
 
 /* ---------------------------------------------------------------------------
@@ -893,7 +893,7 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 }
 .cell-input-plain { border: none; background: transparent; }
 .cell-input.short { width: 70px; }
-.cell-input.num   { width: 80px; text-align: right; }
+.cell-input.num   { width: 80px; text-align: end; }
 
 /* Column widths for the Inventory Catalog's fixed-layout table. Keyed by
    position, so they move if a column is inserted — add the new width here in
@@ -912,7 +912,7 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 /* The "expiry tracked" key swatch under the catalog heading. */
 .legend-swatch {
   display: inline-block; width: 10px; height: 10px;
-  background: var(--warn-tint); border-left: 3px solid var(--warn);
+  background: var(--warn-tint); border-inline-start: 3px solid var(--warn);
   vertical-align: middle;
 }
 
@@ -968,3 +968,33 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 
 /* The gapless variant. u-row-end carries gap:10px; these had none. */
 .u-row-end-plain { display: flex; justify-content: flex-end; }
+
+/* ---------------------------------------------------------------------------
+   Language toggle — a matched pair with .theme-toggle-btn beside it. A plain
+   form POST rather than a scripted click: script-src carries a nonce and does
+   not authorise inline handlers, and this needs no JS at all. The form is
+   styled here rather than with style="display:inline" so it stays off the
+   inline-style ratchet (tests/test_inline_styles.py).
+--------------------------------------------------------------------------- */
+.lang-toggle-form { display: inline-flex; margin: 0; }
+.lang-toggle-btn {
+  background: none; border: 1px solid var(--line); color: var(--sidebar-muted);
+  border-radius: 6px; cursor: pointer; padding: 2px 7px; font-size: 11px;
+  font-weight: 700; line-height: 1.6; white-space: nowrap;
+  /* 40x40 is the floor tests/test_browser.py enforces for anything tappable.
+     The first version of this button was 40x24 and failed on phone and tablet
+     — a control small enough to miss with a thumb is a real defect, not a
+     style preference. */
+  min-height: 40px; min-width: 40px;
+}
+.lang-toggle-btn:hover { color: var(--sidebar-ink); border-color: var(--sidebar-muted); }
+
+/* ---------------------------------------------------------------------------
+   RTL — everything above uses logical properties, so direction is handled by
+   the browser. What remains here is the handful of cases a property
+   substitution cannot express. Same override idiom the theme already uses
+   (html[data-theme="dark"] ...), applied to direction instead.
+--------------------------------------------------------------------------- */
+html[dir="rtl"] .icon-chevron,
+html[dir="rtl"] .chevron { transform: scaleX(-1); }
+html[dir="rtl"] .vz-toast-stack { left: 16px; right: auto; }

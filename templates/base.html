@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ get_locale() }}" dir="{{ 'rtl' if get_locale()|string == 'ar' else 'ltr' }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -24,7 +24,7 @@
 <body>
 {% if session.get('user_id') %}
 <div class="mobile-topbar">
-  <button class="hamburger-btn" data-vzh="base-1" aria-label="Open menu">
+  <button class="hamburger-btn" data-vzh="base-1" aria-label="{{ _('Open menu') }}">
     <span></span><span></span><span></span>
   </button>
   <span class="mobile-topbar-brand">{{ clinic_name }}</span>
@@ -32,7 +32,7 @@
 <div class="sidebar-backdrop" data-vzh="base-2"></div>
 <div class="app-shell">
   <nav class="sidebar">
-    <button class="sidebar-close-btn" data-vzh="base-2" aria-label="Close menu">&times;</button>
+    <button class="sidebar-close-btn" data-vzh="base-2" aria-label="{{ _('Close menu') }}">&times;</button>
     <div class="brand">
       <span class="mark">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -42,7 +42,7 @@
         </svg>
       </span>
       <span class="brand-name">{{ clinic_name }}</span>
-      <button type="button" class="theme-toggle-btn" data-vzh="base-3" aria-label="Toggle dark mode">
+      <button type="button" class="theme-toggle-btn" data-vzh="base-3" aria-label="{{ _('Toggle dark mode') }}">
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="4.2"/>
           <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/>
@@ -51,30 +51,37 @@
           <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>
         </svg>
       </button>
+      <form class="lang-toggle-form" method="post"
+            action="{{ url_for('set_language', lang='ar' if get_locale()|string == 'en' else 'en') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="lang-toggle-btn"
+                aria-label="{{ _('Switch language') }}"
+                title="{{ _('Switch language') }}">{{ 'العربية' if get_locale()|string == 'en' else 'English' }}</button>
+      </form>
     </div>
     <div class="brand-sub">{{ clinic_location }}</div>
 
     <div class="nav-group">
       <a class="nav-link {{ 'active' if request.endpoint=='dashboard' }}" href="{{ url_for('dashboard') }}">
-        Dashboard {% if alert_count %}<span class="nav-badge">{{ alert_count }}</span>{% endif %}
+        {{ _('Dashboard') }} {% if alert_count %}<span class="nav-badge">{{ alert_count }}</span>{% endif %}
       </a>
     </div>
 
     <div class="nav-group">
-      <div class="nav-label">Patients &amp; Visits</div>
-      <a class="nav-link {{ 'active' if request.endpoint in ['owners_list','owner_new','owner_detail','owner_edit'] }}" href="{{ url_for('clinical.owners_list') }}">Owners</a>
-      <a class="nav-link {{ 'active' if request.endpoint in ['patients_list','patient_detail','patient_edit','patient_history'] }}" href="{{ url_for('clinical.patients_list') }}">Patients</a>
-      <a class="nav-link {{ 'active' if request.endpoint in ['visits_list','visit_new_start','visit_new_existing','visit_new_patient','visit_detail','visit_edit'] }}" href="{{ url_for('clinical.visits_list') }}">Visits</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='followups_list' }}" href="{{ url_for('clinical.followups_list') }}">Follow-Ups</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='wellness_list' }}" href="{{ url_for('clinical.wellness_list') }}">Wellness</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='grooming_list' }}" href="{{ url_for('clinical.grooming_list') }}">Grooming</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='boarding_page' }}" href="{{ url_for('clinical.boarding_page') }}">Boarding</a>
-      <a class="nav-link {{ 'active' if request.endpoint=='appointments_page' }}" href="{{ url_for('clinical.appointments_page') }}">Appointments</a>
+      <div class="nav-label">{{ _('Patients & Visits') }}</div>
+      <a class="nav-link {{ 'active' if request.endpoint in ['owners_list','owner_new','owner_detail','owner_edit'] }}" href="{{ url_for('clinical.owners_list') }}">{{ _('Owners') }}</a>
+      <a class="nav-link {{ 'active' if request.endpoint in ['patients_list','patient_detail','patient_edit','patient_history'] }}" href="{{ url_for('clinical.patients_list') }}">{{ _('Patients') }}</a>
+      <a class="nav-link {{ 'active' if request.endpoint in ['visits_list','visit_new_start','visit_new_existing','visit_new_patient','visit_detail','visit_edit'] }}" href="{{ url_for('clinical.visits_list') }}">{{ _('Visits') }}</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='followups_list' }}" href="{{ url_for('clinical.followups_list') }}">{{ _('Follow-Ups') }}</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='wellness_list' }}" href="{{ url_for('clinical.wellness_list') }}">{{ _('Wellness') }}</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='grooming_list' }}" href="{{ url_for('clinical.grooming_list') }}">{{ _('Grooming') }}</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='boarding_page' }}" href="{{ url_for('clinical.boarding_page') }}">{{ _('Boarding') }}</a>
+      <a class="nav-link {{ 'active' if request.endpoint=='appointments_page' }}" href="{{ url_for('clinical.appointments_page') }}">{{ _('Appointments') }}</a>
     </div>
 
     <div class="nav-group">
-      <div class="nav-label">Inpatient</div>
-      <a class="nav-link {{ 'active' if request.endpoint in ['inpatient_list','inpatient_new','inpatient_detail'] }}" href="{{ url_for('clinical.inpatient_list') }}">Inpatient Cases</a>
+      <div class="nav-label">{{ _('Inpatient') }}</div>
+      <a class="nav-link {{ 'active' if request.endpoint in ['inpatient_list','inpatient_new','inpatient_detail'] }}" href="{{ url_for('clinical.inpatient_list') }}">{{ _('Inpatient Cases') }}</a>
     </div>
 
     <div class="nav-group" data-collapsible="inventory">
@@ -83,11 +90,11 @@
         <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
       <div class="nav-group-links">
-        <a class="nav-link {{ 'active' if request.endpoint=='inventory_status_page' }}" href="{{ url_for('inventory.inventory_status_page') }}">Inventory Status</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='ordering_sheet_page' }}" href="{{ url_for('inventory.ordering_sheet_page') }}">Ordering Sheet</a>
-        <a class="nav-link {{ 'active' if request.endpoint in ['audit_history_list','audit_session_view'] }}" href="{{ url_for('inventory.audit_history_list') }}">Audit History</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='inventory_catalog' }}" href="{{ url_for('inventory.inventory_catalog') }}">Inventory Catalog</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='distributors_list' }}" href="{{ url_for('consignment.distributors_list') }}">Distributors</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='inventory_status_page' }}" href="{{ url_for('inventory.inventory_status_page') }}">{{ _('Inventory Status') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='ordering_sheet_page' }}" href="{{ url_for('inventory.ordering_sheet_page') }}">{{ _('Ordering Sheet') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint in ['audit_history_list','audit_session_view'] }}" href="{{ url_for('inventory.audit_history_list') }}">{{ _('Audit History') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='inventory_catalog' }}" href="{{ url_for('inventory.inventory_catalog') }}">{{ _('Inventory Catalog') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='distributors_list' }}" href="{{ url_for('consignment.distributors_list') }}">{{ _('Distributors') }}</a>
       </div>
     </div>
 
@@ -100,15 +107,15 @@
       </button>
       <div class="nav-group-links">
         {% if has_permission('view_consignment') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_overview' }}" href="{{ url_for('consignment.consignment_overview') }}">Overview</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_items' }}" href="{{ url_for('consignment.consignment_items') }}">Items</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_receiving_page' }}" href="{{ url_for('consignment.consignment_receiving_page') }}">Receiving</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_shrinkage_page' }}" href="{{ url_for('consignment.consignment_shrinkage_page') }}">Shrinkage</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_returns_page' }}" href="{{ url_for('consignment.consignment_returns_page') }}">Returns</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_sales_page' }}" href="{{ url_for('consignment.consignment_sales_page') }}">Sales by Distributor</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_overview' }}" href="{{ url_for('consignment.consignment_overview') }}">{{ _('Overview') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_items' }}" href="{{ url_for('consignment.consignment_items') }}">{{ _('Items') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_receiving_page' }}" href="{{ url_for('consignment.consignment_receiving_page') }}">{{ _('Receiving') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_shrinkage_page' }}" href="{{ url_for('consignment.consignment_shrinkage_page') }}">{{ _('Shrinkage') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_returns_page' }}" href="{{ url_for('consignment.consignment_returns_page') }}">{{ _('Returns') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_sales_page' }}" href="{{ url_for('consignment.consignment_sales_page') }}">{{ _('Sales by Distributor') }}</a>
         {% endif %}
         {% if has_permission('manage_consignment_settlements') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='consignment_settlements_page' }}" href="{{ url_for('consignment.consignment_overview') }}">Settlements</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='consignment_settlements_page' }}" href="{{ url_for('consignment.consignment_overview') }}">{{ _('Settlements') }}</a>
         {% endif %}
       </div>
     </div>
@@ -120,24 +127,24 @@
         <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
       <div class="nav-group-links">
-        <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('sales.pos_page') }}">Point of Sale</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='pos_history' }}" href="{{ url_for('sales.pos_history') }}">Sales History</a>
+        <a class="nav-link {{ 'active' if request.endpoint in ['pos_page','pos_receipt'] }}" href="{{ url_for('sales.pos_page') }}">{{ _('Point of Sale') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='pos_history' }}" href="{{ url_for('sales.pos_history') }}">{{ _('Sales History') }}</a>
         {% if has_permission('manage_price_list') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='price_list' }}" href="{{ url_for('inventory.price_list') }}">Price List</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='price_list' }}" href="{{ url_for('inventory.price_list') }}">{{ _('Price List') }}</a>
         {% endif %}
         {% if has_permission('manage_refunds') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('sales.refunds_page') }}">Refunds</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='refunds_page' }}" href="{{ url_for('sales.refunds_page') }}">{{ _('Refunds') }}</a>
         {% endif %}
         {% if has_permission('manage_cash_register') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='cash_register_page' }}" href="{{ url_for('sales.cash_register_page') }}">Cash Register</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='cash_register_page' }}" href="{{ url_for('sales.cash_register_page') }}">{{ _('Cash Register') }}</a>
         {% endif %}
         {% if has_permission('view_financial_reports') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='reports' }}" href="{{ url_for('reports') }}">Monthly P&amp;L</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='reports_yearly' }}" href="{{ url_for('reports_yearly') }}">Yearly P&amp;L</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='reports' }}" href="{{ url_for('reports') }}">{{ _('Monthly P&L') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='reports_yearly' }}" href="{{ url_for('reports_yearly') }}">{{ _('Yearly P&L') }}</a>
         {% endif %}
         {% if has_permission('view_insights_retention') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='insights' }}" href="{{ url_for('insights') }}">Insights</a>
-        <a class="nav-link {{ 'active' if request.endpoint=='retention' }}" href="{{ url_for('retention') }}">Retention</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='insights' }}" href="{{ url_for('insights') }}">{{ _('Insights') }}</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='retention' }}" href="{{ url_for('retention') }}">{{ _('Retention') }}</a>
         {% endif %}
       </div>
     </div>
@@ -150,13 +157,13 @@
       </button>
       <div class="nav-group-links">
         {% if has_permission('manage_users_roles') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin.admin_users') }}">Users &amp; Roles</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='admin_users' }}" href="{{ url_for('admin.admin_users') }}">{{ _('Users & Roles') }}</a>
         {% endif %}
         {% if has_permission('view_logins_changes') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin.admin_logs') }}">Logins and Changes</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='admin_logs' }}" href="{{ url_for('admin.admin_logs') }}">{{ _('Logins and Changes') }}</a>
         {% endif %}
         {% if has_permission('manage_settings') %}
-        <a class="nav-link {{ 'active' if request.endpoint=='settings_page' }}" href="{{ url_for('settings.settings_page') }}">Settings</a>
+        <a class="nav-link {{ 'active' if request.endpoint=='settings_page' }}" href="{{ url_for('settings.settings_page') }}">{{ _('Settings') }}</a>
         {% endif %}
       </div>
     </div>
@@ -164,7 +171,7 @@
 
     <div class="nav-group" style="margin-top:auto;">
       <a class="nav-link {{ 'active' if request.endpoint=='change_password' }}" href="{{ url_for('change_password') }}">{{ current_username }} · {{ current_role }}</a>
-      <a class="nav-link" href="{{ url_for('logout') }}">Log Out</a>
+      <a class="nav-link" href="{{ url_for('logout') }}">{{ _('Log Out') }}</a>
     </div>
   </nav>
 

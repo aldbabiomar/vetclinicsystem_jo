@@ -31,6 +31,7 @@ from flask import (
     session, send_from_directory, send_file, abort
 )
 from flask.json.provider import DefaultJSONProvider
+from flask_babel import Babel, get_locale
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
@@ -46,7 +47,14 @@ import pdf_export
 # BASE_DIR, VERSION, DB_REQUEST_TIMEOUT_SECONDS, get_db() and lan_address()
 # live in core.py so the route blueprints under routes/ can reach them
 # without importing this module, which registers them (see core.py).
-from core import BASE_DIR, VERSION, DB_REQUEST_TIMEOUT_SECONDS, get_db, lan_address
+from core import (
+    BASE_DIR,
+    DB_REQUEST_TIMEOUT_SECONDS,
+    VERSION,
+    get_db,
+    lan_address,
+    to_arabic_indic_digits,
+)
 from core import csp_nonce
 from core import (
     BadDate,
@@ -114,6 +122,69 @@ if not app.secret_key or app.secret_key == "change-me":
         "random key) before starting the app."
     )
 csrf = CSRFProtect(app)
+
+# ---------------------------------------------------------------------------
+# Language — English/Arabic, an explicit toggle that mirrors dark/light mode
+#
+# Unlike theme, this cannot be a client-side attribute flip: the text itself is
+# written into the HTML by Jinja on the server, so the locale has to be known
+# BEFORE the response is built. That is why the toggle sets a cookie and the
+# page reloads, where the theme toggle is instant. ARABIC_LOCALIZATION_PLAN §1.
+#
+# Deliberately does not consult request.accept_languages: the toggle is
+# explicit-only, exactly as theme never auto-follows the OS dark-mode setting.
+# ---------------------------------------------------------------------------
+app.config["BABEL_DEFAULT_LOCALE"] = "en"
+app.config["BABEL_TRANSLATION_DIRECTORIES"] = "translations"
+
+SUPPORTED_LOCALES = ("en", "ar")
+
+
+def _select_locale():
+    lang = request.cookies.get("lang")
+    return lang if lang in SUPPORTED_LOCALES else "en"
+
+
+babel = Babel(app, locale_selector=_select_locale)
+
+# Flask-Babel 4.x does not register get_locale() as a Jinja global on its own,
+# and base.html needs it on the very first line to set <html lang>/<dir>. The
+# symptom of missing it is every page 500-ing at that line, including /login.
+app.jinja_env.globals["get_locale"] = get_locale
+
+
+@app.route("/set-language/<lang>", methods=["POST"])
+def set_language(lang):
+    if lang not in SUPPORTED_LOCALES:
+        abort(404)
+    target = request.referrer
+    if not is_safe_local_path_url(target):
+        target = url_for("dashboard")
+    resp = redirect(target)
+    # A year, and SameSite=Lax so the cookie survives an ordinary navigation
+    # back into the app. Not httponly -- nothing secret is in it, and no
+    # client script needs it either; it is simply a display preference.
+    resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, samesite="Lax")
+    return resp
+
+
+def is_safe_local_path_url(url):
+    """request.referrer is attacker-influenced, so it is never redirected to
+    unless it is a relative path on this app. is_safe_local_path() already
+    encodes that rule for the login `next` parameter; this reuses it after
+    stripping the scheme/host the browser puts on a Referer header."""
+    if not url:
+        return False
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.scheme or parsed.netloc:
+        if parsed.netloc != urlparse(request.host_url).netloc:
+            return False
+    path = parsed.path or "/"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+    return is_safe_local_path(path)
+
 
 # ---------------------------------------------------------------------------
 # Network/session hardening — this app binds to every interface on the LAN
@@ -370,7 +441,23 @@ def close_db(exc):
 
 @app.template_filter("money")
 def money_filter(v):
-    return logic.fmt_money(v)
+    """The one choke point every displayed money amount already passes
+    through, which is why the Arabic-Indic substitution hooks in here rather
+    than per template. Display only -- see core.to_arabic_indic_digits()."""
+    formatted = logic.fmt_money(v)
+    if str(get_locale()) == "ar":
+        formatted = to_arabic_indic_digits(formatted)
+    return formatted
+
+
+@app.template_filter("localdate")
+def localdate_filter(d):
+    """Read-only date display. Named `localdate` rather than `date` so it
+    cannot shadow Jinja/Python `date` in a template that also uses it."""
+    formatted = logic.fmt_date(d) if not isinstance(d, str) else d
+    if formatted and str(get_locale()) == "ar":
+        formatted = to_arabic_indic_digits(formatted)
+    return formatted
 
 
 def cached_dashboard_snapshot(db):

@@ -15,6 +15,9 @@ VetClinicSystem/                  <- the shared workspace
 │                                 clinic day plus rare/edge cases, six findings
 ├── `SEAM_RULES.md`               rules that must hold on every sibling surface,
 │                                 and the register of every time one did not
+├── `ARABIC_LOCALIZATION_PLAN.md`  the English/Arabic toggle: scope, the
+│                                 translation-ambiguity rule, and §0's permanent
+│                                 exclusion of PDF exports
 ├── scripts/simulation/           the harness behind it, one repro per finding
 ├── audits/
 │   ├── ERROR_500_AUDIT.md        every action that could raise an unhandled exception

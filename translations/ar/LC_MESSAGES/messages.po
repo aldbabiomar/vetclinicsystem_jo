@@ -1,0 +1,208 @@
+# Arabic translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-09-11 12:18+0300\n"
+"PO-Revision-Date: 2026-09-11 12:18+0300\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ar\n"
+"Language-Team: ar <LL@li.org>\n"
+"Plural-Forms: nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : "
+"n%100>=3 && n%100<=10 ? 3 : n%100>=0 && n%100<=2 ? 4 : 5);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: core.py:347
+#, python-format
+msgid "%(label)s is required."
+msgstr ""
+
+#: core.py:364
+#, python-format
+msgid "Discount must be between 0%% and %(cap)s%% for your role."
+msgstr ""
+
+#: core.py:387
+msgid "Clean Up amount can't be negative."
+msgstr ""
+
+#: core.py:389
+#, python-format
+msgid "Clean Up can't exceed %(cap)s JOD total on this bill."
+msgstr ""
+
+#: core.py:391
+msgid "Clean Up can't exceed the remaining balance."
+msgstr ""
+
+#: templates/base.html:27
+msgid "Open menu"
+msgstr "فتح القائمة"
+
+#: templates/base.html:35
+msgid "Close menu"
+msgstr "إغلاق القائمة"
+
+#: templates/base.html:45
+msgid "Toggle dark mode"
+msgstr "تبديل الوضع الداكن"
+
+#: templates/base.html:58 templates/base.html:59
+msgid "Switch language"
+msgstr "تغيير اللغة"
+
+#: templates/base.html:66
+msgid "Dashboard"
+msgstr "لوحة التحكم"
+
+#: templates/base.html:71
+msgid "Patients & Visits"
+msgstr "المرضى والزيارات"
+
+#: templates/base.html:72
+msgid "Owners"
+msgstr "الملاك"
+
+#: templates/base.html:73
+msgid "Patients"
+msgstr "المرضى"
+
+#: templates/base.html:74
+msgid "Visits"
+msgstr "الزيارات"
+
+#: templates/base.html:75
+msgid "Follow-Ups"
+msgstr ""
+
+#: templates/base.html:76
+msgid "Wellness"
+msgstr ""
+
+#: templates/base.html:77
+msgid "Grooming"
+msgstr ""
+
+#: templates/base.html:78
+msgid "Boarding"
+msgstr "الإيواء"
+
+#: templates/base.html:79
+msgid "Appointments"
+msgstr "المواعيد"
+
+#: templates/base.html:83
+msgid "Inpatient"
+msgstr "التنويم"
+
+#: templates/base.html:84
+msgid "Inpatient Cases"
+msgstr "حالات التنويم"
+
+#: templates/base.html:93
+msgid "Inventory Status"
+msgstr ""
+
+#: templates/base.html:94
+msgid "Ordering Sheet"
+msgstr ""
+
+#: templates/base.html:95
+msgid "Audit History"
+msgstr ""
+
+#: templates/base.html:96
+msgid "Inventory Catalog"
+msgstr ""
+
+#: templates/base.html:97
+msgid "Distributors"
+msgstr "الموردون"
+
+#: templates/base.html:110
+msgid "Overview"
+msgstr "نظرة عامة"
+
+#: templates/base.html:111
+msgid "Items"
+msgstr "الأصناف"
+
+#: templates/base.html:112
+msgid "Receiving"
+msgstr "الاستلام"
+
+#: templates/base.html:113
+msgid "Shrinkage"
+msgstr ""
+
+#: templates/base.html:114
+msgid "Returns"
+msgstr "المرتجعات إلى المورد"
+
+#: templates/base.html:115
+msgid "Sales by Distributor"
+msgstr ""
+
+#: templates/base.html:118
+msgid "Settlements"
+msgstr ""
+
+#: templates/base.html:130
+msgid "Point of Sale"
+msgstr ""
+
+#: templates/base.html:131
+msgid "Sales History"
+msgstr ""
+
+#: templates/base.html:133
+msgid "Price List"
+msgstr "قائمة الأسعار"
+
+#: templates/base.html:136
+msgid "Refunds"
+msgstr "المرتجعات"
+
+#: templates/base.html:139
+msgid "Cash Register"
+msgstr ""
+
+#: templates/base.html:142
+msgid "Monthly P&L"
+msgstr ""
+
+#: templates/base.html:143
+msgid "Yearly P&L"
+msgstr ""
+
+#: templates/base.html:146
+msgid "Insights"
+msgstr ""
+
+#: templates/base.html:147
+msgid "Retention"
+msgstr ""
+
+#: templates/base.html:160
+msgid "Users & Roles"
+msgstr ""
+
+#: templates/base.html:163
+msgid "Logins and Changes"
+msgstr ""
+
+#: templates/base.html:166
+msgid "Settings"
+msgstr "الإعدادات"
+
+#: templates/base.html:174
+msgid "Log Out"
+msgstr "تسجيل الخروج"
+
