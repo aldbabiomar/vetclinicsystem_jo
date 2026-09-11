@@ -51,13 +51,6 @@
           <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>
         </svg>
       </button>
-      <form class="lang-toggle-form" method="post"
-            action="{{ url_for('set_language', lang='ar' if get_locale()|string == 'en' else 'en') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="lang-toggle-btn"
-                aria-label="{{ _('Switch language') }}"
-                title="{{ _('Switch language') }}">{{ 'العربية' if get_locale()|string == 'en' else 'English' }}</button>
-      </form>
     </div>
     <div class="brand-sub">{{ clinic_location }}</div>
 

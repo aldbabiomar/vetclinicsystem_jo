@@ -14,6 +14,12 @@
     <div class="field"><label for="settings-1-clinic_name">{{ _('Clinic Name') }}</label><input id="settings-1-clinic_name" name="clinic_name" value="{{ settings.clinic_name }}"></div>
     <div class="field"><label for="settings-2-clinic_location">{{ _('Location') }}</label><input id="settings-2-clinic_location" name="clinic_location" value="{{ settings.clinic_location }}"></div>
     <div class="field"><label for="settings-3-opening_date">{{ _('Clinic Opening Date') }}</label><input id="settings-3-opening_date" type="date" name="opening_date" value="{{ settings.opening_date }}"></div>
+    <div class="field"><label for="settings-3b-language">{{ _('Language') }}</label>
+      <select id="settings-3b-language" name="language">
+        <option value="en" {{ 'selected' if settings.language in (None, '', 'en') }}>English</option>
+        <option value="ar" {{ 'selected' if settings.language == 'ar' }}>العربية</option>
+      </select>
+    </div>
   </div>
 
   <div class="section-title">{{ _('Inventory Alerts') }}</div>

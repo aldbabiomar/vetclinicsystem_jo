@@ -141,8 +141,29 @@ SUPPORTED_LOCALES = ("en", "ar")
 
 
 def _select_locale():
-    lang = request.cookies.get("lang")
-    return lang if lang in SUPPORTED_LOCALES else "en"
+    """The clinic's language, from the `language` setting.
+
+    Clinic-wide rather than per-browser, and set in Settings beside the colour
+    palette — the same shape as `theme_palette`, for the same reason: it is a
+    property of the clinic, not of whoever happens to be at this screen.
+
+    Wrapped defensively and cached per request. This runs on EVERY render,
+    including the 500 page, and the most likely reason a page is failing is
+    the database — a locale selector that raises there would replace the error
+    page with a second error. It also runs before `/login`, where there is a
+    request but no user.
+    """
+    if "vz_locale" in g:
+        return g.vz_locale
+    lang = "en"
+    try:
+        value = logic.get_setting(get_db(), "language", "en")
+        if value in SUPPORTED_LOCALES:
+            lang = value
+    except Exception:
+        pass
+    g.vz_locale = lang
+    return lang
 
 
 babel = Babel(app, locale_selector=_select_locale)
@@ -165,39 +186,6 @@ def currency_label():
     Latin code permanently (ARABIC_LOCALIZATION_PLAN.md §0).
     """
     return "د.أ" if str(get_locale()) == "ar" else "JOD"
-
-
-@app.route("/set-language/<lang>", methods=["POST"])
-def set_language(lang):
-    if lang not in SUPPORTED_LOCALES:
-        abort(404)
-    target = request.referrer
-    if not is_safe_local_path_url(target):
-        target = url_for("dashboard")
-    resp = redirect(target)
-    # A year, and SameSite=Lax so the cookie survives an ordinary navigation
-    # back into the app. Not httponly -- nothing secret is in it, and no
-    # client script needs it either; it is simply a display preference.
-    resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, samesite="Lax")
-    return resp
-
-
-def is_safe_local_path_url(url):
-    """request.referrer is attacker-influenced, so it is never redirected to
-    unless it is a relative path on this app. is_safe_local_path() already
-    encodes that rule for the login `next` parameter; this reuses it after
-    stripping the scheme/host the browser puts on a Referer header."""
-    if not url:
-        return False
-    from urllib.parse import urlparse
-    parsed = urlparse(url)
-    if parsed.scheme or parsed.netloc:
-        if parsed.netloc != urlparse(request.host_url).netloc:
-            return False
-    path = parsed.path or "/"
-    if parsed.query:
-        path = f"{path}?{parsed.query}"
-    return is_safe_local_path(path)
 
 
 # ---------------------------------------------------------------------------

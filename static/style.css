@@ -982,18 +982,6 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
    styled here rather than with style="display:inline" so it stays off the
    inline-style ratchet (tests/test_inline_styles.py).
 --------------------------------------------------------------------------- */
-.lang-toggle-form { display: inline-flex; margin: 0; }
-.lang-toggle-btn {
-  background: none; border: 1px solid var(--line); color: var(--sidebar-muted);
-  border-radius: 6px; cursor: pointer; padding: 2px 7px; font-size: 11px;
-  font-weight: 700; line-height: 1.6; white-space: nowrap;
-  /* 40x40 is the floor tests/test_browser.py enforces for anything tappable.
-     The first version of this button was 40x24 and failed on phone and tablet
-     — a control small enough to miss with a thumb is a real defect, not a
-     style preference. */
-  min-height: 40px; min-width: 40px;
-}
-.lang-toggle-btn:hover { color: var(--sidebar-ink); border-color: var(--sidebar-muted); }
 
 /* ---------------------------------------------------------------------------
    RTL — everything above uses logical properties, so direction is handled by

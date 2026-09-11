@@ -31,21 +31,46 @@ LATIN_CURRENCY = "JOD"
 ARABIC_CURRENCY = "د.أ"
 
 
+def _set_language(value):
+    """Write the `language` setting, the way saving Clinic Settings does.
+
+    The language stopped being a per-browser cookie on 2026-09-11 and became a
+    clinic-wide setting, chosen from a dropdown in Settings beside the colour
+    palette. A direct write is right for arranging a test; the settings FORM
+    is exercised by its own tests below, so both the mechanism and the way a
+    user reaches it are covered."""
+    import db as dbmod
+    con = dbmod.connect()
+    try:
+        with con.cursor() as cur:
+            if value is None:
+                cur.execute("DELETE FROM settings WHERE key = 'language'")
+            else:
+                cur.execute(
+                    "INSERT INTO settings (key, value) VALUES ('language', %s) "
+                    "ON CONFLICT (key) DO UPDATE SET value = excluded.value", (value,))
+        con.commit()
+    finally:
+        con.close()
+
+
 @pytest.fixture(autouse=True)
-def _reset_language(client):
-    """The `client` fixture is SESSION-scoped, so a lang cookie set by a test
-    here leaks into every test that runs afterwards — and the rest of the
-    suite asserts on ENGLISH flash text. That is exactly what happened: this
-    file passed in isolation and took nine tests in test_refund_boarding.py
-    down when the full suite ran. Clearing it after each test is what keeps
-    these tests from being someone else's mystery failure."""
+def _reset_language():
+    """The language is now GLOBAL STATE in the database, which makes leakage
+    worse than the cookie it replaced, not better: a cookie only followed the
+    session-scoped `client`, but this row is read by every request any test
+    makes. Leaving it on "ar" would break every test in the suite that asserts
+    on English flash text — which is exactly what the cookie version of this
+    fixture already had to stop once (nine failures in
+    test_refund_boarding.py, from a file that passed in isolation)."""
     yield
-    client.delete_cookie("lang")
+    _set_language(None)
 
 
 def _as(client, lang):
-    """Set the language cookie the same way the toggle route does."""
-    client.set_cookie("lang", lang)
+    """Set the clinic's language. `client` is unused and kept so the call
+    sites read the same as they did under the cookie."""
+    _set_language(lang)
 
 
 # ---------------------------------------------------------------------------
@@ -53,7 +78,7 @@ def _as(client, lang):
 # ---------------------------------------------------------------------------
 
 @needs_db
-def test_arabic_cookie_renders_arabic(client):
+def test_arabic_setting_renders_arabic(client):
     _as(client, "ar")
     body = client.get("/").data.decode("utf-8")
     assert KNOWN_AR in body, "the Arabic catalogue did not reach the page"
@@ -70,16 +95,17 @@ def test_english_is_still_the_default_and_still_works(client):
 
 
 @needs_db
-def test_no_cookie_at_all_is_english(client):
-    """CONTROL. Nothing changes for a clinic that never touches the toggle."""
-    client.delete_cookie("lang")
+def test_no_setting_at_all_is_english(client):
+    """CONTROL. Nothing changes for a clinic that never touches the setting."""
+    _set_language(None)
     body = client.get("/").data.decode("utf-8")
     assert KNOWN_EN in body
 
 
 @needs_db
 def test_an_unknown_language_falls_back_to_english(client):
-    """A cookie is user-editable; an unexpected value must not 500 or leak."""
+    """The row is writable by anyone who can reach the database or an older
+    build; an unexpected value must not 500 or leak."""
     _as(client, "fr")
     body = client.get("/").data.decode("utf-8")
     assert KNOWN_EN in body
@@ -99,7 +125,8 @@ def test_an_untranslated_string_falls_back_to_english(client, flask_app):
     moment Shrinkage was translated. A guard pinned to a temporary state is a
     guard with an expiry date on it."""
     from flask_babel import gettext
-    with flask_app.test_request_context("/", headers={"Cookie": "lang=ar"}):
+    _set_language("ar")
+    with flask_app.test_request_context("/"):
         assert gettext("__no such string will ever be translated__") == \
             "__no such string will ever be translated__"
         # CONTROL: a string that IS in the catalogue does not fall through
@@ -112,7 +139,7 @@ def test_an_untranslated_string_falls_back_to_english(client, flask_app):
 
 @needs_db
 @pytest.mark.parametrize("path", ["/", "/patients", "/pos", "/settings", "/reports"])
-def test_html_lang_and_dir_flip_with_the_cookie(client, path):
+def test_html_lang_and_dir_flip_with_the_setting(client, path):
     _as(client, "ar")
     body = client.get(path).data.decode("utf-8")
     tag = re.search(r"<html[^>]*>", body)
@@ -128,31 +155,61 @@ def test_html_lang_and_dir_flip_with_the_cookie(client, path):
 
 
 # ---------------------------------------------------------------------------
-# 3. The toggle route itself
+# 3. The setting itself — a saved field, not a route
 # ---------------------------------------------------------------------------
 
 @needs_db
-def test_the_toggle_sets_the_cookie(client):
-    resp = client.post("/set-language/ar")
-    assert resp.status_code in (301, 302)
-    cookie = resp.headers.get("Set-Cookie", "")
-    assert "lang=ar" in cookie
-    assert "SameSite=Lax" in cookie
+def test_saving_the_settings_form_changes_the_language(client):
+    """The whole point of the move: a user picks it in Settings and presses
+    Save, like every other field in that card."""
+    page = client.get("/settings").data.decode("utf-8")
+    token = re.search(r'name="csrf_token" value="([^"]+)"', page).group(1)
+    resp = client.post("/settings", data={"csrf_token": token, "language": "ar"},
+                       follow_redirects=True)
+    assert resp.status_code == 200
+    assert KNOWN_AR in client.get("/").data.decode("utf-8")
 
 
 @needs_db
-def test_the_toggle_refuses_an_unknown_language(client):
-    assert client.post("/set-language/de").status_code == 404
-    assert client.post("/set-language/%2e%2e%2f").status_code in (404, 400)
+def test_the_form_refuses_an_unknown_language(client):
+    """The submitted value reaches Flask-Babel, so it is whitelisted rather
+    than trusted. Without this an unknown locale falls back silently, which
+    reads to a user as "the setting did not save"."""
+    page = client.get("/settings").data.decode("utf-8")
+    token = re.search(r'name="csrf_token" value="([^"]+)"', page).group(1)
+    client.post("/settings", data={"csrf_token": token, "language": "de"},
+                follow_redirects=True)
+    import logic
+    import db as dbmod
+    con = dbmod.connect()
+    try:
+        with con.cursor() as cur:
+            cur.execute("SELECT value FROM settings WHERE key = 'language'")
+            row = cur.fetchone()
+    finally:
+        con.close()
+    assert row is None or row[0] != "de", "an unknown locale was stored"
+    assert KNOWN_EN in client.get("/").data.decode("utf-8")
 
 
 @needs_db
-def test_the_toggle_does_not_redirect_off_site(client):
-    """request.referrer is attacker-influenced. An open redirect on a POST
-    that any logged-in user can reach is still an open redirect."""
-    resp = client.post("/set-language/ar", headers={"Referer": "https://evil.example/x"})
-    assert resp.status_code in (301, 302)
-    assert "evil.example" not in resp.headers.get("Location", "")
+def test_the_language_applies_to_every_session_not_just_one_browser(client,
+                                                                   flask_app):
+    """It is a property of the clinic now. A second client — no cookies, no
+    shared session — must see the same language, which is the behaviour the
+    cookie could not give and the reason for the change."""
+    _as(client, "ar")
+    other = flask_app.test_client()
+    other.post("/login", data={"username": "admin", "password": "Admin12345!"},
+               follow_redirects=True)
+    assert KNOWN_AR in other.get("/").data.decode("utf-8")
+
+
+@needs_db
+def test_the_old_toggle_route_is_gone(client):
+    """It was removed with the header button. A route left behind would still
+    set a cookie nothing reads — a control that silently does nothing."""
+    assert client.post("/set-language/ar").status_code == 404
 
 
 # ---------------------------------------------------------------------------
