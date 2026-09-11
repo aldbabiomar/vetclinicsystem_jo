@@ -75,19 +75,54 @@ def ensure_env_file():
     print("  Created .env with a fresh secret key.")
 
 
+def _compose_env():
+    """Environment for `docker compose`, with the host port taken from
+    DATABASE_URL.
+
+    docker-compose.yml publishes the database on ${POSTGRES_HOST_PORT:-5432}.
+    DATABASE_URL is what the app actually connects to. If those two disagree
+    the container comes up on one port and every connection goes to another,
+    which looks exactly like "Postgres didn't become ready in time" and sends
+    you reading Docker logs that show a perfectly healthy database.
+
+    Deriving one from the other means they cannot drift. An explicit
+    POSTGRES_HOST_PORT already in the environment still wins, so an admin can
+    override deliberately.
+    """
+    env = dict(os.environ)
+    if env.get("POSTGRES_HOST_PORT"):
+        return env
+    url = env.get("DATABASE_URL")
+    if url:
+        try:
+            from urllib.parse import urlparse
+            port = urlparse(url).port
+            if port:
+                env["POSTGRES_HOST_PORT"] = str(port)
+        except ValueError:
+            # A malformed DATABASE_URL is the app's problem to report, not
+            # this helper's — fall through to the compose default.
+            pass
+    return env
+
+
 def start_postgres():
     step("Starting PostgreSQL (Docker)")
     compose = ["docker", "compose"]
     result = run(compose + ["version"], capture_output=True, text=True)
     if result.returncode != 0:
         compose = ["docker-compose"]  # older standalone binary
-    run(compose + ["up", "-d"], check=True)
+    env = _compose_env()
+    host_port = env.get("POSTGRES_HOST_PORT", "5432")
+    if host_port != "5432":
+        print(f"  Publishing Postgres on host port {host_port} (from DATABASE_URL).")
+    run(compose + ["up", "-d"], check=True, env=env)
 
     print("  Waiting for the database to be ready...")
     for _ in range(60):
         r = run(
             compose + ["exec", "-T", "db", "pg_isready", "-U", "vetclinicsystemjo", "-d", "vetclinicsystemjo"],
-            capture_output=True, text=True,
+            capture_output=True, text=True, env=env,
         )
         if r.returncode == 0:
             print("  PostgreSQL is ready.")
