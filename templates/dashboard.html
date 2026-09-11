@@ -19,7 +19,7 @@
 
 {% if backup_alert %}
 <div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
-  {{ backup_alert }} <a href="{{ url_for('settings.settings_page') }}">{{ _('Open Settings →') }}</a>
+  {{ backup_alert|finding }} <a href="{{ url_for('settings.settings_page') }}">{{ _('Open Settings →') }}</a>
 </div>
 {% endif %}
 
@@ -40,7 +40,7 @@
 <div class="selfcheck-banner {{ 'fail' if self_check.status == 'fail' else 'warn' }}">
   <strong>{{ _('This install needs attention') if self_check.status == 'fail' else _('Health check warning') }}</strong>
   <ul style="margin:6px 0 0; padding-left:20px;">
-    {% for f in self_check.findings %}<li>{{ f.message }}</li>{% endfor %}
+    {% for f in self_check.findings %}<li>{{ f|finding }}</li>{% endfor %}
   </ul>
   <div class="small" style="margin-top:6px;">
     {{ _('Last checked %(ran_at)s', ran_at=self_check.ran_at.replace('T', ' ')) }} —
@@ -57,7 +57,7 @@
       {{ _('You\'re seeing this because you can change Settings. It will come back next time you sign in, until the problem below is fixed.') }}
     </p>
     <ul style="margin:10px 0 14px; padding-left:20px;">
-      {% for f in self_check.findings %}<li>{{ f.message }}</li>{% endfor %}
+      {% for f in self_check.findings %}<li>{{ f|finding }}</li>{% endfor %}
     </ul>
     <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
       <button class="btn secondary" type="button" data-vzh="dashboard-1">{{ _('Not now') }}</button>

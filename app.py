@@ -54,6 +54,7 @@ from core import (
     get_db,
     lan_address,
     to_arabic_indic_digits,
+    display_number,
 )
 from core import csp_nonce
 from core import (
@@ -450,6 +451,44 @@ def money_filter(v):
     if str(get_locale()) == "ar":
         formatted = to_arabic_indic_digits(formatted)
     return formatted
+
+
+@app.template_filter("finding")
+def finding_filter(f):
+    """Render a self-check finding in the current language.
+
+    A finding is WRITTEN to `self_check_log` when the scheduler runs and READ
+    BACK whenever someone opens the dashboard — possibly in a different
+    language — so it is translated here rather than at check time. `msgid` is
+    the English sentence with %(name)s placeholders and `args` fills them.
+
+    Rows written before selfcheck carried a msgid fall back to `message`,
+    which is English: exactly what they already displayed.
+    """
+    if not isinstance(f, dict):
+        return f
+    msgid = f.get("msgid") or f.get("message") or ""
+    text = _(msgid)
+    args = f.get("args") or {}
+    if args:
+        # Numeric values follow the Arabic-Indic decision like every other
+        # number in a message (core.display_number). Anything that is not a
+        # plain number is left exactly as it is: %(error)s and %(failures)s
+        # carry file paths, OS error text and schema statements, where
+        # rewriting the digits would corrupt the one detail that says what
+        # went wrong.
+        shown = {}
+        for k, v in args.items():
+            numeric = isinstance(v, (int, float)) or (
+                isinstance(v, str) and v.replace(".", "", 1).isdigit())
+            shown[k] = display_number(v) if numeric else v
+        try:
+            text = text % shown
+        except (KeyError, TypeError, ValueError):
+            # a translation whose placeholders do not match the arguments must
+            # not take down the banner that is reporting a problem
+            return f.get("message") or msgid
+    return text
 
 
 @app.template_filter("tr")

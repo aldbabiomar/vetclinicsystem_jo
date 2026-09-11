@@ -60,8 +60,43 @@ DISK_FAIL_BYTES = 500 * 1024 * 1024        # 500 MB
 LOG_RETENTION_ROWS = 180
 
 
-def _finding(code, severity, message):
-    return {"code": code, "severity": severity, "message": message}
+def N_(text):
+    """Mark a string for extraction without translating it here.
+
+    This module runs outside a request — the scheduler calls it — where there
+    is no locale to resolve against, and its output is STORED rather than
+    displayed. Translation happens at render time instead. pybabel extracts
+    `N_` with its default keywords.
+    """
+    return text
+
+
+def _finding(code, severity, msgid, args=None):
+    """A finding carries three things, and the split is the point.
+
+    `message` is the RENDERED ENGLISH. It is what the heartbeat sends, what
+    `self_check_log` stores and what every existing test reads, and it is
+    unchanged by translation — including the test that asserts a particular
+    error string is ABSENT from it, which would go vacuous if the value moved
+    somewhere else.
+
+    `msgid` + `args` are what the dashboard translates with: the same sentence
+    with %(name)s placeholders, and the values to fill them. They have to be
+    separate because a finding is WRITTEN at check time and READ BACK later,
+    possibly in another language — translating at write time would freeze
+    whichever language happened to be active when the scheduler ran.
+
+    Rows written before this existed have no `msgid`, and app.py's `finding`
+    filter falls back to `message` — which is English, which is exactly what
+    those rows already were.
+    """
+    args = args or {}
+    try:
+        message = msgid % args if args else msgid
+    except (KeyError, TypeError, ValueError):
+        message = msgid
+    return {"code": code, "severity": severity, "message": message,
+            "msgid": msgid, "args": args}
 
 
 def _parse_ts(value):
@@ -83,7 +118,7 @@ def _check_backup_never(ctx):
     if ctx["last_backup"] is None:
         return _finding(
             "backup_never", "fail",
-            "No database backup has ever run on this install.",
+            N_("No database backup has ever run on this install."),
         )
     return None
 
@@ -98,20 +133,22 @@ def _check_backup_stale(ctx):
     if row is None:
         return _finding(
             "backup_stale", "fail",
-            "No backup has ever completed successfully.",
+            N_("No backup has ever completed successfully."),
         )
     started = _parse_ts(row["started_at"])
     if started is None:
         return _finding(
             "backup_stale", "warn",
-            "The last successful backup has an unreadable timestamp, so its "
-            "age cannot be judged.",
+            N_("The last successful backup has an unreadable timestamp, so its "
+            "age cannot be judged."),
         )
     age_days = (datetime.now() - started).days
     if age_days >= max_age:
         return _finding(
             "backup_stale", "fail",
-            f"No successful backup for {age_days} day{'s' if age_days != 1 else ''}.",
+            N_("No successful backup for 1 day.") if age_days == 1
+        else N_("No successful backup for %(days)s days."),
+        None if age_days == 1 else {"days": age_days},
         )
     return None
 
@@ -121,8 +158,8 @@ def _check_backup_failing(ctx):
     if len(recent) >= 3 and all(r["status"] == "failed" for r in recent):
         return _finding(
             "backup_failing", "fail",
-            "The last 3 backup attempts all failed: "
-            f"{recent[0]['error'] or 'unknown error'}",
+            N_("The last 3 backup attempts all failed: %(error)s"),
+            {"error": recent[0]["error"] or "unknown error"},
         )
     return None
 
@@ -137,8 +174,9 @@ def _check_backup_stranded(ctx):
         if (datetime.now() - started).total_seconds() > STRANDED_RUNNING_HOURS * 3600:
             return _finding(
                 "backup_stranded", "warn",
-                "A backup started but never finished — it has been running for "
-                f"over {STRANDED_RUNNING_HOURS} hours.",
+                N_("A backup started but never finished — it has been running "
+                   "for over %(hours)s hours."),
+                {"hours": STRANDED_RUNNING_HOURS},
             )
     return None
 
@@ -151,7 +189,7 @@ def _check_backup_dir(ctx):
     if not backup_dir:
         return _finding(
             "backup_dir_missing", "fail",
-            "No backup folder is configured — set one on the Settings page.",
+            N_("No backup folder is configured — set one on the Settings page."),
         )
     if not os.path.isdir(backup_dir):
         # Creating it is right on a FIRST run -- the admin set a path and no
@@ -165,17 +203,18 @@ def _check_backup_dir(ctx):
         if ctx.get("backups_written_here"):
             return _finding(
                 "backup_dir_missing", "fail",
-                "The backup folder is gone. Backups were being written there, "
+                N_("The backup folder is gone. Backups were being written there, "
                 "so this is a folder that disappeared rather than one not set "
                 "up yet — check whether the drive or synced folder is still "
-                "connected before anything writes a new one.",
+                "connected before anything writes a new one."),
             )
         try:
             os.makedirs(backup_dir, exist_ok=True)
         except OSError as e:
             return _finding(
                 "backup_dir_missing", "fail",
-                f"The backup folder does not exist and could not be created: {e.strerror}",
+                N_("The backup folder does not exist and could not be created: %(error)s"),
+        {"error": e.strerror},
             )
     probe = os.path.join(backup_dir, ".selfcheck_write_probe")
     try:
@@ -185,7 +224,8 @@ def _check_backup_dir(ctx):
     except OSError as e:
         return _finding(
             "backup_dir_unwritable", "fail",
-            f"The backup folder exists but cannot be written to: {e.strerror}",
+            N_("The backup folder exists but cannot be written to: %(error)s"),
+        {"error": e.strerror},
         )
     return None
 
@@ -198,14 +238,19 @@ def _check_disk_low(ctx):
         # This one genuinely could not run, as opposed to not applying.
         return _finding(
             "disk_low", "warn",
-            f"Free disk space could not be read: {e.strerror}",
+            N_("Free disk space could not be read: %(error)s"),
+        {"error": e.strerror},
         )
     ctx["disk_free_bytes"] = free
     gb = free / (1024 ** 3)
     if free < DISK_FAIL_BYTES:
-        return _finding("disk_low", "fail", f"Only {gb:.2f} GB free on the backup volume.")
+        return _finding("disk_low", "fail",
+                        N_("Only %(gb)s GB free on the backup volume."),
+                        {"gb": f"{gb:.2f}"})
     if free < DISK_WARN_BYTES:
-        return _finding("disk_low", "warn", f"{gb:.1f} GB free on the backup volume.")
+        return _finding("disk_low", "warn",
+                        N_("%(gb)s GB free on the backup volume."),
+                        {"gb": f"{gb:.1f}"})
     return None
 
 
@@ -214,7 +259,8 @@ def _check_migration_failed(ctx):
     if failures and str(failures).strip():
         return _finding(
             "migration_failed", "fail",
-            f"Some schema updates could not be applied on the last launch: {failures}",
+            N_("Some schema updates could not be applied on the last launch: %(failures)s"),
+        {"failures": failures},
         )
     return None
 
@@ -239,15 +285,16 @@ def _check_update_rolled_back(ctx):
     except OSError as e:
         return _finding(
             "update_rolled_back", "warn",
-            f"The update log exists but could not be read: {e.strerror}",
+            N_("The update log exists but could not be read: %(error)s"),
+        {"error": e.strerror},
         )
     if not lines:
         return None
     if "rollback" in lines[-1].lower() or "rolled back" in lines[-1].lower():
         return _finding(
             "update_rolled_back", "warn",
-            "The most recent update was rolled back — this install is not "
-            "running the version it tried to install.",
+            N_("The most recent update was rolled back — this install is not "
+            "running the version it tried to install."),
         )
     return None
 
@@ -261,32 +308,33 @@ def _check_restore_unverified(ctx):
     if not raw:
         return _finding(
             "restore_unverified", "warn",
-            "No backup has ever been verified as restorable on this install.",
+            N_("No backup has ever been verified as restorable on this install."),
         )
     try:
         data = json.loads(raw)
     except (TypeError, ValueError):
         return _finding(
             "restore_unverified", "warn",
-            "The last restore-verification result could not be read.",
+            N_("The last restore-verification result could not be read."),
         )
     when = _parse_ts(data.get("at"))
     if when is None:
         return _finding(
             "restore_unverified", "warn",
-            "The last restore-verification result has no readable date.",
+            N_("The last restore-verification result has no readable date."),
         )
     if data.get("result") != "pass":
         return _finding(
             "restore_unverified", "warn",
-            "The most recent restore verification did not pass: "
-            f"{data.get('detail') or 'no detail recorded'}",
+            N_("The most recent restore verification did not pass: %(detail)s"),
+            {"detail": data.get("detail") or "no detail recorded"},
         )
     if datetime.now() - when > timedelta(days=RESTORE_VERIFY_MAX_AGE_DAYS):
         days = (datetime.now() - when).days
         return _finding(
             "restore_unverified", "warn",
-            f"No backup has been verified as restorable for {days} days.",
+            N_("No backup has been verified as restorable for %(days)s days."),
+        {"days": days},
         )
     return None
 
@@ -310,9 +358,9 @@ def _check_backup_file_missing(ctx):
         return None
     return _finding(
         "backup_file_missing", "fail",
-        "The most recent backup is recorded as successful but its file is no "
+        N_("The most recent backup is recorded as successful but its file is no "
         "longer on disk. Something removed it, or the folder it was written "
-        "to is no longer the same folder.",
+        "to is no longer the same folder."),
     )
 
 
@@ -411,7 +459,8 @@ def run_self_check(db):
             "status": "fail",
             "ran_at": ran_at,
             "findings": [_finding("db_unreachable", "fail",
-                                  f"The database could not be queried: {e}")],
+                                  N_("The database could not be queried: %(error)s"),
+                                  {"error": str(e)})],
         }
 
     try:
@@ -421,7 +470,8 @@ def run_self_check(db):
             "status": "fail",
             "ran_at": ran_at,
             "findings": [_finding("db_unreachable", "fail",
-                                  f"The database could not be read: {e}")],
+                                  N_("The database could not be read: %(error)s"),
+                                  {"error": str(e)})],
         }
 
     findings = []
@@ -433,7 +483,8 @@ def run_self_check(db):
             # is the whole point — see the module docstring.
             result = _finding(
                 check.__name__.replace("_check_", ""), "warn",
-                f"This check could not complete: {e}",
+                N_("This check could not complete: %(error)s"),
+        {"error": str(e)},
             )
         if result:
             findings.append(result)

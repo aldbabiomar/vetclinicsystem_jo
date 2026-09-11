@@ -70,12 +70,38 @@ def int_setting(db, key, default):
         return int(default)
 
 
+def N_(text):
+    """Mark for extraction without translating here — see selfcheck.N_."""
+    return text
+
+
+def _alert(msgid, args=None):
+    """A dashboard alert, shaped like a self-check finding so one template
+    filter renders both."""
+    args = args or {}
+    try:
+        message = msgid % args if args else msgid
+    except (KeyError, TypeError, ValueError):
+        message = msgid
+    return {"message": message, "msgid": msgid, "args": args}
+
+
 def backup_alert_message(last_backup_row):
-    """Returns a warning string for the Dashboard, or None if backups look healthy."""
+    """A warning for the Dashboard, or None if backups look healthy.
+
+    Returns the same shape `selfcheck._finding()` does — `message` (rendered
+    English, which is what callers and tests read), plus `msgid`/`args` for
+    the `finding` template filter to translate at render time. It used to
+    return a bare f-string, which meant the one banner a clinic sees when its
+    backups are failing could never be translated: the interpolated value made
+    every message unique, so no catalogue entry could ever match it.
+    """
     if not last_backup_row:
-        return "No database backup has ever run yet — set a backup folder on the Settings page."
+        return _alert(N_("No database backup has ever run yet — set a backup folder "
+                         "on the Settings page."))
     if last_backup_row["status"] == "failed":
-        return f"The last database backup failed: {last_backup_row['error'] or 'unknown error'}."
+        return _alert(N_("The last database backup failed: %(error)s."),
+                      {"error": last_backup_row["error"] or "unknown error"})
     if last_backup_row["status"] == "running":
         # reap_stale_running() (backup.py, called at app boot) cleans up a
         # row stranded by a killed process — but within the same still-
@@ -89,11 +115,13 @@ def backup_alert_message(last_backup_row):
         except (TypeError, ValueError):
             started_dt = None
         if started_dt and (datetime.now() - started_dt).total_seconds() > 6 * 3600:
-            return "The last backup started but never finished — check the Settings page."
+            return _alert(N_("The last backup started but never finished — check "
+                             "the Settings page."))
         return None
     started = parse_date(last_backup_row["started_at"])
     if started and (date.today() - started).days >= 2:
-        return "The database hasn't been backed up in 2+ days — check the Settings page."
+        return _alert(N_("The database hasn't been backed up in 2+ days — check "
+                         "the Settings page."))
     return None
 
 

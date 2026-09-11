@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-11 23:51+0300\n"
+"POT-Creation-Date: 2026-09-12 01:08+0300\n"
 "PO-Revision-Date: 2026-09-11 12:18+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ar\n"
@@ -19,7 +19,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: app.py:609
+#: app.py:648
 msgid ""
 "You were signed out before that could be saved, so nothing was stored. "
 "Please sign in and enter it again."
@@ -27,16 +27,16 @@ msgstr ""
 "تم تسجيل خروجك قبل أن يُحفظ ذلك، فلم يُخزَّن شيء. يرجى تسجيل الدخول "
 "وإدخاله مرة أخرى."
 
-#: app.py:635
+#: app.py:674
 msgid "Your password was changed — please log in again."
 msgstr "تم تغيير كلمة المرور — يرجى تسجيل الدخول مرة أخرى."
 
-#: app.py:711
+#: app.py:750
 #, python-format
 msgid "That file is too large — the limit is %(MAX_UPLOAD_MB)s MB per upload."
 msgstr "الملف كبير جدًا — الحد الأقصى %(MAX_UPLOAD_MB)s ميجابايت لكل رفع."
 
-#: app.py:738
+#: app.py:777
 msgid ""
 "One of the number fields on that form wasn't valid. Please check the "
 "amounts and try again."
@@ -44,11 +44,11 @@ msgstr ""
 "أحد الحقول الرقمية في ذلك النموذج غير صالح. يرجى التحقق من المبالغ "
 "والمحاولة مرة أخرى."
 
-#: app.py:746
+#: app.py:785
 msgid "That phone number doesn't look valid. Please check it and try again."
 msgstr "رقم الهاتف لا يبدو صحيحًا. يرجى التحقق منه والمحاولة مرة أخرى."
 
-#: app.py:782
+#: app.py:821
 msgid ""
 "This page had been open too long to submit safely, so nothing was saved. "
 "Please check what you entered and submit it again."
@@ -56,7 +56,7 @@ msgstr ""
 "بقيت هذه الصفحة مفتوحة مدة أطول من أن تُرسَل بأمان، فلم يُحفظ شيء. يرجى "
 "مراجعة ما أدخلته وإرساله مرة أخرى."
 
-#: app.py:785
+#: app.py:824
 msgid ""
 "You were signed out while this page was open. Please sign in again — you "
 "may need to re-enter what you were working on."
@@ -64,7 +64,7 @@ msgstr ""
 "تم تسجيل خروجك بينما كانت هذه الصفحة مفتوحة. يرجى تسجيل الدخول مرة أخرى —"
 " قد تحتاج إلى إعادة إدخال ما كنت تعمل عليه."
 
-#: app.py:789
+#: app.py:828
 msgid ""
 "That form was missing something the server needed. Please reload the page"
 " and try again."
@@ -72,11 +72,11 @@ msgstr ""
 "النموذج ينقصه شيء يحتاجه الخادم. يرجى إعادة تحميل الصفحة والمحاولة مرة "
 "أخرى."
 
-#: app.py:802
+#: app.py:841
 msgid "That number is too large to be a valid value here."
 msgstr "هذا الرقم كبير جدًا ليكون قيمة صالحة هنا."
 
-#: app.py:918
+#: app.py:957
 msgid ""
 "Too many login attempts from this network. Please wait a few minutes and "
 "try again."
@@ -84,7 +84,7 @@ msgstr ""
 "محاولات تسجيل دخول كثيرة من هذه الشبكة. يرجى الانتظار بضع دقائق دون "
 "محاولة، ثم إعادة المحاولة."
 
-#: app.py:925
+#: app.py:964
 #, python-format
 msgid ""
 "Too many failed attempts for that account. Try again in about "
@@ -93,43 +93,43 @@ msgstr ""
 "محاولات فاشلة كثيرة على هذا الحساب. حاول مرة أخرى بعد نحو "
 "%(minutes_left)s دقيقة (حوالي %(strftime)s)."
 
-#: app.py:937
+#: app.py:976
 msgid "Incorrect username or password, or account is disabled."
 msgstr "اسم المستخدم أو كلمة المرور غير صحيحة، أو أن الحساب معطّل."
 
-#: app.py:975
+#: app.py:1014
 msgid "Current password is incorrect."
 msgstr "كلمة المرور الحالية غير صحيحة."
 
-#: app.py:979
+#: app.py:1018
 msgid "New password and confirmation don't match."
 msgstr "كلمة المرور الجديدة والتأكيد غير متطابقين."
 
-#: app.py:990
+#: app.py:1029
 msgid "Password updated."
 msgstr "تم تحديث كلمة المرور."
 
-#: app.py:1120
+#: app.py:1159
 msgid "Report data rebuilt from current billing, sales, and cost data."
 msgstr "تمت إعادة بناء بيانات التقارير من الفوترة والمبيعات والتكاليف الحالية."
 
-#: app.py:1236
+#: app.py:1275
 msgid "Pick a month first."
 msgstr "اختر الشهر أولًا."
 
-#: app.py:1239
+#: app.py:1278
 msgid "That's not a valid month."
 msgstr "هذا ليس شهرًا صالحًا."
 
-#: app.py:1248
+#: app.py:1287
 msgid "Operating costs must be valid numbers."
 msgstr "يجب أن تكون التكاليف التشغيلية أرقامًا صالحة."
 
-#: app.py:1256
+#: app.py:1295
 msgid "Operating costs can't be negative."
 msgstr "لا يمكن أن تكون التكاليف التشغيلية سالبة."
 
-#: app.py:1266
+#: app.py:1305
 #, python-format
 msgid "Operating costs saved for %(month)s."
 msgstr "تم حفظ التكاليف التشغيلية لشهر %(month)s."
@@ -822,6 +822,161 @@ msgstr "رسالة نصية"
 #: enum_labels.py:167 templates/wellness_list.html:29
 msgid "Message"
 msgstr "الرسالة"
+
+#: logic.py:100
+msgid ""
+"No database backup has ever run yet — set a backup folder on the Settings"
+" page."
+msgstr "لم تُشغَّل أي نسخة احتياطية لقاعدة البيانات بعد — عيّن مجلدًا للنسخ الاحتياطي من صفحة الإعدادات."
+#: logic.py:103
+#, python-format
+msgid "The last database backup failed: %(error)s."
+msgstr "فشلت آخر نسخة احتياطية لقاعدة البيانات: %(error)s."
+#: logic.py:118
+msgid "The last backup started but never finished — check the Settings page."
+msgstr "بدأت آخر نسخة احتياطية ولم تكتمل — راجع صفحة الإعدادات."
+#: logic.py:123
+msgid "The database hasn't been backed up in 2+ days — check the Settings page."
+msgstr "لم تُنسخ قاعدة البيانات احتياطيًا منذ يومين أو أكثر — راجع صفحة الإعدادات."
+#: selfcheck.py:121
+msgid "No database backup has ever run on this install."
+msgstr "لم تُشغَّل أي نسخة احتياطية لقاعدة البيانات على هذا التثبيت قط."
+
+#: selfcheck.py:136
+msgid "No backup has ever completed successfully."
+msgstr "لم تكتمل أي نسخة احتياطية بنجاح قط."
+
+#: selfcheck.py:142
+msgid ""
+"The last successful backup has an unreadable timestamp, so its age cannot"
+" be judged."
+msgstr ""
+"آخر نسخة احتياطية ناجحة تحمل ختمًا زمنيًا غير مقروء، لذا لا يمكن تحديد "
+"عمرها."
+
+#: selfcheck.py:149
+msgid "No successful backup for 1 day."
+msgstr "لا توجد نسخة احتياطية ناجحة منذ يوم واحد."
+
+#: selfcheck.py:150
+#, python-format
+msgid "No successful backup for %(days)s days."
+msgstr "لا توجد نسخة احتياطية ناجحة منذ %(days)s يومًا."
+
+#: selfcheck.py:161
+#, python-format
+msgid "The last 3 backup attempts all failed: %(error)s"
+msgstr "فشلت محاولات النسخ الاحتياطي الثلاث الأخيرة جميعها: %(error)s"
+
+#: selfcheck.py:177
+#, python-format
+msgid ""
+"A backup started but never finished — it has been running for over "
+"%(hours)s hours."
+msgstr "بدأت نسخة احتياطية ولم تكتمل — وهي قيد التشغيل منذ أكثر من %(hours)s ساعة."
+
+#: selfcheck.py:192
+msgid "No backup folder is configured — set one on the Settings page."
+msgstr "لم يُحدَّد مجلد للنسخ الاحتياطي — عيّن واحدًا من صفحة الإعدادات."
+
+#: selfcheck.py:206
+msgid ""
+"The backup folder is gone. Backups were being written there, so this is a"
+" folder that disappeared rather than one not set up yet — check whether "
+"the drive or synced folder is still connected before anything writes a "
+"new one."
+msgstr ""
+"اختفى مجلد النسخ الاحتياطي. كانت النسخ تُكتب فيه، أي أنه مجلد اختفى وليس "
+"مجلدًا لم يُهيَّأ بعد — تحقق من أن القرص أو المجلد المزامَن ما زال متصلًا"
+" قبل أن يكتب أي شيء مجلدًا جديدًا."
+
+#: selfcheck.py:216
+#, python-format
+msgid "The backup folder does not exist and could not be created: %(error)s"
+msgstr "مجلد النسخ الاحتياطي غير موجود وتعذّر إنشاؤه: %(error)s"
+
+#: selfcheck.py:227
+#, python-format
+msgid "The backup folder exists but cannot be written to: %(error)s"
+msgstr "مجلد النسخ الاحتياطي موجود لكن لا يمكن الكتابة فيه: %(error)s"
+
+#: selfcheck.py:241
+#, python-format
+msgid "Free disk space could not be read: %(error)s"
+msgstr "تعذّرت قراءة المساحة الحرة على القرص: %(error)s"
+
+#: selfcheck.py:248
+#, python-format
+msgid "Only %(gb)s GB free on the backup volume."
+msgstr "لم يتبقَّ سوى %(gb)s غيغابايت على قرص النسخ الاحتياطي."
+
+#: selfcheck.py:252
+#, python-format
+msgid "%(gb)s GB free on the backup volume."
+msgstr "%(gb)s غيغابايت متاحة على قرص النسخ الاحتياطي."
+
+#: selfcheck.py:262
+#, python-format
+msgid "Some schema updates could not be applied on the last launch: %(failures)s"
+msgstr "تعذّر تطبيق بعض تحديثات قاعدة البيانات عند آخر تشغيل: %(failures)s"
+
+#: selfcheck.py:288
+#, python-format
+msgid "The update log exists but could not be read: %(error)s"
+msgstr "سجل التحديثات موجود لكن تعذّرت قراءته: %(error)s"
+
+#: selfcheck.py:296
+msgid ""
+"The most recent update was rolled back — this install is not running the "
+"version it tried to install."
+msgstr "تم التراجع عن آخر تحديث — هذا التثبيت لا يعمل بالإصدار الذي حاول تثبيته."
+
+#: selfcheck.py:311
+msgid "No backup has ever been verified as restorable on this install."
+msgstr "لم يتم التحقق من قابلية استعادة أي نسخة احتياطية على هذا التثبيت قط."
+
+#: selfcheck.py:318
+msgid "The last restore-verification result could not be read."
+msgstr "تعذّرت قراءة نتيجة آخر تحقق من الاستعادة."
+
+#: selfcheck.py:324
+msgid "The last restore-verification result has no readable date."
+msgstr "نتيجة آخر تحقق من الاستعادة لا تحمل تاريخًا مقروءًا."
+
+#: selfcheck.py:329
+#, python-format
+msgid "The most recent restore verification did not pass: %(detail)s"
+msgstr "لم يجتز آخر تحقق من الاستعادة: %(detail)s"
+
+#: selfcheck.py:336
+#, python-format
+msgid "No backup has been verified as restorable for %(days)s days."
+msgstr "لم يتم التحقق من قابلية استعادة أي نسخة احتياطية منذ %(days)s يومًا."
+
+#: selfcheck.py:361
+msgid ""
+"The most recent backup is recorded as successful but its file is no "
+"longer on disk. Something removed it, or the folder it was written to is "
+"no longer the same folder."
+msgstr ""
+"آخر نسخة احتياطية مسجلة على أنها ناجحة لكن ملفها لم يعد موجودًا على "
+"القرص. إما أن شيئًا ما حذفه، أو أن المجلد الذي كُتبت فيه لم يعد المجلد "
+"نفسه."
+
+#: selfcheck.py:462
+#, python-format
+msgid "The database could not be queried: %(error)s"
+msgstr "تعذّر الاستعلام من قاعدة البيانات: %(error)s"
+
+#: selfcheck.py:473
+#, python-format
+msgid "The database could not be read: %(error)s"
+msgstr "تعذّرت قراءة قاعدة البيانات: %(error)s"
+
+#: selfcheck.py:486
+#, python-format
+msgid "This check could not complete: %(error)s"
+msgstr "تعذّر إكمال هذا الفحص: %(error)s"
 
 #: routes/admin.py:107
 msgid "Fill in a username, full name, and role."
@@ -4412,6 +4567,7 @@ msgstr "صافي بعد المرتجعات النقدية، شهريًا، بـ 
 #: templates/insights.html:25
 msgid "No revenue recorded in this window yet."
 msgstr "لا توجد إيرادات مسجلة في هذه الفترة بعد."
+
 #: templates/insights.html:29
 msgid "Payment Method Mix"
 msgstr "توزيع طرق الدفع"
@@ -4429,7 +4585,10 @@ msgstr ""
 msgid ""
 "No payments recorded in this window yet — this chart fills in once "
 "payments are taken."
-msgstr "لا توجد دفعات مسجلة في هذه الفترة بعد — سيمتلئ هذا الرسم بمجرد تحصيل دفعات."
+msgstr ""
+"لا توجد دفعات مسجلة في هذه الفترة بعد — سيمتلئ هذا الرسم بمجرد تحصيل "
+"دفعات."
+
 #: templates/insights.html:39
 #, python-format
 msgid "Revenue by Category — Monthly Breakdown (%(currency_label)s)"
@@ -4557,6 +4716,7 @@ msgstr "الفرق (%(currency_label)s)"
 #: templates/insights.html:189
 msgid "Unspecified"
 msgstr "غير محدد"
+
 #: templates/inventory_catalog.html:6 templates/owners_list.html:5
 #: templates/patients_list.html:5 templates/price_list.html:5
 #, python-format

@@ -262,7 +262,8 @@ def test_a_backup_with_no_folder_configured_at_all_is_refused(db, clean_backup_l
 
     import logic
     alert = logic.backup_alert_message(None)
-    assert alert and "backup" in alert.lower(), (
+    # a finding-shaped dict since 2026-09-12; `message` is the rendered English
+    assert alert and "backup" in alert["message"].lower(), (
         "with no backup ever taken the Dashboard must say so — otherwise nothing "
         "anywhere reports that backups are not configured")
 
