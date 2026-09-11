@@ -88,7 +88,7 @@ msgstr ""
 
 #: templates/base.html:77
 msgid "Grooming"
-msgstr ""
+msgstr "العناية و تصفيف الحيوان"
 
 #: templates/base.html:78
 msgid "Boarding"
@@ -112,7 +112,7 @@ msgstr ""
 
 #: templates/base.html:94
 msgid "Ordering Sheet"
-msgstr ""
+msgstr "كشف الطلبات"
 
 #: templates/base.html:95
 msgid "Audit History"
@@ -184,7 +184,7 @@ msgstr ""
 
 #: templates/base.html:146
 msgid "Insights"
-msgstr ""
+msgstr "التحليلات"
 
 #: templates/base.html:147
 msgid "Retention"
