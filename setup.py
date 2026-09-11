@@ -60,9 +60,27 @@ def check_docker():
     print("  Docker is installed and running.")
 
 
+def _env_dir():
+    """Where this install's real .env lives.
+
+    On the versioned-release layout that is the data directory, NOT the release
+    folder — app.py resolves it the same way. setup.py used to look only in
+    BASE_DIR, with two consequences on a managed install: load_dotenv_now()
+    loaded nothing, so DATABASE_URL was absent and the database work ran
+    against defaults; and ensure_env_file() found no .env and helpfully created
+    one, inventing a fresh SECRET_KEY and a DATABASE_URL on the default port.
+    That second file sat in the release folder shadowing nothing in normal
+    operation (the launcher exports the data dir) but ready to be picked up by
+    anyone running `python3 app.py` from that folder — pointing at the wrong
+    port, with a secret key that would sign everybody out.
+    """
+    data_dir = os.environ.get("VETCLINICSYSTEMJO_DATA_DIR")
+    return data_dir if data_dir and os.path.isdir(data_dir) else BASE_DIR
+
+
 def ensure_env_file():
     step("Checking configuration (.env)")
-    env_path = os.path.join(BASE_DIR, ".env")
+    env_path = os.path.join(_env_dir(), ".env")
     example_path = os.path.join(BASE_DIR, ".env.example")
     if os.path.exists(env_path):
         print("  .env already exists — leaving it as-is.")
@@ -134,7 +152,7 @@ def start_postgres():
 
 def load_dotenv_now():
     from dotenv import load_dotenv
-    load_dotenv(os.path.join(BASE_DIR, ".env"))
+    load_dotenv(os.path.join(_env_dir(), ".env"))
 
 
 def apply_schema():
