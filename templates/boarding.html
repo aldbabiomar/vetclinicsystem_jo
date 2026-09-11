@@ -28,8 +28,8 @@
       <div class="field"><label for="dismissalDateField">Expected Dismissal Date</label><input type="date" name="dismissal_date" value="{{ fv(new_form, 'dismissal_date') }}" data-vzh="boarding-2" id="dismissalDateField"></div>
       <div class="field"><label for="boarding-1-room">Allocated Room</label><input id="boarding-1-room" name="room" value="{{ fv(new_form, 'room') }}"></div>
       <div class="field"><label for="boarding-2-admitted_items">Admitted Items (Leash, Bed, Etc.)</label><input id="boarding-2-admitted_items" name="admitted_items" value="{{ fv(new_form, 'admitted_items') }}"></div>
-      <div class="field"><label for="pricePerDayField">Price per Day (JOD)</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" value="{{ fv(new_form, 'price_per_day') }}" data-vzh="boarding-2"></div>
-      <div class="field"><label for="totalField">Total (JOD)</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="Auto-suggested from price × nights"></div>
+      <div class="field"><label for="pricePerDayField">Price per Day ({{ currency_label() }})</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" value="{{ fv(new_form, 'price_per_day') }}" data-vzh="boarding-2"></div>
+      <div class="field"><label for="totalField">Total ({{ currency_label() }})</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="Auto-suggested from price × nights"></div>
       <div class="field full" id="boardingDateWarning" style="display:none; color:var(--danger);"></div>
       <div class="field full">
         <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
@@ -80,9 +80,9 @@
     <p class="small muted" id="paymentPatientLabel" style="margin-bottom:12px;"></p>
     <form method="post" id="paymentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field" style="margin-bottom:10px;"><label for="boarding-6-amount">Amount (JOD)</label><input id="boarding-6-amount" type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="boarding-6-amount">Amount ({{ currency_label() }})</label><input id="boarding-6-amount" type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="paymentDiscountInput">Discount (max {{ discount_cap }}%)</label><input type="number" step="0.01" min="0" max="{{ discount_cap }}" name="discount_percent" id="paymentDiscountInput" value="{{ fv(form, 'discount_percent') if payment_error_id else '0' }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label for="boarding-7-cleanup_amount">Clean Up (max {{ CLEANUP_CAP }} JOD)</label><input id="boarding-7-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error_id else '0' }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="boarding-7-cleanup_amount">Clean Up (max {{ CLEANUP_CAP }} {{ currency_label() }})</label><input id="boarding-7-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error_id else '0' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="boarding-8-method">Method</label>
         <select id="boarding-8-method" name="method">
           {% set m = fv(form, 'method', 'Cash') if payment_error_id else 'Cash' %}
@@ -104,7 +104,7 @@
 <table>
   <thead><tr>
     <th scope="col">Patient</th><th scope="col">Owner</th><th scope="col">Room</th><th scope="col">Entry</th><th scope="col">Dismissal</th>
-    <th scope="col" class="num-col">Total (JOD)</th><th scope="col">Payment</th><th scope="col">Special Needs</th><th scope="col">Incidents</th><th scope="col"></th>
+    <th scope="col" class="num-col">Total ({{ currency_label() }})</th><th scope="col">Payment</th><th scope="col">Special Needs</th><th scope="col">Incidents</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for s in sessions %}
@@ -112,7 +112,7 @@
       <td>{{ s.animal_name }} <span class="small muted">({{ s.species }})</span></td>
       <td class="small">{{ s.owner_name }}{% if s.owner_phone %}<br><span class="muted">{{ s.owner_phone }}</span>{% endif %}</td>
       <td>{{ s.room or "—" }}</td>
-      <td class="small">{{ s.entry_date }}</td>
+      <td class="small">{{ s.entry_date|localdate }}</td>
       <td class="small">{{ s.dismissal_date or ("Picked up" if s.dismissed else "—") }}</td>
       <td class="num-col">{{ s.billing.total|money }}</td>
       <td><span class="badge {{ 'ok' if s.billing.status=='Fully Paid' else ('danger' if s.billing.status=='Unpaid' else 'muted') }}">{{ s.billing.status }}</span></td>
@@ -151,8 +151,8 @@
           <div class="field"><label for="stay-dismissal_date-{{ s.id }}">Dismissal Date</label><input id="stay-dismissal_date-{{ s.id }}" type="date" name="dismissal_date" value="{{ fv(row_form, 'dismissal_date', s.dismissal_date or '') }}"></div>
           <div class="field"><label for="stay-room-{{ s.id }}">Room</label><input id="stay-room-{{ s.id }}" name="room" value="{{ fv(row_form, 'room', s.room or '') }}"></div>
           <div class="field"><label for="stay-admitted_items-{{ s.id }}">Admitted Items</label><input id="stay-admitted_items-{{ s.id }}" name="admitted_items" value="{{ fv(row_form, 'admitted_items', s.admitted_items or '') }}"></div>
-          <div class="field"><label for="stay-price_per_day-{{ s.id }}">Price per Day (JOD)</label><input id="stay-price_per_day-{{ s.id }}" type="number" step="0.001" name="price_per_day" value="{{ fv(row_form, 'price_per_day', s.price_per_day if s.price_per_day is not none else '') }}"></div>
-          <div class="field"><label for="stay-total-{{ s.id }}">Total (JOD)</label><input id="stay-total-{{ s.id }}" type="number" step="0.001" name="total" placeholder="Auto-suggested from price × nights"
+          <div class="field"><label for="stay-price_per_day-{{ s.id }}">Price per Day ({{ currency_label() }})</label><input id="stay-price_per_day-{{ s.id }}" type="number" step="0.001" name="price_per_day" value="{{ fv(row_form, 'price_per_day', s.price_per_day if s.price_per_day is not none else '') }}"></div>
+          <div class="field"><label for="stay-total-{{ s.id }}">Total ({{ currency_label() }})</label><input id="stay-total-{{ s.id }}" type="number" step="0.001" name="total" placeholder="Auto-suggested from price × nights"
             value="{{ fv(row_form, 'total', s.total if (s.total is not none and not s.total_is_auto) else '') }}"></div>
           <div class="field full">
             <label class="checkbox-row small" style="text-transform:none; font-weight:500;">

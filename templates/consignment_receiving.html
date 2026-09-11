@@ -23,7 +23,7 @@
         </select>
       </div>
       <div class="field"><label for="consignmentreceiving-2-quantity">Quantity</label><input id="consignmentreceiving-2-quantity" type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
-      <div class="field"><label for="consignmentreceiving-3-unit_cost">Unit Cost (JOD)</label><input id="consignmentreceiving-3-unit_cost" type="number" step="0.001" name="unit_cost" required value="{{ fv(form, 'unit_cost') }}"></div>
+      <div class="field"><label for="consignmentreceiving-3-unit_cost">Unit Cost ({{ currency_label() }})</label><input id="consignmentreceiving-3-unit_cost" type="number" step="0.001" name="unit_cost" required value="{{ fv(form, 'unit_cost') }}"></div>
       <div class="field"><label for="consignmentreceiving-4-received_date">Received Date</label><input id="consignmentreceiving-4-received_date" type="date" name="received_date" value="{{ fv(form, 'received_date', today) }}"></div>
       <div class="field"><label for="consignmentreceiving-5-delivery_reference">Delivery Reference</label><input id="consignmentreceiving-5-delivery_reference" name="delivery_reference" value="{{ fv(form, 'delivery_reference') }}" placeholder="Invoice/delivery note #"></div>
       <div class="field full"><label for="consignmentreceiving-6-notes">Notes</label><input id="consignmentreceiving-6-notes" name="notes" value="{{ fv(form, 'notes') }}"></div>
@@ -40,12 +40,12 @@
 <table>
   <thead class="sticky-header"><tr>
     <th scope="col">Date</th><th scope="col">Item</th><th scope="col">Distributor</th><th scope="col" class="num-col">Quantity</th>
-    <th scope="col" class="num-col">Unit Cost (JOD)</th><th scope="col">Reference</th><th scope="col">Notes</th>
+    <th scope="col" class="num-col">Unit Cost ({{ currency_label() }})</th><th scope="col">Reference</th><th scope="col">Notes</th>
   </tr></thead>
   <tbody>
     {% for r in receipts %}
     <tr>
-      <td>{{ r.received_date }}</td>
+      <td>{{ r.received_date|localdate }}</td>
       <td>{{ r.item_name }}</td>
       <td>{{ r.distributor_name }}</td>
       <td class="num-col">{{ r.quantity|round(2) }}</td>

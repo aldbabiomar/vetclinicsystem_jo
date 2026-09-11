@@ -109,7 +109,7 @@
     {% if snap.reminders_tomorrow %}
       {% for f in snap.reminders_tomorrow[:6] %}
       <div class="list-line">
-        <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }}, {{ f.phone or "no phone on file" }})</span></div><div class="meta">Visit set for {{ f.followup_date }}</div></div>
+        <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }}, {{ f.phone or "no phone on file" }})</span></div><div class="meta">Visit set for {{ f.followup_date|localdate }}</div></div>
         <a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}">Open</a>
       </div>
       {% endfor %}
@@ -122,7 +122,7 @@
     {% if snap.wellness_due %}
       {% for w in snap.wellness_due[:6] %}
       <div class="list-line">
-        <div><div class="who">{{ w.animal_name }} <span class="meta">({{ w.owner_name }})</span></div><div class="meta">{{ w.wellness_type }} due {{ w.wellness_next_dose_date }}</div></div>
+        <div><div class="who">{{ w.animal_name }} <span class="meta">({{ w.owner_name }})</span></div><div class="meta">{{ w.wellness_type }} due {{ w.wellness_next_dose_date|localdate }}</div></div>
         <a class="btn small secondary" href="{{ url_for('clinical.wellness_list') }}">Open</a>
       </div>
       {% endfor %}

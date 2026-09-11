@@ -12,10 +12,10 @@
     <form id="w-{{ w.visit_id }}" method="post" action="{{ url_for('clinical.wellness_update', visit_id=w.visit_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr>
-      <td>{{ w.wellness_next_dose_date }} {% if w.missed %}<span class="badge danger">MISSED</span>{% elif w.due %}<span class="badge warn">DUE</span>{% endif %}</td>
+      <td>{{ w.wellness_next_dose_date|localdate }} {% if w.missed %}<span class="badge danger">MISSED</span>{% elif w.due %}<span class="badge warn">DUE</span>{% endif %}</td>
       <td><a href="{{ url_for('clinical.visit_detail', visit_id=w.visit_id) }}"><strong>{{ w.animal_name }}</strong></a></td>
       <td>{{ w.owner_name }}</td><td>{{ w.phone or "—" }}</td><td>{{ w.wellness_type }}</td>
-      <td class="muted">{{ w.remind_from_date }}</td>
+      <td class="muted">{{ w.remind_from_date|localdate }}</td>
       <td>
         <select form="w-{{ w.visit_id }}" name="wellness_contacted" class="small">
           <option value="N" {{ 'selected' if w.wellness_contacted=='N' }}>No</option>

@@ -21,7 +21,7 @@
       <tbody>
         {% for a in orphaned %}
         <tr>
-          <td class="small">{{ a.appt_date }}</td>
+          <td class="small">{{ a.appt_date|localdate }}</td>
           <td class="small">{{ a.slot_label }}</td>
           <td>{{ a.pet_name }}</td>
           <td>{{ a.owner_name }}</td>

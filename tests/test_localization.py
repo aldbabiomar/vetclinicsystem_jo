@@ -27,6 +27,8 @@ EASTERN = "٠١٢٣٤٥٦٧٨٩"
 # catalogue is ever regenerated from scratch this is the first thing to fix.
 KNOWN_AR = "الملاك"      # "Owners"
 KNOWN_EN = "Owners"
+LATIN_CURRENCY = "JOD"
+ARABIC_CURRENCY = "د.أ"
 
 
 def _as(client, lang):
@@ -245,3 +247,88 @@ def test_every_translated_string_is_actually_arabic():
     bad = [(en, ar) for en, ar in translated
            if not any("؀" <= ch <= "ۿ" for ch in ar)]
     assert not bad, f"these msgstr values contain no Arabic characters: {bad[:5]}"
+
+
+# ---------------------------------------------------------------------------
+# The three choices confirmed by the person who owns them, 2026-09-11.
+# Each is a decision rather than a fact, so each is pinned here — if one is
+# ever revisited, the test says what the current answer is and why it changed.
+# ---------------------------------------------------------------------------
+
+def test_numeric_columns_keep_a_fixed_right_alignment():
+    """Confirmed choice: a column of digits stays visually where it is when
+    the UI flips to Arabic, rather than following the reading direction.
+    `end` is the alternative and English renders identically either way."""
+    import pathlib
+    css = (pathlib.Path(__file__).parent.parent / "static" / "style.css").read_text(encoding="utf-8")
+    for rule in (".num-col", ".cell-input.num"):
+        line = [l for l in css.splitlines() if l.strip().startswith(rule)]
+        assert line, f"{rule} not found in style.css"
+        assert "text-align: right" in line[0], (
+            f"{rule} should use a fixed `right`, not a direction-aware value: {line[0]}")
+    # CONTROL: prose alignment IS direction-aware, and must stay that way
+    assert "text-align: start" in css, (
+        "no direction-aware text alignment left at all — the prose rules were "
+        "reverted along with the numeric ones")
+
+
+@needs_db
+def test_the_currency_label_is_the_arabic_abbreviation_in_arabic(client):
+    """Confirmed choice: the Arabic abbreviation rather than the Latin ISO
+    code, in the same position as before."""
+    import core
+    latin = "IQD" if "IQD" in (core.__doc__ or "") or True else "JOD"
+    _as(client, "ar")
+    ar = client.get("/boarding").data.decode("utf-8")
+    assert ARABIC_CURRENCY in ar, f"expected {ARABIC_CURRENCY} in the Arabic rendering"
+    assert LATIN_CURRENCY not in ar, f"{LATIN_CURRENCY} leaked into the Arabic rendering"
+
+    _as(client, "en")           # CONTROL
+    en = client.get("/boarding").data.decode("utf-8")
+    assert LATIN_CURRENCY in en
+    assert ARABIC_CURRENCY not in en
+
+
+def test_pdf_export_still_uses_the_latin_currency_code():
+    """§0 again, from the other direction: the currency decision must not have
+    reached the PDFs. They stay English with the Latin code, permanently."""
+    import pathlib
+    src = (pathlib.Path(__file__).parent.parent / "pdf_export.py").read_text(encoding="utf-8")
+    assert LATIN_CURRENCY in src, "pdf_export.py no longer names the Latin currency code"
+    assert ARABIC_CURRENCY not in src, (
+        f"pdf_export.py contains {ARABIC_CURRENCY} — PDFs stay English (§0)")
+
+
+@needs_db
+def test_dates_render_in_arabic_indic_digits_when_arabic(client, db):
+    """Confirmed choice: dates get Eastern digits too, consistent with money."""
+    import re as _re
+    db.execute("INSERT INTO settings (key,value) VALUES ('opening_date','2026-01-15') "
+               "ON CONFLICT (key) DO UPDATE SET value='2026-01-15'")
+    db.commit()
+    _as(client, "ar")
+    ar = client.get("/audit-history").data.decode("utf-8")
+    _as(client, "en")           # CONTROL
+    en = client.get("/audit-history").data.decode("utf-8")
+    ar_date = bool(_re.search(r"[٠-٩]{4}-[٠-٩]{2}-[٠-٩]{2}", ar))
+    en_date = bool(_re.search(r"\b[0-9]{4}-[0-9]{2}-[0-9]{2}\b", en))
+    if not en_date:
+        pytest.skip("no dated row on this page to compare")
+    assert ar_date, "dates did not render with Arabic-Indic digits in Arabic"
+
+
+@needs_db
+def test_a_date_input_keeps_iso_format_in_arabic(client, db):
+    """THE BOUNDARY that matters most for the date decision: <input type=date>
+    requires a Western ISO value. Converting its digits would make the control
+    unparseable by the browser and unsubmittable."""
+    db.execute("INSERT INTO settings (key,value) VALUES ('opening_date','2026-01-15') "
+               "ON CONFLICT (key) DO UPDATE SET value='2026-01-15'")
+    db.commit()
+    _as(client, "ar")
+    body = client.get("/settings").data.decode("utf-8")
+    import re as _re
+    m = _re.search(r'name="opening_date"[^>]*value="([^"]*)"', body)
+    assert m, "the opening_date input was not found"
+    assert m.group(1) == "2026-01-15", (
+        f"a date input carried {m.group(1)!r} — it must stay Western ISO")

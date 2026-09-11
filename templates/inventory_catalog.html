@@ -38,7 +38,7 @@
       <div class="field"><label for="inventorycatalog-1-name">Item Name</label><input id="inventorycatalog-1-name" required name="name" value="{{ fv(new_form, 'name') }}"></div>
       <div class="field"><label for="inventorycatalog-2-category">Category</label><select id="inventorycatalog-2-category" name="category">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select></div>
       <div class="field"><label for="inventorycatalog-3-unit">Unit</label><input id="inventorycatalog-3-unit" name="unit" placeholder="Bottle, Box, Piece…" value="{{ fv(new_form, 'unit') }}"></div>
-      <div class="field"><label for="inventorycatalog-4-cost_price">Cost Price (JOD)</label><input id="inventorycatalog-4-cost_price" type="number" step="0.001" name="cost_price" value="{{ fv(new_form, 'cost_price') }}"></div>
+      <div class="field"><label for="inventorycatalog-4-cost_price">Cost Price ({{ currency_label() }})</label><input id="inventorycatalog-4-cost_price" type="number" step="0.001" name="cost_price" value="{{ fv(new_form, 'cost_price') }}"></div>
       <div class="field"><label for="inventorycatalog-5-distributor_id">Preferred Distributor</label>
         <select id="inventorycatalog-5-distributor_id" name="distributor_id"><option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if fv(new_form, 'distributor_id')==d.id }}>{{ d.name }}</option>{% endfor %}</select>
       </div>
@@ -65,7 +65,7 @@
   <col>
   <col>
 </colgroup>
-  <thead><tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Unit</th><th scope="col">Barcode</th><th class="u-wrap" scope="col">Track Expiry</th><th scope="col" class="num-col">Cost (JOD)</th><th scope="col">Distributor</th><th scope="col"></th></tr></thead>
+  <thead><tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Unit</th><th scope="col">Barcode</th><th class="u-wrap" scope="col">Track Expiry</th><th scope="col" class="num-col">Cost ({{ currency_label() }})</th><th scope="col">Distributor</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for i in items %}
     {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}

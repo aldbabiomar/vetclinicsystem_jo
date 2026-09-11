@@ -53,7 +53,7 @@
 <table>
   <thead class="sticky-header"><tr>
     <th scope="col">Date</th><th scope="col">Item</th><th scope="col">Distributor</th><th scope="col" class="num-col">Quantity</th>
-    <th scope="col">Reason</th><th scope="col">Liable</th><th scope="col" class="num-col">Unit Cost (JOD)</th><th scope="col">Notes</th>
+    <th scope="col">Reason</th><th scope="col">Liable</th><th scope="col" class="num-col">Unit Cost ({{ currency_label() }})</th><th scope="col">Notes</th>
   </tr></thead>
   <tbody>
     {% for l in lines %}

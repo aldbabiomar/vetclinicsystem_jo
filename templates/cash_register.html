@@ -25,7 +25,7 @@
 <table>
   <thead><tr>
     <th scope="col">Date</th><th scope="col">Employee</th><th scope="col">Type</th><th scope="col" class="num-col">Subtotal</th>
-    <th scope="col" class="num-col">Discount</th><th scope="col" class="num-col">Total (JOD)</th><th scope="col">Payment</th>
+    <th scope="col" class="num-col">Discount</th><th scope="col" class="num-col">Total ({{ currency_label() }})</th><th scope="col">Payment</th>
   </tr></thead>
   <tbody>
     {% for r in ledger %}
@@ -64,7 +64,7 @@
       <td colspan="3" class="num-col">
         Cash {{ totals.Cash|money }} &nbsp;·&nbsp; Card {{ totals.Card|money }} &nbsp;·&nbsp; Transfer {{ totals.Transfer|money }}
         {% if totals.other %}&nbsp;·&nbsp; Other {{ totals.other|money }}{% endif %}
-        &nbsp;·&nbsp; All {{ totals.all|money }} JOD
+        &nbsp;·&nbsp; All {{ totals.all|money }} {{ currency_label() }}
       </td>
       <td>
         {% if latest_audit %}
@@ -83,8 +83,8 @@
 {% if latest_audit %}
 <p class="small muted" style="margin-top:12px;">
   Last audited {{ latest_audit.created_at[:16] }} by {{ latest_audit.performed_by_name or "—" }} —
-  counted {{ latest_audit.counted_cash|money }} JOD cash against a system total of {{ latest_audit.system_cash|money }} JOD
-  ({{ latest_audit.difference|money }} JOD difference){% if latest_audit.notes %}: "{{ latest_audit.notes }}"{% endif %}.
+  counted {{ latest_audit.counted_cash|money }} {{ currency_label() }} cash against a system total of {{ latest_audit.system_cash|money }} {{ currency_label() }}
+  ({{ latest_audit.difference|money }} {{ currency_label() }} difference){% if latest_audit.notes %}: "{{ latest_audit.notes }}"{% endif %}.
 </p>
 {% endif %}
 
@@ -97,7 +97,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="day" value="{{ fv(payout_form, 'day', day) }}">
       <div class="form-grid">
-        <div class="field" style="grid-column:1/-1;"><label for="cashregister-1-amount">Amount (JOD)</label>
+        <div class="field" style="grid-column:1/-1;"><label for="cashregister-1-amount">Amount ({{ currency_label() }})</label>
           <input id="cashregister-1-amount" type="number" name="amount" min="1" step="0.001" required autofocus value="{{ fv(payout_form, 'amount') }}">
         </div>
         <div class="field" style="grid-column:1/-1;"><label for="cashregister-2-reason">Reason</label>
@@ -117,14 +117,14 @@
     <h2 style="margin-top:0;">Perform Audit — {{ day }}</h2>
     <p class="small muted" style="margin-top:-6px;">Only Cash is audited here — Card and Transfer settle
       electronically and can't be counted out of a drawer.</p>
-    <div class="detail-item"><div class="k">System Cash Total</div><div class="v">{{ totals.Cash|money }} JOD</div></div>
-    <div class="detail-item"><div class="k">System Card Total</div><div class="v">{{ totals.Card|money }} JOD</div></div>
-    <div class="detail-item"><div class="k">System Transfer Total</div><div class="v">{{ totals.Transfer|money }} JOD</div></div>
+    <div class="detail-item"><div class="k">System Cash Total</div><div class="v">{{ totals.Cash|money }} {{ currency_label() }}</div></div>
+    <div class="detail-item"><div class="k">System Card Total</div><div class="v">{{ totals.Card|money }} {{ currency_label() }}</div></div>
+    <div class="detail-item"><div class="k">System Transfer Total</div><div class="v">{{ totals.Transfer|money }} {{ currency_label() }}</div></div>
     <form method="post" action="{{ url_for('sales.cash_register_audit_new') }}" style="margin-top:14px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="day" value="{{ fv(audit_form, 'day', day) }}">
       <div class="form-grid">
-        <div class="field" style="grid-column:1/-1;"><label for="cashregister-3-counted_cash">Cash Counted From the Register (JOD)</label>
+        <div class="field" style="grid-column:1/-1;"><label for="cashregister-3-counted_cash">Cash Counted From the Register ({{ currency_label() }})</label>
           <input id="cashregister-3-counted_cash" type="number" name="counted_cash" min="0" step="0.001" required autofocus value="{{ fv(audit_form, 'counted_cash') }}">
         </div>
         <div class="field" style="grid-column:1/-1;"><label for="cashregister-4-notes">Notes (optional)</label>

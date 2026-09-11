@@ -37,8 +37,8 @@
       <td class="muted">{{ r.unit or "—" }}</td>
       <td class="num-col">{{ r.current_stock if r.current_stock is not none else "—" }}</td>
       <td class="num-col">{{ r.reorder_threshold if r.reorder_threshold is not none else "—" }}</td>
-      <td>{{ r.latest_audit_date or "—" }}</td>
-      <td>{{ r.nearest_expiry_date or "—" }}</td>
+      <td>{{ r.latest_audit_date|localdate or "—" }}</td>
+      <td>{{ r.nearest_expiry_date|localdate or "—" }}</td>
       <td><span class="badge {{ 'danger' if r.stock_status=='LOW STOCK' else ('muted' if r.stock_status=='No audits yet' else 'ok') }}">{{ r.stock_status }}</span></td>
       <td>{% if r.expiry_status %}<span class="badge {{ 'danger' if r.expiry_status=='EXPIRED' else ('warn' if r.expiry_status=='EXPIRING SOON' else 'ok') }}">{{ r.expiry_status }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td><span class="badge {{ 'danger' if r.audit_status in ['OVERDUE','Never audited'] else 'ok' }}">{{ r.audit_status }}</span></td>

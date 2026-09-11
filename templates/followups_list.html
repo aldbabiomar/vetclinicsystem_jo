@@ -15,8 +15,8 @@
   <tbody>
     {% for f in followups %}
     <tr>
-      <td>{{ f.followup_date or "—" }} {% if f.missed %}<span class="badge danger">MISSED</span>{% endif %}</td>
-      <td>{{ f.reminder_call_date or "—" }}</td>
+      <td>{{ f.followup_date|localdate or "—" }} {% if f.missed %}<span class="badge danger">MISSED</span>{% endif %}</td>
+      <td>{{ f.reminder_call_date|localdate or "—" }}</td>
       <td><a href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}"><strong>{{ f.animal_name }}</strong></a></td>
       <td>{{ f.owner_name }}</td><td>{{ f.phone or "—" }}</td>
       <td>{{ f.followup_method or "—" }}</td><td>{{ f.followup_reason or "—" }}</td>

@@ -24,7 +24,7 @@
 <table>
   <thead class="sticky-header"><tr>
     <th scope="col">Month</th><th scope="col">Distributor</th><th scope="col">Item</th><th scope="col" class="num-col">Units Sold</th>
-    <th scope="col" class="num-col">Revenue (JOD)</th><th scope="col" class="num-col">Owed to Distributor (JOD)</th><th scope="col" class="num-col">Your Markup (JOD)</th>
+    <th scope="col" class="num-col">Revenue ({{ currency_label() }})</th><th scope="col" class="num-col">Owed to Distributor ({{ currency_label() }})</th><th scope="col" class="num-col">Your Markup ({{ currency_label() }})</th>
   </tr></thead>
   <tbody>
     {% for r in rows %}

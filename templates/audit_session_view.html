@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Audit — {{ sess.audit_date }} — {{ clinic_name }}{% endblock %}
+{% block title %}Audit — {{ sess.audit_date|localdate }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Audit — {{ sess.audit_date }}</h1>
+    <h1>Audit — {{ sess.audit_date|localdate }}</h1>
     <p class="page-sub">Performed by {{ sess.performed_by_name or "—" }} · <span class="badge {{ 'ok' if sess.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if sess.status=='Confirmed' else 'Saved' }}</span></p>
   </div>
   {% if not readonly %}

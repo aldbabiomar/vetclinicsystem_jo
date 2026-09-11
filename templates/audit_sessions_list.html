@@ -13,7 +13,7 @@
   <tbody>
     {% for s in sessions %}
     <tr>
-      <td>{{ s.audit_date }}</td>
+      <td>{{ s.audit_date|localdate }}</td>
       <td>{{ s.performed_by_name or "—" }}</td>
       <td><span class="badge {{ 'ok' if s.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if s.status=='Confirmed' else 'Saved' }}</span></td>
       <td class="num-col">{{ s.lines_filled }}</td>

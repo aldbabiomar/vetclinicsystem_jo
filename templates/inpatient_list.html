@@ -13,11 +13,11 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead><tr><th scope="col">Admitted</th><th scope="col">Animal</th><th scope="col">Owner</th><th scope="col">Complaint</th><th scope="col">Status</th>
-    {% if balance_due %}<th scope="col" class="num-col">Balance (JOD)</th>{% endif %}</tr></thead>
+    {% if balance_due %}<th scope="col" class="num-col">Balance ({{ currency_label() }})</th>{% endif %}</tr></thead>
   <tbody>
     {% for c in cases %}
     <tr data-vz-href="{{ url_for('clinical.inpatient_detail', case_id=c.id) }}" tabindex="0" role="link" style="cursor:pointer;">
-      <td>{{ c.admission_date }}</td><td><strong>{{ c.animal_name }}</strong></td><td>{{ c.owner_name }}</td>
+      <td>{{ c.admission_date|localdate }}</td><td><strong>{{ c.animal_name }}</strong></td><td>{{ c.owner_name }}</td>
       <td>{{ c.complaint or "—" }}</td>
       <td><span class="badge {{ 'ok' if c.dismissed else 'warn' }}">{{ 'Discharged' if c.dismissed else 'Admitted' }}</span></td>
       {% if balance_due %}<td class="num-col">{{ (c.total - c.paid)|money }}</td>{% endif %}

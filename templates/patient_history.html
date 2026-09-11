@@ -9,7 +9,7 @@
 {% for e in events %}
 <div class="card" style="margin-bottom:16px;">
   <div style="display:flex; justify-content:space-between; align-items:baseline;">
-    <div><span class="badge {{ 'primary' if e.kind=='Visit' else 'warn' }}">{{ e.kind }}</span> <strong style="margin-left:8px;">{{ e.date or "—" }}</strong></div>
+    <div><span class="badge {{ 'primary' if e.kind=='Visit' else 'warn' }}">{{ e.kind }}</span> <strong style="margin-left:8px;">{{ e.date|localdate or "—" }}</strong></div>
     {% if e.kind == 'Visit' %}<a href="{{ url_for('clinical.visit_detail', visit_id=e.record.id) }}">Open visit →</a>
     {% elif e.kind == 'Inpatient stay' %}<a href="{{ url_for('clinical.inpatient_detail', case_id=e.record.id) }}">Open case →</a>
     {% else %}<a href="{{ url_for('clinical.boarding_export_pdf', boarding_id=e.record.id) }}">View boarding record →</a>{% endif %}

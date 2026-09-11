@@ -16,16 +16,16 @@
     <div class="section-title" style="margin-top:0;">Current Sale</div>
     <div id="cartLines"><div class="empty-note" id="emptyCart">Cart is empty.</div></div>
     <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
-      <div class="detail-item"><div class="k">Subtotal</div><div class="v" id="cartSubtotal">0 JOD</div></div>
+      <div class="detail-item"><div class="k">Subtotal</div><div class="v" id="cartSubtotal">0 {{ currency_label() }}</div></div>
       <div class="field" style="margin:10px 0;">
         <label for="discountInput">Discount % (Max {{ discount_cap }}%)</label>
         <input type="number" id="discountInput" min="0" max="{{ discount_cap }}" value="{{ fv(form, 'discount_percent', '0') }}" data-vzh="pos-1">
       </div>
       <div class="field" style="margin:10px 0;">
-        <label for="cleanupInput">Clean Up (max {{ CLEANUP_CAP }} JOD)</label>
+        <label for="cleanupInput">Clean Up (max {{ CLEANUP_CAP }} {{ currency_label() }})</label>
         <input type="number" id="cleanupInput" step="0.001" min="0" value="{{ fv(form, 'cleanup_amount', '0') }}" data-vzh="pos-1">
       </div>
-      <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 JOD</div></div>
+      <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 {{ currency_label() }}</div></div>
       <div class="field" style="margin:10px 0;">
         <label for="paymentMethod">Payment Method</label>
         <select id="paymentMethod" data-vzh="pos-2">
@@ -36,7 +36,7 @@
       </div>
       <div id="cashFields" style="display:{{ 'none' if form and fv(form, 'payment_method', 'Cash')!='Cash' else '' }};">
         <div class="field" style="margin:10px 0;">
-          <label for="cashReceivedInput">Cash Received (JOD)</label>
+          <label for="cashReceivedInput">Cash Received ({{ currency_label() }})</label>
           <input type="number" id="cashReceivedInput" step="0.001" min="0" value="{{ fv(form, 'cash_received') }}" data-vzh="pos-1">
         </div>
         <div class="detail-item"><div class="k">Change Due</div><div class="v" style="font-size:18px; font-weight:700;" id="changeDue">—</div></div>
@@ -79,7 +79,7 @@ searchInput.addEventListener('input', () => {
             window.__posSearchResults = list;
             resultsDiv.innerHTML = list.map((i, idx) =>
               `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" data-vz-act="pos-4">
-                 <div class="who">${escapeHtml(i.name)}</div><div class="meta">${i.price != null ? i.price + ' JOD' : 'no price set'} · stock: ${i.stock ?? '—'}</div>
+                 <div class="who">${escapeHtml(i.name)}</div><div class="meta">${i.price != null ? i.price + ' {{ currency_label() }}' : 'no price set'} · stock: ${i.stock ?? '—'}</div>
                </div>`
             ).join('');
           })
@@ -125,7 +125,7 @@ function renderCart() {
   else {
     linesDiv.innerHTML = cart.map(c => `
       <div class="pos-cart-line">
-        <div>${escapeHtml(c.name)}<div class="meta small">${c.price} JOD each</div></div>
+        <div>${escapeHtml(c.name)}<div class="meta small">${c.price} {{ currency_label() }} each</div></div>
         <div style="display:flex; align-items:center; gap:6px;">
           <button class="btn small secondary" type="button" data-vz-act="pos-5" data-line-id="${c.id}">-</button>
           <input type="number" min="1" ${c.stock != null ? `max="${c.stock}"` : ''} value="${c.qty}" style="width:56px; text-align:center;" data-vz-change="pos-6" data-line-id="${c.id}">
@@ -142,8 +142,8 @@ function renderCart() {
   // authoritative total (and the Clean Up cap) server-side regardless of
   // what this hidden field carries, same trust boundary as discount today.
   const total = Math.max(preCleanupTotal - cleanup, 0);
-  document.getElementById('cartSubtotal').textContent = subtotal.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' JOD';
-  document.getElementById('cartTotal').textContent = total.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' JOD';
+  document.getElementById('cartSubtotal').textContent = subtotal.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' {{ currency_label() }}';
+  document.getElementById('cartTotal').textContent = total.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' {{ currency_label() }}';
   renderChange(total);
 }
 function toggleCashFields() {
@@ -162,9 +162,9 @@ function renderChange(total) {
     return;
   }
   const change = Math.max(cashReceived - total, 0);
-  changeDueEl.textContent = change.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' JOD';
+  changeDueEl.textContent = change.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3}) + ' {{ currency_label() }}';
   noteEl.textContent = cashReceived < total
-    ? `Cash received is ${(total - cashReceived).toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})} JOD short of the total.`
+    ? `Cash received is ${(total - cashReceived).toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})} {{ currency_label() }} short of the total.`
     : '';
 }
 function prepareSubmit() {

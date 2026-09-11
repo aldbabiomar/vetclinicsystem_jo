@@ -246,7 +246,7 @@ html[data-theme="dark"] .chip.active { color: var(--bg); }
   height: 100%; width: 0%; background: var(--primary);
   transition: width 0.15s ease;
 }
-.upload-progress-pct { min-width: 34px; text-align: end; }
+.upload-progress-pct { min-width: 34px; text-align: right; }
 
 /* ---------------- Error pages (404 / 403 / 500) ---------------- */
 .error-page { display: flex; justify-content: center; padding-top: 4vh; }
@@ -346,7 +346,13 @@ tfoot tr:first-child td { border-top: 2px solid var(--line); }
 .table-wrap.sticky-scroll { overflow: visible; }
 .sticky-header th { z-index: 2; }
 .row-flag-mismatch td { background: var(--warn-tint) !important; border-inline-start: 3px solid var(--warn); }
-.num-col { text-align: end; font-variant-numeric: tabular-nums; }
+/* Numeric columns keep a FIXED right alignment rather than the direction-aware
+   `end` used for prose above. Deliberate, and confirmed with the person who
+   owns this decision: a column of digits stays visually where it is when the
+   UI flips to Arabic, which is what most Arabic business software does. If
+   this is ever revisited, `end` is the one-word alternative and the English
+   rendering is identical either way. ARABIC_LOCALIZATION_PLAN.md §6.2. */
+.num-col { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ---------------- Badges ---------------- */
 .badge {
@@ -698,7 +704,7 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 .perm-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--primary); flex: none; }
 .role-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; margin-top: 2px; border-top: 1px solid var(--line-soft); flex-wrap: wrap; }
 .cap-field { display: flex; align-items: center; gap: 8px; }
-.cap-field input { width: 74px; text-align: end; }
+.cap-field input { width: 74px; text-align: right; }
 .staff-count { font-size: 12.5px; color: var(--ink-soft); }
 .new-role-card { border: 1.5px dashed var(--line); background: transparent; box-shadow: none; display: flex; align-items: center; justify-content: center; padding: 22px; cursor: pointer; color: var(--ink-soft); font-weight: 650; font-size: 13.5px; }
 .new-role-card:hover { background: var(--line-soft); border-color: var(--primary-tint); color: var(--primary-dark); }
@@ -893,7 +899,7 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 }
 .cell-input-plain { border: none; background: transparent; }
 .cell-input.short { width: 70px; }
-.cell-input.num   { width: 80px; text-align: end; }
+.cell-input.num   { width: 80px; text-align: right; }
 
 /* Column widths for the Inventory Catalog's fixed-layout table. Keyed by
    position, so they move if a column is inserted — add the new width here in

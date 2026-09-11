@@ -19,7 +19,7 @@
     <div id="refundSaleLines"><div class="empty-note">Look up a sale to see its refundable items.</div></div>
 
     <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
-      <div class="detail-item"><div class="k">Refund Total</div><div class="v" id="refundCartTotal" style="font-size:20px; font-weight:700;">0 JOD</div></div>
+      <div class="detail-item"><div class="k">Refund Total</div><div class="v" id="refundCartTotal" style="font-size:20px; font-weight:700;">0 {{ currency_label() }}</div></div>
 
       <label class="checkbox-row small" style="margin:12px 0; font-weight:500; text-transform:none;">
         <input type="checkbox" id="restockCheck" {{ 'checked' if fv(retail_form, 'restock', 'on')=='on' }}> Return item(s) to stock
@@ -55,7 +55,7 @@
     <form method="post" action="{{ url_for('sales.refund_service_save') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
-        <div class="field"><label for="refunds-4-amount">Refund Amount (JOD)</label><input id="refunds-4-amount" type="number" name="amount" min="1" step="0.001" required value="{{ fv(service_form, 'amount') }}"></div>
+        <div class="field"><label for="refunds-4-amount">Refund Amount ({{ currency_label() }})</label><input id="refunds-4-amount" type="number" name="amount" min="1" step="0.001" required value="{{ fv(service_form, 'amount') }}"></div>
         <div class="field"><label for="refunds-5-refund_date">Refund Date</label><input id="refunds-5-refund_date" type="date" name="refund_date" value="{{ fv(service_form, 'refund_date', today) }}"></div>
         <div class="field"><label for="refunds-6-refund_method">Method</label>
           <select id="refunds-6-refund_method" name="refund_method">
@@ -93,7 +93,7 @@
   <tbody>
     {% for r in refunds %}
     <tr>
-      <td class="small">{{ r.refund_date }}</td>
+      <td class="small">{{ r.refund_date|localdate }}</td>
       <td>
         {% if r.refund_type == 'retail' %}
           <span class="badge primary">Retail</span>
@@ -112,7 +112,7 @@
           {% if not r.visit_id and not r.inpatient_case_id and not r.boarding_id %}—{% endif %}
         {% endif %}
       </td>
-      <td class="num-col">{{ r.amount|money }} JOD{% if r.cleanup_amount_at_refund %}<div class="meta small">Clean Up on original bill: {{ r.cleanup_amount_at_refund|money }} JOD</div>{% endif %}</td>
+      <td class="num-col">{{ r.amount|money }} {{ currency_label() }}{% if r.cleanup_amount_at_refund %}<div class="meta small">Clean Up on original bill: {{ r.cleanup_amount_at_refund|money }} {{ currency_label() }}</div>{% endif %}</td>
       <td class="small">{{ r.refund_method or "—" }}</td>
       <td class="small muted">{{ r.reason or "—" }}</td>
       <td class="small">{{ r.processed_by_name or "—" }}</td>
@@ -141,7 +141,7 @@ function lookupRefundSale() {
       refundLines = data.lines.map(l => ({ ...l, refundQty: 0 }));
       const cleanupNote = document.getElementById('refundSaleCleanupNote');
       if (data.cleanup_amount) {
-        cleanupNote.textContent = `This sale had a ${data.cleanup_amount} JOD Clean Up applied — total refunds against it can't exceed what was actually collected (${data.sale_total} JOD).`;
+        cleanupNote.textContent = `This sale had a ${data.cleanup_amount} {{ currency_label() }} Clean Up applied — total refunds against it can't exceed what was actually collected (${data.sale_total} {{ currency_label() }}).`;
         cleanupNote.style.display = 'block';
       } else {
         cleanupNote.style.display = 'none';
@@ -156,7 +156,7 @@ function renderRefundLines() {
   if (!refundLines.length) { linesDiv.innerHTML = '<div class="empty-note">This sale has nothing left to refund.</div>'; renderRefundTotal(); return; }
   linesDiv.innerHTML = `<p class="small muted" style="margin:6px 0;">Sale #${refundSaleId} — set the quantity to refund for each line:</p>` + refundLines.map((l, idx) => `
     <div class="pos-cart-line">
-      <div>${escapeHtml(l.name)}<div class="meta small">${l.unit_price} JOD each — ${l.remaining} left refundable</div></div>
+      <div>${escapeHtml(l.name)}<div class="meta small">${l.unit_price} {{ currency_label() }} each — ${l.remaining} left refundable</div></div>
       <div style="display:flex; align-items:center; gap:6px;">
         <input type="number" min="0" max="${l.remaining}" step="any" value="${l.refundQty}" style="width:70px;" data-vz-change="refunds-3" data-idx="${idx}">
       </div>
@@ -174,7 +174,7 @@ function setRefundQty(idx, value) {
 
 function renderRefundTotal() {
   const total = refundLines.reduce((s, l) => s + l.unit_price * l.refundQty, 0);
-  document.getElementById('refundCartTotal').textContent = total.toLocaleString() + ' JOD';
+  document.getElementById('refundCartTotal').textContent = total.toLocaleString() + ' {{ currency_label() }}';
 }
 
 function prepareRefundSubmit() {

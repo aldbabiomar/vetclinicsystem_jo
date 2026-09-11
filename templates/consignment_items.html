@@ -14,7 +14,7 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead class="sticky-header"><tr>
-    <th scope="col">ID</th><th scope="col">Name</th><th scope="col">Consignment?</th><th scope="col">Distributor</th><th scope="col" class="num-col">Cost Price (JOD)</th><th scope="col"></th>
+    <th scope="col">ID</th><th scope="col">Name</th><th scope="col">Consignment?</th><th scope="col">Distributor</th><th scope="col" class="num-col">Cost Price ({{ currency_label() }})</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for i in items %}

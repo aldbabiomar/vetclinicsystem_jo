@@ -9,16 +9,16 @@
 </div>
 
 <div class="stat-grid">
-  <div class="stat-card ok"><div class="num">{{ revenue.totals_by_month.values()|sum|money }}</div><div class="label">Revenue, Last {{ months_back }} Months (JOD)</div></div>
+  <div class="stat-card ok"><div class="num">{{ revenue.totals_by_month.values()|sum|money }}</div><div class="label">Revenue, Last {{ months_back }} Months ({{ currency_label() }})</div></div>
   <div class="stat-card"><div class="num">{{ active_client_count }}</div><div class="label">Clients With Paid Visits (Lifetime)</div></div>
-  <div class="stat-card"><div class="num">{{ avg_spend|money }}</div><div class="label">Avg. Lifetime Spend / Client (JOD)</div></div>
+  <div class="stat-card"><div class="num">{{ avg_spend|money }}</div><div class="label">Avg. Lifetime Spend / Client ({{ currency_label() }})</div></div>
   <div class="stat-card"><div class="num">{{ vets|length }}</div><div class="label">Vets Billing This Window</div></div>
 </div>
 
 <div class="panel-grid">
   <div class="card panel">
     <h2>Revenue by Service Category</h2>
-    <p class="small muted" style="margin-top:-6px;">Net of refunds, per month, in JOD.</p>
+    <p class="small muted" style="margin-top:-6px;">Net of refunds, per month, in {{ currency_label() }}.</p>
     <canvas id="revenueChart" height="220"></canvas>
   </div>
   <div class="card panel">
@@ -28,7 +28,7 @@
   </div>
 </div>
 
-<div class="section-title">Revenue by Category — Monthly Breakdown (JOD)</div>
+<div class="section-title">Revenue by Category — Monthly Breakdown ({{ currency_label() }})</div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
   <thead><tr>
@@ -61,7 +61,7 @@
     <p class="small muted" style="margin-top:-6px;">Visit count &amp; billings generated, last {{ months_back }} months.</p>
     <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">Vet</th><th scope="col" class="num-col">Visits</th><th scope="col" class="num-col">Revenue (JOD)</th><th scope="col" class="num-col">Avg / Visit</th></tr></thead>
+      <thead><tr><th scope="col">Vet</th><th scope="col" class="num-col">Visits</th><th scope="col" class="num-col">Revenue ({{ currency_label() }})</th><th scope="col" class="num-col">Avg / Visit</th></tr></thead>
       <tbody>
         {% for v in vets %}
         <tr>
@@ -83,7 +83,7 @@
     <p class="small muted" style="margin-top:-6px;">From visit, inpatient &amp; boarding payments (walk-in POS retail sales aren't linked to a client in this system).</p>
     <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">Owner</th><th scope="col" class="num-col">Payments</th><th scope="col" class="num-col">Total Paid (JOD)</th></tr></thead>
+      <thead><tr><th scope="col">Owner</th><th scope="col" class="num-col">Payments</th><th scope="col" class="num-col">Total Paid ({{ currency_label() }})</th></tr></thead>
       <tbody>
         {% for c in top_clients %}
         <tr>
@@ -149,11 +149,11 @@
 </p>
 <div class="table-wrap" style="margin-bottom:24px; max-height:420px; overflow-y:auto;">
 <table>
-  <thead><tr><th scope="col">Date</th><th scope="col">Status</th><th scope="col" class="num-col">Difference (JOD)</th></tr></thead>
+  <thead><tr><th scope="col">Date</th><th scope="col">Status</th><th scope="col" class="num-col">Difference ({{ currency_label() }})</th></tr></thead>
   <tbody>
     {% for d in cash_register_health %}
     <tr>
-      <td class="small"><a href="{{ url_for('sales.cash_register_page', date=d.date) }}">{{ d.date }}</a></td>
+      <td class="small"><a href="{{ url_for('sales.cash_register_page', date=d.date) }}">{{ d.date|localdate }}</a></td>
       <td>
         {% if d.status == 'Perfect' %}<span class="badge ok">Perfect</span>
         {% elif d.status == 'Deficit' %}<span class="badge danger">Deficit</span>

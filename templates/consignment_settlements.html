@@ -12,9 +12,9 @@
 <div class="card" style="margin-bottom:16px;">
   <h2 style="margin-top:0;">Current Balance</h2>
   <table style="width:100%; max-width:520px;">
-    <tr><td>Carried forward from last settlement</td><td class="num-col">{{ balance.residual|money }} JOD</td></tr>
-    <tr><td>New activity this period</td><td class="num-col">{{ balance.new_activity|money }} JOD</td></tr>
-    <tr style="font-weight:600; border-top:1px solid var(--line);"><td>Amount Owed Now</td><td class="num-col">{{ balance.amount_owed|money }} JOD</td></tr>
+    <tr><td>Carried forward from last settlement</td><td class="num-col">{{ balance.residual|money }} {{ currency_label() }}</td></tr>
+    <tr><td>New activity this period</td><td class="num-col">{{ balance.new_activity|money }} {{ currency_label() }}</td></tr>
+    <tr style="font-weight:600; border-top:1px solid var(--line);"><td>Amount Owed Now</td><td class="num-col">{{ balance.amount_owed|money }} {{ currency_label() }}</td></tr>
   </table>
   <p class="small muted" style="margin-top:10px;">Period: {{ balance.period_start[:10] if balance.period_start else 'start' }} — {{ balance.period_end[:10] }}
     · {{ balance.units_sold_since|round(2) }} unit(s) sold since last settlement.</p>
@@ -22,7 +22,7 @@
   {% if has_permission('manage_consignment_settlements') %}
   <form method="post" action="{{ url_for('consignment.consignment_settlement_new', distributor_id=distributor.id) }}" class="form-grid" style="margin-top:16px;" data-confirm="Record this settlement? The amount owed will be recalculated at the moment you submit.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="field"><label for="consignmentsettlements-1-amount_paid">Amount Paid (JOD)</label><input id="consignmentsettlements-1-amount_paid" type="number" step="0.001" name="amount_paid" value="{{ fv(form, 'amount_paid', balance.amount_owed) }}" required></div>
+    <div class="field"><label for="consignmentsettlements-1-amount_paid">Amount Paid ({{ currency_label() }})</label><input id="consignmentsettlements-1-amount_paid" type="number" step="0.001" name="amount_paid" value="{{ fv(form, 'amount_paid', balance.amount_owed) }}" required></div>
     <div class="field"><label for="consignmentsettlements-2-payment_method">Payment Method</label>
       <select id="consignmentsettlements-2-payment_method" name="payment_method">
         <option value="" {{ 'selected' if fv(form, 'payment_method')=='' }}>—</option>
@@ -42,8 +42,8 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th scope="col">Date</th><th scope="col">Period</th><th scope="col" class="num-col">Owed (JOD)</th><th scope="col" class="num-col">Paid (JOD)</th>
-    <th scope="col" class="num-col">Residual (JOD)</th><th scope="col">Method</th><th scope="col">Recorded By</th><th scope="col"></th>
+    <th scope="col">Date</th><th scope="col">Period</th><th scope="col" class="num-col">Owed ({{ currency_label() }})</th><th scope="col" class="num-col">Paid ({{ currency_label() }})</th>
+    <th scope="col" class="num-col">Residual ({{ currency_label() }})</th><th scope="col">Method</th><th scope="col">Recorded By</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for s in history %}

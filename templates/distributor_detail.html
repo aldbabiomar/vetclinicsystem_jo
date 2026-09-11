@@ -11,9 +11,9 @@
 
 <div class="card" style="margin-bottom:16px;">
   <div class="detail-grid">
-    <div class="detail-item"><div class="k">Total Billed</div><div class="v">{{ total_billed|money }} JOD</div></div>
-    <div class="detail-item"><div class="k">Total Paid</div><div class="v">{{ total_paid|money }} JOD</div></div>
-    <div class="detail-item"><div class="k">Outstanding</div><div class="v">{{ total_outstanding|money }} JOD</div></div>
+    <div class="detail-item"><div class="k">Total Billed</div><div class="v">{{ total_billed|money }} {{ currency_label() }}</div></div>
+    <div class="detail-item"><div class="k">Total Paid</div><div class="v">{{ total_paid|money }} {{ currency_label() }}</div></div>
+    <div class="detail-item"><div class="k">Outstanding</div><div class="v">{{ total_outstanding|money }} {{ currency_label() }}</div></div>
   </div>
 </div>
 
@@ -29,7 +29,7 @@
     <div class="form-grid">
       <div class="field"><label for="distributordetail-1-bill_date">Bill Date</label><input id="distributordetail-1-bill_date" required type="date" name="bill_date" value="{{ fv(bill_form, 'bill_date', today) }}"></div>
       <div class="field"><label for="distributordetail-2-bill_reference">Bill / Invoice #</label><input id="distributordetail-2-bill_reference" name="bill_reference" value="{{ fv(bill_form, 'bill_reference') }}" placeholder="Distributor's own reference, optional"></div>
-      <div class="field"><label for="distributordetail-3-total_amount">Total Amount (JOD)</label><input id="distributordetail-3-total_amount" required type="number" step="0.001" min="1" name="total_amount" value="{{ fv(bill_form, 'total_amount') }}"></div>
+      <div class="field"><label for="distributordetail-3-total_amount">Total Amount ({{ currency_label() }})</label><input id="distributordetail-3-total_amount" required type="number" step="0.001" min="1" name="total_amount" value="{{ fv(bill_form, 'total_amount') }}"></div>
       <div class="field full"><label for="distributordetail-4-notes">Notes</label><input id="distributordetail-4-notes" name="notes" value="{{ fv(bill_form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
@@ -44,21 +44,21 @@
   <div class="page-head">
     <div>
       <strong>{{ bill.id }}</strong>{% if bill.bill_reference %} · {{ bill.bill_reference }}{% endif %}
-      · {{ bill.bill_date }}
+      · {{ bill.bill_date|localdate }}
       <span class="badge {{ 'ok' if bill.status=='Paid' else ('warn' if bill.status=='Partial' else 'danger') }}">{{ bill.status }}</span>
     </div>
     <div>
-      Total {{ bill.total_amount|money }} · Paid {{ bill.paid|money }} · Balance {{ bill.balance|money }} JOD
+      Total {{ bill.total_amount|money }} · Paid {{ bill.paid|money }} · Balance {{ bill.balance|money }} {{ currency_label() }}
     </div>
   </div>
   {% if bill.notes %}<p class="muted">{{ bill.notes }}</p>{% endif %}
 
   <table>
-    <thead><tr><th scope="col">Date</th><th scope="col">Amount (JOD)</th><th scope="col">Method</th><th scope="col">Notes</th><th scope="col"></th></tr></thead>
+    <thead><tr><th scope="col">Date</th><th scope="col">Amount ({{ currency_label() }})</th><th scope="col">Method</th><th scope="col">Notes</th><th scope="col"></th></tr></thead>
     <tbody>
       {% for p in bill.payments %}
       <tr>
-        <td>{{ p.payment_date }}</td><td>{{ p.amount|money }}</td>
+        <td>{{ p.payment_date|localdate }}</td><td>{{ p.amount|money }}</td>
         <td>{{ p.method or "—" }}</td><td>{{ p.notes or "—" }}</td>
         <td>
           <form method="post" action="{{ url_for('consignment.distributor_payment_delete', dist_id=distributor.id, payment_id=p.id) }}" style="display:inline;" data-confirm="Delete this payment?">
@@ -76,7 +76,7 @@
   <form method="post" action="{{ url_for('consignment.distributor_payment_new', dist_id=distributor.id, bill_id=bill.id) }}" class="form-grid" style="margin-top:12px;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field"><label for="billpay-payment_date-{{ bill.id }}">Payment Date</label><input id="billpay-payment_date-{{ bill.id }}" required type="date" name="payment_date" value="{{ fv(pay_form, 'payment_date', today) }}"></div>
-    <div class="field"><label for="billpay-amount-{{ bill.id }}">Amount (JOD)</label><input id="billpay-amount-{{ bill.id }}" required type="number" step="0.001" min="0.001" max="{{ bill.balance }}" name="amount" value="{{ fv(pay_form, 'amount') }}"></div>
+    <div class="field"><label for="billpay-amount-{{ bill.id }}">Amount ({{ currency_label() }})</label><input id="billpay-amount-{{ bill.id }}" required type="number" step="0.001" min="0.001" max="{{ bill.balance }}" name="amount" value="{{ fv(pay_form, 'amount') }}"></div>
     <div class="field"><label for="billpay-method-{{ bill.id }}">Method</label>
       <select id="billpay-method-{{ bill.id }}" name="method">
         <option value="" {{ 'selected' if fv(pay_form, 'method')=='' }}>—</option>

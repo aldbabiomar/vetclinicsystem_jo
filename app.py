@@ -152,6 +152,20 @@ babel = Babel(app, locale_selector=_select_locale)
 # symptom of missing it is every page 500-ing at that line, including /login.
 app.jinja_env.globals["get_locale"] = get_locale
 
+@app.template_global()
+def currency_label():
+    """The currency word as it should READ in the active language.
+
+    Confirmed choice: the Arabic abbreviation rather than the Latin ISO code,
+    in the same position as today (number first). Kept as a template global so
+    the 100-odd places that print it stay a single source of truth -- and so a
+    future change is one line rather than a sweep.
+
+    Deliberately NOT used inside pdf_export.py, which stays English with the
+    Latin code permanently (ARABIC_LOCALIZATION_PLAN.md §0).
+    """
+    return "د.أ" if str(get_locale()) == "ar" else "JOD"
+
 
 @app.route("/set-language/<lang>", methods=["POST"])
 def set_language(lang):
