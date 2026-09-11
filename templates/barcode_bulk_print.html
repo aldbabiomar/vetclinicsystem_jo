@@ -44,11 +44,12 @@ function renderAllBarcodes() {
 }
 </script>
 <script src="{{ url_for('static', filename='barcode-render.js') }}"></script>
-<script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"
-        data-vzh="barcode-bulk-print-2 barcode-bulk-print-3"></script>
+<script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"></script>
 <script nonce="{{ csp_nonce }}">
 VZ.bind('barcode-bulk-print-1', 'click', function (event) { window.print(); });
-VZ.bind('barcode-bulk-print-2', 'load', function (event) { renderAllBarcodes(); });
-VZ.bind('barcode-bulk-print-3', 'error', function (event) { document.getElementById('bulkPrintError').style.display = 'block'; });
+// Direct call — see barcode_label.html: the vendor script's load event has
+// already fired before this inline script runs, so binding to it renders
+// nothing at all.
+renderAllBarcodes();
 </script>
 {% endblock %}

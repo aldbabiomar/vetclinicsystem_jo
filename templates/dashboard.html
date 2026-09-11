@@ -135,7 +135,7 @@
     {% if snap.grooming_queue %}
       {% for gr in snap.grooming_queue[:6] %}
       <div class="list-line">
-        <div><div class="who">{{ gr.animal_name }} <span class="meta">({{ gr.owner_name }})</span></div><div class="meta">{{ gr.grooming_status or "Waiting" }}</div></div>
+        <div><div class="who">{{ gr.animal_name }} <span class="meta">({{ gr.owner_name }})</span></div><div class="meta">{{ (gr.grooming_status or "Waiting")|tr }}</div></div>
       </div>
       {% endfor %}
       {% if snap.grooming_queue|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.grooming_list') }}">{{ _('View grooming queue →') }}</a></div>{% endif %}

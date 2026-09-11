@@ -16,15 +16,23 @@
 </div>
 
 <div class="panel-grid">
-  <div class="card panel">
+  <div class="card panel chart-panel">
     <h2>{{ _('Revenue by Service Category') }}</h2>
     <p class="small muted" style="margin-top:-6px;">{{ _('Net of refunds, per month, in %(currency_label)s.', currency_label=currency_label()) }}</p>
-    <canvas id="revenueChart" height="220"></canvas>
+    {% if revenue.months %}
+    <div class="chart-box"><canvas id="revenueChart"></canvas></div>
+    {% else %}
+    <p class="empty-note">{{ _('No revenue recorded in this window yet.') }}</p>
+    {% endif %}
   </div>
-  <div class="card panel">
+  <div class="card panel chart-panel">
     <h2>{{ _('Payment Method Mix') }}</h2>
     <p class="small muted" style="margin-top:-6px;">{{ _('Cash vs. card, last %(months_back)s months — a useful trust/adoption signal for a new clinic.', months_back=months_back) }}</p>
-    <canvas id="paymentChart" height="220"></canvas>
+    {% if payment_mix %}
+    <div class="chart-box"><canvas id="paymentChart"></canvas></div>
+    {% else %}
+    <p class="empty-note">{{ _('No payments recorded in this window yet — this chart fills in once payments are taken.') }}</p>
+    {% endif %}
   </div>
 </div>
 
@@ -174,33 +182,50 @@ const COLORS = {
   Service: '#B21C43', Medicine: '#051335', Retail: '#B5791F', Boarding: '#4B8F6B',
 };
 
-new Chart(document.getElementById('revenueChart'), {
-  type: 'bar',
-  data: {
-    labels: REVENUE.months,
-    datasets: REVENUE.categories.map(cat => ({
-      label: cat,
-      data: REVENUE.months.map(m => REVENUE.grid[m][cat]),
-      backgroundColor: COLORS[cat] || '#A79AA0',
-    })),
-  },
-  options: {
-    responsive: true,
-    scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => v.toLocaleString() } } },
-    plugins: { legend: { position: 'bottom' } },
-  },
-});
+// Display labels for the legend. The KEYS stay the stored English values
+// (they index REVENUE.grid and the colour map); only what a person reads is
+// translated, the same split as the |tr filter everywhere else.
+const CATEGORY_LABELS = { {% for c in revenue.categories %}{{ c|tojson }}: {{ (c|tr)|tojson }}{{ ", " if not loop.last }}{% endfor %} };
+const METHOD_LABELS = { {% for r in payment_mix %}{{ (r.method or 'Unspecified')|tojson }}: {{ ((r.method or _('Unspecified'))|tr)|tojson }}{{ ", " if not loop.last }}{% endfor %} };
 
-new Chart(document.getElementById('paymentChart'), {
-  type: 'doughnut',
-  data: {
-    labels: PAYMENT_MIX.map(r => r.method || 'Unspecified'),
-    datasets: [{
-      data: PAYMENT_MIX.map(r => r.total),
-      backgroundColor: ['#B21C43', '#051335', '#B5791F', '#B8452E', '#A79AA0'],
-    }],
-  },
-  options: { responsive: true, plugins: { legend: { position: 'bottom' } } },
-});
+// maintainAspectRatio:false + a fixed-height wrapper (.chart-box). With it
+// left on, Chart.js derives an aspect ratio from the canvas height attribute
+// and then sizes the WIDTH from the height — so the chart cannot fill a wide
+// card, and a doughnut becomes a giant square.
+const CHART_BASE = { responsive: true, maintainAspectRatio: false,
+                     plugins: { legend: { position: 'bottom' } } };
+
+const revenueCanvas = document.getElementById('revenueChart');
+if (revenueCanvas) {
+  new Chart(revenueCanvas, {
+    type: 'bar',
+    data: {
+      labels: REVENUE.months,
+      datasets: REVENUE.categories.map(cat => ({
+        label: CATEGORY_LABELS[cat] || cat,
+        data: REVENUE.months.map(m => REVENUE.grid[m][cat]),
+        backgroundColor: COLORS[cat] || '#A79AA0',
+      })),
+    },
+    options: Object.assign({}, CHART_BASE, {
+      scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => v.toLocaleString() } } },
+    }),
+  });
+}
+
+const paymentCanvas = document.getElementById('paymentChart');
+if (paymentCanvas) {
+  new Chart(paymentCanvas, {
+    type: 'doughnut',
+    data: {
+      labels: PAYMENT_MIX.map(r => METHOD_LABELS[r.method || 'Unspecified'] || r.method),
+      datasets: [{
+        data: PAYMENT_MIX.map(r => r.total),
+        backgroundColor: ['#B21C43', '#051335', '#B5791F', '#B8452E', '#A79AA0'],
+      }],
+    },
+    options: CHART_BASE,
+  });
+}
 </script>
 {% endblock %}

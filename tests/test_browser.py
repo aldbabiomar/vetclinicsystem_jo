@@ -111,11 +111,29 @@ def signed_in(browser):
         page.context.close()
 
 
+def _settle_loading_shell(page, timeout=45000):
+    """Several heavy reports (/insights, /retention) answer with a placeholder
+    that polls a background job and then navigates ITSELF to the real page.
+
+    Anything that reads the page straight after `goto` is therefore looking at
+    the shell, not at the page it named. That blind spot hid a real
+    ReferenceError on /insights from the JavaScript-error test below — the
+    error happened on the second navigation, after the assertion had already
+    run. Wait for the shell to resolve before reading anything."""
+    try:
+        page.wait_for_function(
+            "() => !document.querySelector('.vz-progress-shell')", timeout=timeout)
+        page.wait_for_load_state("networkidle")
+    except Exception:
+        pass          # not a shell, or it never resolved — the caller still asserts
+
+
 def _visit(page, path):
     errors, failed_requests = [], []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("requestfailed", lambda r: failed_requests.append(f"{r.method} {r.url}"))
     page.goto(f"{APP_URL}{path}", wait_until="networkidle")
+    _settle_loading_shell(page)
     return errors, failed_requests
 
 
@@ -442,3 +460,159 @@ def test_the_nonce_changes_between_requests(signed_in):
             "document.querySelector('script[nonce]')?.getAttribute('nonce')"))
     assert None not in seen, "no inline script carried a nonce attribute"
     assert len(seen) == 3, f"the nonce repeated across requests: {seen}"
+
+
+# ---------------------------------------------------------------------------
+# Four bugs a clinic found by using the app. Every one of them rendered a page
+# that looked fine to a status-code sweep, and none was visible to any test
+# that existed. COMPARISON.md §59.
+# ---------------------------------------------------------------------------
+
+def _barcode_label_url(page):
+    """The label URL of an item that actually has a barcode, or None.
+
+    There is no anchor to scrape: the catalog reaches the label through the
+    /barcode/status JSON its barcode-manager modal calls, so the test asks the
+    same endpoint the page does."""
+    page.goto(f"{APP_URL}/inventory-catalog", wait_until="networkidle")
+    ids = page.evaluate("""() => [...new Set(
+        [...document.querySelectorAll('[data-item-id], tbody tr td:first-child')]
+          .map(e => (e.getAttribute('data-item-id') || e.textContent).trim())
+          .filter(v => /^[A-Z]{2,4}\\d+$/.test(v)))].slice(0, 25)""")
+    for item_id in ids:
+        r = page.evaluate("""async (id) => {
+          const res = await fetch(`/inventory-catalog/${id}/barcode/status`,
+                                  {headers: {'Accept': 'application/json'}});
+          if (!res.ok) return null;
+          const j = await res.json();
+          return j.label_url || null;
+        }""", item_id)
+        if r:
+            return r
+    return None
+
+
+def test_the_barcode_label_actually_draws_a_barcode(signed_in):
+    """It never did. The page bound its render function to the JsBarcode
+    <script>'s load event from an inline script placed AFTER it — and a
+    classic <script src> has already loaded and fired by then, so the listener
+    heard nothing and the <svg> stayed empty. No error was shown either,
+    because the error path was bound the same way.
+
+    Asserting on the drawn SVG rather than on the page rendering is the whole
+    point: the page rendered perfectly for as long as this was broken."""
+    page = signed_in["laptop"]
+    href = _barcode_label_url(page)
+    if not href:
+        pytest.skip("no inventory item has a barcode in this database")
+    page.goto(f"{APP_URL}{href}", wait_until="networkidle")
+    drawn = page.evaluate("document.getElementById('barcodeSvg').children.length")
+    assert drawn > 0, (
+        "the barcode <svg> is empty — nothing called the render function. "
+        "Do not bind it to the vendor script's load event; call it directly.")
+    assert not page.evaluate("document.getElementById('printBtn').disabled"), (
+        "Print is still disabled, which means the render never completed")
+
+
+def test_a_modal_never_grows_taller_than_the_screen(signed_in):
+    """The Add Role modal was 1374px tall on a 390x844 phone: its top was
+    clipped off-screen and the submit button sat 281px below the fold with
+    nothing to scroll, so a role could not be created on a phone at all. On a
+    1440x900 laptop it was 894px — six pixels of headroom.
+
+    Checked on the phone, which is where a height bug actually bites."""
+    page = signed_in["phone"]
+    page.goto(f"{APP_URL}/admin/users", wait_until="networkidle")
+    result = page.evaluate("""() => {
+      const m = document.getElementById('roleModal');
+      if (!m) return null;
+      m.style.display = 'flex';
+      const box = m.querySelector('.modal-box');
+      const r = box.getBoundingClientRect();
+      box.scrollTop = box.scrollHeight;
+      const actions = box.querySelector('.form-actions');
+      const a = actions.getBoundingClientRect();
+      return {height: Math.round(r.height), top: Math.round(r.top),
+              bottom: Math.round(r.bottom), viewport: innerHeight,
+              submitReachable: a.bottom <= innerHeight + 1};
+    }""")
+    if result is None:
+        pytest.skip("no role modal on this page")
+    assert result["top"] >= -1 and result["bottom"] <= result["viewport"] + 1, (
+        f"the modal does not fit the screen: {result}")
+    assert result["submitReachable"], (
+        f"the submit button cannot be reached even after scrolling: {result}")
+
+
+def _open_insights(page, timeout=45000):
+    """Open /insights and wait for the REAL page.
+
+    It answers with a loading shell that polls a background job and then
+    navigates itself, so `networkidle` plus a fixed sleep is a race — it
+    passed on one app and failed on the other purely on timing. Waiting for a
+    chart card (or an empty note in its place) waits for the thing under
+    test."""
+    page.goto(f"{APP_URL}/insights", wait_until="networkidle")
+    page.wait_for_function(
+        "() => document.querySelectorAll('.card.chart-panel').length >= 2",
+        timeout=timeout)
+    page.wait_for_timeout(1200)      # let Chart.js finish its first paint
+
+
+def test_a_chart_fills_its_card_rather_than_its_aspect_ratio(signed_in):
+    """Both Insights charts were sized from an aspect ratio Chart.js derived
+    from the canvas height attribute, so their WIDTH was a function of their
+    height — a doughnut became a square as tall as the card was wide, and the
+    bar chart could not fill a wide card.
+
+    A chart with no data is replaced by an empty note, so an absent canvas is
+    a pass, not a failure — that is the other half of the same fix."""
+    page = signed_in["laptop"]
+    _open_insights(page)
+    measured = page.evaluate("""() => {
+      const out = [];
+      for (const id of ['revenueChart', 'paymentChart']) {
+        const c = document.getElementById(id);
+        if (!c) { out.push({id, state: 'empty'}); continue; }
+        const card = c.closest('.card');
+        const cs = getComputedStyle(card);
+        const inner = card.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        const r = c.getBoundingClientRect();
+        out.push({id, state: 'drawn', unused: Math.round(inner - r.width),
+                  height: Math.round(r.height)});
+      }
+      return out;
+    }""")
+    assert measured, "no charts found on Insights at all"
+    for m in measured:
+        if m["state"] == "empty":
+            continue
+        assert abs(m["unused"]) <= 2, (
+            f"{m['id']} leaves {m['unused']}px of its card unused — it is being "
+            f"sized from an aspect ratio instead of filling the width")
+        assert 0 < m["height"] <= 420, (
+            f"{m['id']} is {m['height']}px tall; a chart should have a controlled "
+            f"height, not one derived from the card width")
+
+
+def test_an_empty_chart_explains_itself(signed_in):
+    """A chart with no rows used to draw a blank white card with a title and
+    nothing else, which reads as a broken feature rather than an empty one.
+    If a canvas is absent there must be a note in its place."""
+    page = signed_in["laptop"]
+    _open_insights(page)
+    blank = page.evaluate("""() => {
+      const bad = [];
+      document.querySelectorAll('.card.chart-panel').forEach(card => {
+        const hasChart = card.querySelector('canvas');
+        const hasNote = card.querySelector('.empty-note');
+        if (!hasChart && !hasNote) bad.push(card.querySelector('h2')?.textContent || '?');
+      });
+      return bad;
+    }""")
+    assert not blank, f"these chart cards render neither a chart nor an explanation: {blank}"
+
+    found = page.evaluate("document.querySelectorAll('.card.chart-panel').length")
+    assert found >= 2, (
+        f"only {found} chart cards found — the selector has stopped matching the "
+        f"page, so this guard would pass while checking nothing")

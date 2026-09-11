@@ -28,11 +28,14 @@ function renderBarcodeLabel() {
 }
 </script>
 <script src="{{ url_for('static', filename='barcode-render.js') }}"></script>
-<script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"
-        data-vzh="barcode-label-2 barcode-label-3"></script>
+<script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"></script>
 <script nonce="{{ csp_nonce }}">
 VZ.bind('barcode-label-1', 'click', function (event) { window.print(); });
-VZ.bind('barcode-label-2', 'load', function (event) { renderBarcodeLabel(); });
-VZ.bind('barcode-label-3', 'error', function (event) { document.getElementById('barcodeError').style.display = 'block'; });
+// Called directly, NOT from the vendor script's load event: a classic
+// external script has already loaded and fired by the time this inline
+// block runs, so a listener attached here never hears it and the barcode
+// never rendered. If the vendor file failed to load, JsBarcode is
+// undefined and renderBarcodeLabel()'s own catch shows the error panel.
+renderBarcodeLabel();
 </script>
 {% endblock %}

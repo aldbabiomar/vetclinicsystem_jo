@@ -167,9 +167,11 @@
 
 <!-- Add New Role modal -->
 <div class="modal-overlay" id="roleModal" style="display:none;">
-  <!-- Wider still: .perm-grid packs at minmax(200px, 1fr), so the default
-       420px renders all ~28 permissions in one very tall column. -->
-  <div class="modal-box" style="width:100%; max-width:640px;">
+  <!-- .modal-wide plus .perm-columns: the six category blocks flow into up to
+       three columns instead of stacking, which is what made this 894px tall on
+       a 1440x900 laptop and 1374px (submit button unreachable) on a phone.
+       The width cap lives in CSS so the media queries can move it. -->
+  <div class="modal-box modal-wide" style="width:100%;">
     <h3 style="margin-top:0;">{{ _('Add Role') }}</h3>
     <p class="small muted" style="margin-top:-6px;">{{ _('New roles start with everything below unchecked — turn on only what this role needs.') }}</p>
     <form method="post" action="{{ url_for('admin.admin_role_new') }}">
@@ -183,6 +185,7 @@
       </div>
       <div style="height:10px;"></div>
 
+      <div class="perm-columns">
       {% for cat, perms in perm_categories %}
       <div class="perm-block"><div class="perm-cat-label">{{ cat|tr }}</div><div class="perm-grid">
         {% for key, label in perms %}
@@ -190,6 +193,7 @@
         {% endfor %}
       </div></div>
       {% endfor %}
+      </div>
 
       <div style="display:flex; align-items:center; gap:20px; margin-top:14px;">
         <div class="field" style="max-width:160px; margin-top:0;"><label for="adminusers-7-discount_cap">{{ _('Max Discount (%%)') }}</label><input id="adminusers-7-discount_cap" type="number" name="discount_cap" value="0" min="0" max="100"></div>

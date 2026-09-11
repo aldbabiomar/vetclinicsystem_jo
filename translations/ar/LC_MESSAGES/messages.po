@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-11 21:52+0300\n"
+"POT-Creation-Date: 2026-09-11 23:51+0300\n"
 "PO-Revision-Date: 2026-09-11 12:18+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ar\n"
@@ -468,17 +468,17 @@ msgid "Confirmed"
 msgstr "مؤكد"
 
 #: enum_labels.py:102 templates/cash_register.html:71
-#: templates/insights.html:157
+#: templates/insights.html:165
 msgid "Deficit"
 msgstr "عجز"
 
 #: enum_labels.py:102 templates/cash_register.html:72
-#: templates/insights.html:158
+#: templates/insights.html:166
 msgid "Surplus"
 msgstr "فائض"
 
 #: enum_labels.py:102 templates/cash_register.html:70
-#: templates/insights.html:156
+#: templates/insights.html:164
 msgid "Perfect"
 msgstr "مطابق"
 
@@ -553,7 +553,7 @@ msgstr "عند الإغلاق"
 msgid "Admin"
 msgstr "الإدارة"
 
-#: enum_labels.py:119 templates/insights.html:64
+#: enum_labels.py:119 templates/insights.html:72
 msgid "Vet"
 msgstr "الطبيب البيطري"
 
@@ -1800,6 +1800,7 @@ msgstr "يجب أن يكون %(title)s بين %(lo)s و%(hi)s."
 #: routes/settings.py:223
 msgid "Not a valid language."
 msgstr "ليست لغة صالحة."
+
 #: routes/settings.py:234
 #, python-format
 msgid "%(title)s must be a valid time (HH:MM)."
@@ -1849,7 +1850,7 @@ msgstr "الزيارة"
 #: templates/consignment_returns.html:41
 #: templates/consignment_settlements.html:45
 #: templates/consignment_shrinkage.html:54 templates/distributor_detail.html:57
-#: templates/insights.html:150 templates/patient_detail.html:68
+#: templates/insights.html:158 templates/patient_detail.html:68
 #: templates/patient_detail.html:85 templates/pos_history.html:14
 #: templates/refunds.html:92 templates/visit_detail.html:63
 #: templates/visits_list.html:26
@@ -2060,7 +2061,7 @@ msgstr "حد الخصم"
 
 #: templates/admin_users.html:21 templates/audit_sessions_list.html:12
 #: templates/followups_list.html:14 templates/grooming_list.html:13
-#: templates/inpatient_list.html:15 templates/insights.html:150
+#: templates/inpatient_list.html:15 templates/insights.html:158
 #: templates/patient_detail.html:32 templates/patient_detail.html:68
 #: templates/patient_detail.html:85 templates/settings.html:128
 #: templates/settings.html:174 templates/visit_detail.html:64
@@ -2137,7 +2138,7 @@ msgid "Max Discount"
 msgstr "الحد الأقصى للخصم"
 
 #: templates/admin_users.html:87 templates/admin_users.html:113
-#: templates/admin_users.html:196
+#: templates/admin_users.html:200
 msgid ""
 "Whether staff with this role show up as a vet to assign in Appointments, "
 "Visits, Grooming, and Inpatient"
@@ -2146,7 +2147,7 @@ msgstr ""
 "والزيارات والعناية والإقامة المرضية"
 
 #: templates/admin_users.html:87 templates/admin_users.html:113
-#: templates/admin_users.html:196
+#: templates/admin_users.html:200
 msgid "Can be assigned as a vet"
 msgstr "يمكن إسناده كطبيب بيطري"
 
@@ -2159,7 +2160,7 @@ msgstr "موظف واحد · يبقى دائمًا مدير واحد على ال
 msgid "%(n)s staff members · always keeps at least one Admin"
 msgstr "%(n)s موظفين · يبقى دائمًا مدير واحد على الأقل"
 
-#: templates/admin_users.html:96 templates/admin_users.html:182
+#: templates/admin_users.html:96 templates/admin_users.html:184
 msgid "Description (optional)"
 msgstr "الوصف (اختياري)"
 
@@ -2181,7 +2182,7 @@ msgid "Unsaved changes"
 msgstr "تغييرات غير محفوظة"
 
 #: templates/admin_users.html:118 templates/admin_users.html:162
-#: templates/admin_users.html:200 templates/admin_users.html:226
+#: templates/admin_users.html:204 templates/admin_users.html:230
 #: templates/appointments.html:29 templates/appointments.html:98
 #: templates/audit_session_view.html:71 templates/boarding.html:47
 #: templates/boarding.html:71 templates/boarding.html:97
@@ -2250,70 +2251,70 @@ msgstr "تجاوز مخصص لهذا الشخص:"
 msgid "Create User"
 msgstr "إنشاء مستخدم"
 
-#: templates/admin_users.html:173 templates/admin_users.html:199
+#: templates/admin_users.html:175 templates/admin_users.html:203
 msgid "Add Role"
 msgstr "إضافة دور"
 
-#: templates/admin_users.html:174
+#: templates/admin_users.html:176
 msgid ""
 "New roles start with everything below unchecked — turn on only what this "
 "role needs."
 msgstr "تبدأ الأدوار الجديدة بكل ما يلي غير محدد — فعّل ما يحتاجه هذا الدور فقط."
 
-#: templates/admin_users.html:179
+#: templates/admin_users.html:181
 msgid "Role Name"
 msgstr "اسم الدور"
 
-#: templates/admin_users.html:180
+#: templates/admin_users.html:182
 msgid "e.g. Vet Tech"
 msgstr "مثال: مساعد بيطري"
 
-#: templates/admin_users.html:182
+#: templates/admin_users.html:184
 msgid "e.g. Assists vets, no billing access"
 msgstr "مثال: يساعد الأطباء، دون صلاحية الفوترة"
 
-#: templates/admin_users.html:195
+#: templates/admin_users.html:199
 #, python-format
 msgid "Max Discount (%%)"
 msgstr "الحد الأقصى للخصم (٪)"
 
-#: templates/admin_users.html:211
+#: templates/admin_users.html:215
 msgid "Delete role"
 msgstr "حذف الدور"
 
-#: templates/admin_users.html:214
+#: templates/admin_users.html:218
 msgid ""
 "Pick a role to move them to before this role can be deleted. Nobody is "
 "left without a role."
 msgstr "اختر دورًا لنقلهم إليه قبل إمكانية حذف هذا الدور. لا يُترك أحد دون دور."
 
-#: templates/admin_users.html:217
+#: templates/admin_users.html:221
 msgid "Move affected staff to"
 msgstr "نقل الموظفين المتأثرين إلى"
 
-#: templates/admin_users.html:223
+#: templates/admin_users.html:227
 msgid "No one is currently assigned to this role. It can be deleted right away."
 msgstr "لا يوجد أحد مُسند إلى هذا الدور حاليًا. يمكن حذفه مباشرة."
 
-#: templates/admin_users.html:225 templates/admin_users.html:282
+#: templates/admin_users.html:229 templates/admin_users.html:286
 msgid "Delete Role"
 msgstr "حذف الدور"
 
-#: templates/admin_users.html:272
+#: templates/admin_users.html:276
 #, python-brace-format
 msgid "1 staff member currently assigned to {role}."
 msgstr "موظف واحد مُسنَد حاليًا إلى {role}."
 
-#: templates/admin_users.html:273
+#: templates/admin_users.html:277
 #, python-brace-format
 msgid "{count} staff members currently assigned to {role}."
 msgstr "{count} موظفين مُسنَدين حاليًا إلى {role}."
 
-#: templates/admin_users.html:276
+#: templates/admin_users.html:280
 msgid "Move & Delete"
 msgstr "النقل والحذف"
 
-#: templates/admin_users.html:277
+#: templates/admin_users.html:281
 msgid "Moving & deleting…"
 msgstr "جارٍ النقل والحذف…"
 
@@ -2352,7 +2353,7 @@ msgstr "الحيوان"
 #: templates/appointments.html:19 templates/boarding.html:106
 #: templates/followups_list.html:14 templates/grooming_list.html:13
 #: templates/inpatient_detail.html:27 templates/inpatient_list.html:15
-#: templates/insights.html:86 templates/patients_list.html:16
+#: templates/insights.html:94 templates/patients_list.html:16
 #: templates/patients_list.html:25 templates/visits_list.html:26
 #: templates/wellness_list.html:9
 msgid "Owner"
@@ -2705,7 +2706,7 @@ msgstr "الملاك"
 msgid "Patients"
 msgstr "المرضى"
 
-#: templates/base.html:67 templates/insights.html:64
+#: templates/base.html:67 templates/insights.html:72
 #: templates/visits_list.html:2 templates/visits_list.html:5
 msgid "Visits"
 msgstr "الزيارات"
@@ -3137,7 +3138,7 @@ msgstr "إجماليات %(day)s"
 msgid "All"
 msgstr "الكل"
 
-#: templates/cash_register.html:74 templates/insights.html:159
+#: templates/cash_register.html:74 templates/insights.html:167
 msgid "Not Audited"
 msgstr "لم يُجرد"
 
@@ -3423,8 +3424,8 @@ msgstr "إلى"
 msgid "Filter"
 msgstr "تصفية"
 
-#: templates/consignment_sales.html:25 templates/insights.html:35
-#: templates/insights.html:130 templates/reports.html:19
+#: templates/consignment_sales.html:25 templates/insights.html:43
+#: templates/insights.html:138 templates/reports.html:19
 #: templates/reports.html:46
 msgid "Month"
 msgstr "الشهر"
@@ -3433,7 +3434,7 @@ msgstr "الشهر"
 msgid "Units Sold"
 msgstr "الوحدات المباعة"
 
-#: templates/consignment_sales.html:26 templates/insights.html:64
+#: templates/consignment_sales.html:26 templates/insights.html:72
 #, python-format
 msgid "Revenue (%(currency_label)s)"
 msgstr "الإيراد (%(currency_label)s)"
@@ -4294,8 +4295,8 @@ msgstr "الخصم ٪ (بحد أقصى %(discount_cap)s٪)"
 msgid "Apply"
 msgstr "تطبيق"
 
-#: templates/inpatient_detail.html:168 templates/insights.html:37
-#: templates/insights.html:50 templates/pos.html:28
+#: templates/inpatient_detail.html:168 templates/insights.html:45
+#: templates/insights.html:58 templates/pos.html:28
 #: templates/pos_receipt.html:13 templates/visit_detail.html:126
 msgid "Total"
 msgstr "الإجمالي"
@@ -4409,10 +4410,13 @@ msgid "Net of refunds, per month, in %(currency_label)s."
 msgstr "صافي بعد المرتجعات النقدية، شهريًا، بـ %(currency_label)s."
 
 #: templates/insights.html:25
+msgid "No revenue recorded in this window yet."
+msgstr "لا توجد إيرادات مسجلة في هذه الفترة بعد."
+#: templates/insights.html:29
 msgid "Payment Method Mix"
 msgstr "توزيع طرق الدفع"
 
-#: templates/insights.html:26
+#: templates/insights.html:30
 #, python-format
 msgid ""
 "Cash vs. card, last %(months_back)s months — a useful trust/adoption "
@@ -4421,33 +4425,38 @@ msgstr ""
 "النقد مقابل البطاقة، آخر %(months_back)s شهرًا — مؤشر مفيد على الثقة "
 "والإقبال لعيادة جديدة."
 
-#: templates/insights.html:31
+#: templates/insights.html:34
+msgid ""
+"No payments recorded in this window yet — this chart fills in once "
+"payments are taken."
+msgstr "لا توجد دفعات مسجلة في هذه الفترة بعد — سيمتلئ هذا الرسم بمجرد تحصيل دفعات."
+#: templates/insights.html:39
 #, python-format
 msgid "Revenue by Category — Monthly Breakdown (%(currency_label)s)"
 msgstr "الإيرادات حسب الفئة — التفصيل الشهري (%(currency_label)s)"
 
-#: templates/insights.html:60
+#: templates/insights.html:68
 msgid "Vet Performance"
 msgstr "أداء الأطباء"
 
-#: templates/insights.html:61
+#: templates/insights.html:69
 #, python-format
 msgid "Visit count & billings generated, last %(months_back)s months."
 msgstr "عدد الزيارات والفواتير الناتجة، آخر %(months_back)s شهرًا."
 
-#: templates/insights.html:64
+#: templates/insights.html:72
 msgid "Avg / Visit"
 msgstr "المتوسط / زيارة"
 
-#: templates/insights.html:74
+#: templates/insights.html:82
 msgid "No billed visits with a recorded vet in this window."
 msgstr "لا توجد زيارات مفوترة بطبيب مسجل في هذه الفترة."
 
-#: templates/insights.html:82
+#: templates/insights.html:90
 msgid "Top Clients by Lifetime Spend"
 msgstr "أفضل العملاء حسب إجمالي الإنفاق"
 
-#: templates/insights.html:83
+#: templates/insights.html:91
 msgid ""
 "From visit, inpatient & boarding payments (walk-in POS retail sales "
 "aren't linked to a client in this system)."
@@ -4455,24 +4464,24 @@ msgstr ""
 "من دفعات الزيارات والإقامة المرضية والإقامة الفندقية (مبيعات التجزئة "
 "المباشرة في نقطة البيع غير مرتبطة بعميل في هذا النظام)."
 
-#: templates/insights.html:86
+#: templates/insights.html:94
 msgid "Payments"
 msgstr "الدفعات"
 
-#: templates/insights.html:86
+#: templates/insights.html:94
 #, python-format
 msgid "Total Paid (%(currency_label)s)"
 msgstr "إجمالي المدفوع (%(currency_label)s)"
 
-#: templates/insights.html:95
+#: templates/insights.html:103
 msgid "No payments on file yet."
 msgstr "لا توجد دفعات مسجلة بعد."
 
-#: templates/insights.html:103
+#: templates/insights.html:111
 msgid "Appointment Demand by Day of Week"
 msgstr "الطلب على المواعيد حسب يوم الأسبوع"
 
-#: templates/insights.html:105
+#: templates/insights.html:113
 msgid ""
 "Amman work week (Sunday–Thursday) shown first; Friday/Saturday is the "
 "weekend. \"Fulfillment\" compares appointments booked that weekday "
@@ -4485,51 +4494,51 @@ msgstr ""
 "بالزيارات المسجلة في اليوم نفسه على مستوى النظام — وهي تقديرية، لأن "
 "المواعيد غير مرتبطة بسجل زيارة محدد في هذا النظام."
 
-#: templates/insights.html:109
+#: templates/insights.html:117
 msgid "Day"
 msgstr "اليوم"
 
-#: templates/insights.html:109
+#: templates/insights.html:117
 msgid "Appointments Booked"
 msgstr "المواعيد المحجوزة"
 
-#: templates/insights.html:109
+#: templates/insights.html:117
 msgid "Visits Logged (Same Weekday)"
 msgstr "الزيارات المسجلة (نفس يوم الأسبوع)"
 
-#: templates/insights.html:109
+#: templates/insights.html:117
 msgid "Approx. Fulfillment"
 msgstr "نسبة الإنجاز التقريبية"
 
-#: templates/insights.html:113
+#: templates/insights.html:121
 msgid "Weekend"
 msgstr "عطلة نهاية الأسبوع"
 
-#: templates/insights.html:123
+#: templates/insights.html:131
 msgid "Inpatient & Boarding Load"
 msgstr "حِمل الإقامة المرضية والفندقية"
 
-#: templates/insights.html:125
+#: templates/insights.html:133
 msgid "Avg. Inpatient Stay (Days)"
 msgstr "متوسط مدة الإقامة المرضية (بالأيام)"
 
-#: templates/insights.html:126
+#: templates/insights.html:134
 msgid "Avg. Boarding Stay (Days)"
 msgstr "متوسط مدة الإقامة الفندقية (بالأيام)"
 
-#: templates/insights.html:130
+#: templates/insights.html:138
 msgid "Active Inpatient Cases"
 msgstr "حالات الإقامة المرضية النشطة"
 
-#: templates/insights.html:130
+#: templates/insights.html:138
 msgid "Active Boarding Stays"
 msgstr "الإقامات الفندقية النشطة"
 
-#: templates/insights.html:144
+#: templates/insights.html:152
 msgid "Cash Register Health"
 msgstr "سلامة الصندوق"
 
-#: templates/insights.html:146
+#: templates/insights.html:154
 msgid ""
 "Last 30 days' Cash Register audit status. \"Not Audited\" means nobody "
 "closed out that day at all — on its own that's a documentation gap, not "
@@ -4540,11 +4549,14 @@ msgstr ""
 "اليوم إطلاقًا — وهذا بحد ذاته ثغرة توثيق لا دليل على وجود مشكلة، لكن "
 "تكرار تخطي الجرد (أو تكرار العجز) يستحق الفحص."
 
-#: templates/insights.html:150
+#: templates/insights.html:158
 #, python-format
 msgid "Difference (%(currency_label)s)"
 msgstr "الفرق (%(currency_label)s)"
 
+#: templates/insights.html:189
+msgid "Unspecified"
+msgstr "غير محدد"
 #: templates/inventory_catalog.html:6 templates/owners_list.html:5
 #: templates/patients_list.html:5 templates/price_list.html:5
 #, python-format
@@ -5606,6 +5618,7 @@ msgstr "تاريخ افتتاح العيادة"
 #: templates/settings.html:17
 msgid "Language"
 msgstr "اللغة"
+
 #: templates/settings.html:25
 msgid "Inventory Alerts"
 msgstr "تنبيهات المخزون"
