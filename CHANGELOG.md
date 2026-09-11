@@ -3,6 +3,14 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.12.1] - 2026-09-11
+
+### Fixed
+- **The new stock-count checks now also reach an existing installation.** In
+  v1.12.0 they were applied when a database was created, which meant a clinic
+  updating an existing one did not get them. Updating now adds them, and
+  quietly corrects any impossible count already stored.
+
 ## [1.12.0] - 2026-09-11
 
 ### Fixed
