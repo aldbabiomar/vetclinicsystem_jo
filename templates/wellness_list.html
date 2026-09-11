@@ -2,11 +2,11 @@
 {% block title %}Wellness — {{ clinic_name }}{% endblock %}
 {% block main_class %}main-wide{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Wellness Reminders</h1><p class="page-sub">Reminders start 5 days before the next dose date. Flagged for admin if 2+ weeks overdue and uncontacted. {{ total_count }} shown.</p></div></div>
+<div class="page-head"><div><h1>{{ _('Wellness Reminders') }}</h1><p class="page-sub">Reminders start 5 days before the next dose date. Flagged for admin if 2+ weeks overdue and uncontacted. {{ total_count }} shown.</p></div></div>
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">Next Dose Date</th><th scope="col">Animal</th><th scope="col">Owner</th><th scope="col">Phone</th><th scope="col">Type</th><th scope="col">Remind From</th><th scope="col">Contacted?</th><th scope="col">Method?</th><th scope="col"></th><th scope="col"></th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Next Dose Date') }}</th><th scope="col">{{ _('Animal') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Phone') }}</th><th scope="col">{{ _('Type') }}</th><th scope="col">{{ _('Remind From') }}</th><th scope="col">{{ _('Contacted?') }}</th><th scope="col">{{ _('Method?') }}</th><th scope="col"></th><th scope="col"></th></tr></thead>
   <tbody>
     {% for w in rows %}
     <form id="w-{{ w.visit_id }}" method="post" action="{{ url_for('clinical.wellness_update', visit_id=w.visit_id) }}">
@@ -29,7 +29,7 @@
           <option {{ 'selected' if w.wellness_contact_method=='Message' }}>Message</option>
         </select>
       </td>
-      <td><button class="btn small secondary" form="w-{{ w.visit_id }}" type="submit">Save</button></td>
+      <td><button class="btn small secondary" form="w-{{ w.visit_id }}" type="submit">{{ _('Save') }}</button></td>
       <td>
         {% if w.phone %}
         <a class="btn small ok" target="_blank" rel="noopener"

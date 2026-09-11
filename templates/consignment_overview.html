@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Consignment</h1>
+    <h1>{{ _('Consignment') }}</h1>
     <p class="page-sub">Distributor-owned stock on your shelves. {{ rows|length }} distributor(s) with Consignment items.</p>
   </div>
 </div>
@@ -11,12 +11,12 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th scope="col">Distributor</th>
-    <th scope="col" class="num-col">Shelf Units</th>
+    <th scope="col">{{ _('Distributor') }}</th>
+    <th scope="col" class="num-col">{{ _('Shelf Units') }}</th>
     <th scope="col" class="num-col">Shelf Value ({{ currency_label() }})</th>
     <th scope="col" class="num-col">Amount Owed ({{ currency_label() }})</th>
-    <th scope="col">Last Settlement</th>
-    <th scope="col" class="num-col">Sold This Month</th>
+    <th scope="col">{{ _('Last Settlement') }}</th>
+    <th scope="col" class="num-col">{{ _('Sold This Month') }}</th>
     <th scope="col"></th>
   </tr></thead>
   <tbody>

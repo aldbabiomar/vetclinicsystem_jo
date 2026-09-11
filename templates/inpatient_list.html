@@ -2,7 +2,7 @@
 {% block title %}Inpatient Cases — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Inpatient Cases</h1><p class="page-sub">{{ total_count }} shown.</p></div>
+  <div><h1>{{ _('Inpatient Cases') }}</h1><p class="page-sub">{{ total_count }} shown.</p></div>
   <a class="btn" href="{{ url_for('clinical.inpatient_new') }}">+ Admit Patient</a>
 </div>
 <div class="filter-chips">
@@ -12,7 +12,7 @@
 </div>
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">Admitted</th><th scope="col">Animal</th><th scope="col">Owner</th><th scope="col">Complaint</th><th scope="col">Status</th>
+  <thead><tr><th scope="col">{{ _('Admitted') }}</th><th scope="col">{{ _('Animal') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Complaint') }}</th><th scope="col">{{ _('Status') }}</th>
     {% if balance_due %}<th scope="col" class="num-col">Balance ({{ currency_label() }})</th>{% endif %}</tr></thead>
   <tbody>
     {% for c in cases %}

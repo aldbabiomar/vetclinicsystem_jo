@@ -2,13 +2,13 @@
 {% block title %}Patients — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Patients</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} on file.{% endif %} New patients are created from Log a Visit.</p></div>
+  <div><h1>{{ _('Patients') }}</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} on file.{% endif %} New patients are created from Log a Visit.</p></div>
   <a class="btn" href="{{ url_for('clinical.visit_new_start') }}">+ Log a Visit</a>
 </div>
 
 <form class="search-bar" method="get">
-  <input type="text" name="q" placeholder="Search ID, Animal, Microchip, Owner, or Phone…" value="{{ search }}">
-  <button class="btn secondary" type="submit">Search</button>
+  <input type="text" name="q" placeholder="{{ _('Search ID, Animal, Microchip, Owner, or Phone…') }}" value="{{ search }}">
+  <button class="btn secondary" type="submit">{{ _('Search') }}</button>
   {% if search %}<a class="btn secondary" href="{{ url_for('clinical.patients_list') }}">Clear</a>{% endif %}
 </form>
 
@@ -22,7 +22,7 @@
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">ID</th><th scope="col">Animal</th><th scope="col">Species</th><th scope="col">Sex</th><th scope="col">Owner</th><th scope="col">Phone</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Animal') }}</th><th scope="col">{{ _('Species') }}</th><th scope="col">{{ _('Sex') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Phone') }}</th></tr></thead>
   <tbody>
     {% for p in patients %}
     <tr data-vz-href="{{ url_for('clinical.patient_detail', patient_id=p.id) }}" tabindex="0" role="link" style="cursor:pointer;">

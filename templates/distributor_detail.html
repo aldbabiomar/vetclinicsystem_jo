@@ -19,7 +19,7 @@
 
 <div class="page-head">
   <div class="section-title">Order Bills</div>
-  <button class="btn" id="newBillBtn" style="display:{{ 'none' if open_new_bill_form else 'inline-flex' }};" data-vzh="distributor-detail-1">+ Log Bill</button>
+  <button class="btn" id="newBillBtn" style="display:{{ 'none' if open_new_bill_form else 'inline-flex' }};" data-vzh="distributor-detail-1">{{ _('+ Log Bill') }}</button>
 </div>
 
 {% set bill_form = form if open_new_bill_form else None %}
@@ -27,14 +27,14 @@
   <form method="post" action="{{ url_for('consignment.distributor_bill_new', dist_id=distributor.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
-      <div class="field"><label for="distributordetail-1-bill_date">Bill Date</label><input id="distributordetail-1-bill_date" required type="date" name="bill_date" value="{{ fv(bill_form, 'bill_date', today) }}"></div>
-      <div class="field"><label for="distributordetail-2-bill_reference">Bill / Invoice #</label><input id="distributordetail-2-bill_reference" name="bill_reference" value="{{ fv(bill_form, 'bill_reference') }}" placeholder="Distributor's own reference, optional"></div>
+      <div class="field"><label for="distributordetail-1-bill_date">{{ _('Bill Date') }}</label><input id="distributordetail-1-bill_date" required type="date" name="bill_date" value="{{ fv(bill_form, 'bill_date', today) }}"></div>
+      <div class="field"><label for="distributordetail-2-bill_reference">{{ _('Bill / Invoice #') }}</label><input id="distributordetail-2-bill_reference" name="bill_reference" value="{{ fv(bill_form, 'bill_reference') }}" placeholder="{{ _('Distributor\'s own reference, optional') }}"></div>
       <div class="field"><label for="distributordetail-3-total_amount">Total Amount ({{ currency_label() }})</label><input id="distributordetail-3-total_amount" required type="number" step="0.001" min="1" name="total_amount" value="{{ fv(bill_form, 'total_amount') }}"></div>
-      <div class="field full"><label for="distributordetail-4-notes">Notes</label><input id="distributordetail-4-notes" name="notes" value="{{ fv(bill_form, 'notes') }}"></div>
+      <div class="field full"><label for="distributordetail-4-notes">{{ _('Notes') }}</label><input id="distributordetail-4-notes" name="notes" value="{{ fv(bill_form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
-      <button class="btn" type="submit">Save Bill</button>
-      <button class="btn secondary" type="button" data-vzh="distributor-detail-2">Cancel</button>
+      <button class="btn" type="submit">{{ _('Save Bill') }}</button>
+      <button class="btn secondary" type="button" data-vzh="distributor-detail-2">{{ _('Cancel') }}</button>
     </div>
   </form>
 </div>
@@ -54,7 +54,7 @@
   {% if bill.notes %}<p class="muted">{{ bill.notes }}</p>{% endif %}
 
   <table>
-    <thead><tr><th scope="col">Date</th><th scope="col">Amount ({{ currency_label() }})</th><th scope="col">Method</th><th scope="col">Notes</th><th scope="col"></th></tr></thead>
+    <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">Amount ({{ currency_label() }})</th><th scope="col">{{ _('Method') }}</th><th scope="col">{{ _('Notes') }}</th><th scope="col"></th></tr></thead>
     <tbody>
       {% for p in bill.payments %}
       <tr>
@@ -63,7 +63,7 @@
         <td>
           <form method="post" action="{{ url_for('consignment.distributor_payment_delete', dist_id=distributor.id, payment_id=p.id) }}" style="display:inline;" data-confirm="Delete this payment?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn small danger" type="submit">Delete</button>
+            <button class="btn small danger" type="submit">{{ _('Delete') }}</button>
           </form>
         </td>
       </tr>
@@ -75,22 +75,22 @@
   {% set pay_form = form if payment_form_bill_id == bill.id else None %}
   <form method="post" action="{{ url_for('consignment.distributor_payment_new', dist_id=distributor.id, bill_id=bill.id) }}" class="form-grid" style="margin-top:12px;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="field"><label for="billpay-payment_date-{{ bill.id }}">Payment Date</label><input id="billpay-payment_date-{{ bill.id }}" required type="date" name="payment_date" value="{{ fv(pay_form, 'payment_date', today) }}"></div>
+    <div class="field"><label for="billpay-payment_date-{{ bill.id }}">{{ _('Payment Date') }}</label><input id="billpay-payment_date-{{ bill.id }}" required type="date" name="payment_date" value="{{ fv(pay_form, 'payment_date', today) }}"></div>
     <div class="field"><label for="billpay-amount-{{ bill.id }}">Amount ({{ currency_label() }})</label><input id="billpay-amount-{{ bill.id }}" required type="number" step="0.001" min="0.001" max="{{ bill.balance }}" name="amount" value="{{ fv(pay_form, 'amount') }}"></div>
-    <div class="field"><label for="billpay-method-{{ bill.id }}">Method</label>
+    <div class="field"><label for="billpay-method-{{ bill.id }}">{{ _('Method') }}</label>
       <select id="billpay-method-{{ bill.id }}" name="method">
         <option value="" {{ 'selected' if fv(pay_form, 'method')=='' }}>—</option>
         <option {{ 'selected' if fv(pay_form, 'method')=='Cash' }}>Cash</option><option {{ 'selected' if fv(pay_form, 'method')=='Card' }}>Card</option><option {{ 'selected' if fv(pay_form, 'method')=='Transfer' }}>Transfer</option>
       </select>
     </div>
-    <div class="field full"><label for="billpay-notes-{{ bill.id }}">Notes</label><input id="billpay-notes-{{ bill.id }}" name="notes" value="{{ fv(pay_form, 'notes') }}"></div>
-    <div class="form-actions"><button class="btn secondary" type="submit">Record Payment</button></div>
+    <div class="field full"><label for="billpay-notes-{{ bill.id }}">{{ _('Notes') }}</label><input id="billpay-notes-{{ bill.id }}" name="notes" value="{{ fv(pay_form, 'notes') }}"></div>
+    <div class="form-actions"><button class="btn secondary" type="submit">{{ _('Record Payment') }}</button></div>
   </form>
   {% endif %}
 
   <form method="post" action="{{ url_for('consignment.distributor_bill_delete', dist_id=distributor.id, bill_id=bill.id) }}" style="margin-top:8px;" data-confirm="Delete bill {{ bill.id }}?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button class="btn small danger" type="submit">Delete Bill</button>
+    <button class="btn small danger" type="submit">{{ _('Delete Bill') }}</button>
   </form>
 </div>
 {% else %}

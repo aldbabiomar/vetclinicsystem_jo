@@ -6,7 +6,7 @@
 
 {% macro error_body() %}
   {% with variant = "broken" %}{% include "_error_dog.html" %}{% endwith %}
-  <h1>Something went wrong on our end.</h1>
+  <h1>{{ _('Something went wrong on our end.') }}</h1>
   <p class="page-sub">
     This wasn't your fault — an unexpected error happened while handling that page.
     Copy the box below and send it along and it can be looked into.
@@ -15,7 +15,7 @@
   <div class="error-report">
     <div class="error-report-head">
       <span class="small muted">Details for support — safe to copy and send</span>
-      <button type="button" class="btn small secondary" data-copy-target="error-report-box">Copy</button>
+      <button type="button" class="btn small secondary" data-copy-target="error-report-box">{{ _('Copy') }}</button>
     </div>
     <pre id="error-report-box" class="error-report-box error-report-box-full">Error ID:  {{ error_id }}
 Time:      {{ error_time }}

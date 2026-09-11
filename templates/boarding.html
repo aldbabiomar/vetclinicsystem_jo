@@ -2,8 +2,8 @@
 {% block title %}Boarding — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Boarding</h1><p class="page-sub">{{ total_count }} {{ 'boarding session(s)' }}{% if not show_all %} currently boarding{% endif %}.</p></div>
-  <button class="btn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="boarding-1">+ Add Boarding</button>
+  <div><h1>{{ _('Boarding') }}</h1><p class="page-sub">{{ total_count }} {{ 'boarding session(s)' }}{% if not show_all %} currently boarding{% endif %}.</p></div>
+  <button class="btn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="boarding-1">{{ _('+ Add Boarding') }}</button>
 </div>
 
 <div class="filter-chips">
@@ -14,8 +14,8 @@
 {% set new_form = form if open_new_form else None %}
 <div class="card" id="newForm" style="display:{{ 'block' if open_new_form else 'none' }}; margin-bottom:16px;">
   <div class="field" style="margin-bottom:12px;">
-    <label for="patientSearch">Search Patient (Name, Patient ID, Owner Name, or Owner Phone)</label>
-    <input type="text" id="patientSearch" autocomplete="off" placeholder="Start Typing…">
+    <label for="patientSearch">{{ _('Search Patient (Name, Patient ID, Owner Name, or Owner Phone)') }}</label>
+    <input type="text" id="patientSearch" autocomplete="off" placeholder="{{ _('Start Typing…') }}">
   </div>
   <div id="searchResults" style="margin-bottom:10px;"></div>
 
@@ -24,12 +24,12 @@
     <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel">{{ new_form_patient_label or '' }}</strong></p>
     <input type="hidden" name="patient_id" id="patientIdField" value="{{ fv(new_form, 'patient_id') }}">
     <div class="form-grid">
-      <div class="field"><label for="entryDateField">Entry Date</label><input required type="date" name="entry_date" value="{{ fv(new_form, 'entry_date', today) }}" data-vzh="boarding-2" id="entryDateField"></div>
-      <div class="field"><label for="dismissalDateField">Expected Dismissal Date</label><input type="date" name="dismissal_date" value="{{ fv(new_form, 'dismissal_date') }}" data-vzh="boarding-2" id="dismissalDateField"></div>
-      <div class="field"><label for="boarding-1-room">Allocated Room</label><input id="boarding-1-room" name="room" value="{{ fv(new_form, 'room') }}"></div>
-      <div class="field"><label for="boarding-2-admitted_items">Admitted Items (Leash, Bed, Etc.)</label><input id="boarding-2-admitted_items" name="admitted_items" value="{{ fv(new_form, 'admitted_items') }}"></div>
+      <div class="field"><label for="entryDateField">{{ _('Entry Date') }}</label><input required type="date" name="entry_date" value="{{ fv(new_form, 'entry_date', today) }}" data-vzh="boarding-2" id="entryDateField"></div>
+      <div class="field"><label for="dismissalDateField">{{ _('Expected Dismissal Date') }}</label><input type="date" name="dismissal_date" value="{{ fv(new_form, 'dismissal_date') }}" data-vzh="boarding-2" id="dismissalDateField"></div>
+      <div class="field"><label for="boarding-1-room">{{ _('Allocated Room') }}</label><input id="boarding-1-room" name="room" value="{{ fv(new_form, 'room') }}"></div>
+      <div class="field"><label for="boarding-2-admitted_items">{{ _('Admitted Items (Leash, Bed, Etc.)') }}</label><input id="boarding-2-admitted_items" name="admitted_items" value="{{ fv(new_form, 'admitted_items') }}"></div>
       <div class="field"><label for="pricePerDayField">Price per Day ({{ currency_label() }})</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" value="{{ fv(new_form, 'price_per_day') }}" data-vzh="boarding-2"></div>
-      <div class="field"><label for="totalField">Total ({{ currency_label() }})</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="Auto-suggested from price × nights"></div>
+      <div class="field"><label for="totalField">Total ({{ currency_label() }})</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="{{ _('Auto-suggested from price × nights') }}"></div>
       <div class="field full" id="boardingDateWarning" style="display:none; color:var(--danger);"></div>
       <div class="field full">
         <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
@@ -38,13 +38,13 @@
         </label>
         <p class="small muted" style="margin:2px 0 8px;">Check this to report any chronic diseases or custom requirements for the stay (medication schedule, dietary restrictions, mobility issues, etc.).</p>
         <div id="specialNeedsNotesField" style="display:{{ 'block' if fv(new_form, 'special_needs')=='on' else 'none' }};">
-          <textarea name="special_needs_notes" placeholder="Describe the special need…">{{ fv(new_form, 'special_needs_notes') }}</textarea>
+          <textarea name="special_needs_notes" placeholder="{{ _('Describe the special need…') }}">{{ fv(new_form, 'special_needs_notes') }}</textarea>
         </div>
       </div>
     </div>
     <div class="form-actions">
-      <button class="btn" type="submit">Add Boarding</button>
-      <button class="btn secondary" type="button" data-vzh="boarding-4">Cancel</button>
+      <button class="btn" type="submit">{{ _('Add Boarding') }}</button>
+      <button class="btn secondary" type="button" data-vzh="boarding-4">{{ _('Cancel') }}</button>
     </div>
   </form>
 </div>
@@ -55,20 +55,20 @@
     <p class="small muted" id="incidentPatientLabel" style="margin-bottom:12px;"></p>
     <form method="post" id="incidentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field full" style="margin-bottom:12px;"><label for="boarding-3-issue">What's wrong?</label><textarea id="boarding-3-issue" name="issue" required></textarea></div>
+      <div class="field full" style="margin-bottom:12px;"><label for="boarding-3-issue">{{ _('What\'s wrong?') }}</label><textarea id="boarding-3-issue" name="issue" required></textarea></div>
       <label class="checkbox-row small" style="text-transform:none; font-weight:500; margin-bottom:8px;">
         <input type="checkbox" name="contacted" id="incidentContactedCheck" data-vzh="boarding-5">
         Contacted the owner?
       </label>
       <div id="incidentContactFields" style="display:none;">
-        <div class="field" style="margin-bottom:10px;"><label for="boarding-4-contact_method">How?</label>
+        <div class="field" style="margin-bottom:10px;"><label for="boarding-4-contact_method">{{ _('How?') }}</label>
           <select id="boarding-4-contact_method" name="contact_method"><option>Phone Call</option><option>Text Message</option></select>
         </div>
-        <div class="field full" style="margin-bottom:12px;"><label for="boarding-5-response">Owner's Response</label><textarea id="boarding-5-response" name="response"></textarea></div>
+        <div class="field full" style="margin-bottom:12px;"><label for="boarding-5-response">{{ _('Owner\'s Response') }}</label><textarea id="boarding-5-response" name="response"></textarea></div>
       </div>
       <div class="form-actions">
-        <button class="btn small" type="submit">Log Incident</button>
-        <button class="btn small secondary" type="button" data-vzh="boarding-6">Cancel</button>
+        <button class="btn small" type="submit">{{ _('Log Incident') }}</button>
+        <button class="btn small secondary" type="button" data-vzh="boarding-6">{{ _('Cancel') }}</button>
       </div>
     </form>
   </div>
@@ -83,7 +83,7 @@
       <div class="field" style="margin-bottom:10px;"><label for="boarding-6-amount">Amount ({{ currency_label() }})</label><input id="boarding-6-amount" type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="paymentDiscountInput">Discount (max {{ discount_cap }}%)</label><input type="number" step="0.01" min="0" max="{{ discount_cap }}" name="discount_percent" id="paymentDiscountInput" value="{{ fv(form, 'discount_percent') if payment_error_id else '0' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="boarding-7-cleanup_amount">Clean Up (max {{ CLEANUP_CAP }} {{ currency_label() }})</label><input id="boarding-7-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error_id else '0' }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label for="boarding-8-method">Method</label>
+      <div class="field" style="margin-bottom:10px;"><label for="boarding-8-method">{{ _('Method') }}</label>
         <select id="boarding-8-method" name="method">
           {% set m = fv(form, 'method', 'Cash') if payment_error_id else 'Cash' %}
           <option {{ 'selected' if m=='Cash' }}>Cash</option>
@@ -91,10 +91,10 @@
           <option {{ 'selected' if m=='Transfer' }}>Transfer</option>
         </select>
       </div>
-      <div class="field full" style="margin-bottom:12px;"><label for="boarding-9-notes">Notes</label><input id="boarding-9-notes" name="notes" value="{{ fv(form, 'notes') if payment_error_id else '' }}"></div>
+      <div class="field full" style="margin-bottom:12px;"><label for="boarding-9-notes">{{ _('Notes') }}</label><input id="boarding-9-notes" name="notes" value="{{ fv(form, 'notes') if payment_error_id else '' }}"></div>
       <div class="form-actions">
-        <button class="btn small" type="submit">Record Payment</button>
-        <button class="btn small secondary" type="button" data-vzh="boarding-7">Cancel</button>
+        <button class="btn small" type="submit">{{ _('Record Payment') }}</button>
+        <button class="btn small secondary" type="button" data-vzh="boarding-7">{{ _('Cancel') }}</button>
       </div>
     </form>
   </div>
@@ -103,8 +103,8 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead><tr>
-    <th scope="col">Patient</th><th scope="col">Owner</th><th scope="col">Room</th><th scope="col">Entry</th><th scope="col">Dismissal</th>
-    <th scope="col" class="num-col">Total ({{ currency_label() }})</th><th scope="col">Payment</th><th scope="col">Special Needs</th><th scope="col">Incidents</th><th scope="col"></th>
+    <th scope="col">{{ _('Patient') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Room') }}</th><th scope="col">{{ _('Entry') }}</th><th scope="col">{{ _('Dismissal') }}</th>
+    <th scope="col" class="num-col">Total ({{ currency_label() }})</th><th scope="col">{{ _('Payment') }}</th><th scope="col">{{ _('Special Needs') }}</th><th scope="col">{{ _('Incidents') }}</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for s in sessions %}
@@ -120,16 +120,16 @@
       <td>{% if s.incident_count %}<span class="badge danger">{{ s.incident_count }}</span>{% else %}<span class="muted small">0</span>{% endif %}</td>
       <td class="actions-cell">
         <div class="action-btns">
-          <button class="btn small danger" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-vzh="boarding-8">Something's Wrong!</button>
+          <button class="btn small danger" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-vzh="boarding-8">{{ _('Something\'s Wrong!') }}</button>
           <div class="action-btns-row">
-            <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-discount="{{ s.discount_percent or 0 }}" data-vzh="boarding-9">Payment</button>
-            <button class="btn small secondary" type="button" data-vzh="boarding-10" data-vz-arg="{{ s.id }}">Edit</button>
+            <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-discount="{{ s.discount_percent or 0 }}" data-vzh="boarding-9">{{ _('Payment') }}</button>
+            <button class="btn small secondary" type="button" data-vzh="boarding-10" data-vz-arg="{{ s.id }}">{{ _('Edit') }}</button>
           </div>
           <a class="btn small secondary" href="{{ url_for('clinical.boarding_export_pdf', boarding_id=s.id) }}">Export (PDF)</a>
           {% if not s.dismissed %}
           <form method="post" action="{{ url_for('clinical.boarding_dismiss', boarding_id=s.id) }}" style="display:inline;" data-confirm="Mark {{ s.animal_name }} as picked up?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn small secondary" type="submit">Mark Picked Up</button>
+            <button class="btn small secondary" type="submit">{{ _('Mark Picked Up') }}</button>
           </form>
           {% endif %}
           {% if s.owner_phone %}
@@ -147,23 +147,23 @@
         <form method="post" action="{{ url_for('clinical.boarding_edit', boarding_id=s.id) }}" class="form-grid" style="padding:10px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="expected_updated_at" value="{{ s.updated_at or '' }}">
-          <div class="field"><label for="stay-entry_date-{{ s.id }}">Entry Date</label><input id="stay-entry_date-{{ s.id }}" type="date" name="entry_date" value="{{ fv(row_form, 'entry_date', s.entry_date) }}"></div>
-          <div class="field"><label for="stay-dismissal_date-{{ s.id }}">Dismissal Date</label><input id="stay-dismissal_date-{{ s.id }}" type="date" name="dismissal_date" value="{{ fv(row_form, 'dismissal_date', s.dismissal_date or '') }}"></div>
-          <div class="field"><label for="stay-room-{{ s.id }}">Room</label><input id="stay-room-{{ s.id }}" name="room" value="{{ fv(row_form, 'room', s.room or '') }}"></div>
-          <div class="field"><label for="stay-admitted_items-{{ s.id }}">Admitted Items</label><input id="stay-admitted_items-{{ s.id }}" name="admitted_items" value="{{ fv(row_form, 'admitted_items', s.admitted_items or '') }}"></div>
+          <div class="field"><label for="stay-entry_date-{{ s.id }}">{{ _('Entry Date') }}</label><input id="stay-entry_date-{{ s.id }}" type="date" name="entry_date" value="{{ fv(row_form, 'entry_date', s.entry_date) }}"></div>
+          <div class="field"><label for="stay-dismissal_date-{{ s.id }}">{{ _('Dismissal Date') }}</label><input id="stay-dismissal_date-{{ s.id }}" type="date" name="dismissal_date" value="{{ fv(row_form, 'dismissal_date', s.dismissal_date or '') }}"></div>
+          <div class="field"><label for="stay-room-{{ s.id }}">{{ _('Room') }}</label><input id="stay-room-{{ s.id }}" name="room" value="{{ fv(row_form, 'room', s.room or '') }}"></div>
+          <div class="field"><label for="stay-admitted_items-{{ s.id }}">{{ _('Admitted Items') }}</label><input id="stay-admitted_items-{{ s.id }}" name="admitted_items" value="{{ fv(row_form, 'admitted_items', s.admitted_items or '') }}"></div>
           <div class="field"><label for="stay-price_per_day-{{ s.id }}">Price per Day ({{ currency_label() }})</label><input id="stay-price_per_day-{{ s.id }}" type="number" step="0.001" name="price_per_day" value="{{ fv(row_form, 'price_per_day', s.price_per_day if s.price_per_day is not none else '') }}"></div>
-          <div class="field"><label for="stay-total-{{ s.id }}">Total ({{ currency_label() }})</label><input id="stay-total-{{ s.id }}" type="number" step="0.001" name="total" placeholder="Auto-suggested from price × nights"
+          <div class="field"><label for="stay-total-{{ s.id }}">Total ({{ currency_label() }})</label><input id="stay-total-{{ s.id }}" type="number" step="0.001" name="total" placeholder="{{ _('Auto-suggested from price × nights') }}"
             value="{{ fv(row_form, 'total', s.total if (s.total is not none and not s.total_is_auto) else '') }}"></div>
           <div class="field full">
             <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
               <input type="checkbox" name="special_needs" id="specialNeedsCheck-{{ s.id }}" {{ 'checked' if fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on' }} data-vzh="boarding-11" data-vz-arg="{{ s.id }}"> Special Needs?
             </label>
-            <textarea name="special_needs_notes" id="specialNeedsNotesField-{{ s.id }}" placeholder="Describe the special need…" style="display: {{ 'block' if (fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on') else 'none' }};">{{ fv(row_form, 'special_needs_notes', s.special_needs_notes or '') }}</textarea>
+            <textarea name="special_needs_notes" id="specialNeedsNotesField-{{ s.id }}" placeholder="{{ _('Describe the special need…') }}" style="display: {{ 'block' if (fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on') else 'none' }};">{{ fv(row_form, 'special_needs_notes', s.special_needs_notes or '') }}</textarea>
             {% if s.special_needs_notes and not s.special_needs %}
             <p class="small muted">Notes on file but Special Needs is unchecked — they won't be saved unless you check the box.</p>
             {% endif %}
           </div>
-          <div class="form-actions"><button class="btn small" type="submit">Save Changes</button></div>
+          <div class="form-actions"><button class="btn small" type="submit">{{ _('Save Changes') }}</button></div>
         </form>
       </td>
     </tr>

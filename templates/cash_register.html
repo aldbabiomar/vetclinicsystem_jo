@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Cash Register</h1>
+    <h1>{{ _('Cash Register') }}</h1>
     <p class="page-sub">Every POS sale, Visit/Inpatient/Boarding payment, and refund on {{ day }} — for end-of-day
       cash-up against what's physically in the till.</p>
   </div>
@@ -11,12 +11,12 @@
 
 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
   <div style="display:flex; gap:10px;">
-    <button class="btn secondary" type="button" data-vzh="cash-register-1">Pay From Cash Register</button>
-    <button class="btn" type="button" data-vzh="cash-register-2">Perform Audit</button>
+    <button class="btn secondary" type="button" data-vzh="cash-register-1">{{ _('Pay From Cash Register') }}</button>
+    <button class="btn" type="button" data-vzh="cash-register-2">{{ _('Perform Audit') }}</button>
   </div>
   <form class="search-bar" method="get" style="margin:0;">
     <input type="date" name="date" value="{{ day }}">
-    <button class="btn secondary" type="submit">View by Date</button>
+    <button class="btn secondary" type="submit">{{ _('View by Date') }}</button>
     {% if day != today %}<a class="btn secondary" href="{{ url_for('sales.cash_register_page') }}">Clear</a>{% endif %}
   </form>
 </div>
@@ -24,8 +24,8 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th scope="col">Date</th><th scope="col">Employee</th><th scope="col">Type</th><th scope="col" class="num-col">Subtotal</th>
-    <th scope="col" class="num-col">Discount</th><th scope="col" class="num-col">Total ({{ currency_label() }})</th><th scope="col">Payment</th>
+    <th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Employee') }}</th><th scope="col">{{ _('Type') }}</th><th scope="col" class="num-col">{{ _('Subtotal') }}</th>
+    <th scope="col" class="num-col">{{ _('Discount') }}</th><th scope="col" class="num-col">Total ({{ currency_label() }})</th><th scope="col">{{ _('Payment') }}</th>
   </tr></thead>
   <tbody>
     {% for r in ledger %}
@@ -90,7 +90,7 @@
 
 <div id="payoutModal" class="modal-overlay" style="display:{{ 'flex' if payout_form else 'none' }};">
   <div class="modal-box" style="max-width:420px;">
-    <h2 style="margin-top:0;">Pay From Cash Register</h2>
+    <h2 style="margin-top:0;">{{ _('Pay From Cash Register') }}</h2>
     <p class="small muted" style="margin-top:-6px;">Logs cash leaving the till on {{ day }} for a reason that isn't a
       refund — petty cash, paying a supplier directly out of the drawer, etc.</p>
     <form method="post" action="{{ url_for('sales.cash_register_payout_new') }}">
@@ -100,13 +100,13 @@
         <div class="field" style="grid-column:1/-1;"><label for="cashregister-1-amount">Amount ({{ currency_label() }})</label>
           <input id="cashregister-1-amount" type="number" name="amount" min="1" step="0.001" required autofocus value="{{ fv(payout_form, 'amount') }}">
         </div>
-        <div class="field" style="grid-column:1/-1;"><label for="cashregister-2-reason">Reason</label>
-          <input id="cashregister-2-reason" type="text" name="reason" value="{{ fv(payout_form, 'reason') }}" placeholder="e.g. paid the produce delivery driver" required>
+        <div class="field" style="grid-column:1/-1;"><label for="cashregister-2-reason">{{ _('Reason') }}</label>
+          <input id="cashregister-2-reason" type="text" name="reason" value="{{ fv(payout_form, 'reason') }}" placeholder="{{ _('e.g. paid the produce delivery driver') }}" required>
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn secondary" type="button" data-vzh="cash-register-3">Cancel</button>
-        <button class="btn" type="submit">Confirm</button>
+        <button class="btn secondary" type="button" data-vzh="cash-register-3">{{ _('Cancel') }}</button>
+        <button class="btn" type="submit">{{ _('Confirm') }}</button>
       </div>
     </form>
   </div>
@@ -127,13 +127,13 @@
         <div class="field" style="grid-column:1/-1;"><label for="cashregister-3-counted_cash">Cash Counted From the Register ({{ currency_label() }})</label>
           <input id="cashregister-3-counted_cash" type="number" name="counted_cash" min="0" step="0.001" required autofocus value="{{ fv(audit_form, 'counted_cash') }}">
         </div>
-        <div class="field" style="grid-column:1/-1;"><label for="cashregister-4-notes">Notes (optional)</label>
-          <input id="cashregister-4-notes" type="text" name="notes" value="{{ fv(audit_form, 'notes') }}" placeholder="e.g. counted twice, drawer was short a note">
+        <div class="field" style="grid-column:1/-1;"><label for="cashregister-4-notes">{{ _('Notes (optional)') }}</label>
+          <input id="cashregister-4-notes" type="text" name="notes" value="{{ fv(audit_form, 'notes') }}" placeholder="{{ _('e.g. counted twice, drawer was short a note') }}">
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn secondary" type="button" data-vzh="cash-register-4">Cancel</button>
-        <button class="btn" type="submit">Confirm</button>
+        <button class="btn secondary" type="button" data-vzh="cash-register-4">{{ _('Cancel') }}</button>
+        <button class="btn" type="submit">{{ _('Confirm') }}</button>
       </div>
     </form>
   </div>

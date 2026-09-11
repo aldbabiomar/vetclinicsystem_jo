@@ -2,12 +2,12 @@
 {% block title %}Yearly P&amp;L — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Yearly P&amp;L</h1><p class="page-sub">Same figures as Monthly P&amp;L, rolled up by year. {{ total_count }} year(s) shown.</p></div>
+  <div><h1>{{ _('Yearly P&amp;L') }}</h1><p class="page-sub">Same figures as Monthly P&amp;L, rolled up by year. {{ total_count }} year(s) shown.</p></div>
   <div style="display:flex; gap:10px;">
     <form method="post" action="{{ url_for('reports_rebuild_summary') }}" data-confirm="Rebuild all report data from scratch? This re-checks every month against current billing, sales, and cost data. It can take a few seconds on a large database.">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="return_to" value="{{ url_for('reports_yearly') }}">
-      <button class="btn secondary" type="submit" title="Force a full recalculation of every month, in case anything ever looks out of sync">Rebuild Report Data</button>
+      <button class="btn secondary" type="submit" title="{{ _('Force a full recalculation of every month, in case anything ever looks out of sync') }}">Rebuild Report Data</button>
     </form>
     <a class="btn secondary" href="{{ url_for('reports') }}">← Monthly P&amp;L</a>
   </div>
@@ -16,8 +16,8 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead><tr>
-    <th scope="col">Year</th><th scope="col" class="num-col">Revenue</th><th scope="col" class="num-col">COGS</th><th scope="col" class="num-col">Gross Profit</th>
-    <th scope="col" class="num-col">OpEx</th><th scope="col" class="num-col">Net Profit</th><th scope="col" class="num-col">Net Margin</th><th scope="col" class="num-col">YoY Change</th>
+    <th scope="col">{{ _('Year') }}</th><th scope="col" class="num-col">{{ _('Revenue') }}</th><th scope="col" class="num-col">{{ _('COGS') }}</th><th scope="col" class="num-col">{{ _('Gross Profit') }}</th>
+    <th scope="col" class="num-col">{{ _('OpEx') }}</th><th scope="col" class="num-col">{{ _('Net Profit') }}</th><th scope="col" class="num-col">{{ _('Net Margin') }}</th><th scope="col" class="num-col">{{ _('YoY Change') }}</th>
   </tr></thead>
   <tbody>
     {% for r in pl %}

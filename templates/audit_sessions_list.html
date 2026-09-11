@@ -2,14 +2,14 @@
 {% block title %}Audit History — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Audit History</h1><p class="page-sub">One session per shelf-walk. Only Confirmed audits count toward Inventory Status and the Ordering Sheet. {{ total_count }} shown.</p></div>
+  <div><h1>{{ _('Audit History') }}</h1><p class="page-sub">One session per shelf-walk. Only Confirmed audits count toward Inventory Status and the Ordering Sheet. {{ total_count }} shown.</p></div>
   <form method="post" action="{{ url_for('inventory.audit_session_start') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">+ Start / Resume Today's Audit</button></form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">{{ _('+ Start / Resume Today\'s Audit') }}</button></form>
 </div>
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">Date</th><th scope="col">Performed By</th><th scope="col">Status</th><th scope="col" class="num-col">Items Filled</th><th scope="col"></th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Performed By') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col" class="num-col">{{ _('Items Filled') }}</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for s in sessions %}
     <tr>
@@ -22,7 +22,7 @@
         {% if s.status != 'Confirmed' %}
         <form method="post" action="{{ url_for('inventory.audit_session_delete', session_id=s.id) }}" style="display:inline;" data-confirm="Discard this draft audit? This can't be undone.">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn small danger" type="submit">Discard</button>
+          <button class="btn small danger" type="submit">{{ _('Discard') }}</button>
         </form>
         {% endif %}
       </td>

@@ -1,30 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Edit Patient — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Edit Patient Details</h1><p class="page-sub">{{ patient.id }}</p></div></div>
+<div class="page-head"><div><h1>{{ _('Edit Patient Details') }}</h1><p class="page-sub">{{ patient.id }}</p></div></div>
 <div class="card">
 <form method="post" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="form-grid">
-    <div class="field"><label for="patientformedit-1-animal_name">Animal Name</label><input id="patientformedit-1-animal_name" required name="animal_name" value="{{ patient.animal_name }}"></div>
-    <div class="field"><label for="patientformedit-2-species">Species</label>
+    <div class="field"><label for="patientformedit-1-animal_name">{{ _('Animal Name') }}</label><input id="patientformedit-1-animal_name" required name="animal_name" value="{{ patient.animal_name }}"></div>
+    <div class="field"><label for="patientformedit-2-species">{{ _('Species') }}</label>
       <select id="patientformedit-2-species" name="species">{% for sp in ['Dog','Cat','Bird','Rabbit','Other'] %}<option {{ 'selected' if patient.species==sp }}>{{ sp }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label for="patientformedit-3-sex">Sex</label>
+    <div class="field"><label for="patientformedit-3-sex">{{ _('Sex') }}</label>
       <select id="patientformedit-3-sex" name="sex"><option value="">—</option>{% for sx in ['M','F'] %}<option {{ 'selected' if patient.sex==sx }}>{{ sx }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label for="patientformedit-4-repro_status">Reproductive Status</label>
+    <div class="field"><label for="patientformedit-4-repro_status">{{ _('Reproductive Status') }}</label>
       <select id="patientformedit-4-repro_status" name="repro_status"><option value="">—</option>{% for rs in ['Intact','Neutered','Spayed'] %}<option {{ 'selected' if patient.repro_status==rs }}>{{ rs }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label for="patientformedit-5-age_note">Age / DOB Note</label><input id="patientformedit-5-age_note" name="age_note" value="{{ patient.age_note or '' }}"></div>
-    <div class="field"><label for="patientformedit-6-housing">Housing</label>
+    <div class="field"><label for="patientformedit-5-age_note">{{ _('Age / DOB Note') }}</label><input id="patientformedit-5-age_note" name="age_note" value="{{ patient.age_note or '' }}"></div>
+    <div class="field"><label for="patientformedit-6-housing">{{ _('Housing') }}</label>
       <select id="patientformedit-6-housing" name="housing"><option value="">—</option>{% for h in ['Indoor','Outdoor','Stray'] %}<option {{ 'selected' if patient.housing==h }}>{{ h }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label for="patientformedit-7-microchip">Microchip Number (optional)</label><input id="patientformedit-7-microchip" name="microchip" autocomplete="off" placeholder="e.g. 985141000123456" value="{{ fv(form, 'microchip', patient.microchip or '') }}"></div>
-    <div class="field full"><label for="patientformedit-8-notes">Notes</label><textarea id="patientformedit-8-notes" name="notes">{{ patient.notes or '' }}</textarea></div>
+    <div class="field"><label for="patientformedit-7-microchip">{{ _('Microchip Number (optional)') }}</label><input id="patientformedit-7-microchip" name="microchip" autocomplete="off" placeholder="e.g. 985141000123456" value="{{ fv(form, 'microchip', patient.microchip or '') }}"></div>
+    <div class="field full"><label for="patientformedit-8-notes">{{ _('Notes') }}</label><textarea id="patientformedit-8-notes" name="notes">{{ patient.notes or '' }}</textarea></div>
   </div>
   <div class="form-actions">
-    <button class="btn" type="submit">Save Changes</button>
+    <button class="btn" type="submit">{{ _('Save Changes') }}</button>
     <a class="btn secondary" href="{{ url_for('clinical.patient_detail', patient_id=patient.id) }}">Cancel</a>
   </div>
 </form>

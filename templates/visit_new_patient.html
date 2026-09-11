@@ -1,37 +1,37 @@
 {% extends "base.html" %}
 {% block title %}Log Visit — New Patient — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Log Visit — New Patient</h1></div></div>
+<div class="page-head"><div><h1>{{ _('Log Visit — New Patient') }}</h1></div></div>
 <div class="card">
 <form method="post" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="section-title" style="margin-top:0;">Owner Details</div>
   <div class="form-grid">
-    <div class="field"><label for="visitnewpatient-1-owner_name">Owner Name</label><input id="visitnewpatient-1-owner_name" required name="owner_name" value="{{ fv(form, 'owner_name') }}"></div>
-    <div class="field"><label for="visitnewpatient-2-owner_phone">Owner Phone</label><input id="visitnewpatient-2-owner_phone" name="owner_phone" value="{{ fv(form, 'owner_phone') }}" data-phone-field></div>
-    <div class="field full"><label for="visitnewpatient-3-owner_address">Owner Address</label><input id="visitnewpatient-3-owner_address" name="owner_address" value="{{ fv(form, 'owner_address') }}"></div>
+    <div class="field"><label for="visitnewpatient-1-owner_name">{{ _('Owner Name') }}</label><input id="visitnewpatient-1-owner_name" required name="owner_name" value="{{ fv(form, 'owner_name') }}"></div>
+    <div class="field"><label for="visitnewpatient-2-owner_phone">{{ _('Owner Phone') }}</label><input id="visitnewpatient-2-owner_phone" name="owner_phone" value="{{ fv(form, 'owner_phone') }}" data-phone-field></div>
+    <div class="field full"><label for="visitnewpatient-3-owner_address">{{ _('Owner Address') }}</label><input id="visitnewpatient-3-owner_address" name="owner_address" value="{{ fv(form, 'owner_address') }}"></div>
   </div>
 
   <div class="section-title">Patient Details</div>
   <div class="form-grid">
-    <div class="field"><label for="visitnewpatient-4-animal_name">Animal Name</label><input id="visitnewpatient-4-animal_name" required name="animal_name" value="{{ fv(form, 'animal_name') }}"></div>
-    <div class="field"><label for="visitnewpatient-5-species">Species</label>
+    <div class="field"><label for="visitnewpatient-4-animal_name">{{ _('Animal Name') }}</label><input id="visitnewpatient-4-animal_name" required name="animal_name" value="{{ fv(form, 'animal_name') }}"></div>
+    <div class="field"><label for="visitnewpatient-5-species">{{ _('Species') }}</label>
       <select id="visitnewpatient-5-species" name="species">{% for sp in ['Dog','Cat','Bird','Rabbit','Other'] %}<option {{ 'selected' if fv(form, 'species', 'Dog')==sp }}>{{ sp }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label for="visitnewpatient-6-sex">Sex</label><select id="visitnewpatient-6-sex" name="sex"><option value="" {{ 'selected' if not fv(form, 'sex') }}>—</option><option {{ 'selected' if fv(form, 'sex')=='M' }}>M</option><option {{ 'selected' if fv(form, 'sex')=='F' }}>F</option></select></div>
-    <div class="field"><label for="visitnewpatient-7-repro_status">Reproductive Status</label>
+    <div class="field"><label for="visitnewpatient-6-sex">{{ _('Sex') }}</label><select id="visitnewpatient-6-sex" name="sex"><option value="" {{ 'selected' if not fv(form, 'sex') }}>—</option><option {{ 'selected' if fv(form, 'sex')=='M' }}>M</option><option {{ 'selected' if fv(form, 'sex')=='F' }}>F</option></select></div>
+    <div class="field"><label for="visitnewpatient-7-repro_status">{{ _('Reproductive Status') }}</label>
       <select id="visitnewpatient-7-repro_status" name="repro_status"><option value="" {{ 'selected' if not fv(form, 'repro_status') }}>—</option><option {{ 'selected' if fv(form, 'repro_status')=='Intact' }}>Intact</option><option {{ 'selected' if fv(form, 'repro_status')=='Neutered' }}>Neutered</option><option {{ 'selected' if fv(form, 'repro_status')=='Spayed' }}>Spayed</option></select>
     </div>
-    <div class="field"><label for="visitnewpatient-8-age_note">Age / DOB Note</label><input id="visitnewpatient-8-age_note" name="age_note" value="{{ fv(form, 'age_note') }}"></div>
-    <div class="field"><label for="visitnewpatient-9-housing">Housing</label><select id="visitnewpatient-9-housing" name="housing"><option value="" {{ 'selected' if not fv(form, 'housing') }}>—</option><option {{ 'selected' if fv(form, 'housing')=='Indoor' }}>Indoor</option><option {{ 'selected' if fv(form, 'housing')=='Outdoor' }}>Outdoor</option><option {{ 'selected' if fv(form, 'housing')=='Stray' }}>Stray</option></select></div>
-    <div class="field"><label for="visitnewpatient-10-microchip">Microchip Number (optional)</label><input id="visitnewpatient-10-microchip" name="microchip" autocomplete="off" placeholder="e.g. 985141000123456" value="{{ fv(form, 'microchip') }}"></div>
+    <div class="field"><label for="visitnewpatient-8-age_note">{{ _('Age / DOB Note') }}</label><input id="visitnewpatient-8-age_note" name="age_note" value="{{ fv(form, 'age_note') }}"></div>
+    <div class="field"><label for="visitnewpatient-9-housing">{{ _('Housing') }}</label><select id="visitnewpatient-9-housing" name="housing"><option value="" {{ 'selected' if not fv(form, 'housing') }}>—</option><option {{ 'selected' if fv(form, 'housing')=='Indoor' }}>Indoor</option><option {{ 'selected' if fv(form, 'housing')=='Outdoor' }}>Outdoor</option><option {{ 'selected' if fv(form, 'housing')=='Stray' }}>Stray</option></select></div>
+    <div class="field"><label for="visitnewpatient-10-microchip">{{ _('Microchip Number (optional)') }}</label><input id="visitnewpatient-10-microchip" name="microchip" autocomplete="off" placeholder="e.g. 985141000123456" value="{{ fv(form, 'microchip') }}"></div>
   </div>
 
-  <div class="field full" style="margin-top:14px;"><label for="visitnewpatient-11-complaint">Presenting Complaint / Reason for Visit</label><input id="visitnewpatient-11-complaint" name="complaint" value="{{ fv(form, 'complaint') }}"></div>
+  <div class="field full" style="margin-top:14px;"><label for="visitnewpatient-11-complaint">{{ _('Presenting Complaint / Reason for Visit') }}</label><input id="visitnewpatient-11-complaint" name="complaint" value="{{ fv(form, 'complaint') }}"></div>
   {% include "_visit_fields.html" %}
 
   <div class="form-actions">
-    <button class="btn" type="submit">Log Visit</button>
+    <button class="btn" type="submit">{{ _('Log Visit') }}</button>
     <a class="btn secondary" href="{{ url_for('clinical.visits_list') }}">Cancel</a>
   </div>
 </form>

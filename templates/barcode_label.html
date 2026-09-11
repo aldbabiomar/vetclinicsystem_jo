@@ -2,9 +2,9 @@
 {% block title %}Barcode — {{ item.name }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head no-print">
-  <div><h1>Barcode Label</h1><p class="page-sub">{{ item.name }}</p></div>
+  <div><h1>{{ _('Barcode Label') }}</h1><p class="page-sub">{{ item.name }}</p></div>
   <div style="display:flex; gap:10px;">
-    <button class="btn secondary" id="printBtn" data-vzh="barcode-label-1" disabled>Print</button>
+    <button class="btn secondary" id="printBtn" data-vzh="barcode-label-1" disabled>{{ _('Print') }}</button>
     <a class="btn secondary" href="{{ url_for('inventory.inventory_catalog') }}">Back</a>
   </div>
 </div>

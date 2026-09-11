@@ -17,14 +17,14 @@
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field" style="margin-bottom:14px;">
-        <label for="login-1-username">Username</label>
+        <label for="login-1-username">{{ _('Username') }}</label>
         <input id="login-1-username" name="username" autocomplete="username" required autofocus>
       </div>
       <div class="field" style="margin-bottom:18px;">
-        <label for="login-2-password">Password</label>
+        <label for="login-2-password">{{ _('Password') }}</label>
         <input id="login-2-password" type="password" name="password" autocomplete="current-password" required>
       </div>
-      <button class="btn" type="submit" style="width:100%; justify-content:center;">Log In</button>
+      <button class="btn" type="submit" style="width:100%; justify-content:center;">{{ _('Log In') }}</button>
     </form>
     {% if lockout_unlock_at %}
     <p class="small muted" id="lockoutCountdown" style="text-align:center; margin-top:14px;"></p>

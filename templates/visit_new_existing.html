@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Log Visit — Existing Patient — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Log Visit — Existing Patient</h1></div></div>
+<div class="page-head"><div><h1>{{ _('Log Visit — Existing Patient') }}</h1></div></div>
 
 <div class="card" style="margin-bottom:16px;">
   <div class="field">
-    <label for="patientSearch">Search Patient (Name, Patient ID, Owner Name, or Owner Phone)</label>
-    <input type="text" id="patientSearch" autocomplete="off" placeholder="Start Typing…">
+    <label for="patientSearch">{{ _('Search Patient (Name, Patient ID, Owner Name, or Owner Phone)') }}</label>
+    <input type="text" id="patientSearch" autocomplete="off" placeholder="{{ _('Start Typing…') }}">
   </div>
   <div id="searchResults" style="margin-top:10px;"></div>
 </div>
@@ -16,10 +16,10 @@
   <form method="post" id="visitForm" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="patient_id" id="patientIdField" value="{{ selected_patient_id or '' }}">
-    <div class="field full"><label for="visitnewexisting-1-complaint">Presenting Complaint / Reason for Visit</label><input id="visitnewexisting-1-complaint" name="complaint" value="{{ fv(form, 'complaint') }}"></div>
+    <div class="field full"><label for="visitnewexisting-1-complaint">{{ _('Presenting Complaint / Reason for Visit') }}</label><input id="visitnewexisting-1-complaint" name="complaint" value="{{ fv(form, 'complaint') }}"></div>
     {% include "_visit_fields.html" %}
     <div class="form-actions">
-      <button class="btn" type="submit">Log Visit</button>
+      <button class="btn" type="submit">{{ _('Log Visit') }}</button>
       <a class="btn secondary" href="{{ url_for('clinical.visits_list') }}">Cancel</a>
     </div>
   </form>

@@ -11,7 +11,7 @@
 <div class="error-page">
   <div class="card error-card">
     {% with variant = "lost" %}{% include "_error_dog.html" %}{% endwith %}
-    <h1>Hmm, we can't find that one.</h1>
+    <h1>{{ _('Hmm, we can\'t find that one.') }}</h1>
     <p class="page-sub">The page you're looking for doesn't exist, or may have been moved or deleted.</p>
     <div class="error-actions">
       <a class="btn" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
@@ -25,7 +25,7 @@
 <div class="auth-wrap">
   <div class="auth-card error-card">
     {% with variant = "lost" %}{% include "_error_dog.html" %}{% endwith %}
-    <h1>Hmm, we can't find that one.</h1>
+    <h1>{{ _('Hmm, we can\'t find that one.') }}</h1>
     <p class="page-sub">The page you're looking for doesn't exist, or may have been moved or deleted.</p>
     <div class="error-actions">
       <a class="btn" href="{{ url_for('login') }}">Back to Log In</a>

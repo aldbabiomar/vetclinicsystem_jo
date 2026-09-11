@@ -2,10 +2,10 @@
 {% block title %}Price List — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Price List</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items.{% endif %} Admin-only page — visible to Vet/Reception only as a read-only picker while billing.</p></div>
+  <div><h1>{{ _('Price List') }}</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items.{% endif %} Admin-only page — visible to Vet/Reception only as a read-only picker while billing.</p></div>
   <div style="display:flex; gap:10px;">
-    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory.price_list_bulk_edit') }}">Save Changes</button>
-    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" data-vzh="price-list-1">+ New Item</button>
+    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory.price_list_bulk_edit') }}">{{ _('Save Changes') }}</button>
+    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" data-vzh="price-list-1">{{ _('+ New Item') }}</button>
   </div>
 </div>
 
@@ -21,8 +21,8 @@
 
 <form class="search-bar" method="get">
   {% if active_cat %}<input type="hidden" name="category" value="{{ active_cat }}">{% endif %}
-  <input type="text" name="q" value="{{ search }}" placeholder="Search by Product Name…">
-  <button class="btn secondary" type="submit">Search</button>
+  <input type="text" name="q" value="{{ search }}" placeholder="{{ _('Search by Product Name…') }}">
+  <button class="btn secondary" type="submit">{{ _('Search') }}</button>
   {% if search %}<a class="btn secondary" href="{{ url_for('inventory.price_list', category=active_cat) }}">Clear</a>{% endif %}
 </form>
 
@@ -31,37 +31,37 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if show_new_form else None %}
     <div class="form-grid">
-      <div class="field"><label for="newItemName">Name</label><input required name="name" id="newItemName" value="{{ fv(new_form, 'name') }}"></div>
-      <div class="field"><label for="pricelist-1-category">Category</label>
+      <div class="field"><label for="newItemName">{{ _('Name') }}</label><input required name="name" id="newItemName" value="{{ fv(new_form, 'name') }}"></div>
+      <div class="field"><label for="pricelist-1-category">{{ _('Category') }}</label>
         <select id="pricelist-1-category" name="category" required data-vzh="price-list-2">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select>
       </div>
       <div class="field"><label for="newItemCost">Cost Price ({{ currency_label() }})</label><input type="number" step="0.001" name="cost_price" id="newItemCost" value="{{ fv(new_form, 'cost_price') }}"></div>
       <div class="field"><label for="pricelist-2-sale_price">Sale Price ({{ currency_label() }})</label><input id="pricelist-2-sale_price" type="number" step="0.001" name="sale_price" value="{{ fv(new_form, 'sale_price') }}"></div>
-      <div class="field link-field"><label for="pricelist-3-linked_item_id">Linked Inventory Item (Retail Only — for POS)</label>
+      <div class="field link-field"><label for="pricelist-3-linked_item_id">{{ _('Linked Inventory Item (Retail Only — for POS)') }}</label>
         <select id="pricelist-3-linked_item_id" name="linked_item_id" data-vzh="price-list-3"><option value="">—</option>{% for i in inv_items %}<option value="{{ i.id }}" data-name="{{ i.name }}" data-cost="{{ i.cost_price if i.cost_price is not none else '' }}" {{ 'selected' if fv(new_form, 'linked_item_id')==i.id }}>{{ i.name }}</option>{% endfor %}</select>
       </div>
-      <div class="field full"><label for="pricelist-4-notes">Notes</label><input id="pricelist-4-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
+      <div class="field full"><label for="pricelist-4-notes">{{ _('Notes') }}</label><input id="pricelist-4-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
       <div class="field full">
         <label class="checkbox-row small" style="text-transform:none; font-weight:500;"><input type="checkbox" name="can_discount" id="canDiscountNew" {{ 'checked' if fv(new_form, 'can_discount', 'on')=='on' }}> Can Be Discounted?</label>
         <p class="small muted" style="margin:2px 0 0;">Checked = a discount can be applied to a bill that includes this item. Unchecked = it blocks any discount on that bill.</p>
       </div>
     </div>
     <div class="form-actions">
-      <button class="btn" type="submit">Add Item</button>
-      <button class="btn secondary" type="button" data-vzh="price-list-4">Cancel</button>
+      <button class="btn" type="submit">{{ _('Add Item') }}</button>
+      <button class="btn secondary" type="button" data-vzh="price-list-4">{{ _('Cancel') }}</button>
     </div>
   </form>
 </div>
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Category</th><th scope="col" class="num-col">Cost ({{ currency_label() }})</th><th scope="col" class="num-col">Sale ({{ currency_label() }})</th><th scope="col">Notes</th><th scope="col" title="Checked = a discount can be applied to a bill including this item.">Can Be Discounted?</th><th scope="col"></th></tr></thead>
+  <thead><tr><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Category') }}</th><th scope="col" class="num-col">Cost ({{ currency_label() }})</th><th scope="col" class="num-col">Sale ({{ currency_label() }})</th><th scope="col">{{ _('Notes') }}</th><th scope="col" title="{{ _('Checked = a discount can be applied to a bill including this item.') }}">Can Be Discounted?</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for i in items %}
     {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}
     <form id="edit-{{ i.id }}" method="post" action="{{ url_for('inventory.price_list_edit', item_id=i.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
-    <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_price }}" {% if i.id in flagged_price %}title="Retail data inconsistency: this item's Linked Inventory Item doesn't match an active Retail item in Inventory Catalog."{% endif %}>
+    <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_price }}" {% if i.id in flagged_price %}title="{{ _('Retail data inconsistency: this item\'s Linked Inventory Item doesn\'t match an active Retail item in Inventory Catalog.') }}"{% endif %}>
       <td class="muted">{{ i.id }}</td>
       <td><input form="edit-{{ i.id }}" name="name" value="{{ fv(row_form, 'name', i.name) }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
       <td>
@@ -76,7 +76,7 @@
       <td style="white-space:nowrap;">
         <form method="post" action="{{ url_for('inventory.price_list_delete', item_id=i.id) }}" style="display:inline;" data-confirm="Remove {{ i.name }}?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn small danger" type="submit">Remove</button>
+          <button class="btn small danger" type="submit">{{ _('Remove') }}</button>
         </form>
       </td>
     </tr>

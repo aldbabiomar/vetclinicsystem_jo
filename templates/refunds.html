@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Refunds — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Refunds</h1><p class="page-sub">Refund a retail sale (restores stock, optional) or reduce revenue for a service. Both remove the amount from Monthly &amp; Yearly P&amp;L, in the month the refund is processed.</p></div></div>
+<div class="page-head"><div><h1>{{ _('Refunds') }}</h1><p class="page-sub">Refund a retail sale (restores stock, optional) or reduce revenue for a service. Both remove the amount from Monthly &amp; Yearly P&amp;L, in the month the refund is processed.</p></div></div>
 
 <div class="panel-grid">
   <div class="card">
@@ -9,10 +9,10 @@
     <p class="small muted">Look up the original sale by ID, then choose which items and quantities to refund. Stock is only put back if you check "Return to stock".</p>
 
     <div class="field" style="margin-bottom:14px;">
-      <label for="refundSaleId">Sale ID</label>
+      <label for="refundSaleId">{{ _('Sale ID') }}</label>
       <div style="display:flex; gap:8px;">
         <input type="text" id="refundSaleId" autocomplete="off" placeholder="e.g. 1042" style="flex:1;">
-        <button type="button" class="btn secondary" data-vzh="refunds-1">Find Sale</button>
+        <button type="button" class="btn secondary" data-vzh="refunds-1">{{ _('Find Sale') }}</button>
       </div>
     </div>
     <div id="refundSaleCleanupNote" class="small" style="display:none; margin-bottom:8px;"></div>
@@ -29,8 +29,8 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="sale_id" id="refundSaleIdHidden">
         <div class="form-grid">
-          <div class="field"><label for="refunds-1-refund_date">Refund Date</label><input id="refunds-1-refund_date" type="date" name="refund_date" value="{{ fv(retail_form, 'refund_date', today) }}"></div>
-          <div class="field"><label for="refunds-2-refund_method">Method</label>
+          <div class="field"><label for="refunds-1-refund_date">{{ _('Refund Date') }}</label><input id="refunds-1-refund_date" type="date" name="refund_date" value="{{ fv(retail_form, 'refund_date', today) }}"></div>
+          <div class="field"><label for="refunds-2-refund_method">{{ _('Method') }}</label>
             <select id="refunds-2-refund_method" name="refund_method">
               <option value="" {{ 'selected' if fv(retail_form, 'refund_method')=='' }}>—</option>
               <option {{ 'selected' if fv(retail_form, 'refund_method')=='Cash' }}>Cash</option>
@@ -38,12 +38,12 @@
               <option {{ 'selected' if fv(retail_form, 'refund_method')=='Transfer' }}>Transfer</option>
             </select>
           </div>
-          <div class="field"><label for="refunds-3-reason">Reason (optional)</label><input id="refunds-3-reason" type="text" name="reason" value="{{ fv(retail_form, 'reason') }}" placeholder="e.g. wrong item, customer changed mind"></div>
+          <div class="field"><label for="refunds-3-reason">{{ _('Reason (optional)') }}</label><input id="refunds-3-reason" type="text" name="reason" value="{{ fv(retail_form, 'reason') }}" placeholder="{{ _('e.g. wrong item, customer changed mind') }}"></div>
         </div>
         <input type="hidden" name="restock" id="restockHidden">
         <div id="refundFieldsHidden"></div>
         <div class="form-actions">
-          <button class="btn" type="submit" data-vzh="refunds-2">Process Retail Refund</button>
+          <button class="btn" type="submit" data-vzh="refunds-2">{{ _('Process Retail Refund') }}</button>
         </div>
       </form>
     </div>
@@ -56,8 +56,8 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
         <div class="field"><label for="refunds-4-amount">Refund Amount ({{ currency_label() }})</label><input id="refunds-4-amount" type="number" name="amount" min="1" step="0.001" required value="{{ fv(service_form, 'amount') }}"></div>
-        <div class="field"><label for="refunds-5-refund_date">Refund Date</label><input id="refunds-5-refund_date" type="date" name="refund_date" value="{{ fv(service_form, 'refund_date', today) }}"></div>
-        <div class="field"><label for="refunds-6-refund_method">Method</label>
+        <div class="field"><label for="refunds-5-refund_date">{{ _('Refund Date') }}</label><input id="refunds-5-refund_date" type="date" name="refund_date" value="{{ fv(service_form, 'refund_date', today) }}"></div>
+        <div class="field"><label for="refunds-6-refund_method">{{ _('Method') }}</label>
           <select id="refunds-6-refund_method" name="refund_method">
             <option value="" {{ 'selected' if fv(service_form, 'refund_method')=='' }}>—</option>
             <option {{ 'selected' if fv(service_form, 'refund_method')=='Cash' }}>Cash</option>
@@ -68,9 +68,9 @@
         <div class="field"><label for="refunds-7-visit_id">Visit ID <span class="muted">(one of these three)</span></label><input id="refunds-7-visit_id" type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
         <div class="field"><label for="refunds-8-inpatient_case_id">Inpatient Case ID <span class="muted">(one of these three)</span></label><input id="refunds-8-inpatient_case_id" type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
         <div class="field"><label for="refunds-9-boarding_id">Boarding ID <span class="muted">(one of these three)</span></label><input id="refunds-9-boarding_id" type="text" name="boarding_id" value="{{ fv(service_form, 'boarding_id') }}" placeholder="e.g. 7"></div>
-        <div class="field" style="grid-column:1/-1;"><label for="refunds-10-reason">Reason (optional)</label><input id="refunds-10-reason" type="text" name="reason" value="{{ fv(service_form, 'reason') }}" placeholder="e.g. service not completed"></div>
+        <div class="field" style="grid-column:1/-1;"><label for="refunds-10-reason">{{ _('Reason (optional)') }}</label><input id="refunds-10-reason" type="text" name="reason" value="{{ fv(service_form, 'reason') }}" placeholder="{{ _('e.g. service not completed') }}"></div>
       </div>
-      <div class="form-actions"><button class="btn" type="submit">Process Service Refund</button></div>
+      <div class="form-actions"><button class="btn" type="submit">{{ _('Process Service Refund') }}</button></div>
     </form>
   </div>
 </div>
@@ -79,7 +79,7 @@
   <div class="section-title" style="margin:0;">Recent Refunds</div>
   <form class="search-bar" method="get" style="margin:0;">
     <input type="date" name="date" value="{{ date_filter or '' }}">
-    <button class="btn secondary" type="submit">View by Date</button>
+    <button class="btn secondary" type="submit">{{ _('View by Date') }}</button>
     {% if date_filter %}<a class="btn secondary" href="{{ url_for('sales.refunds_page') }}">Clear</a>{% endif %}
   </form>
 </div>
@@ -89,7 +89,7 @@
 {% else %}
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Details</th><th scope="col">Amount</th><th scope="col">Method</th><th scope="col">Reason</th><th scope="col">Processed By</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Type') }}</th><th scope="col">{{ _('Details') }}</th><th scope="col">{{ _('Amount') }}</th><th scope="col">{{ _('Method') }}</th><th scope="col">{{ _('Reason') }}</th><th scope="col">{{ _('Processed By') }}</th></tr></thead>
   <tbody>
     {% for r in refunds %}
     <tr>

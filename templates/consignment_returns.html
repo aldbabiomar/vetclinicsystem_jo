@@ -3,12 +3,12 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Consignment Returns</h1>
+    <h1>{{ _('Consignment Returns') }}</h1>
     <p class="page-sub">Unsold stock handed back to the distributor. {{ total_count }} return(s) on file. No revenue,
       COGS, or settlement impact — nothing sold, so nothing owed either way.</p>
   </div>
   {% if has_permission('manage_consignment_stock') %}
-  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="consignment-returns-1">+ Log Return</button>
+  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="consignment-returns-1">{{ _('+ Log Return') }}</button>
   {% endif %}
 </div>
 
@@ -17,20 +17,20 @@
   <form method="post" action="{{ url_for('consignment.consignment_returns_new') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
-      <div class="field"><label for="consignmentreturns-1-item_id">Item</label>
+      <div class="field"><label for="consignmentreturns-1-item_id">{{ _('Item') }}</label>
         <select id="consignmentreturns-1-item_id" name="item_id" required>
           <option value="">—</option>
           {% for i in items %}<option value="{{ i.id }}" {{ 'selected' if fv(form, 'item_id')==i.id }}>{{ i.name }} ({{ i.distributor_name }})</option>{% endfor %}
         </select>
       </div>
-      <div class="field"><label for="consignmentreturns-2-quantity">Quantity</label><input id="consignmentreturns-2-quantity" type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
-      <div class="field"><label for="consignmentreturns-3-return_date">Return Date</label><input id="consignmentreturns-3-return_date" type="date" name="return_date" value="{{ fv(form, 'return_date', today) }}"></div>
-      <div class="field"><label for="consignmentreturns-4-reason">Reason</label><input id="consignmentreturns-4-reason" name="reason" value="{{ fv(form, 'reason') }}" placeholder="E.g. slow-moving, discontinued"></div>
-      <div class="field full"><label for="consignmentreturns-5-notes">Notes</label><input id="consignmentreturns-5-notes" name="notes" value="{{ fv(form, 'notes') }}"></div>
+      <div class="field"><label for="consignmentreturns-2-quantity">{{ _('Quantity') }}</label><input id="consignmentreturns-2-quantity" type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
+      <div class="field"><label for="consignmentreturns-3-return_date">{{ _('Return Date') }}</label><input id="consignmentreturns-3-return_date" type="date" name="return_date" value="{{ fv(form, 'return_date', today) }}"></div>
+      <div class="field"><label for="consignmentreturns-4-reason">{{ _('Reason') }}</label><input id="consignmentreturns-4-reason" name="reason" value="{{ fv(form, 'reason') }}" placeholder="{{ _('E.g. slow-moving, discontinued') }}"></div>
+      <div class="field full"><label for="consignmentreturns-5-notes">{{ _('Notes') }}</label><input id="consignmentreturns-5-notes" name="notes" value="{{ fv(form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
-      <button class="btn" type="submit">Log Return</button>
-      <button class="btn secondary" type="button" data-vzh="consignment-returns-2">Cancel</button>
+      <button class="btn" type="submit">{{ _('Log Return') }}</button>
+      <button class="btn secondary" type="button" data-vzh="consignment-returns-2">{{ _('Cancel') }}</button>
     </div>
   </form>
 </div>
@@ -39,8 +39,8 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead class="sticky-header"><tr>
-    <th scope="col">Date</th><th scope="col">Item</th><th scope="col">Distributor</th><th scope="col" class="num-col">Quantity</th>
-    <th scope="col" class="num-col">Unit Cost ({{ currency_label() }})</th><th scope="col">Reason</th><th scope="col">Notes</th>
+    <th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Item') }}</th><th scope="col">{{ _('Distributor') }}</th><th scope="col" class="num-col">{{ _('Quantity') }}</th>
+    <th scope="col" class="num-col">Unit Cost ({{ currency_label() }})</th><th scope="col">{{ _('Reason') }}</th><th scope="col">{{ _('Notes') }}</th>
   </tr></thead>
   <tbody>
     {% for r in returns %}

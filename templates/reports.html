@@ -2,12 +2,12 @@
 {% block title %}Monthly P&amp;L — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Monthly P&amp;L</h1><p class="page-sub">Revenue from billing &amp; retail sales, COGS from measured usage. Admin only.</p></div>
+  <div><h1>{{ _('Monthly P&amp;L') }}</h1><p class="page-sub">Revenue from billing &amp; retail sales, COGS from measured usage. Admin only.</p></div>
   <div style="display:flex; gap:10px;">
     <form method="post" action="{{ url_for('reports_rebuild_summary') }}" data-confirm="Rebuild all report data from scratch? This re-checks every month against current billing, sales, and cost data. It can take a few seconds on a large database.">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="return_to" value="{{ url_for('reports') }}">
-      <button class="btn secondary" type="submit" title="Force a full recalculation of every month, in case anything ever looks out of sync">Rebuild Report Data</button>
+      <button class="btn secondary" type="submit" title="{{ _('Force a full recalculation of every month, in case anything ever looks out of sync') }}">Rebuild Report Data</button>
     </form>
     <a class="btn secondary" href="{{ url_for('reports_yearly') }}">Yearly P&amp;L →</a>
   </div>
@@ -16,8 +16,8 @@
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
   <thead><tr>
-    <th scope="col">Month</th><th scope="col" class="num-col">Revenue</th><th scope="col" class="num-col">COGS</th><th scope="col" class="num-col">Gross Profit</th>
-    <th scope="col" class="num-col">OpEx</th><th scope="col" class="num-col">Net Profit</th><th scope="col" class="num-col">Net Margin</th><th scope="col" class="num-col">MoM Change</th>
+    <th scope="col">{{ _('Month') }}</th><th scope="col" class="num-col">{{ _('Revenue') }}</th><th scope="col" class="num-col">{{ _('COGS') }}</th><th scope="col" class="num-col">{{ _('Gross Profit') }}</th>
+    <th scope="col" class="num-col">{{ _('OpEx') }}</th><th scope="col" class="num-col">{{ _('Net Profit') }}</th><th scope="col" class="num-col">{{ _('Net Margin') }}</th><th scope="col" class="num-col">{{ _('MoM Change') }}</th>
   </tr></thead>
   <tbody>
     {% for r in pl %}
@@ -43,7 +43,7 @@
   <form method="post" action="{{ url_for('reports_opex_save') }}" id="opexForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
-      <div class="field"><label for="opexMonth">Month</label><input required type="month" name="month" id="opexMonth" value="{{ fv(form, 'month', today[:7]) }}" data-vzh="reports-1"></div>
+      <div class="field"><label for="opexMonth">{{ _('Month') }}</label><input required type="month" name="month" id="opexMonth" value="{{ fv(form, 'month', today[:7]) }}" data-vzh="reports-1"></div>
       <div class="field"><label for="opexRent">Rent ({{ currency_label() }})</label><input type="number" step="0.001" name="rent" id="opexRent" value="{{ fv(form, 'rent', '0') }}"></div>
       <div class="field"><label for="opexSalaries">Salaries / Payroll ({{ currency_label() }})</label><input type="number" step="0.001" name="salaries" id="opexSalaries" value="{{ fv(form, 'salaries', '0') }}"></div>
       <div class="field"><label for="opexUtilities">Utilities ({{ currency_label() }})</label><input type="number" step="0.001" name="utilities" id="opexUtilities" value="{{ fv(form, 'utilities', '0') }}"></div>
@@ -51,7 +51,7 @@
       <div class="field"><label for="opexOther">Other OpEx ({{ currency_label() }})</label><input type="number" step="0.001" name="other" id="opexOther" value="{{ fv(form, 'other', '0') }}"></div>
     </div>
     <p class="small muted" id="opexHint" style="margin:6px 0 0;"></p>
-    <div class="form-actions"><button class="btn" type="submit">Save Operating Costs</button></div>
+    <div class="form-actions"><button class="btn" type="submit">{{ _('Save Operating Costs') }}</button></div>
   </form>
 </div>
 <script nonce="{{ csp_nonce }}">

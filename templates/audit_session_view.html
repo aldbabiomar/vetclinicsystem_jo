@@ -8,8 +8,8 @@
   </div>
   {% if not readonly %}
   <div style="display:flex; gap:10px;">
-    <button class="btn secondary" type="submit" form="auditForm" formaction="{{ url_for('inventory.audit_session_save', session_id=sess.id) }}">Save</button>
-    <button class="btn" type="button" data-vzh="audit-session-view-1">Confirm</button>
+    <button class="btn secondary" type="submit" form="auditForm" formaction="{{ url_for('inventory.audit_session_save', session_id=sess.id) }}">{{ _('Save') }}</button>
+    <button class="btn" type="button" data-vzh="audit-session-view-1">{{ _('Confirm') }}</button>
   </div>
   {% endif %}
 </div>
@@ -30,9 +30,9 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead class="sticky-header"><tr>
-    <th scope="col">Item</th><th scope="col" class="num-col">Stock Counted</th><th scope="col" class="num-col">Received</th>
-    <th scope="col" class="num-col">Reorder Threshold</th><th scope="col">Critical?</th><th scope="col" class="num-col">Target Coverage (Days)</th>
-    <th scope="col">Nearest Expiry</th><th scope="col">Notes</th>
+    <th scope="col">{{ _('Item') }}</th><th scope="col" class="num-col">{{ _('Stock Counted') }}</th><th scope="col" class="num-col">{{ _('Received') }}</th>
+    <th scope="col" class="num-col">{{ _('Reorder Threshold') }}</th><th scope="col">{{ _('Critical?') }}</th><th scope="col" class="num-col">{{ _('Target Coverage (Days)') }}</th>
+    <th scope="col">{{ _('Nearest Expiry') }}</th><th scope="col">{{ _('Notes') }}</th>
   </tr></thead>
   <tbody>
     {% for it in items %}
@@ -64,13 +64,13 @@
 {% if not readonly %}
 <div id="confirmModal" class="modal-overlay" style="display:none;">
   <div class="modal-box">
-    <h2 style="margin-top:0;">Confirm This Audit?</h2>
+    <h2 style="margin-top:0;">{{ _('Confirm This Audit?') }}</h2>
     <p class="small">Continuing will confirm the audit and it can't be edited after. If you intend to save it for later, click Cancel and use Save instead.</p>
     <div id="confirmSummary" class="small" style="margin:10px 0; padding:10px; border-radius:8px; background:var(--muted-tint);"></div>
     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
-      <button class="btn secondary" type="button" data-vzh="audit-session-view-2">Cancel</button>
+      <button class="btn secondary" type="button" data-vzh="audit-session-view-2">{{ _('Cancel') }}</button>
       <form method="post" action="{{ url_for('inventory.audit_session_confirm', session_id=sess.id) }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">Yes, Confirm Permanently</button></form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">{{ _('Yes, Confirm Permanently') }}</button></form>
     </div>
   </div>
 </div>

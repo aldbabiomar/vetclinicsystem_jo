@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Ordering Sheet</h1>
+    <h1>{{ _('Ordering Sheet') }}</h1>
     <p class="page-sub">Sorted by priority — use this to place your monthly order.</p>
   </div>
 </div>
@@ -11,8 +11,8 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th scope="col">#</th><th scope="col">Item</th><th scope="col" class="num-col">Stock</th><th scope="col" class="num-col">Days Left</th><th scope="col">Priority</th>
-    <th scope="col" class="num-col">Suggested Order Qty</th><th scope="col">Trend</th><th scope="col">Distributor</th><th scope="col" class="num-col">Lead Time</th><th scope="col">Note</th>
+    <th scope="col">#</th><th scope="col">{{ _('Item') }}</th><th scope="col" class="num-col">{{ _('Stock') }}</th><th scope="col" class="num-col">{{ _('Days Left') }}</th><th scope="col">{{ _('Priority') }}</th>
+    <th scope="col" class="num-col">{{ _('Suggested Order Qty') }}</th><th scope="col">{{ _('Trend') }}</th><th scope="col">{{ _('Distributor') }}</th><th scope="col" class="num-col">{{ _('Lead Time') }}</th><th scope="col">{{ _('Note') }}</th>
   </tr></thead>
   <tbody>
     {% for r in rows %}

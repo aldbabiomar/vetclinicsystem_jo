@@ -2,7 +2,7 @@
 {% block title %}Insights — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Insights</h1><p class="page-sub">Management-level view over the last {{ months_back }} months. Admin only.</p></div>
+  <div><h1>{{ _('Insights') }}</h1><p class="page-sub">Management-level view over the last {{ months_back }} months. Admin only.</p></div>
   <div style="display:flex; gap:10px;">
     <a class="btn secondary" href="{{ url_for('retention') }}">Retention →</a>
   </div>
@@ -17,12 +17,12 @@
 
 <div class="panel-grid">
   <div class="card panel">
-    <h2>Revenue by Service Category</h2>
+    <h2>{{ _('Revenue by Service Category') }}</h2>
     <p class="small muted" style="margin-top:-6px;">Net of refunds, per month, in {{ currency_label() }}.</p>
     <canvas id="revenueChart" height="220"></canvas>
   </div>
   <div class="card panel">
-    <h2>Payment Method Mix</h2>
+    <h2>{{ _('Payment Method Mix') }}</h2>
     <p class="small muted" style="margin-top:-6px;">Cash vs. card, last {{ months_back }} months — a useful trust/adoption signal for a new clinic.</p>
     <canvas id="paymentChart" height="220"></canvas>
   </div>
@@ -32,9 +32,9 @@
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
   <thead><tr>
-    <th scope="col">Month</th>
+    <th scope="col">{{ _('Month') }}</th>
     {% for c in revenue.categories %}<th scope="col" class="num-col">{{ c }}</th>{% endfor %}
-    <th scope="col" class="num-col">Total</th>
+    <th scope="col" class="num-col">{{ _('Total') }}</th>
   </tr></thead>
   <tbody>
     {% for m in revenue.months %}
@@ -57,11 +57,11 @@
 
 <div class="panel-grid">
   <div class="card panel">
-    <h2>Vet Performance</h2>
+    <h2>{{ _('Vet Performance') }}</h2>
     <p class="small muted" style="margin-top:-6px;">Visit count &amp; billings generated, last {{ months_back }} months.</p>
     <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">Vet</th><th scope="col" class="num-col">Visits</th><th scope="col" class="num-col">Revenue ({{ currency_label() }})</th><th scope="col" class="num-col">Avg / Visit</th></tr></thead>
+      <thead><tr><th scope="col">{{ _('Vet') }}</th><th scope="col" class="num-col">{{ _('Visits') }}</th><th scope="col" class="num-col">Revenue ({{ currency_label() }})</th><th scope="col" class="num-col">{{ _('Avg / Visit') }}</th></tr></thead>
       <tbody>
         {% for v in vets %}
         <tr>
@@ -79,11 +79,11 @@
   </div>
 
   <div class="card panel">
-    <h2>Top Clients by Lifetime Spend</h2>
+    <h2>{{ _('Top Clients by Lifetime Spend') }}</h2>
     <p class="small muted" style="margin-top:-6px;">From visit, inpatient &amp; boarding payments (walk-in POS retail sales aren't linked to a client in this system).</p>
     <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">Owner</th><th scope="col" class="num-col">Payments</th><th scope="col" class="num-col">Total Paid ({{ currency_label() }})</th></tr></thead>
+      <thead><tr><th scope="col">{{ _('Owner') }}</th><th scope="col" class="num-col">{{ _('Payments') }}</th><th scope="col" class="num-col">Total Paid ({{ currency_label() }})</th></tr></thead>
       <tbody>
         {% for c in top_clients %}
         <tr>
@@ -106,7 +106,7 @@
 </p>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
-  <thead><tr><th scope="col">Day</th><th scope="col" class="num-col">Appointments Booked</th><th scope="col" class="num-col">Visits Logged (Same Weekday)</th><th scope="col" class="num-col">Approx. Fulfillment</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Day') }}</th><th scope="col" class="num-col">{{ _('Appointments Booked') }}</th><th scope="col" class="num-col">{{ _('Visits Logged (Same Weekday)') }}</th><th scope="col" class="num-col">{{ _('Approx. Fulfillment') }}</th></tr></thead>
   <tbody>
     {% for d in weekday_load %}
     <tr style="{{ 'background:var(--muted-tint);' if d.is_weekend }}">
@@ -127,7 +127,7 @@
 </div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
-  <thead><tr><th scope="col">Month</th><th scope="col" class="num-col">Active Inpatient Cases</th><th scope="col" class="num-col">Active Boarding Stays</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Month') }}</th><th scope="col" class="num-col">{{ _('Active Inpatient Cases') }}</th><th scope="col" class="num-col">{{ _('Active Boarding Stays') }}</th></tr></thead>
   <tbody>
     {% for r in occupancy.by_month %}
     <tr>
@@ -149,7 +149,7 @@
 </p>
 <div class="table-wrap" style="margin-bottom:24px; max-height:420px; overflow-y:auto;">
 <table>
-  <thead><tr><th scope="col">Date</th><th scope="col">Status</th><th scope="col" class="num-col">Difference ({{ currency_label() }})</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col" class="num-col">Difference ({{ currency_label() }})</th></tr></thead>
   <tbody>
     {% for d in cash_register_health %}
     <tr>

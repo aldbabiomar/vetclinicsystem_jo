@@ -3,10 +3,10 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Distributors</h1>
+    <h1>{{ _('Distributors') }}</h1>
     <p class="page-sub">{{ distributors|length }} on file.</p>
   </div>
-  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="distributors-1">+ New Distributor</button>
+  <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="distributors-1">{{ _('+ New Distributor') }}</button>
 </div>
 
 <div class="stat-grid">
@@ -25,7 +25,7 @@
 <div class="card" style="margin:16px 0;">
   <div class="section-title" style="margin-top:0;">Who You Owe Most</div>
   <table>
-    <thead><tr><th scope="col">Distributor</th><th scope="col" class="num-col">Outstanding ({{ currency_label() }})</th></tr></thead>
+    <thead><tr><th scope="col">{{ _('Distributor') }}</th><th scope="col" class="num-col">Outstanding ({{ currency_label() }})</th></tr></thead>
     <tbody>
       {% for r in payables.top_outstanding %}
       <tr>
@@ -39,8 +39,8 @@
 {% endif %}
 
 <form class="search-bar" method="get">
-  <input type="text" name="q" value="{{ search }}" placeholder="Search by Distributor Name…">
-  <button class="btn secondary" type="submit">Search</button>
+  <input type="text" name="q" value="{{ search }}" placeholder="{{ _('Search by Distributor Name…') }}">
+  <button class="btn secondary" type="submit">{{ _('Search') }}</button>
   {% if search %}<a class="btn secondary" href="{{ url_for('consignment.distributors_list') }}">Clear</a>{% endif %}
 </form>
 
@@ -49,18 +49,18 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if open_new_form else None %}
     <div class="form-grid">
-      <div class="field"><label for="distributors-1-name">Distributor Name</label><input id="distributors-1-name" required name="name" value="{{ fv(new_form, 'name') }}"></div>
-      <div class="field"><label for="distributors-2-contact_person">Contact Person</label><input id="distributors-2-contact_person" name="contact_person" value="{{ fv(new_form, 'contact_person') }}"></div>
-      <div class="field"><label for="distributors-3-phone">Phone</label><input id="distributors-3-phone" name="phone" value="{{ fv(new_form, 'phone') }}" data-phone-field></div>
-      <div class="field"><label for="distributors-4-email">Email</label><input id="distributors-4-email" type="email" name="email" value="{{ fv(new_form, 'email') }}"></div>
-      <div class="field"><label for="distributors-5-catalog_link">Product Catalog Link</label><input id="distributors-5-catalog_link" name="catalog_link" value="{{ fv(new_form, 'catalog_link') }}"></div>
-      <div class="field"><label for="distributors-6-lead_time_days">Lead Time (Days)</label><input id="distributors-6-lead_time_days" type="number" name="lead_time_days" value="{{ fv(new_form, 'lead_time_days') }}"></div>
-      <div class="field"><label for="distributors-7-payment_terms">Payment Terms</label><input id="distributors-7-payment_terms" name="payment_terms" value="{{ fv(new_form, 'payment_terms') }}" placeholder="E.g. Net 30"></div>
-      <div class="field full"><label for="distributors-8-notes">Notes</label><input id="distributors-8-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
+      <div class="field"><label for="distributors-1-name">{{ _('Distributor Name') }}</label><input id="distributors-1-name" required name="name" value="{{ fv(new_form, 'name') }}"></div>
+      <div class="field"><label for="distributors-2-contact_person">{{ _('Contact Person') }}</label><input id="distributors-2-contact_person" name="contact_person" value="{{ fv(new_form, 'contact_person') }}"></div>
+      <div class="field"><label for="distributors-3-phone">{{ _('Phone') }}</label><input id="distributors-3-phone" name="phone" value="{{ fv(new_form, 'phone') }}" data-phone-field></div>
+      <div class="field"><label for="distributors-4-email">{{ _('Email') }}</label><input id="distributors-4-email" type="email" name="email" value="{{ fv(new_form, 'email') }}"></div>
+      <div class="field"><label for="distributors-5-catalog_link">{{ _('Product Catalog Link') }}</label><input id="distributors-5-catalog_link" name="catalog_link" value="{{ fv(new_form, 'catalog_link') }}"></div>
+      <div class="field"><label for="distributors-6-lead_time_days">{{ _('Lead Time (Days)') }}</label><input id="distributors-6-lead_time_days" type="number" name="lead_time_days" value="{{ fv(new_form, 'lead_time_days') }}"></div>
+      <div class="field"><label for="distributors-7-payment_terms">{{ _('Payment Terms') }}</label><input id="distributors-7-payment_terms" name="payment_terms" value="{{ fv(new_form, 'payment_terms') }}" placeholder="{{ _('E.g. Net 30') }}"></div>
+      <div class="field full"><label for="distributors-8-notes">{{ _('Notes') }}</label><input id="distributors-8-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
-      <button class="btn" type="submit">Add Distributor</button>
-      <button class="btn secondary" type="button" data-vzh="distributors-2">Cancel</button>
+      <button class="btn" type="submit">{{ _('Add Distributor') }}</button>
+      <button class="btn secondary" type="button" data-vzh="distributors-2">{{ _('Cancel') }}</button>
     </div>
   </form>
 </div>
@@ -68,7 +68,7 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th scope="col">ID</th><th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Phone</th><th scope="col">Email</th><th scope="col" class="num-col">Lead Time</th><th scope="col">Terms</th><th scope="col" class="num-col">Outstanding ({{ currency_label() }})</th><th scope="col"></th>
+    <th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Contact') }}</th><th scope="col">{{ _('Phone') }}</th><th scope="col">{{ _('Email') }}</th><th scope="col" class="num-col">{{ _('Lead Time') }}</th><th scope="col">{{ _('Terms') }}</th><th scope="col" class="num-col">Outstanding ({{ currency_label() }})</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for d in distributors %}
@@ -86,10 +86,10 @@
       <td class="num-col">{{ outstanding.get(d.id)|money if outstanding.get(d.id) else "—" }}</td>
       <td style="white-space:nowrap;">
         <a class="btn small secondary" href="{{ url_for('consignment.distributor_detail', dist_id=d.id) }}">Ledger</a>
-        <button class="btn small secondary" form="edit-{{ d.id }}" type="submit">Save</button>
+        <button class="btn small secondary" form="edit-{{ d.id }}" type="submit">{{ _('Save') }}</button>
         <form method="post" action="{{ url_for('consignment.distributor_delete', dist_id=d.id) }}" style="display:inline;" data-confirm="Delete {{ d.name }}?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn small danger" type="submit">Delete</button>
+          <button class="btn small danger" type="submit">{{ _('Delete') }}</button>
         </form>
       </td>
     </tr>

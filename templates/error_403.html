@@ -11,7 +11,7 @@
 <div class="error-page">
   <div class="card error-card">
     {% with variant = "stop" %}{% include "_error_dog.html" %}{% endwith %}
-    <h1>Not allowed in here.</h1>
+    <h1>{{ _('Not allowed in here.') }}</h1>
     <p class="page-sub">Your role doesn't have access to this page. If that seems wrong, check with an Admin.</p>
     <div class="error-actions">
       <a class="btn" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
@@ -24,7 +24,7 @@
 <div class="auth-wrap">
   <div class="auth-card error-card">
     {% with variant = "stop" %}{% include "_error_dog.html" %}{% endwith %}
-    <h1>Not allowed in here.</h1>
+    <h1>{{ _('Not allowed in here.') }}</h1>
     <p class="page-sub">You don't have access to that page.</p>
     <div class="error-actions">
       <a class="btn" href="{{ url_for('login') }}">Back to Log In</a>

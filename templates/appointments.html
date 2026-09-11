@@ -2,7 +2,7 @@
 {% block title %}Appointments — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Appointments</h1><p class="page-sub">Slot length and hours are set in Settings.</p></div>
+  <div><h1>{{ _('Appointments') }}</h1><p class="page-sub">Slot length and hours are set in Settings.</p></div>
   <div style="display:flex; gap:10px;">
     <a class="btn secondary" href="{{ url_for('clinical.appointments_page', week=today_iso, day=today_iso) }}">This Week</a>
   </div>
@@ -17,7 +17,7 @@
   </p>
   <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">Date</th><th scope="col">Time</th><th scope="col">Pet</th><th scope="col">Owner</th><th scope="col">Assigned To</th><th scope="col">Why</th><th scope="col"></th></tr></thead>
+      <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Time') }}</th><th scope="col">{{ _('Pet') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Assigned To') }}</th><th scope="col">{{ _('Why') }}</th><th scope="col"></th></tr></thead>
       <tbody>
         {% for a in orphaned %}
         <tr>
@@ -27,7 +27,7 @@
           <td>{{ a.owner_name }}</td>
           <td class="small">{{ a.vet_name if a.resource_type=='vet' else 'Grooming' }}</td>
           <td class="small muted">{{ a.reason }}</td>
-          <td><button class="btn small danger" type="button" data-appt-id="{{ a.id }}" data-pet-name="{{ a.pet_name }}" data-vzh="appointments-1">Cancel</button></td>
+          <td><button class="btn small danger" type="button" data-appt-id="{{ a.id }}" data-pet-name="{{ a.pet_name }}" data-vzh="appointments-1">{{ _('Cancel') }}</button></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -81,7 +81,7 @@
 
 <div id="addModal" class="modal-overlay" style="display:{{ 'flex' if open_add_modal else 'none' }};">
   <div class="modal-box">
-    <h2 style="margin-top:0;">New Appointment</h2>
+    <h2 style="margin-top:0;">{{ _('New Appointment') }}</h2>
     <form method="post" action="{{ url_for('clinical.appointment_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="appt_date" id="addDate" value="{{ fv(form, 'appt_date') }}">
@@ -89,15 +89,15 @@
       <input type="hidden" name="resource_type" id="addResourceType" value="{{ fv(form, 'resource_type') }}">
       <input type="hidden" name="resource_id" id="addResourceId" value="{{ fv(form, 'resource_id') }}">
       <p class="small muted" id="addSlotLabel">{{ (fv(form, 'appt_date') ~ ' · ' ~ fv(form, 'slot_label')) if open_add_modal else '' }}</p>
-      <div class="field" style="margin-bottom:10px;"><label for="appointments-1-pet_name">Pet Name</label><input id="appointments-1-pet_name" required name="pet_name" value="{{ fv(form, 'pet_name') }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label for="appointments-2-owner_name">Owner Name</label><input id="appointments-2-owner_name" required name="owner_name" value="{{ fv(form, 'owner_name') }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label for="appointments-3-appointment_type">Type</label>
+      <div class="field" style="margin-bottom:10px;"><label for="appointments-1-pet_name">{{ _('Pet Name') }}</label><input id="appointments-1-pet_name" required name="pet_name" value="{{ fv(form, 'pet_name') }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="appointments-2-owner_name">{{ _('Owner Name') }}</label><input id="appointments-2-owner_name" required name="owner_name" value="{{ fv(form, 'owner_name') }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="appointments-3-appointment_type">{{ _('Type') }}</label>
         <select id="appointments-3-appointment_type" name="appointment_type"><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Medical' }}>Medical</option><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Grooming' }}>Grooming</option></select>
       </div>
-      <div class="field" style="margin-bottom:14px;"><label for="appointments-4-reason">Reason</label><input id="appointments-4-reason" name="reason" value="{{ fv(form, 'reason') }}"></div>
+      <div class="field" style="margin-bottom:14px;"><label for="appointments-4-reason">{{ _('Reason') }}</label><input id="appointments-4-reason" name="reason" value="{{ fv(form, 'reason') }}"></div>
       <div style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn secondary" type="button" data-vzh="appointments-3">Cancel</button>
-        <button class="btn" type="submit">Book</button>
+        <button class="btn secondary" type="button" data-vzh="appointments-3">{{ _('Cancel') }}</button>
+        <button class="btn" type="submit">{{ _('Book') }}</button>
       </div>
     </form>
   </div>

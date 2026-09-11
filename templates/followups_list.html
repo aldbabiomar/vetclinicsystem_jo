@@ -2,7 +2,7 @@
 {% block title %}Follow-Ups — {{ clinic_name }}{% endblock %}
 {% block main_class %}main-wide{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Follow-Ups</h1><p class="page-sub">Auto-generated from visits marked "follow-up needed". {{ total_count }} shown.</p></div></div>
+<div class="page-head"><div><h1>{{ _('Follow-Ups') }}</h1><p class="page-sub">Auto-generated from visits marked "follow-up needed". {{ total_count }} shown.</p></div></div>
 
 <div class="filter-chips">
   <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('clinical.followups_list') }}">Pending Only</a>
@@ -11,7 +11,7 @@
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">Follow-Up Date</th><th scope="col">Reminder Call</th><th scope="col">Animal</th><th scope="col">Owner</th><th scope="col">Phone</th><th scope="col">Method</th><th scope="col">Reason</th><th scope="col">Status</th><th scope="col"></th><th scope="col"></th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Follow-Up Date') }}</th><th scope="col">{{ _('Reminder Call') }}</th><th scope="col">{{ _('Animal') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Phone') }}</th><th scope="col">{{ _('Method') }}</th><th scope="col">{{ _('Reason') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col"></th><th scope="col"></th></tr></thead>
   <tbody>
     {% for f in followups %}
     <tr>

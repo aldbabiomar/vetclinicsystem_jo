@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Retention</h1>
+    <h1>{{ _('Retention') }}</h1>
     <p class="page-sub">Each row is the group of clients whose <em>first-ever visit</em> fell in that month. Each column is how many months later. The cell is the % of that group still coming back. Admin only.</p>
   </div>
   <div style="display:flex; gap:10px;">
@@ -20,8 +20,8 @@
 <table class="cohort-table">
   <thead>
     <tr>
-      <th scope="col">Cohort (First Visit)</th>
-      <th scope="col" class="num-col">Size</th>
+      <th scope="col">{{ _('Cohort (First Visit)') }}</th>
+      <th scope="col" class="num-col">{{ _('Size') }}</th>
       {% for o in cohort.offsets %}<th scope="col" class="num-col">+{{ o }}mo</th>{% endfor %}
     </tr>
   </thead>

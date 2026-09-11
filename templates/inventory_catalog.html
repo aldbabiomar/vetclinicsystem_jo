@@ -3,13 +3,13 @@
 {% block main_class %}main-wide{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Inventory Catalog</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items shown.{% endif %} Audit history tracks actual counts.</p></div>
+  <div><h1>{{ _('Inventory Catalog') }}</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items shown.{% endif %} Audit history tracks actual counts.</p></div>
   <div class="u-row">
     {% if has_barcodes %}
-    <button class="btn secondary" type="button" data-vzh="inventory-catalog-1">Bulk Barcode Print</button>
+    <button class="btn secondary" type="button" data-vzh="inventory-catalog-1">{{ _('Bulk Barcode Print') }}</button>
     {% endif %}
-    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory.inventory_catalog_bulk_edit') }}">Save Changes</button>
-    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" data-vzh="inventory-catalog-2">+ New Item</button>
+    <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory.inventory_catalog_bulk_edit') }}">{{ _('Save Changes') }}</button>
+    <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" data-vzh="inventory-catalog-2">{{ _('+ New Item') }}</button>
   </div>
 </div>
 
@@ -25,8 +25,8 @@
 
 <form class="search-bar" method="get">
   {% if show_inactive %}<input type="hidden" name="inactive" value="1">{% endif %}
-  <input type="text" name="q" value="{{ search }}" placeholder="Search by Product Name…">
-  <button class="btn secondary" type="submit">Search</button>
+  <input type="text" name="q" value="{{ search }}" placeholder="{{ _('Search by Product Name…') }}">
+  <button class="btn secondary" type="submit">{{ _('Search') }}</button>
   {% if search %}<a class="btn secondary" href="{{ url_for('inventory.inventory_catalog', inactive=1 if show_inactive else None) }}">Clear</a>{% endif %}
 </form>
 
@@ -35,19 +35,19 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% set new_form = form if show_new_form else None %}
     <div class="form-grid">
-      <div class="field"><label for="inventorycatalog-1-name">Item Name</label><input id="inventorycatalog-1-name" required name="name" value="{{ fv(new_form, 'name') }}"></div>
-      <div class="field"><label for="inventorycatalog-2-category">Category</label><select id="inventorycatalog-2-category" name="category">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select></div>
-      <div class="field"><label for="inventorycatalog-3-unit">Unit</label><input id="inventorycatalog-3-unit" name="unit" placeholder="Bottle, Box, Piece…" value="{{ fv(new_form, 'unit') }}"></div>
+      <div class="field"><label for="inventorycatalog-1-name">{{ _('Item Name') }}</label><input id="inventorycatalog-1-name" required name="name" value="{{ fv(new_form, 'name') }}"></div>
+      <div class="field"><label for="inventorycatalog-2-category">{{ _('Category') }}</label><select id="inventorycatalog-2-category" name="category">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="inventorycatalog-3-unit">{{ _('Unit') }}</label><input id="inventorycatalog-3-unit" name="unit" placeholder="{{ _('Bottle, Box, Piece…') }}" value="{{ fv(new_form, 'unit') }}"></div>
       <div class="field"><label for="inventorycatalog-4-cost_price">Cost Price ({{ currency_label() }})</label><input id="inventorycatalog-4-cost_price" type="number" step="0.001" name="cost_price" value="{{ fv(new_form, 'cost_price') }}"></div>
-      <div class="field"><label for="inventorycatalog-5-distributor_id">Preferred Distributor</label>
+      <div class="field"><label for="inventorycatalog-5-distributor_id">{{ _('Preferred Distributor') }}</label>
         <select id="inventorycatalog-5-distributor_id" name="distributor_id"><option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if fv(new_form, 'distributor_id')==d.id }}>{{ d.name }}</option>{% endfor %}</select>
       </div>
-      <div class="field checkbox-row u-mt-8"><input type="checkbox" name="track_expiry" id="te" {{ 'checked' if fv(new_form, 'track_expiry', 'on')=='on' }}><label class="u-label-inline" for="te">Track Expiry Date</label></div>
-      <div class="field full"><label for="inventorycatalog-6-notes">Notes</label><input id="inventorycatalog-6-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
+      <div class="field checkbox-row u-mt-8"><input type="checkbox" name="track_expiry" id="te" {{ 'checked' if fv(new_form, 'track_expiry', 'on')=='on' }}><label class="u-label-inline" for="te">{{ _('Track Expiry Date') }}</label></div>
+      <div class="field full"><label for="inventorycatalog-6-notes">{{ _('Notes') }}</label><input id="inventorycatalog-6-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
     </div>
     <div class="form-actions">
-      <button class="btn" type="submit">Add Item</button>
-      <button class="btn secondary" type="button" data-vzh="inventory-catalog-3">Cancel</button>
+      <button class="btn" type="submit">{{ _('Add Item') }}</button>
+      <button class="btn secondary" type="button" data-vzh="inventory-catalog-3">{{ _('Cancel') }}</button>
     </div>
   </form>
 </div>
@@ -65,13 +65,13 @@
   <col>
   <col>
 </colgroup>
-  <thead><tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Unit</th><th scope="col">Barcode</th><th class="u-wrap" scope="col">Track Expiry</th><th scope="col" class="num-col">Cost ({{ currency_label() }})</th><th scope="col">Distributor</th><th scope="col"></th></tr></thead>
+  <thead><tr><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Category') }}</th><th scope="col">{{ _('Unit') }}</th><th scope="col">{{ _('Barcode') }}</th><th class="u-wrap" scope="col">{{ _('Track Expiry') }}</th><th scope="col" class="num-col">Cost ({{ currency_label() }})</th><th scope="col">{{ _('Distributor') }}</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for i in items %}
     {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}
     <form id="edit-{{ i.id }}" method="post" action="{{ url_for('inventory.inventory_catalog_edit', item_id=i.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
-    <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_inventory }}" {% if i.id in flagged_inventory %}title="Retail data inconsistency: no active Retail Price List item is linked to this inventory item."{% endif %}>
+    <tr data-edit-form="edit-{{ i.id }}" class="{{ 'row-flag-mismatch' if i.id in flagged_inventory }}" {% if i.id in flagged_inventory %}title="{{ _('Retail data inconsistency: no active Retail Price List item is linked to this inventory item.') }}"{% endif %}>
       <td class="muted">{{ i.id }}</td>
       <td><input class="cell-input" form="edit-{{ i.id }}" name="name" value="{{ fv(row_form, 'name', i.name) }}"></td>
       <td><select class="cell-input-plain" form="edit-{{ i.id }}" name="category">{% for c in categories %}<option {{ 'selected' if fv(row_form, 'category', i.category)==c }}>{{ c }}</option>{% endfor %}</select></td>
@@ -84,7 +84,7 @@
       <td><input form="edit-{{ i.id }}" type="checkbox" name="track_expiry" {{ 'checked' if fv(row_form, 'track_expiry', 'on' if i.track_expiry else '')=='on' }}></td>
       <td class="num-col"><input class="cell-input num" form="edit-{{ i.id }}" type="number" step="0.001" name="cost_price" value="{{ fv(row_form, 'cost_price', i.cost_price if i.cost_price is not none else '') }}"></td>
       <td class="dist-cell">
-        <span class="dist-label" id="distLabel-{{ i.id }}" data-vzh="inventory-catalog-5" data-vz-arg="{{ i.id }}" title="Click to change distributor">{{ i.distributor_name or "—" }}</span>
+        <span class="dist-label" id="distLabel-{{ i.id }}" data-vzh="inventory-catalog-5" data-vz-arg="{{ i.id }}" title="{{ _('Click to change distributor') }}">{{ i.distributor_name or "—" }}</span>
         <select form="edit-{{ i.id }}" name="distributor_id" id="distSelect-{{ i.id }}" class="dist-select"
           data-vzh="inventory-catalog-6 inventory-catalog-7" data-vz-arg="{{ i.id }}">
           <option value="">—</option>{% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if fv(row_form, 'distributor_id', i.distributor_id)==d.id }}>{{ d.name }}</option>{% endfor %}
@@ -105,7 +105,7 @@
 
 <div id="bulkBarcodeModal" class="modal-overlay" style="display:none;">
   <div class="modal-box u-w-560">
-    <h2 class="u-mt-0">Bulk Barcode Print</h2>
+    <h2 class="u-mt-0">{{ _('Bulk Barcode Print') }}</h2>
     <p class="small muted u-mt-tight">
       Every item with a barcode. Set how many labels each one needs, remove any
       you don't want on this run, then print them all together.
@@ -114,8 +114,8 @@
     <p id="bulkBarcodeEmpty" class="small muted" style="display:none;">Nothing left to print.</p>
     <div class="scroll-box tall" id="bulkBarcodeList"></div>
     <div class="u-row-end u-mt-7">
-      <button class="btn secondary" type="button" data-vzh="inventory-catalog-8">Cancel</button>
-      <button class="btn" type="button" id="bulkBarcodePrintBtn" data-vzh="inventory-catalog-9" disabled>Print</button>
+      <button class="btn secondary" type="button" data-vzh="inventory-catalog-8">{{ _('Cancel') }}</button>
+      <button class="btn" type="button" id="bulkBarcodePrintBtn" data-vzh="inventory-catalog-9" disabled>{{ _('Print') }}</button>
     </div>
   </div>
 </div>
@@ -132,11 +132,11 @@
     <div class="card-footer-rule" id="barcodeManualSection">
       <div class="u-strong u-mb-2" id="barcodeManualTitle">Manually Enter Barcode</div>
       <div class="field u-mb-3">
-        <input type="text" id="barcodeManualInput" placeholder="Scan or type the barcode from the packaging" maxlength="64">
+        <input type="text" id="barcodeManualInput" placeholder="{{ _('Scan or type the barcode from the packaging') }}" maxlength="64">
       </div>
       <div class="u-row-sm">
-        <button class="btn small" type="button" id="barcodeManualSaveBtn" data-vzh="inventory-catalog-10">Save</button>
-        <button class="btn small danger" type="button" id="barcodeManualRemoveBtn" style="display:none;" data-vzh="inventory-catalog-11">Remove Barcode</button>
+        <button class="btn small" type="button" id="barcodeManualSaveBtn" data-vzh="inventory-catalog-10">{{ _('Save') }}</button>
+        <button class="btn small danger" type="button" id="barcodeManualRemoveBtn" style="display:none;" data-vzh="inventory-catalog-11">{{ _('Remove Barcode') }}</button>
       </div>
     </div>
 
@@ -144,14 +144,14 @@
       <div class="u-strong u-mb-1" id="barcodeGeneratedTitle">Create Barcode</div>
       <p class="small muted u-mb-3-flush" id="barcodeGeneratedHint">No barcode on the packaging? This app can create one and print a label to stick on the item.</p>
       <div class="u-row-sm">
-        <button class="btn small secondary" type="button" id="barcodeGeneratedCreateBtn" data-vzh="inventory-catalog-12">Create Now</button>
+        <button class="btn small secondary" type="button" id="barcodeGeneratedCreateBtn" data-vzh="inventory-catalog-12">{{ _('Create Now') }}</button>
         <a class="btn small secondary" type="button" id="barcodeGeneratedPrintBtn" style="display:none;" href="#">Print Label</a>
-        <button class="btn small danger" type="button" id="barcodeGeneratedRemoveBtn" style="display:none;" data-vzh="inventory-catalog-11">Remove Barcode</button>
+        <button class="btn small danger" type="button" id="barcodeGeneratedRemoveBtn" style="display:none;" data-vzh="inventory-catalog-11">{{ _('Remove Barcode') }}</button>
       </div>
     </div>
 
     <div class="u-row-end-plain u-mt-6">
-      <button class="btn secondary" type="button" data-vzh="inventory-catalog-13">Close</button>
+      <button class="btn secondary" type="button" data-vzh="inventory-catalog-13">{{ _('Close') }}</button>
     </div>
   </div>
 </div>

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Sales by Distributor</h1>
+    <h1>{{ _('Sales by Distributor') }}</h1>
     <p class="page-sub">What sold, what's owed the distributor, and your markup — priced at what each sale actually
       charged and cost at the time, not today's Price List.</p>
   </div>
@@ -14,16 +14,16 @@
     <option value="">All Distributors</option>
     {% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if distributor_id==d.id }}>{{ d.name }}</option>{% endfor %}
   </select>
-  <input type="date" name="date_from" value="{{ date_from }}" placeholder="From">
-  <input type="date" name="date_to" value="{{ date_to }}" placeholder="To">
-  <button class="btn secondary" type="submit">Filter</button>
+  <input type="date" name="date_from" value="{{ date_from }}" placeholder="{{ _('From') }}">
+  <input type="date" name="date_to" value="{{ date_to }}" placeholder="{{ _('To') }}">
+  <button class="btn secondary" type="submit">{{ _('Filter') }}</button>
   {% if distributor_id or date_from or date_to %}<a class="btn secondary" href="{{ url_for('consignment.consignment_sales_page') }}">Clear</a>{% endif %}
 </form>
 
 <div class="table-wrap sticky-scroll">
 <table>
   <thead class="sticky-header"><tr>
-    <th scope="col">Month</th><th scope="col">Distributor</th><th scope="col">Item</th><th scope="col" class="num-col">Units Sold</th>
+    <th scope="col">{{ _('Month') }}</th><th scope="col">{{ _('Distributor') }}</th><th scope="col">{{ _('Item') }}</th><th scope="col" class="num-col">{{ _('Units Sold') }}</th>
     <th scope="col" class="num-col">Revenue ({{ currency_label() }})</th><th scope="col" class="num-col">Owed to Distributor ({{ currency_label() }})</th><th scope="col" class="num-col">Your Markup ({{ currency_label() }})</th>
   </tr></thead>
   <tbody>

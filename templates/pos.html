@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Point of Sale — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Point of Sale</h1><p class="page-sub">Scan or search a Retail item to add it to the sale.</p></div></div>
+<div class="page-head"><div><h1>{{ _('Point of Sale') }}</h1><p class="page-sub">Scan or search a Retail item to add it to the sale.</p></div></div>
 
 <div class="pos-grid">
   <div class="card">
     <div class="field" style="margin-bottom:14px;">
-      <label for="posSearch">Scan Barcode or Search Item Name</label>
-      <input type="text" id="posSearch" autocomplete="off" placeholder="Scan Barcode or Type Item Name…" autofocus>
+      <label for="posSearch">{{ _('Scan Barcode or Search Item Name') }}</label>
+      <input type="text" id="posSearch" autocomplete="off" placeholder="{{ _('Scan Barcode or Type Item Name…') }}" autofocus>
     </div>
     <div id="posResults"></div>
   </div>
@@ -27,7 +27,7 @@
       </div>
       <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 {{ currency_label() }}</div></div>
       <div class="field" style="margin:10px 0;">
-        <label for="paymentMethod">Payment Method</label>
+        <label for="paymentMethod">{{ _('Payment Method') }}</label>
         <select id="paymentMethod" data-vzh="pos-2">
           <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Cash' }}>Cash</option>
           <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Card' }}>Card</option>
@@ -50,7 +50,7 @@
         <input type="hidden" name="payment_method" id="paymentHidden">
         <input type="hidden" name="cash_received" id="cashReceivedHidden">
         <div id="cartFieldsHidden"></div>
-        <button class="btn" type="submit" id="completeSaleBtn" style="width:100%; justify-content:center;" data-vzh="pos-3">Complete Sale</button>
+        <button class="btn" type="submit" id="completeSaleBtn" style="width:100%; justify-content:center;" data-vzh="pos-3">{{ _('Complete Sale') }}</button>
       </form>
     </div>
   </div>

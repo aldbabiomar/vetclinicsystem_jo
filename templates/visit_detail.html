@@ -29,7 +29,7 @@
     <div class="detail-item"><div class="k">Updates Log</div><div class="v updates-log">{{ visit.updates_log or "—" }}</div></div>
 
     <div style="margin-top:10px;">
-      <button class="btn small secondary" type="button" data-vzh="visit-detail-1">Additional Tests / X-Rays</button>
+      <button class="btn small secondary" type="button" data-vzh="visit-detail-1">{{ _('Additional Tests / X-Rays') }}</button>
       <span class="small muted">({{ files|length }} file(s) on record)</span>
     </div>
     <div id="uploadBox" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
@@ -39,7 +39,7 @@
         <span class="meta">{{ file.uploaded_at[:10] }}
           <form method="post" action="{{ url_for('clinical.attachment_delete', attachment_id=file.id) }}" style="display:inline;" data-confirm="Delete {{ file.original_name }}?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn small danger" type="submit" style="margin-left:8px;">Delete</button>
+            <button class="btn small danger" type="submit" style="margin-left:8px;">{{ _('Delete') }}</button>
           </form>
         </span>
       </div>
@@ -47,8 +47,8 @@
       <form method="post" action="{{ url_for('clinical.visit_attachment_upload', visit_id=visit.id) }}" enctype="multipart/form-data" style="margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="file" name="file" accept=".pdf,.jpg,.jpeg" required>
-        <button class="btn small" type="submit">Upload</button>
-        <button class="btn small secondary" type="button" data-vzh="visit-detail-2">Close</button>
+        <button class="btn small" type="submit">{{ _('Upload') }}</button>
+        <button class="btn small secondary" type="button" data-vzh="visit-detail-2">{{ _('Close') }}</button>
       </form>
     </div>
   </div>
@@ -99,9 +99,9 @@
           </label>
         </div>
         <div id="autoFields" class="field full" style="margin-bottom:12px;">
-          <label for="visitBillSearch">Add Billed Items</label>
+          <label for="visitBillSearch">{{ _('Add Billed Items') }}</label>
           <input type="text" id="visitBillSearch" autocomplete="off"
-                 placeholder="Search by service, medicine, or item name…">
+                 placeholder="{{ _('Search by service, medicine, or item name…') }}">
           <div id="visitBillResults"></div>
           <div id="visitBillCart" style="margin-top:10px;"></div>
           <div id="visitBillFieldsHidden"></div>
@@ -110,9 +110,9 @@
           <label for="visitdetail-1-manual_amount">Billed Amount ({{ currency_label() }}) — Exported as "Veterinary Services"</label>
           <input id="visitdetail-1-manual_amount" type="number" step="0.001" name="manual_amount" value="{{ fv(form, 'manual_amount', billing.manual_amount if billing and billing.manual_amount else '') }}">
         </div>
-        <div class="field full" style="margin-bottom:12px;"><label for="visitdetail-2-date_billed">Date Billed</label><input id="visitdetail-2-date_billed" type="date" name="date_billed" required value="{{ fv(form, 'date_billed', billing.date_billed if billing else (visit.date or today)) }}"></div>
-        <div class="field full" style="margin-bottom:14px;"><label for="visitdetail-3-notes">Notes</label><input id="visitdetail-3-notes" name="notes" value="{{ fv(form, 'notes', billing.notes if billing else '') }}"></div>
-        <button class="btn small" type="submit" data-vzh="visit-detail-4">Save Billing</button>
+        <div class="field full" style="margin-bottom:12px;"><label for="visitdetail-2-date_billed">{{ _('Date Billed') }}</label><input id="visitdetail-2-date_billed" type="date" name="date_billed" required value="{{ fv(form, 'date_billed', billing.date_billed if billing else (visit.date or today)) }}"></div>
+        <div class="field full" style="margin-bottom:14px;"><label for="visitdetail-3-notes">{{ _('Notes') }}</label><input id="visitdetail-3-notes" name="notes" value="{{ fv(form, 'notes', billing.notes if billing else '') }}"></div>
+        <button class="btn small" type="submit" data-vzh="visit-detail-4">{{ _('Save Billing') }}</button>
       </form>
 
       <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
@@ -121,7 +121,7 @@
         <form method="post" action="{{ url_for('clinical.visit_discount_save', visit_id=visit.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="field" style="flex:1;"><label for="visitdetail-4-discount_percent">Discount % (Max {{ discount_cap }}%)</label><input id="visitdetail-4-discount_percent" type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ fv(form, 'discount_percent', summary.discount_percent) if discount_error else summary.discount_percent }}"></div>
-          <button class="btn small secondary" type="submit">Apply</button>
+          <button class="btn small secondary" type="submit">{{ _('Apply') }}</button>
         </form>
         <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} {{ currency_label() }}</div></div>
         <div class="detail-item"><div class="k">Paid</div><div class="v">{{ summary.paid|money }} {{ currency_label() }}</div></div>
@@ -133,7 +133,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field" style="flex:1;"><label for="visitdetail-5-amount">Record Payment ({{ currency_label() }})</label><input id="visitdetail-5-amount" type="number" step="0.001" name="amount" required value="{{ fv(form, 'amount') if payment_error else '' }}"></div>
         <div class="field"><label for="visitdetail-6-cleanup_amount">Clean Up (max {{ CLEANUP_CAP }} {{ currency_label() }})</label><input id="visitdetail-6-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error else '0' }}"></div>
-        <div class="field"><label for="visitdetail-7-method">Method</label>
+        <div class="field"><label for="visitdetail-7-method">{{ _('Method') }}</label>
           <select id="visitdetail-7-method" name="method">
             {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}
             <option {{ 'selected' if m=='Cash' }}>Cash</option>
@@ -141,7 +141,7 @@
             <option {{ 'selected' if m=='Transfer' }}>Transfer</option>
           </select>
         </div>
-        <button class="btn small secondary" type="submit">Add</button>
+        <button class="btn small secondary" type="submit">{{ _('Add') }}</button>
       </form>
       {% if payments %}
       <div style="margin-top:10px;">

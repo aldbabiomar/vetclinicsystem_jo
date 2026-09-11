@@ -14,7 +14,7 @@
 <div class="error-page">
   <div class="card error-card">
     {% with variant = "broken" %}{% include "_error_dog.html" %}{% endwith %}
-    <h1>The system is busy right now.</h1>
+    <h1>{{ _('The system is busy right now.') }}</h1>
     <p class="page-sub">Too many people are using it at once. Wait a moment, then try again.</p>
     <div class="error-actions">
       <a class="btn" href="javascript:location.reload()">Try Again</a>
@@ -28,7 +28,7 @@
 <div class="auth-wrap">
   <div class="auth-card error-card">
     {% with variant = "broken" %}{% include "_error_dog.html" %}{% endwith %}
-    <h1>The system is busy right now.</h1>
+    <h1>{{ _('The system is busy right now.') }}</h1>
     <p class="page-sub">Too many people are using it at once. Wait a moment, then try again.</p>
     <div class="error-actions">
       <a class="btn" href="javascript:location.reload()">Try Again</a>

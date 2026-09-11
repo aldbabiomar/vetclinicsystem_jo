@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Edit Visit — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Edit Visit</h1><p class="page-sub">{{ visit.id }}</p></div></div>
+<div class="page-head"><div><h1>{{ _('Edit Visit') }}</h1><p class="page-sub">{{ visit.id }}</p></div></div>
 <div class="card">
 <form method="post" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -10,54 +10,54 @@
 
   <div class="section-title">Clinical Notes</div>
   <div class="form-grid">
-    <div class="field"><label for="visitformedit-1-case_status">Case Status</label>
+    <div class="field"><label for="visitformedit-1-case_status">{{ _('Case Status') }}</label>
       <select id="visitformedit-1-case_status" name="case_status">{% for s in case_statuses %}<option {{ 'selected' if fv(form, 'case_status', visit.case_status)==s }}>{{ s }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label for="visitformedit-2-visit_type">Visit Type</label>
+    <div class="field"><label for="visitformedit-2-visit_type">{{ _('Visit Type') }}</label>
       <select id="visitformedit-2-visit_type" name="visit_type">{% for t in ['Outpatient','Inpatient'] %}<option {{ 'selected' if fv(form, 'visit_type', visit.visit_type)==t }}>{{ t }}</option>{% endfor %}</select>
     </div>
-    <div class="field full"><label for="visitformedit-3-complaint">Presenting Complaint</label><input id="visitformedit-3-complaint" name="complaint" value="{{ fv(form, 'complaint', visit.complaint or '') }}"></div>
-    <div class="field full"><label for="visitformedit-4-history">History</label><textarea id="visitformedit-4-history" name="history">{{ fv(form, 'history', visit.history or '') }}</textarea></div>
-    <div class="field full"><label for="visitformedit-5-exam">Physical Exam &amp; Diagnostics</label><textarea id="visitformedit-5-exam" name="exam">{{ fv(form, 'exam', visit.exam or '') }}</textarea></div>
-    <div class="field full"><label for="visitformedit-6-treatment">Treatment Plan</label><textarea id="visitformedit-6-treatment" name="treatment">{{ fv(form, 'treatment', visit.treatment or '') }}</textarea></div>
-    <div class="field full"><label for="visitformedit-7-updates_log">Updates Log</label><textarea id="visitformedit-7-updates_log" name="updates_log" rows="4">{{ fv(form, 'updates_log', visit.updates_log or '') }}</textarea></div>
+    <div class="field full"><label for="visitformedit-3-complaint">{{ _('Presenting Complaint') }}</label><input id="visitformedit-3-complaint" name="complaint" value="{{ fv(form, 'complaint', visit.complaint or '') }}"></div>
+    <div class="field full"><label for="visitformedit-4-history">{{ _('History') }}</label><textarea id="visitformedit-4-history" name="history">{{ fv(form, 'history', visit.history or '') }}</textarea></div>
+    <div class="field full"><label for="visitformedit-5-exam">{{ _('Physical Exam &amp; Diagnostics') }}</label><textarea id="visitformedit-5-exam" name="exam">{{ fv(form, 'exam', visit.exam or '') }}</textarea></div>
+    <div class="field full"><label for="visitformedit-6-treatment">{{ _('Treatment Plan') }}</label><textarea id="visitformedit-6-treatment" name="treatment">{{ fv(form, 'treatment', visit.treatment or '') }}</textarea></div>
+    <div class="field full"><label for="visitformedit-7-updates_log">{{ _('Updates Log') }}</label><textarea id="visitformedit-7-updates_log" name="updates_log" rows="4">{{ fv(form, 'updates_log', visit.updates_log or '') }}</textarea></div>
   </div>
 
   <div class="section-title">Follow-Up</div>
   <div class="form-grid">
     <div class="field">
-      <label for="followupNeeded">Follow-Up Needed?</label>
+      <label for="followupNeeded">{{ _('Follow-Up Needed?') }}</label>
       <select name="followup_needed" id="followupNeeded" data-vzh="visit-form-edit-1">
         <option value="N" {{ 'selected' if fv(form, 'followup_needed', visit.followup_needed)=='N' }}>No</option>
         <option value="Y" {{ 'selected' if fv(form, 'followup_needed', visit.followup_needed)=='Y' }}>Yes</option>
       </select>
     </div>
-    <div class="field followup-only"><label for="visitformedit-8-followup_status">Follow-Up Status</label>
+    <div class="field followup-only"><label for="visitformedit-8-followup_status">{{ _('Follow-Up Status') }}</label>
       <select id="visitformedit-8-followup_status" name="followup_status">{% for s in ['Pending','Completed','Cancelled','N/A'] %}<option {{ 'selected' if fv(form, 'followup_status', visit.followup_status)==s }}>{{ s }}</option>{% endfor %}</select>
     </div>
-    <div class="field followup-only"><label for="visitformedit-9-followup_method">Follow-Up Method</label>
+    <div class="field followup-only"><label for="visitformedit-9-followup_method">{{ _('Follow-Up Method') }}</label>
       <select id="visitformedit-9-followup_method" name="followup_method"><option value="">—</option>{% for t in ['Physical Visit','Phone Call'] %}<option {{ 'selected' if fv(form, 'followup_method', visit.followup_method)==t }}>{{ t }}</option>{% endfor %}</select>
     </div>
-    <div class="field followup-only"><label for="visitformedit-10-followup_reason">Reason</label>
+    <div class="field followup-only"><label for="visitformedit-10-followup_reason">{{ _('Reason') }}</label>
       <select id="visitformedit-10-followup_reason" name="followup_reason"><option value="">—</option>{% for r in followup_reasons %}<option {{ 'selected' if fv(form, 'followup_reason', visit.followup_reason)==r }}>{{ r }}</option>{% endfor %}</select>
     </div>
-    <div class="field followup-only"><label for="visitformedit-11-followup_date">Follow-Up Date</label><input id="visitformedit-11-followup_date" type="date" name="followup_date" value="{{ fv(form, 'followup_date', visit.followup_date or '') }}"></div>
+    <div class="field followup-only"><label for="visitformedit-11-followup_date">{{ _('Follow-Up Date') }}</label><input id="visitformedit-11-followup_date" type="date" name="followup_date" value="{{ fv(form, 'followup_date', visit.followup_date or '') }}"></div>
   </div>
 
   {% if fv(form, 'grooming_needed', visit.grooming_needed) == 'Y' %}
   <div class="section-title">Grooming Status</div>
   <div class="form-grid">
-    <div class="field"><label for="visitformedit-12-grooming_status">Status</label>
+    <div class="field"><label for="visitformedit-12-grooming_status">{{ _('Status') }}</label>
       <select id="visitformedit-12-grooming_status" name="grooming_status">{% for s in ['Waiting','Ongoing','Finished'] %}<option {{ 'selected' if fv(form, 'grooming_status', visit.grooming_status)==s }}>{{ s }}</option>{% endfor %}</select>
     </div>
-    <div class="field"><label for="visitformedit-13-grooming_contacted">Contacted?</label>
+    <div class="field"><label for="visitformedit-13-grooming_contacted">{{ _('Contacted?') }}</label>
       <select id="visitformedit-13-grooming_contacted" name="grooming_contacted"><option value="N" {{ 'selected' if fv(form, 'grooming_contacted', visit.grooming_contacted)=='N' }}>No</option><option value="Y" {{ 'selected' if fv(form, 'grooming_contacted', visit.grooming_contacted)=='Y' }}>Yes</option></select>
     </div>
   </div>
   {% endif %}
 
   <div class="form-actions">
-    <button class="btn" type="submit">Save Changes</button>
+    <button class="btn" type="submit">{{ _('Save Changes') }}</button>
     <a class="btn secondary" href="{{ url_for('clinical.visit_detail', visit_id=visit.id) }}">Cancel</a>
   </div>
 </form>

@@ -3,18 +3,18 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Consignment Items</h1>
+    <h1>{{ _('Consignment Items') }}</h1>
     <p class="page-sub">Retail inventory items. Check "Consignment?" and pick a distributor to attach one and start
       logging receiving/shrinkage/returns against it — check the box for as many items as you need, then save them
       all at once.</p>
   </div>
-  <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('consignment.consignment_items_bulk_edit') }}">Save Changes</button>
+  <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('consignment.consignment_items_bulk_edit') }}">{{ _('Save Changes') }}</button>
 </div>
 
 <div class="table-wrap sticky-scroll">
 <table>
   <thead class="sticky-header"><tr>
-    <th scope="col">ID</th><th scope="col">Name</th><th scope="col">Consignment?</th><th scope="col">Distributor</th><th scope="col" class="num-col">Cost Price ({{ currency_label() }})</th><th scope="col"></th>
+    <th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Consignment?') }}</th><th scope="col">{{ _('Distributor') }}</th><th scope="col" class="num-col">Cost Price ({{ currency_label() }})</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for i in items %}
@@ -28,7 +28,7 @@
       <td>{{ i.name }}</td>
       <td>
         {% if is_locked %}
-          <input type="checkbox" checked disabled title="Locked — has consignment activity">
+          <input type="checkbox" checked disabled title="{{ _('Locked — has consignment activity') }}">
         {% elif has_permission('manage_consignment_items') %}
           <input type="checkbox" form="edit-{{ i.id }}" name="is_consignment" id="isConsignment-{{ i.id }}"
                  {{ 'checked' if i.ownership_type == 'Consignment' }}

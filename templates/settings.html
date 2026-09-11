@@ -1,46 +1,46 @@
 {% extends "base.html" %}
 {% block title %}Settings — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Settings</h1><p class="page-sub">Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.</p></div></div>
+<div class="page-head"><div><h1>{{ _('Settings') }}</h1><p class="page-sub">Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.</p></div></div>
 
 <div class="settings-stack">
 <div class="card has-save-bar">
-<div class="settings-card-head"><h2>Clinic Settings</h2><span class="settings-tag saved">Saved with the button below</span></div>
+<div class="settings-card-head"><h2>{{ _('Clinic Settings') }}</h2><span class="settings-tag saved">Saved with the button below</span></div>
 <p class="small muted u-stack-tight">Nothing here takes effect until you press Save Settings.</p>
 <form method="post" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="section-title">Clinic</div>
   <div class="form-grid">
-    <div class="field"><label for="settings-1-clinic_name">Clinic Name</label><input id="settings-1-clinic_name" name="clinic_name" value="{{ settings.clinic_name }}"></div>
-    <div class="field"><label for="settings-2-clinic_location">Location</label><input id="settings-2-clinic_location" name="clinic_location" value="{{ settings.clinic_location }}"></div>
-    <div class="field"><label for="settings-3-opening_date">Clinic Opening Date</label><input id="settings-3-opening_date" type="date" name="opening_date" value="{{ settings.opening_date }}"></div>
+    <div class="field"><label for="settings-1-clinic_name">{{ _('Clinic Name') }}</label><input id="settings-1-clinic_name" name="clinic_name" value="{{ settings.clinic_name }}"></div>
+    <div class="field"><label for="settings-2-clinic_location">{{ _('Location') }}</label><input id="settings-2-clinic_location" name="clinic_location" value="{{ settings.clinic_location }}"></div>
+    <div class="field"><label for="settings-3-opening_date">{{ _('Clinic Opening Date') }}</label><input id="settings-3-opening_date" type="date" name="opening_date" value="{{ settings.opening_date }}"></div>
   </div>
 
   <div class="section-title">Inventory Alerts</div>
   <div class="form-grid">
-    <div class="field"><label for="settings-4-audit_overdue_days">Audit Overdue After (Days)</label><input id="settings-4-audit_overdue_days" type="number" name="audit_overdue_days" value="{{ settings.audit_overdue_days }}" min="1" max="3650" step="1"></div>
-    <div class="field"><label for="settings-5-expiry_soon_days">Expiry Warning Window (Days)</label><input id="settings-5-expiry_soon_days" type="number" name="expiry_soon_days" value="{{ settings.expiry_soon_days }}" min="1" max="3650" step="1"></div>
+    <div class="field"><label for="settings-4-audit_overdue_days">{{ _('Audit Overdue After (Days)') }}</label><input id="settings-4-audit_overdue_days" type="number" name="audit_overdue_days" value="{{ settings.audit_overdue_days }}" min="1" max="3650" step="1"></div>
+    <div class="field"><label for="settings-5-expiry_soon_days">{{ _('Expiry Warning Window (Days)') }}</label><input id="settings-5-expiry_soon_days" type="number" name="expiry_soon_days" value="{{ settings.expiry_soon_days }}" min="1" max="3650" step="1"></div>
   </div>
 
   <div class="section-title">Appointments</div>
   <div class="form-grid">
-    <div class="field"><label for="settings-6-appt_start_time">Day Starts At</label><input id="settings-6-appt_start_time" type="time" name="appt_start_time" value="{{ settings.appt_start_time }}"></div>
-    <div class="field"><label for="settings-7-appt_end_time">Day Ends At</label><input id="settings-7-appt_end_time" type="time" name="appt_end_time" value="{{ settings.appt_end_time }}"></div>
-    <div class="field"><label for="settings-8-appt_slot_minutes">Slot Length (Minutes)</label><input id="settings-8-appt_slot_minutes" type="number" name="appt_slot_minutes" value="{{ settings.appt_slot_minutes }}" min="5" max="240" step="1"></div>
+    <div class="field"><label for="settings-6-appt_start_time">{{ _('Day Starts At') }}</label><input id="settings-6-appt_start_time" type="time" name="appt_start_time" value="{{ settings.appt_start_time }}"></div>
+    <div class="field"><label for="settings-7-appt_end_time">{{ _('Day Ends At') }}</label><input id="settings-7-appt_end_time" type="time" name="appt_end_time" value="{{ settings.appt_end_time }}"></div>
+    <div class="field"><label for="settings-8-appt_slot_minutes">{{ _('Slot Length (Minutes)') }}</label><input id="settings-8-appt_slot_minutes" type="number" name="appt_slot_minutes" value="{{ settings.appt_slot_minutes }}" min="5" max="240" step="1"></div>
   </div>
 
   {% if has_permission("manage_maintenance") %}
   <div class="section-title">Backups</div>
   <div class="form-grid">
-    <div class="field full"><label for="backupDirInput">Backup Folder (on this computer)</label>
+    <div class="field full"><label for="backupDirInput">{{ _('Backup Folder (on this computer)') }}</label>
       <div class="u-row-sm">
-        <input class="u-grow" name="backup_dir" id="backupDirInput" placeholder="e.g. /Users/you/VetClinicSystemJOBackups or D:\VetClinicSystemJOBackups" value="{{ settings.backup_dir }}">
-        <button class="btn secondary" type="button" data-vzh="settings-1">Browse…</button>
+        <input class="u-grow" name="backup_dir" id="backupDirInput" placeholder="{{ _('e.g. /Users/you/VetClinicSystemJOBackups or D:\\VetClinicSystemJOBackups') }}" value="{{ settings.backup_dir }}">
+        <button class="btn secondary" type="button" data-vzh="settings-1">{{ _('Browse…') }}</button>
       </div>
     </div>
-    <div class="field"><label for="settings-9-backup_time">Nightly Backup Time</label><input id="settings-9-backup_time" type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
-    <div class="field"><label for="settings-10-backup_retention">Keep Last N Backups</label><input id="settings-10-backup_retention" type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
-    <div class="field"><label for="settings-log-retention">Keep Logs For (Days)</label><input id="settings-log-retention" type="number" name="log_retention_days" value="{{ settings.log_retention_days or 730 }}" min="90" max="3650" step="1"></div>
+    <div class="field"><label for="settings-9-backup_time">{{ _('Nightly Backup Time') }}</label><input id="settings-9-backup_time" type="time" name="backup_time" value="{{ settings.backup_time or '02:00' }}"></div>
+    <div class="field"><label for="settings-10-backup_retention">{{ _('Keep Last N Backups') }}</label><input id="settings-10-backup_retention" type="number" name="backup_retention" value="{{ settings.backup_retention or 30 }}" min="1" max="3650" step="1"></div>
+    <div class="field"><label for="settings-log-retention">{{ _('Keep Logs For (Days)') }}</label><input id="settings-log-retention" type="number" name="log_retention_days" value="{{ settings.log_retention_days or 730 }}" min="90" max="3650" step="1"></div>
   </div>
 
   {% endif %}
@@ -53,7 +53,7 @@
   </p>
   <div class="form-grid">
     <div class="field">
-      <label for="settings-11-selfcheck_backup_max_age_days">Warn If No Backup For (Days)</label>
+      <label for="settings-11-selfcheck_backup_max_age_days">{{ _('Warn If No Backup For (Days)') }}</label>
       <input id="settings-11-selfcheck_backup_max_age_days" type="number" name="selfcheck_backup_max_age_days"
              value="{{ settings.selfcheck_backup_max_age_days or 2 }}" min="1" max="30" step="1">
     </div>
@@ -80,8 +80,8 @@
   </p>
   <div class="form-grid">
     <div class="field full">
-      <label for="settings-12-heartbeat_url">Monitoring Ping URL</label>
-      <input id="settings-12-heartbeat_url" name="heartbeat_url" type="url" placeholder="https://… (leave blank to disable)"
+      <label for="settings-12-heartbeat_url">{{ _('Monitoring Ping URL') }}</label>
+      <input id="settings-12-heartbeat_url" name="heartbeat_url" type="url" placeholder="{{ _('https://… (leave blank to disable)') }}"
              value="{{ settings.heartbeat_url or '' }}" autocomplete="off" spellcheck="false">
       <p class="small muted u-stack-2">
         Must start with <code>https://</code>. Use a different URL for each clinic, so an alert
@@ -100,7 +100,7 @@
 
   <div class="settings-save-bar">
     <span class="what">Saves the sections above.</span>
-    <button class="btn" type="submit">Save Settings</button>
+    <button class="btn" type="submit">{{ _('Save Settings') }}</button>
   </div>
 </form>
 </div>
@@ -109,12 +109,12 @@
 {% if has_permission("manage_maintenance") %}
 
 <div class="card">
-<div class="settings-card-head"><h2>Backups &amp; Restore</h2><span class="settings-tag now">Runs when you click</span></div>
+<div class="settings-card-head"><h2>{{ _('Backups &amp; Restore') }}</h2><span class="settings-tag now">Runs when you click</span></div>
 <p class="small muted u-stack-tight">The backup history and the restore that reads it, beside the folder they use.</p>
 <form class="u-mt-4" method="post" action="{{ url_for('settings.settings_backup_now') }}" id="backupNowForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <button class="btn secondary" type="submit" id="backupNowBtn" data-saving-label="Backing up…"
-          {{ 'disabled' if not settings.backup_dir }}>Back Up Now</button>
+          {{ 'disabled' if not settings.backup_dir }}>{{ _('Back Up Now') }}</button>
   {% if not settings.backup_dir %}
   <p class="small muted u-stack-2">Set a backup folder above and save, then you can back up.</p>
   {% endif %}
@@ -126,7 +126,7 @@
 <div class="section-title">Recent Backups</div>
 <div class="table-wrap">
 <table>
-  <thead><tr><th scope="col">Started</th><th scope="col">Triggered By</th><th scope="col">Status</th><th scope="col">Size</th><th scope="col">File</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Started') }}</th><th scope="col">{{ _('Triggered By') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col">{{ _('Size') }}</th><th scope="col">{{ _('File') }}</th></tr></thead>
   <tbody>
     {% for b in recent_backups %}
     <tr>
@@ -158,17 +158,17 @@
   to find and relink them safely.
 </p>
 <div class="form-grid">
-  <div class="field full"><label for="restoreFileInput">Backup File To Restore</label>
+  <div class="field full"><label for="restoreFileInput">{{ _('Backup File To Restore') }}</label>
     <div class="u-row-sm">
-      <input class="u-grow" id="restoreFileInput" placeholder="Browse to a .dump backup file" value="" readonly>
-      <button class="btn secondary" type="button" data-vzh="settings-2">Browse…</button>
+      <input class="u-grow" id="restoreFileInput" placeholder="{{ _('Browse to a .dump backup file') }}" value="" readonly>
+      <button class="btn secondary" type="button" data-vzh="settings-2">{{ _('Browse…') }}</button>
     </div>
   </div>
 </div>
 <form class="u-mt-4" method="post" action="{{ url_for('settings.settings_restore_now') }}" id="restoreForm" data-confirm="This replaces ALL current data in VetClinicSystem JO with the contents of this backup file, and cannot be undone. Everything added or changed since that backup was taken will be lost. Continue?">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="source_file" id="restoreSourceFile">
-  <button class="btn danger" type="submit" id="restoreSubmitBtn" data-saving-label="Restoring…" disabled>Restore Now</button>
+  <button class="btn danger" type="submit" id="restoreSubmitBtn" data-saving-label="Restoring…" disabled>{{ _('Restore Now') }}</button>
 </form>
 <div id="restoreProgress" class="vz-progress-panel" style="display:none;"></div>
 
@@ -177,7 +177,7 @@
 <div class="section-title">Recent Restores</div>
 <div class="table-wrap">
 <table>
-  <thead><tr><th scope="col">Started</th><th scope="col">Triggered By</th><th scope="col">Status</th><th scope="col">Source File</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Started') }}</th><th scope="col">{{ _('Triggered By') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col">{{ _('Source File') }}</th></tr></thead>
   <tbody>
     {% for r in recent_restores %}
     <tr>
@@ -194,25 +194,25 @@
 </div>
 
 <div class="card">
-<div class="settings-card-head"><h2>Updates</h2><span class="settings-tag now">Runs when you click</span></div>
+<div class="settings-card-head"><h2>{{ _('Updates') }}</h2><span class="settings-tag now">Runs when you click</span></div>
 <div class="section-title">Updates</div>
 <div id="updatesConfigured" style="display:none;">
   <div class="detail-item"><div class="k">Current Version</div><div class="v" id="updCurrentVersion">VetClinicSystem JO v{{ app_version }}</div></div>
   <div class="u-row-center-mt">
-    <button class="btn secondary" type="button" id="updCheckBtn" data-vzh="settings-3">Check for Updates</button>
+    <button class="btn secondary" type="button" id="updCheckBtn" data-vzh="settings-3">{{ _('Check for Updates') }}</button>
     <span id="updCheckStatus" class="small muted"></span>
   </div>
   <div id="updAvailablePanel" style="display:none; margin-top:14px; padding:14px; border:1px solid var(--line-soft); border-radius:10px;">
     <div class="u-strong u-mb-2">Version <span id="updLatestTag"></span> is available</div>
     <pre id="updChangelogBody" class="small preserve-lines"></pre>
     <div class="u-row">
-      <button class="btn" type="button" id="updApplyBtn" data-vzh="settings-4">Update Now</button>
-      <button class="btn secondary" type="button" data-vzh="settings-5">Not Now</button>
+      <button class="btn" type="button" id="updApplyBtn" data-vzh="settings-4">{{ _('Update Now') }}</button>
+      <button class="btn secondary" type="button" data-vzh="settings-5">{{ _('Not Now') }}</button>
     </div>
   </div>
   <div id="updateProgress" class="small muted" style="display:none; margin-top:12px;"></div>
   <div class="u-mt-6">
-    <button class="btn secondary" type="button" id="updRollbackBtn" data-vzh="settings-6">Rollback to Previous Version</button>
+    <button class="btn secondary" type="button" id="updRollbackBtn" data-vzh="settings-6">{{ _('Rollback to Previous Version') }}</button>
   </div>
 </div>
 <div id="updatesNotConfigured" class="small muted" style="display:none;">
@@ -223,7 +223,7 @@
 </div>
 
 <div class="card">
-<div class="settings-card-head"><h2>Startup &amp; Shutdown</h2><span class="settings-tag now">Applies immediately</span></div>
+<div class="settings-card-head"><h2>{{ _('Startup &amp; Shutdown') }}</h2><span class="settings-tag now">Applies immediately</span></div>
 {# This section is deliberately its own <form>, separate from the tracked
    settings form above (data-track-unsaved marks that whole form "dirty"
    on ANY field change inside it, which would make submitting this
@@ -468,19 +468,19 @@ document.getElementById('restoreForm').addEventListener('submit', async function
 
 <div id="folderBrowserModal" class="modal-overlay" style="display:none;">
   <div class="modal-box u-w-640">
-    <h2 class="u-mt-0" id="folderBrowserTitle">Choose Backup Folder</h2>
+    <h2 class="u-mt-0" id="folderBrowserTitle">{{ _('Choose Backup Folder') }}</h2>
     <p class="small muted u-mt-tight">Browsing this computer's folders — the one running VetClinicSystem JO, since that's where backups are actually read and written.</p>
     <div id="folderBrowserPath" class="small code-box break"></div>
     <div id="folderBrowserError" class="small" style="color:var(--danger); display:none; margin-bottom:8px; overflow-wrap:anywhere; word-break:break-word;"></div>
     <div class="scroll-box" id="folderBrowserList"></div>
     <div class="u-row-wrap-center">
       <div class="filter-bar" id="folderBrowserNewFolderRow">
-        <input class="filter-bar-field" type="text" id="folderBrowserNewName" placeholder="New folder name">
-        <button class="btn secondary" type="button" data-vzh="settings-8">+ New Folder</button>
+        <input class="filter-bar-field" type="text" id="folderBrowserNewName" placeholder="{{ _('New folder name') }}">
+        <button class="btn secondary" type="button" data-vzh="settings-8">{{ _('+ New Folder') }}</button>
       </div>
       <div class="filter-bar-actions">
-        <button class="btn secondary" type="button" data-vzh="settings-9">Cancel</button>
-        <button class="btn" type="button" id="folderBrowserSelectBtn" data-vzh="settings-10">Select This Folder</button>
+        <button class="btn secondary" type="button" data-vzh="settings-9">{{ _('Cancel') }}</button>
+        <button class="btn" type="button" id="folderBrowserSelectBtn" data-vzh="settings-10">{{ _('Select This Folder') }}</button>
       </div>
     </div>
   </div>

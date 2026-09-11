@@ -2,17 +2,17 @@
 {% block title %}Owners — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Owners</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} on file.{% endif %}</p></div>
+  <div><h1>{{ _('Owners') }}</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} on file.{% endif %}</p></div>
   <a class="btn" href="{{ url_for('clinical.owner_new') }}">+ New Owner</a>
 </div>
 <form class="search-bar" method="get">
-  <input type="text" name="q" placeholder="Search Name or Phone…" value="{{ search }}">
-  <button class="btn secondary" type="submit">Search</button>
+  <input type="text" name="q" placeholder="{{ _('Search Name or Phone…') }}" value="{{ search }}">
+  <button class="btn secondary" type="submit">{{ _('Search') }}</button>
   {% if search %}<a class="btn secondary" href="{{ url_for('clinical.owners_list') }}">Clear</a>{% endif %}
 </form>
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Phone</th><th scope="col" class="num-col">Patients</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Phone') }}</th><th scope="col" class="num-col">{{ _('Patients') }}</th></tr></thead>
   <tbody>
     {% for o in owners %}
     <tr data-vz-href="{{ url_for('clinical.owner_detail', owner_id=o.id) }}" tabindex="0" role="link" style="cursor:pointer;">
