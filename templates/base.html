@@ -86,7 +86,7 @@
 
     <div class="nav-group" data-collapsible="inventory">
       <button type="button" class="nav-group-toggle" aria-expanded="true">
-        <span>Inventory</span>
+        <span>{{ _('Inventory') }}</span>
         <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
       <div class="nav-group-links">
@@ -102,7 +102,7 @@
     {% if consignment_perms | select('in', session.get('permissions', [])) | list | length > 0 %}
     <div class="nav-group" data-collapsible="consignment">
       <button type="button" class="nav-group-toggle" aria-expanded="true">
-        <span>Consignment</span>
+        <span>{{ _('Consignment') }}</span>
         <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
       <div class="nav-group-links">
@@ -123,7 +123,7 @@
 
     <div class="nav-group" data-collapsible="sales">
       <button type="button" class="nav-group-toggle" aria-expanded="true">
-        <span>Sales &amp; Billing</span>
+        <span>{{ _('Sales & Billing') }}</span>
         <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
       <div class="nav-group-links">
@@ -152,7 +152,7 @@
     {% if has_permission('manage_users_roles') or has_permission('view_logins_changes') or has_permission('manage_settings') %}
     <div class="nav-group" data-collapsible="admin">
       <button type="button" class="nav-group-toggle" aria-expanded="true">
-        <span>Admin</span>
+        <span>{{ _('Admin') }}</span>
         <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
       <div class="nav-group-links">

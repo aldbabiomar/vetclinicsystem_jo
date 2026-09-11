@@ -7,21 +7,21 @@
     <p class="page-sub">{{ patient.id }} · {{ patient.species }}{% if patient.sex %} · {{ patient.sex }}{% endif %}{% if patient.repro_status %} · {{ patient.repro_status }}{% endif %}</p>
   </div>
   <div style="display:flex; gap:10px; flex-wrap:wrap;">
-    <a class="btn secondary" href="{{ url_for('clinical.patient_edit', patient_id=patient.id) }}">Edit Patient Details</a>
-    <a class="btn secondary" href="{{ url_for('clinical.patient_history', patient_id=patient.id) }}">Full History</a>
-    <a class="btn secondary" href="{{ url_for('clinical.patient_export_file', patient_id=patient.id) }}">Export Patient File (PDF)</a>
-    <a class="btn secondary" href="{{ url_for('clinical.patient_export_billing', patient_id=patient.id) }}">Export Billing (PDF)</a>
-    <a class="btn" href="{{ url_for('clinical.visit_new_existing') }}">+ Log Visit</a>
+    <a class="btn secondary" href="{{ url_for('clinical.patient_edit', patient_id=patient.id) }}">{{ _('Edit Patient Details') }}</a>
+    <a class="btn secondary" href="{{ url_for('clinical.patient_history', patient_id=patient.id) }}">{{ _('Full History') }}</a>
+    <a class="btn secondary" href="{{ url_for('clinical.patient_export_file', patient_id=patient.id) }}">{{ _('Export Patient File (PDF)') }}</a>
+    <a class="btn secondary" href="{{ url_for('clinical.patient_export_billing', patient_id=patient.id) }}">{{ _('Export Billing (PDF)') }}</a>
+    <a class="btn" href="{{ url_for('clinical.visit_new_existing') }}">{{ _('+ Log Visit') }}</a>
   </div>
 </div>
 
 <div class="card" style="margin-bottom:16px;">
   <div class="detail-grid">
-    <div class="detail-item"><div class="k">Owner Phone</div><div class="v">{{ patient.owner_phone or "—" }}</div></div>
-    <div class="detail-item"><div class="k">Housing</div><div class="v">{{ patient.housing or "—" }}</div></div>
-    <div class="detail-item"><div class="k">Age / DOB Note</div><div class="v">{{ patient.age_note or "—" }}</div></div>
-    <div class="detail-item"><div class="k">Microchip</div><div class="v">{{ patient.microchip or "—" }}</div></div>
-    <div class="detail-item"><div class="k">Notes</div><div class="v">{{ patient.notes or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Owner Phone') }}</div><div class="v">{{ patient.owner_phone or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Housing') }}</div><div class="v">{{ patient.housing or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Age / DOB Note') }}</div><div class="v">{{ patient.age_note or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Microchip') }}</div><div class="v">{{ patient.microchip or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Notes') }}</div><div class="v">{{ patient.notes or "—" }}</div></div>
   </div>
 </div>
 
@@ -91,7 +91,7 @@
       <td>{% if v.followup_needed=='Y' %}<span class="badge {{ 'warn' if v.followup_status=='Pending' else 'ok' }}">{{ v.followup_status }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td class="num-col">{{ v.billing.total|money }}</td>
     </tr>
-    {% else %}<tr><td colspan="7" class="empty-note">No visits logged yet.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="7" class="empty-note">{{ _('No visits logged yet.') }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

@@ -3,12 +3,12 @@
 {% block content %}
 <div class="page-head">
   <div><h1>{{ _('Inpatient Cases') }}</h1><p class="page-sub">{{ total_count }} shown.</p></div>
-  <a class="btn" href="{{ url_for('clinical.inpatient_new') }}">+ Admit Patient</a>
+  <a class="btn" href="{{ url_for('clinical.inpatient_new') }}">{{ _('+ Admit Patient') }}</a>
 </div>
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not show_all and not balance_due }}" href="{{ url_for('clinical.inpatient_list') }}">Currently Admitted</a>
-  <a class="chip {{ 'active' if show_all and not balance_due }}" href="{{ url_for('clinical.inpatient_list', all=1) }}">All Cases</a>
-  <a class="chip {{ 'active' if balance_due }}" href="{{ url_for('clinical.inpatient_list', view='balance_due') }}">Balance Due</a>
+  <a class="chip {{ 'active' if not show_all and not balance_due }}" href="{{ url_for('clinical.inpatient_list') }}">{{ _('Currently Admitted') }}</a>
+  <a class="chip {{ 'active' if show_all and not balance_due }}" href="{{ url_for('clinical.inpatient_list', all=1) }}">{{ _('All Cases') }}</a>
+  <a class="chip {{ 'active' if balance_due }}" href="{{ url_for('clinical.inpatient_list', view='balance_due') }}">{{ _('Balance Due') }}</a>
 </div>
 <div class="table-wrap sticky-scroll">
 <table>

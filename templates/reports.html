@@ -2,14 +2,14 @@
 {% block title %}Monthly P&amp;L — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Monthly P&amp;L') }}</h1><p class="page-sub">Revenue from billing &amp; retail sales, COGS from measured usage. Admin only.</p></div>
+  <div><h1>{{ _('Monthly P&L') }}</h1><p class="page-sub">{{ _('Revenue from billing & retail sales, COGS from measured usage. Admin only.') }}</p></div>
   <div style="display:flex; gap:10px;">
     <form method="post" action="{{ url_for('reports_rebuild_summary') }}" data-confirm="Rebuild all report data from scratch? This re-checks every month against current billing, sales, and cost data. It can take a few seconds on a large database.">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="return_to" value="{{ url_for('reports') }}">
-      <button class="btn secondary" type="submit" title="{{ _('Force a full recalculation of every month, in case anything ever looks out of sync') }}">Rebuild Report Data</button>
+      <button class="btn secondary" type="submit" title="{{ _('Force a full recalculation of every month, in case anything ever looks out of sync') }}">{{ _('Rebuild Report Data') }}</button>
     </form>
-    <a class="btn secondary" href="{{ url_for('reports_yearly') }}">Yearly P&amp;L →</a>
+    <a class="btn secondary" href="{{ url_for('reports_yearly') }}">{{ _('Yearly P&L →') }}</a>
   </div>
 </div>
 
@@ -38,7 +38,7 @@
 </table>
 </div>
 
-<div class="section-title">Enter Operating Costs for a Month</div>
+<div class="section-title">{{ _('Enter Operating Costs for a Month') }}</div>
 <div class="card">
   <form method="post" action="{{ url_for('reports_opex_save') }}" id="opexForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

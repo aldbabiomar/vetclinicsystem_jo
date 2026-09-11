@@ -25,22 +25,22 @@
       <div class="field"><label for="consignmentshrinkage-2-quantity">{{ _('Quantity') }}</label><input id="consignmentshrinkage-2-quantity" type="number" step="any" name="quantity" required value="{{ fv(form, 'quantity') }}"></div>
       <div class="field"><label for="consignmentshrinkage-3-reason">{{ _('Reason') }}</label>
         <select id="consignmentshrinkage-3-reason" name="reason" required>
-          <option value="Damaged" {{ 'selected' if fv(form, 'reason', 'Damaged')=='Damaged' }}>Damaged</option>
-          <option value="Expired" {{ 'selected' if fv(form, 'reason', 'Damaged')=='Expired' }}>Expired</option>
-          <option value="Other" {{ 'selected' if fv(form, 'reason', 'Damaged')=='Other' }}>Other</option>
+          <option value="Damaged" {{ 'selected' if fv(form, 'reason', 'Damaged')=='Damaged' }}>{{ _('Damaged') }}</option>
+          <option value="Expired" {{ 'selected' if fv(form, 'reason', 'Damaged')=='Expired' }}>{{ _('Expired') }}</option>
+          <option value="Other" {{ 'selected' if fv(form, 'reason', 'Damaged')=='Other' }}>{{ _('Other') }}</option>
         </select>
       </div>
       <div class="field"><label for="consignmentshrinkage-4-liable_party">{{ _('Liable Party') }}</label>
         <select id="consignmentshrinkage-4-liable_party" name="liable_party">
-          <option value="" {{ 'selected' if fv(form, 'liable_party')=='' }}>Default for reason (Expired → Distributor, else → Clinic)</option>
-          <option value="Distributor" {{ 'selected' if fv(form, 'liable_party')=='Distributor' }}>Distributor</option>
-          <option value="Clinic" {{ 'selected' if fv(form, 'liable_party')=='Clinic' }}>Clinic</option>
+          <option value="" {{ 'selected' if fv(form, 'liable_party')=='' }}>{{ _('Default for reason (Expired → Distributor, else → Clinic)') }}</option>
+          <option value="Distributor" {{ 'selected' if fv(form, 'liable_party')=='Distributor' }}>{{ _('Distributor') }}</option>
+          <option value="Clinic" {{ 'selected' if fv(form, 'liable_party')=='Clinic' }}>{{ _('Clinic') }}</option>
         </select>
       </div>
       <div class="field full"><label for="consignmentshrinkage-5-notes">{{ _('Notes') }}</label><input id="consignmentshrinkage-5-notes" name="notes" value="{{ fv(form, 'notes') }}"></div>
     </div>
-    <p class="small muted" style="margin:4px 0 12px;">Clinic-liable shrinkage adds to what's owed the distributor at settlement — they're
-      still owed for stock lost on your side. Distributor-liable shrinkage adds nothing — they absorb that loss directly.</p>
+    <p class="small muted" style="margin:4px 0 12px;">{{ _('Clinic-liable shrinkage adds to what\'s owed the distributor at settlement — they\'re
+      still owed for stock lost on your side. Distributor-liable shrinkage adds nothing — they absorb that loss directly.') }}</p>
     <div class="form-actions">
       <button class="btn" type="submit">{{ _('Log Shrinkage') }}</button>
       <button class="btn secondary" type="button" data-vzh="consignment-shrinkage-2">{{ _('Cancel') }}</button>
@@ -63,12 +63,12 @@
       <td>{{ l.distributor_name }}</td>
       <td class="num-col">{{ l.quantity|round(2) }}</td>
       <td>{{ l.reason }}</td>
-      <td>{{ l.liable_party }}{% if l.liability_overridden %} <span class="small muted">(overridden)</span>{% endif %}</td>
+      <td>{{ l.liable_party }}{% if l.liability_overridden %} <span class="small muted">{{ _('(overridden)') }}</span>{% endif %}</td>
       <td class="num-col">{{ l.unit_cost|money }}</td>
       <td>{{ l.notes or '—' }}</td>
     </tr>
     {% else %}
-    <tr><td colspan="8" class="empty-note">No shrinkage logged yet.</td></tr>
+    <tr><td colspan="8" class="empty-note">{{ _('No shrinkage logged yet.') }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

@@ -4,15 +4,15 @@
 <div class="page-head">
   <div><h1>{{ _('Insights') }}</h1><p class="page-sub">Management-level view over the last {{ months_back }} months. Admin only.</p></div>
   <div style="display:flex; gap:10px;">
-    <a class="btn secondary" href="{{ url_for('retention') }}">Retention →</a>
+    <a class="btn secondary" href="{{ url_for('retention') }}">{{ _('Retention →') }}</a>
   </div>
 </div>
 
 <div class="stat-grid">
   <div class="stat-card ok"><div class="num">{{ revenue.totals_by_month.values()|sum|money }}</div><div class="label">Revenue, Last {{ months_back }} Months ({{ currency_label() }})</div></div>
-  <div class="stat-card"><div class="num">{{ active_client_count }}</div><div class="label">Clients With Paid Visits (Lifetime)</div></div>
+  <div class="stat-card"><div class="num">{{ active_client_count }}</div><div class="label">{{ _('Clients With Paid Visits (Lifetime)') }}</div></div>
   <div class="stat-card"><div class="num">{{ avg_spend|money }}</div><div class="label">Avg. Lifetime Spend / Client ({{ currency_label() }})</div></div>
-  <div class="stat-card"><div class="num">{{ vets|length }}</div><div class="label">Vets Billing This Window</div></div>
+  <div class="stat-card"><div class="num">{{ vets|length }}</div><div class="label">{{ _('Vets Billing This Window') }}</div></div>
 </div>
 
 <div class="panel-grid">
@@ -47,7 +47,7 @@
   </tbody>
   <tfoot>
     <tr>
-      <td>Total</td>
+      <td>{{ _('Total') }}</td>
       {% for c in revenue.categories %}<td class="num-col">{{ revenue.totals_by_category[c]|money }}</td>{% endfor %}
       <td class="num-col">{{ revenue.totals_by_month.values()|sum|money }}</td>
     </tr>
@@ -71,7 +71,7 @@
           <td class="num-col">{{ v.avg_revenue_per_visit|money }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="small muted">No billed visits with a recorded vet in this window.</td></tr>
+        <tr><td colspan="4" class="small muted">{{ _('No billed visits with a recorded vet in this window.') }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -80,7 +80,7 @@
 
   <div class="card panel">
     <h2>{{ _('Top Clients by Lifetime Spend') }}</h2>
-    <p class="small muted" style="margin-top:-6px;">From visit, inpatient &amp; boarding payments (walk-in POS retail sales aren't linked to a client in this system).</p>
+    <p class="small muted" style="margin-top:-6px;">{{ _('From visit, inpatient &amp; boarding payments (walk-in POS retail sales aren\'t linked to a client in this system).') }}</p>
     <div class="table-wrap">
     <table>
       <thead><tr><th scope="col">{{ _('Owner') }}</th><th scope="col" class="num-col">{{ _('Payments') }}</th><th scope="col" class="num-col">Total Paid ({{ currency_label() }})</th></tr></thead>
@@ -92,7 +92,7 @@
           <td class="num-col">{{ c.total_paid|money }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="3" class="small muted">No payments on file yet.</td></tr>
+        <tr><td colspan="3" class="small muted">{{ _('No payments on file yet.') }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -100,9 +100,9 @@
   </div>
 </div>
 
-<div class="section-title">Appointment Demand by Day of Week</div>
+<div class="section-title">{{ _('Appointment Demand by Day of Week') }}</div>
 <p class="small muted" style="margin-top:-10px; margin-bottom:10px;">
-  Amman work week (Sunday–Thursday) shown first; Friday/Saturday is the weekend. "Fulfillment" compares appointments booked that weekday against visits logged on the same weekday system-wide — an approximation, since appointments aren't linked to a specific visit record in this system.
+  {{ _('Amman work week (Sunday–Thursday) shown first; Friday/Saturday is the weekend. "Fulfillment" compares appointments booked that weekday against visits logged on the same weekday system-wide — an approximation, since appointments aren\'t linked to a specific visit record in this system.') }}
 </p>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
@@ -110,7 +110,7 @@
   <tbody>
     {% for d in weekday_load %}
     <tr style="{{ 'background:var(--muted-tint);' if d.is_weekend }}">
-      <td><strong>{{ d.day }}</strong>{% if d.is_weekend %} <span class="badge muted">Weekend</span>{% endif %}</td>
+      <td><strong>{{ d.day }}</strong>{% if d.is_weekend %} <span class="badge muted">{{ _('Weekend') }}</span>{% endif %}</td>
       <td class="num-col">{{ d.appointments }}</td>
       <td class="num-col">{{ d.visits_same_weekday }}</td>
       <td class="num-col">{% if d.fulfillment_ratio is not none %}{{ (d.fulfillment_ratio*100)|round(0)|int }}%{% else %}—{% endif %}</td>
@@ -120,10 +120,10 @@
 </table>
 </div>
 
-<div class="section-title">Inpatient &amp; Boarding Load</div>
+<div class="section-title">{{ _('Inpatient & Boarding Load') }}</div>
 <div class="panel-grid" style="margin-bottom:10px;">
-  <div class="stat-card"><div class="num">{{ occupancy.avg_inpatient_stay_days if occupancy.avg_inpatient_stay_days is not none else "—" }}</div><div class="label">Avg. Inpatient Stay (Days)</div></div>
-  <div class="stat-card"><div class="num">{{ occupancy.avg_boarding_stay_days if occupancy.avg_boarding_stay_days is not none else "—" }}</div><div class="label">Avg. Boarding Stay (Days)</div></div>
+  <div class="stat-card"><div class="num">{{ occupancy.avg_inpatient_stay_days if occupancy.avg_inpatient_stay_days is not none else "—" }}</div><div class="label">{{ _('Avg. Inpatient Stay (Days)') }}</div></div>
+  <div class="stat-card"><div class="num">{{ occupancy.avg_boarding_stay_days if occupancy.avg_boarding_stay_days is not none else "—" }}</div><div class="label">{{ _('Avg. Boarding Stay (Days)') }}</div></div>
 </div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
@@ -141,11 +141,11 @@
 </div>
 
 {% if has_permission('manage_cash_register') %}
-<div class="section-title">Cash Register Health</div>
+<div class="section-title">{{ _('Cash Register Health') }}</div>
 <p class="small muted" style="margin-top:-10px; margin-bottom:10px;">
-  Last 30 days' Cash Register audit status. "Not Audited" means nobody closed out that day at all — on its own that's
+  {{ _('Last 30 days\' Cash Register audit status. "Not Audited" means nobody closed out that day at all — on its own that\'s
   a documentation gap, not proof of a problem, but a pattern of skipped audits (or repeated Deficits) is worth
-  looking into.
+  looking into.') }}
 </p>
 <div class="table-wrap" style="margin-bottom:24px; max-height:420px; overflow-y:auto;">
 <table>
@@ -155,10 +155,10 @@
     <tr>
       <td class="small"><a href="{{ url_for('sales.cash_register_page', date=d.date) }}">{{ d.date|localdate }}</a></td>
       <td>
-        {% if d.status == 'Perfect' %}<span class="badge ok">Perfect</span>
-        {% elif d.status == 'Deficit' %}<span class="badge danger">Deficit</span>
-        {% elif d.status == 'Surplus' %}<span class="badge warn">Surplus</span>
-        {% else %}<span class="badge muted">Not Audited</span>{% endif %}
+        {% if d.status == 'Perfect' %}<span class="badge ok">{{ _('Perfect') }}</span>
+        {% elif d.status == 'Deficit' %}<span class="badge danger">{{ _('Deficit') }}</span>
+        {% elif d.status == 'Surplus' %}<span class="badge warn">{{ _('Surplus') }}</span>
+        {% else %}<span class="badge muted">{{ _('Not Audited') }}</span>{% endif %}
       </td>
       <td class="num-col">{% if d.difference is not none %}{{ d.difference|money }}{% else %}—{% endif %}</td>
     </tr>

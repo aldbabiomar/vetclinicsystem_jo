@@ -54,7 +54,7 @@
       <td>{{ r.notes or '—' }}</td>
     </tr>
     {% else %}
-    <tr><td colspan="7" class="empty-note">No receipts logged yet.</td></tr>
+    <tr><td colspan="7" class="empty-note">{{ _('No receipts logged yet.') }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

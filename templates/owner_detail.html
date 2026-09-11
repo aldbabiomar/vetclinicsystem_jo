@@ -3,12 +3,12 @@
 {% block content %}
 <div class="page-head">
   <div><h1>{{ owner.name }}</h1><p class="page-sub">{{ owner.id }} · {{ owner.phone or "no phone on file" }}</p></div>
-  <a class="btn secondary" href="{{ url_for('clinical.owner_edit', owner_id=owner.id) }}">Edit Owner</a>
+  <a class="btn secondary" href="{{ url_for('clinical.owner_edit', owner_id=owner.id) }}">{{ _('Edit Owner') }}</a>
 </div>
 <div class="card" style="margin-bottom:16px;">
   <div class="detail-grid">
-    <div class="detail-item"><div class="k">Address</div><div class="v">{{ owner.address or "—" }}</div></div>
-    <div class="detail-item"><div class="k">Notes</div><div class="v">{{ owner.notes or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Address') }}</div><div class="v">{{ owner.address or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Notes') }}</div><div class="v">{{ owner.notes or "—" }}</div></div>
   </div>
 </div>
 <div class="section-title">Patients ({{ patients|length }})</div>
@@ -20,7 +20,7 @@
     <tr data-vz-href="{{ url_for('clinical.patient_detail', patient_id=p.id) }}" tabindex="0" role="link" style="cursor:pointer;">
       <td class="muted">{{ p.id }}</td><td><strong>{{ p.animal_name }}</strong></td><td>{{ p.species }}</td><td>{{ p.sex or "—" }}</td>
     </tr>
-    {% else %}<tr><td colspan="4" class="empty-note">No patients under this owner yet.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="4" class="empty-note">{{ _('No patients under this owner yet.') }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

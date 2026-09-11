@@ -2,15 +2,15 @@
 {% if total_pages and total_pages > 1 %}
 <div class="pagination">
   {% if page > 1 %}
-    <a class="btn small secondary" href="{{ pagination_url(page - 1, page_param) }}">← Prev</a>
+    <a class="btn small secondary" href="{{ pagination_url(page - 1, page_param) }}">{{ _('← Prev') }}</a>
   {% else %}
-    <span class="btn small secondary disabled">← Prev</span>
+    <span class="btn small secondary disabled">{{ _('← Prev') }}</span>
   {% endif %}
   <span class="pagination-info">Page {{ page }} of {{ total_pages }}{% if total_count is defined and total_count is not none %} ({{ total_count }} total){% endif %}</span>
   {% if page < total_pages %}
-    <a class="btn small secondary" href="{{ pagination_url(page + 1, page_param) }}">Next →</a>
+    <a class="btn small secondary" href="{{ pagination_url(page + 1, page_param) }}">{{ _('Next →') }}</a>
   {% else %}
-    <span class="btn small secondary disabled">Next →</span>
+    <span class="btn small secondary disabled">{{ _('Next →') }}</span>
   {% endif %}
 </div>
 {% endif %}

@@ -10,20 +10,20 @@
 </div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not active_cat }}" href="{{ url_for('inventory.price_list') }}">All</a>
+  <a class="chip {{ 'active' if not active_cat }}" href="{{ url_for('inventory.price_list') }}">{{ _('All') }}</a>
   {% for c in categories %}<a class="chip {{ 'active' if active_cat==c }}" href="{{ url_for('inventory.price_list', category=c) }}">{{ c }}</a>{% endfor %}
 </div>
 
 {% if flagged_price %}
 <p class="small muted" style="margin:-4px 0 12px;"><span style="display:inline-block; width:10px; height:10px; background:var(--warn-tint); border-left:3px solid var(--warn); vertical-align:middle;"></span>
-  Highlighted rows: Retail item doesn't match an active Retail item in Inventory Catalog — check the linked item.</p>
+  {{ _('Highlighted rows: Retail item doesn\'t match an active Retail item in Inventory Catalog — check the linked item.') }}</p>
 {% endif %}
 
 <form class="search-bar" method="get">
   {% if active_cat %}<input type="hidden" name="category" value="{{ active_cat }}">{% endif %}
   <input type="text" name="q" value="{{ search }}" placeholder="{{ _('Search by Product Name…') }}">
   <button class="btn secondary" type="submit">{{ _('Search') }}</button>
-  {% if search %}<a class="btn secondary" href="{{ url_for('inventory.price_list', category=active_cat) }}">Clear</a>{% endif %}
+  {% if search %}<a class="btn secondary" href="{{ url_for('inventory.price_list', category=active_cat) }}">{{ _('Clear') }}</a>{% endif %}
 </form>
 
 <div class="card" id="newForm" style="display:{{ 'block' if show_new_form else 'none' }}; margin-bottom:16px;">
@@ -42,8 +42,8 @@
       </div>
       <div class="field full"><label for="pricelist-4-notes">{{ _('Notes') }}</label><input id="pricelist-4-notes" name="notes" value="{{ fv(new_form, 'notes') }}"></div>
       <div class="field full">
-        <label class="checkbox-row small" style="text-transform:none; font-weight:500;"><input type="checkbox" name="can_discount" id="canDiscountNew" {{ 'checked' if fv(new_form, 'can_discount', 'on')=='on' }}> Can Be Discounted?</label>
-        <p class="small muted" style="margin:2px 0 0;">Checked = a discount can be applied to a bill that includes this item. Unchecked = it blocks any discount on that bill.</p>
+        <label class="checkbox-row small" style="text-transform:none; font-weight:500;"><input type="checkbox" name="can_discount" id="canDiscountNew" {{ 'checked' if fv(new_form, 'can_discount', 'on')=='on' }}> {{ _('Can Be Discounted?') }}</label>
+        <p class="small muted" style="margin:2px 0 0;">{{ _('Checked = a discount can be applied to a bill that includes this item. Unchecked = it blocks any discount on that bill.') }}</p>
       </div>
     </div>
     <div class="form-actions">
@@ -55,7 +55,7 @@
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Category') }}</th><th scope="col" class="num-col">Cost ({{ currency_label() }})</th><th scope="col" class="num-col">Sale ({{ currency_label() }})</th><th scope="col">{{ _('Notes') }}</th><th scope="col" title="{{ _('Checked = a discount can be applied to a bill including this item.') }}">Can Be Discounted?</th><th scope="col"></th></tr></thead>
+  <thead><tr><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Category') }}</th><th scope="col" class="num-col">Cost ({{ currency_label() }})</th><th scope="col" class="num-col">Sale ({{ currency_label() }})</th><th scope="col">{{ _('Notes') }}</th><th scope="col" title="{{ _('Checked = a discount can be applied to a bill including this item.') }}">{{ _('Can Be Discounted?') }}</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for i in items %}
     {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}
@@ -80,7 +80,7 @@
         </form>
       </td>
     </tr>
-    {% else %}<tr><td colspan="8" class="empty-note">No priced items yet.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="8" class="empty-note">{{ _('No priced items yet.') }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

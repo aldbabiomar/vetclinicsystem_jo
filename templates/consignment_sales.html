@@ -4,20 +4,20 @@
 <div class="page-head">
   <div>
     <h1>{{ _('Sales by Distributor') }}</h1>
-    <p class="page-sub">What sold, what's owed the distributor, and your markup — priced at what each sale actually
-      charged and cost at the time, not today's Price List.</p>
+    <p class="page-sub">{{ _('What sold, what\'s owed the distributor, and your markup — priced at what each sale actually
+      charged and cost at the time, not today\'s Price List.') }}</p>
   </div>
 </div>
 
 <form class="search-bar" method="get">
   <select name="distributor_id">
-    <option value="">All Distributors</option>
+    <option value="">{{ _('All Distributors') }}</option>
     {% for d in distributors %}<option value="{{ d.id }}" {{ 'selected' if distributor_id==d.id }}>{{ d.name }}</option>{% endfor %}
   </select>
   <input type="date" name="date_from" value="{{ date_from }}" placeholder="{{ _('From') }}">
   <input type="date" name="date_to" value="{{ date_to }}" placeholder="{{ _('To') }}">
   <button class="btn secondary" type="submit">{{ _('Filter') }}</button>
-  {% if distributor_id or date_from or date_to %}<a class="btn secondary" href="{{ url_for('consignment.consignment_sales_page') }}">Clear</a>{% endif %}
+  {% if distributor_id or date_from or date_to %}<a class="btn secondary" href="{{ url_for('consignment.consignment_sales_page') }}">{{ _('Clear') }}</a>{% endif %}
 </form>
 
 <div class="table-wrap sticky-scroll">
@@ -38,7 +38,7 @@
       <td class="num-col">{{ r.your_markup|money }}</td>
     </tr>
     {% else %}
-    <tr><td colspan="7" class="empty-note">No Consignment sales in this range.</td></tr>
+    <tr><td colspan="7" class="empty-note">{{ _('No Consignment sales in this range.') }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

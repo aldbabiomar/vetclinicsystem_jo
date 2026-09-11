@@ -17,7 +17,7 @@
   <form class="search-bar" method="get" style="margin:0;">
     <input type="date" name="date" value="{{ day }}">
     <button class="btn secondary" type="submit">{{ _('View by Date') }}</button>
-    {% if day != today %}<a class="btn secondary" href="{{ url_for('sales.cash_register_page') }}">Clear</a>{% endif %}
+    {% if day != today %}<a class="btn secondary" href="{{ url_for('sales.cash_register_page') }}">{{ _('Clear') }}</a>{% endif %}
   </form>
 </div>
 
@@ -44,16 +44,16 @@
   </tbody>
   {% if payouts %}
   <tbody>
-    <tr><td colspan="7" class="small muted" style="padding-top:14px;">Paid Out of Register</td></tr>
+    <tr><td colspan="7" class="small muted" style="padding-top:14px;">{{ _('Paid Out of Register') }}</td></tr>
     {% for p in payouts %}
     <tr style="color:var(--danger);">
       <td class="small">{{ day }}</td>
       <td class="small">{{ p.logged_by_name or "—" }}</td>
-      <td class="small">Register Payout</td>
+      <td class="small">{{ _('Register Payout') }}</td>
       <td class="num-col">-{{ p.amount|money }}</td>
       <td class="num-col">—</td>
       <td class="num-col">-{{ p.amount|money }}</td>
-      <td class="small">Cash <span class="small muted">({{ p.reason }})</span></td>
+      <td class="small">{{ _('Cash') }} <span class="small muted">({{ p.reason }})</span></td>
     </tr>
     {% endfor %}
   </tbody>
@@ -68,11 +68,11 @@
       </td>
       <td>
         {% if latest_audit %}
-          {% if latest_audit.status == 'Perfect' %}<span class="badge ok">Perfect</span>
-          {% elif latest_audit.status == 'Deficit' %}<span class="badge danger">Deficit</span>
-          {% else %}<span class="badge warn">Surplus</span>{% endif %}
+          {% if latest_audit.status == 'Perfect' %}<span class="badge ok">{{ _('Perfect') }}</span>
+          {% elif latest_audit.status == 'Deficit' %}<span class="badge danger">{{ _('Deficit') }}</span>
+          {% else %}<span class="badge warn">{{ _('Surplus') }}</span>{% endif %}
         {% else %}
-          <span class="badge muted">Not Audited</span>
+          <span class="badge muted">{{ _('Not Audited') }}</span>
         {% endif %}
       </td>
     </tr>
@@ -115,11 +115,11 @@
 <div id="auditModal" class="modal-overlay" style="display:{{ 'flex' if audit_form else 'none' }};">
   <div class="modal-box" style="max-width:460px;">
     <h2 style="margin-top:0;">Perform Audit — {{ day }}</h2>
-    <p class="small muted" style="margin-top:-6px;">Only Cash is audited here — Card and Transfer settle
-      electronically and can't be counted out of a drawer.</p>
-    <div class="detail-item"><div class="k">System Cash Total</div><div class="v">{{ totals.Cash|money }} {{ currency_label() }}</div></div>
-    <div class="detail-item"><div class="k">System Card Total</div><div class="v">{{ totals.Card|money }} {{ currency_label() }}</div></div>
-    <div class="detail-item"><div class="k">System Transfer Total</div><div class="v">{{ totals.Transfer|money }} {{ currency_label() }}</div></div>
+    <p class="small muted" style="margin-top:-6px;">{{ _('Only Cash is audited here — Card and Transfer settle
+      electronically and can\'t be counted out of a drawer.') }}</p>
+    <div class="detail-item"><div class="k">{{ _('System Cash Total') }}</div><div class="v">{{ totals.Cash|money }} {{ currency_label() }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('System Card Total') }}</div><div class="v">{{ totals.Card|money }} {{ currency_label() }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('System Transfer Total') }}</div><div class="v">{{ totals.Transfer|money }} {{ currency_label() }}</div></div>
     <form method="post" action="{{ url_for('sales.cash_register_audit_new') }}" style="margin-top:14px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="day" value="{{ fv(audit_form, 'day', day) }}">

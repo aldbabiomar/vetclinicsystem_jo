@@ -7,26 +7,26 @@
     <p class="page-sub">{{ visit.id }} · Owner: {{ visit.owner_name }}{% if visit.owner_phone %} ({{ visit.owner_phone }}){% endif %}</p>
   </div>
   <div style="display:flex; gap:10px;">
-    <a class="btn secondary" href="{{ url_for('clinical.visit_export_pdf', visit_id=visit.id) }}">Export Visit (PDF)</a>
-    <a class="btn secondary" href="{{ url_for('clinical.visit_edit', visit_id=visit.id) }}">Edit Visit</a>
+    <a class="btn secondary" href="{{ url_for('clinical.visit_export_pdf', visit_id=visit.id) }}">{{ _('Export Visit (PDF)') }}</a>
+    <a class="btn secondary" href="{{ url_for('clinical.visit_edit', visit_id=visit.id) }}">{{ _('Edit Visit') }}</a>
   </div>
 </div>
 
 <div class="panel-grid" style="margin-bottom:20px;">
   <div class="card">
-    <div class="section-title" style="margin-top:0;">Case</div>
+    <div class="section-title" style="margin-top:0;">{{ _('Case') }}</div>
     <div class="detail-grid">
-      <div class="detail-item"><div class="k">Visit Type</div><div class="v">{{ visit.visit_type }}</div></div>
-      <div class="detail-item"><div class="k">Doctor</div><div class="v">{{ visit.doctor or "—" }}</div></div>
-      <div class="detail-item"><div class="k">Weight</div><div class="v">{{ (visit.weight_kg ~ " kg") if visit.weight_kg is not none else "—" }}</div></div>
-      <div class="detail-item"><div class="k">BCS</div><div class="v">{{ (visit.bcs ~ "/9") if visit.bcs is not none else "—" }}</div></div>
-      <div class="detail-item"><div class="k">Case Status</div><div class="v"><span class="badge {{ 'ok' if visit.case_status=='Resolved' else ('danger' if visit.case_status=='Deceased/Euthanized' else 'warn') }}">{{ visit.case_status }}</span></div></div>
+      <div class="detail-item"><div class="k">{{ _('Visit Type') }}</div><div class="v">{{ visit.visit_type }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('Doctor') }}</div><div class="v">{{ visit.doctor or "—" }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('Weight') }}</div><div class="v">{{ (visit.weight_kg ~ " kg") if visit.weight_kg is not none else "—" }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('BCS') }}</div><div class="v">{{ (visit.bcs ~ "/9") if visit.bcs is not none else "—" }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('Case Status') }}</div><div class="v"><span class="badge {{ 'ok' if visit.case_status=='Resolved' else ('danger' if visit.case_status=='Deceased/Euthanized' else 'warn') }}">{{ visit.case_status }}</span></div></div>
     </div>
-    <div class="detail-item"><div class="k">Presenting Complaint</div><div class="v">{{ visit.complaint or "—" }}</div></div>
-    <div class="detail-item"><div class="k">History</div><div class="v">{{ visit.history or "—" }}</div></div>
-    <div class="detail-item"><div class="k">Physical Exam &amp; Diagnostics</div><div class="v">{{ visit.exam or "—" }}</div></div>
-    <div class="detail-item"><div class="k">Treatment Plan</div><div class="v">{{ visit.treatment or "—" }}</div></div>
-    <div class="detail-item"><div class="k">Updates Log</div><div class="v updates-log">{{ visit.updates_log or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Presenting Complaint') }}</div><div class="v">{{ visit.complaint or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('History') }}</div><div class="v">{{ visit.history or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Physical Exam & Diagnostics') }}</div><div class="v">{{ visit.exam or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Treatment Plan') }}</div><div class="v">{{ visit.treatment or "—" }}</div></div>
+    <div class="detail-item"><div class="k">{{ _('Updates Log') }}</div><div class="v updates-log">{{ visit.updates_log or "—" }}</div></div>
 
     <div style="margin-top:10px;">
       <button class="btn small secondary" type="button" data-vzh="visit-detail-1">{{ _('Additional Tests / X-Rays') }}</button>
@@ -43,7 +43,7 @@
           </form>
         </span>
       </div>
-      {% else %}<div class="empty-note">No files uploaded yet.</div>{% endfor %}
+      {% else %}<div class="empty-note">{{ _('No files uploaded yet.') }}</div>{% endfor %}
       <form method="post" action="{{ url_for('clinical.visit_attachment_upload', visit_id=visit.id) }}" enctype="multipart/form-data" style="margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="file" name="file" accept=".pdf,.jpg,.jpeg" required>
@@ -56,46 +56,46 @@
   <div>
     {% if visit.followup_needed == 'Y' %}
     <div class="card" style="margin-bottom:16px;">
-      <div class="section-title" style="margin-top:0;">Follow-Up</div>
+      <div class="section-title" style="margin-top:0;">{{ _('Follow-Up') }}</div>
       <div class="detail-grid">
-        <div class="detail-item"><div class="k">Method</div><div class="v">{{ visit.followup_method or "—" }}</div></div>
-        <div class="detail-item"><div class="k">Reason</div><div class="v">{{ visit.followup_reason or "—" }}</div></div>
-        <div class="detail-item"><div class="k">Date</div><div class="v">{{ visit.followup_date|localdate or "—" }}</div></div>
-        <div class="detail-item"><div class="k">Status</div><div class="v"><span class="badge {{ 'warn' if visit.followup_status=='Pending' else 'ok' }}">{{ visit.followup_status }}</span></div></div>
+        <div class="detail-item"><div class="k">{{ _('Method') }}</div><div class="v">{{ visit.followup_method or "—" }}</div></div>
+        <div class="detail-item"><div class="k">{{ _('Reason') }}</div><div class="v">{{ visit.followup_reason or "—" }}</div></div>
+        <div class="detail-item"><div class="k">{{ _('Date') }}</div><div class="v">{{ visit.followup_date|localdate or "—" }}</div></div>
+        <div class="detail-item"><div class="k">{{ _('Status') }}</div><div class="v"><span class="badge {{ 'warn' if visit.followup_status=='Pending' else 'ok' }}">{{ visit.followup_status }}</span></div></div>
       </div>
     </div>
     {% endif %}
 
     {% if visit.wellness_needed == 'Y' %}
     <div class="card" style="margin-bottom:16px;">
-      <div class="section-title" style="margin-top:0;">Wellness Reminder</div>
+      <div class="section-title" style="margin-top:0;">{{ _('Wellness Reminder') }}</div>
       <div class="detail-grid">
-        <div class="detail-item"><div class="k">Type</div><div class="v">{{ visit.wellness_type or "—" }}</div></div>
-        <div class="detail-item"><div class="k">Next Dose Date</div><div class="v">{{ visit.wellness_next_dose_date|localdate or "—" }}</div></div>
-        <div class="detail-item"><div class="k">Contacted</div><div class="v">{{ visit.wellness_contacted }}</div></div>
+        <div class="detail-item"><div class="k">{{ _('Type') }}</div><div class="v">{{ visit.wellness_type or "—" }}</div></div>
+        <div class="detail-item"><div class="k">{{ _('Next Dose Date') }}</div><div class="v">{{ visit.wellness_next_dose_date|localdate or "—" }}</div></div>
+        <div class="detail-item"><div class="k">{{ _('Contacted') }}</div><div class="v">{{ visit.wellness_contacted }}</div></div>
       </div>
     </div>
     {% endif %}
 
     {% if visit.grooming_needed == 'Y' %}
     <div class="card" style="margin-bottom:16px;">
-      <div class="section-title" style="margin-top:0;">Grooming</div>
-      <div class="detail-item"><div class="k">Services</div><div class="v">{{ visit.grooming_services or "—" }}</div></div>
-      <div class="detail-item"><div class="k">Admitted Items</div><div class="v">{{ visit.grooming_admitted_items or "—" }}</div></div>
-      <div class="detail-item"><div class="k">Status</div><div class="v"><span class="badge {{ 'ok' if visit.grooming_status=='Finished' else 'warn' }}">{{ visit.grooming_status or "Waiting" }}</span></div></div>
+      <div class="section-title" style="margin-top:0;">{{ _('Grooming') }}</div>
+      <div class="detail-item"><div class="k">{{ _('Services') }}</div><div class="v">{{ visit.grooming_services or "—" }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('Admitted Items') }}</div><div class="v">{{ visit.grooming_admitted_items or "—" }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('Status') }}</div><div class="v"><span class="badge {{ 'ok' if visit.grooming_status=='Finished' else 'warn' }}">{{ visit.grooming_status or "Waiting" }}</span></div></div>
     </div>
     {% endif %}
 
     <div class="card">
-      <div class="section-title" style="margin-top:0;">Billing</div>
+      <div class="section-title" style="margin-top:0;">{{ _('Billing') }}</div>
       <form method="post" action="{{ url_for('clinical.visit_billing_save', visit_id=visit.id) }}" id="billingForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="display:flex; gap:16px; margin-bottom:12px;">
           <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-            <input type="radio" name="billing_type" value="Automatic" data-vzh="visit-detail-3" id="btAuto" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Automatic' }}> Automatic Calculation
+            <input type="radio" name="billing_type" value="Automatic" data-vzh="visit-detail-3" id="btAuto" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Automatic' }}> {{ _('Automatic Calculation') }}
           </label>
           <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-            <input type="radio" name="billing_type" value="Manual" data-vzh="visit-detail-3" id="btManual" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Manual' }}> Manual Entry
+            <input type="radio" name="billing_type" value="Manual" data-vzh="visit-detail-3" id="btManual" {{ 'checked' if fv(form, 'billing_type', billing.billing_type if billing else 'Automatic')=='Manual' }}> {{ _('Manual Entry') }}
           </label>
         </div>
         <div id="autoFields" class="field full" style="margin-bottom:12px;">
@@ -117,15 +117,15 @@
 
       <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
         {% for l in summary.lines %}<div class="list-line"><div>{{ l.name }}{% if l.quantity and l.quantity != 1 %} × {{ l.quantity|round(2) }}{% endif %}</div><div>{{ (l.line_total if l.line_total is defined else l.price)|money }} {{ currency_label() }}</div></div>{% endfor %}
-        <div class="detail-item" style="margin-top:8px;"><div class="k">Subtotal</div><div class="v">{{ summary.subtotal|money }} {{ currency_label() }}</div></div>
+        <div class="detail-item" style="margin-top:8px;"><div class="k">{{ _('Subtotal') }}</div><div class="v">{{ summary.subtotal|money }} {{ currency_label() }}</div></div>
         <form method="post" action="{{ url_for('clinical.visit_discount_save', visit_id=visit.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="field" style="flex:1;"><label for="visitdetail-4-discount_percent">Discount % (Max {{ discount_cap }}%)</label><input id="visitdetail-4-discount_percent" type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ fv(form, 'discount_percent', summary.discount_percent) if discount_error else summary.discount_percent }}"></div>
           <button class="btn small secondary" type="submit">{{ _('Apply') }}</button>
         </form>
-        <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} {{ currency_label() }}</div></div>
-        <div class="detail-item"><div class="k">Paid</div><div class="v">{{ summary.paid|money }} {{ currency_label() }}</div></div>
-        {% if summary.cleanup_amount %}<div class="detail-item"><div class="k">Clean Up applied</div><div class="v">{{ summary.cleanup_amount|money }} {{ currency_label() }}</div></div>{% endif %}
+        <div class="detail-item"><div class="k">{{ _('Total') }}</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} {{ currency_label() }}</div></div>
+        <div class="detail-item"><div class="k">{{ _('Paid') }}</div><div class="v">{{ summary.paid|money }} {{ currency_label() }}</div></div>
+        {% if summary.cleanup_amount %}<div class="detail-item"><div class="k">{{ _('Clean Up applied') }}</div><div class="v">{{ summary.cleanup_amount|money }} {{ currency_label() }}</div></div>{% endif %}
         <span class="badge {{ 'ok' if summary.status=='Fully Paid' else ('danger' if summary.status=='Unpaid' else 'muted') }}">{{ summary.status }}</span>
       </div>
 
@@ -136,9 +136,9 @@
         <div class="field"><label for="visitdetail-7-method">{{ _('Method') }}</label>
           <select id="visitdetail-7-method" name="method">
             {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}
-            <option {{ 'selected' if m=='Cash' }}>Cash</option>
-            <option {{ 'selected' if m=='Card' }}>Card</option>
-            <option {{ 'selected' if m=='Transfer' }}>Transfer</option>
+            <option {{ 'selected' if m=='Cash' }}>{{ _('Cash') }}</option>
+            <option {{ 'selected' if m=='Card' }}>{{ _('Card') }}</option>
+            <option {{ 'selected' if m=='Transfer' }}>{{ _('Transfer') }}</option>
           </select>
         </div>
         <button class="btn small secondary" type="submit">{{ _('Add') }}</button>

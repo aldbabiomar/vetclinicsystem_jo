@@ -5,8 +5,8 @@
 <div class="page-head"><div><h1>{{ _('Follow-Ups') }}</h1><p class="page-sub">Auto-generated from visits marked "follow-up needed". {{ total_count }} shown.</p></div></div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('clinical.followups_list') }}">Pending Only</a>
-  <a class="chip {{ 'active' if show_all }}" href="{{ url_for('clinical.followups_list', all=1) }}">All Follow-Ups</a>
+  <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('clinical.followups_list') }}">{{ _('Pending Only') }}</a>
+  <a class="chip {{ 'active' if show_all }}" href="{{ url_for('clinical.followups_list', all=1) }}">{{ _('All Follow-Ups') }}</a>
 </div>
 
 <div class="table-wrap sticky-scroll">
@@ -15,7 +15,7 @@
   <tbody>
     {% for f in followups %}
     <tr>
-      <td>{{ f.followup_date|localdate or "—" }} {% if f.missed %}<span class="badge danger">MISSED</span>{% endif %}</td>
+      <td>{{ f.followup_date|localdate or "—" }} {% if f.missed %}<span class="badge danger">{{ _('MISSED') }}</span>{% endif %}</td>
       <td>{{ f.reminder_call_date|localdate or "—" }}</td>
       <td><a href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}"><strong>{{ f.animal_name }}</strong></a></td>
       <td>{{ f.owner_name }}</td><td>{{ f.phone or "—" }}</td>
@@ -32,13 +32,13 @@
       <td>
         {% if f.phone %}
         <a class="btn small ok" target="_blank" rel="noopener"
-           href="https://wa.me/{{ f.phone|replace('+','') }}?text={{ ('Hi ' ~ f.owner_name ~ ', this is a reminder that ' ~ f.animal_name ~ ' is due for their ' ~ (f.followup_reason or 'follow-up') ~ ' on ' ~ (f.followup_date or 'a date we will confirm') ~ '. Please contact us to schedule. - ' ~ clinic_name)|urlencode }}">Send WhatsApp Message</a>
+           href="https://wa.me/{{ f.phone|replace('+','') }}?text={{ ('Hi ' ~ f.owner_name ~ ', this is a reminder that ' ~ f.animal_name ~ ' is due for their ' ~ (f.followup_reason or 'follow-up') ~ ' on ' ~ (f.followup_date or 'a date we will confirm') ~ '. Please contact us to schedule. - ' ~ clinic_name)|urlencode }}">{{ _('Send WhatsApp Message') }}</a>
         {% else %}
-        <a class="btn small secondary" href="{{ url_for('clinical.owner_edit', owner_id=f.owner_id) }}">Add phone</a>
+        <a class="btn small secondary" href="{{ url_for('clinical.owner_edit', owner_id=f.owner_id) }}">{{ _('Add phone') }}</a>
         {% endif %}
       </td>
     </tr>
-    {% else %}<tr><td colspan="10" class="empty-note">No follow-ups to show.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="10" class="empty-note">{{ _('No follow-ups to show.') }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

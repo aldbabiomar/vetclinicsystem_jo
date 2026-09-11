@@ -13,7 +13,7 @@
   </div>
   <div class="form-actions">
     <button class="btn" type="submit">{{ 'Save Changes' if owner else 'Add Owner' }}</button>
-    <a class="btn secondary" href="{{ url_for('clinical.owner_detail', owner_id=owner.id) if owner else url_for('clinical.owners_list') }}">Cancel</a>
+    <a class="btn secondary" href="{{ url_for('clinical.owner_detail', owner_id=owner.id) if owner else url_for('clinical.owners_list') }}">{{ _('Cancel') }}</a>
   </div>
 </form>
 </div>

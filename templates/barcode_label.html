@@ -5,7 +5,7 @@
   <div><h1>{{ _('Barcode Label') }}</h1><p class="page-sub">{{ item.name }}</p></div>
   <div style="display:flex; gap:10px;">
     <button class="btn secondary" id="printBtn" data-vzh="barcode-label-1" disabled>{{ _('Print') }}</button>
-    <a class="btn secondary" href="{{ url_for('inventory.inventory_catalog') }}">Back</a>
+    <a class="btn secondary" href="{{ url_for('inventory.inventory_catalog') }}">{{ _('Back') }}</a>
   </div>
 </div>
 <div class="barcode-label-box">
@@ -13,7 +13,7 @@
   <svg id="barcodeSvg"></svg>
   <div style="font-size:11px; color:var(--ink-soft);">{{ clinic_name }}</div>
   <p class="small muted no-print" id="barcodeError" style="display:none; color:var(--danger);">
-    Could not render the barcode. Try refreshing the page.
+    {{ _('Could not render the barcode. Try refreshing the page.') }}
   </p>
 </div>
 <script nonce="{{ csp_nonce }}">

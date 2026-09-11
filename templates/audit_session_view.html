@@ -16,12 +16,12 @@
 
 <div class="card" style="margin-bottom:16px;">
   <p class="small muted" style="margin:0;">
-    <strong>Stock Counted</strong> — what you physically counted on the shelf today.
-    <strong>Received Since Prior Audit</strong> — new stock that arrived since the last confirmed audit (0 if none).
-    <strong>Reorder Threshold</strong> — stock level at or below which this item is flagged LOW STOCK; leave blank to keep the last value set for this item.
-    <strong>Critical Item?</strong> — Y/N; leave blank to keep the last value set.
-    <strong>Target Coverage (Days)</strong> — how many days of stock you want on hand when reordering; leave blank to keep the last value set (defaults to 30 if never set).
-    <strong>Nearest Expiry Date</strong> — the soonest expiry date among current stock of this item.
+    <strong>{{ _('Stock Counted') }}</strong> {{ _('— what you physically counted on the shelf today.') }}
+    <strong>{{ _('Received Since Prior Audit') }}</strong> {{ _('— new stock that arrived since the last confirmed audit (0 if none).') }}
+    <strong>{{ _('Reorder Threshold') }}</strong> {{ _('— stock level at or below which this item is flagged LOW STOCK; leave blank to keep the last value set for this item.') }}
+    <strong>{{ _('Critical Item?') }}</strong> {{ _('— Y/N; leave blank to keep the last value set.') }}
+    <strong>{{ _('Target Coverage (Days)') }}</strong> {{ _('— how many days of stock you want on hand when reordering; leave blank to keep the last value set (defaults to 30 if never set).') }}
+    <strong>{{ _('Nearest Expiry Date') }}</strong> {{ _('— the soonest expiry date among current stock of this item.') }}
   </p>
 </div>
 
@@ -39,7 +39,7 @@
     {% set line = existing_lines.get(it.id) %}
     {% set eff = latest_confirmed.get(it.id) %}
     <tr>
-      <td><strong>{{ it.name }}</strong>{% if it.ownership_type == 'Consignment' %} <span class="badge" style="margin-left:4px;">consignment</span>{% endif %}{% if not it.active %} <span class="badge muted" style="margin-left:4px;">deactivated</span>{% endif %}<div class="small muted">{{ it.unit or '' }}</div></td>
+      <td><strong>{{ it.name }}</strong>{% if it.ownership_type == 'Consignment' %} <span class="badge" style="margin-left:4px;">{{ _('consignment') }}</span>{% endif %}{% if not it.active %} <span class="badge muted" style="margin-left:4px;">{{ _('deactivated') }}</span>{% endif %}<div class="small muted">{{ it.unit or '' }}</div></td>
       <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="stock_{{ it.id }}" value="{{ fv(form, 'stock_' ~ it.id, line.stock_counted if line and line.stock_counted is not none else '') }}" style="width:80px; text-align:right;"></td>
       <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="received_{{ it.id }}" value="{{ fv(form, 'received_' ~ it.id, line.received_since_prior if line else 0) }}" style="width:70px; text-align:right;"></td>
       <td class="num-col"><input {{ 'disabled' if readonly }} type="number" step="any" name="threshold_{{ it.id }}" value="{{ fv(form, 'threshold_' ~ it.id, line.reorder_threshold if line and line.reorder_threshold is not none else '') }}" placeholder="{{ eff.effective_reorder_threshold if eff else '' }}" style="width:70px; text-align:right;"></td>
@@ -65,7 +65,7 @@
 <div id="confirmModal" class="modal-overlay" style="display:none;">
   <div class="modal-box">
     <h2 style="margin-top:0;">{{ _('Confirm This Audit?') }}</h2>
-    <p class="small">Continuing will confirm the audit and it can't be edited after. If you intend to save it for later, click Cancel and use Save instead.</p>
+    <p class="small">{{ _('Continuing will confirm the audit and it can\'t be edited after. If you intend to save it for later, click Cancel and use Save instead.') }}</p>
     <div id="confirmSummary" class="small" style="margin:10px 0; padding:10px; border-radius:8px; background:var(--muted-tint);"></div>
     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
       <button class="btn secondary" type="button" data-vzh="audit-session-view-2">{{ _('Cancel') }}</button>

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-11 13:24+0300\n"
+"POT-Creation-Date: 2026-09-11 15:03+0300\n"
 "PO-Revision-Date: 2026-09-11 12:18+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ar\n"
@@ -19,6 +19,107 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
+#: app.py:585
+msgid ""
+"You were signed out before that could be saved, so nothing was stored. "
+"Please sign in and enter it again."
+msgstr ""
+
+#: app.py:611
+msgid "Your password was changed — please log in again."
+msgstr "تم تغيير كلمة المرور — يرجى تسجيل الدخول مرة أخرى."
+
+#: app.py:687
+#, python-format
+msgid "That file is too large — the limit is %(MAX_UPLOAD_MB)s MB per upload."
+msgstr "الملف كبير جدًا — الحد الأقصى %(MAX_UPLOAD_MB)s ميجابايت لكل رفع."
+
+#: app.py:714
+msgid ""
+"One of the number fields on that form wasn't valid. Please check the "
+"amounts and try again."
+msgstr ""
+
+#: app.py:722
+msgid "That phone number doesn't look valid. Please check it and try again."
+msgstr "رقم الهاتف لا يبدو صحيحًا. يرجى التحقق منه والمحاولة مرة أخرى."
+
+#: app.py:758
+msgid ""
+"This page had been open too long to submit safely, so nothing was saved. "
+"Please check what you entered and submit it again."
+msgstr ""
+
+#: app.py:761
+msgid ""
+"You were signed out while this page was open. Please sign in again — you "
+"may need to re-enter what you were working on."
+msgstr ""
+
+#: app.py:765
+msgid ""
+"That form was missing something the server needed. Please reload the page"
+" and try again."
+msgstr ""
+
+#: app.py:778
+msgid "That number is too large to be a valid value here."
+msgstr "هذا الرقم كبير جدًا ليكون قيمة صالحة هنا."
+
+#: app.py:894
+msgid ""
+"Too many login attempts from this network. Please wait a few minutes and "
+"try again."
+msgstr ""
+
+#: app.py:901
+#, python-format
+msgid ""
+"Too many failed attempts for that account. Try again in about "
+"%(minutes_left)s minute(s) (around %(strftime)s)."
+msgstr ""
+
+#: app.py:913
+msgid "Incorrect username or password, or account is disabled."
+msgstr "اسم المستخدم أو كلمة المرور غير صحيحة، أو أن الحساب معطّل."
+
+#: app.py:951
+msgid "Current password is incorrect."
+msgstr "كلمة المرور الحالية غير صحيحة."
+
+#: app.py:955
+msgid "New password and confirmation don't match."
+msgstr "كلمة المرور الجديدة والتأكيد غير متطابقين."
+
+#: app.py:966
+msgid "Password updated."
+msgstr "تم تحديث كلمة المرور."
+
+#: app.py:1096
+msgid "Report data rebuilt from current billing, sales, and cost data."
+msgstr "تمت إعادة بناء بيانات التقارير من الفوترة والمبيعات والتكاليف الحالية."
+
+#: app.py:1212
+msgid "Pick a month first."
+msgstr "اختر الشهر أولًا."
+
+#: app.py:1215
+msgid "That's not a valid month."
+msgstr "هذا ليس شهرًا صالحًا."
+
+#: app.py:1224
+msgid "Operating costs must be valid numbers."
+msgstr "يجب أن تكون التكاليف التشغيلية أرقامًا صالحة."
+
+#: app.py:1232
+msgid "Operating costs can't be negative."
+msgstr "لا يمكن أن تكون التكاليف التشغيلية سالبة."
+
+#: app.py:1242
+#, python-format
+msgid "Operating costs saved for %(month)s."
+msgstr "تم حفظ التكاليف التشغيلية لشهر %(month)s."
+
 #: core.py:347
 #, python-format
 msgid "%(label)s is required."
@@ -29,7 +130,7 @@ msgstr "حقل %(label)s مطلوب."
 msgid "Discount must be between 0%% and %(cap)s%% for your role."
 msgstr "يجب أن يكون الخصم بين ٠٪ و %(cap)s٪ لصلاحية دورك."
 
-#: core.py:387
+#: core.py:387 routes/clinical.py:1584
 msgid "Clean Up amount can't be negative."
 msgstr "قيمة الإعفاء عن الفئات القليلة لا يمكن أن تكون سالبة"
 
@@ -41,6 +142,1611 @@ msgstr "لا يمكن الإعفاء عن الفئات القليلة أكثر �
 #: core.py:391
 msgid "Clean Up can't exceed the remaining balance."
 msgstr "قيمة الإعفاء عن الفئات القليلة لا يمكن أن تزيد عن الرصيد المتبقي"
+
+#: routes/admin.py:107
+msgid "Fill in a username, full name, and role."
+msgstr "أدخل اسم المستخدم والاسم الكامل والدور."
+
+#: routes/admin.py:114
+msgid "That username is already taken."
+msgstr "اسم المستخدم هذا مستخدم بالفعل."
+
+#: routes/admin.py:122
+msgid "Custom discount override must be a whole number."
+msgstr "يجب أن يكون تجاوز الخصم المخصص رقمًا صحيحًا."
+
+#: routes/admin.py:125
+msgid "Custom discount override must be between 0 and 100."
+msgstr "يجب أن يكون تجاوز الخصم المخصص بين ٠ و١٠٠."
+
+#: routes/admin.py:137
+#, python-format
+msgid ""
+"User %(username)s created. They'll be asked to set a new password on "
+"first login."
+msgstr ""
+
+#: routes/admin.py:146
+msgid "You can't disable your own account."
+msgstr "لا يمكنك تعطيل حسابك الخاص."
+
+#: routes/admin.py:153 routes/admin.py:184
+msgid "User not found."
+msgstr "المستخدم غير موجود."
+
+#: routes/admin.py:157
+msgid "Can't disable the last active Admin."
+msgstr "لا يمكن تعطيل آخر مدير نشط."
+
+#: routes/admin.py:163
+msgid "User updated."
+msgstr "تم تحديث المستخدم."
+
+#: routes/admin.py:176
+msgid "Not a valid role."
+msgstr "الدور غير صالح."
+
+#: routes/admin.py:187
+msgid "Can't move the last active Admin out of the Admin role."
+msgstr "لا يمكن نقل آخر مدير نشط خارج دور المدير."
+
+#: routes/admin.py:193
+msgid "Role updated."
+msgstr "تم تحديث الدور."
+
+#: routes/admin.py:213
+msgid "Give the new role a name."
+msgstr "أعطِ الدور الجديد اسمًا."
+
+#: routes/admin.py:221 routes/admin.py:268
+msgid "Max Discount must be a whole number."
+msgstr "يجب أن يكون الحد الأقصى للخصم رقمًا صحيحًا."
+
+#: routes/admin.py:224 routes/admin.py:271
+msgid "Max Discount must be between 0 and 100."
+msgstr "يجب أن يكون الحد الأقصى للخصم بين ٠ و١٠٠."
+
+#: routes/admin.py:242 routes/admin.py:294 routes/admin.py:354
+msgid ""
+"No role is currently marked \"Can be assigned as a vet\" — Appointments, "
+"New Visit, Grooming, and Inpatient vet pickers will show no options until"
+" at least one role has this turned on."
+msgstr ""
+
+#: routes/admin.py:254
+msgid "The Admin role can't be edited."
+msgstr "لا يمكن تعديل دور المدير."
+
+#: routes/admin.py:260
+msgid "A role needs a name."
+msgstr "الدور يحتاج إلى اسم."
+
+#: routes/admin.py:321
+msgid "The Admin role can't be deleted."
+msgstr "لا يمكن حذف دور المدير."
+
+#: routes/admin.py:328
+msgid "Pick a role to move the affected staff to before deleting this one."
+msgstr "اختر دورًا لنقل الموظفين المتأثرين إليه قبل حذف هذا الدور."
+
+#: routes/admin.py:379
+msgid "Password reset. The user will be asked to set a new one on next login."
+msgstr "تمت إعادة تعيين كلمة المرور. سيُطلب من المستخدم تعيين كلمة جديدة عند تسجيل الدخول التالي."
+"تمت إعادة تعيين كلمة المرور. سيُطلب من المستخدم تعيين كلمة جديدة عند "
+"تسجيل الدخول التالي.تمت إعادة تعيين كلمة المرور. سيُطلب من المستخدم تعيين"
+" كلمة جديدة عند تسجيل الدخول التالي."
+
+#: routes/clinical.py:184 routes/clinical.py:248 routes/consignment.py:65
+#: routes/consignment.py:113
+msgid "That phone number doesn't look valid — check the digits and try again."
+msgstr "رقم الهاتف لا يبدو صحيحًا — تحقق من الأرقام وحاول مرة أخرى."
+
+#: routes/clinical.py:193 routes/clinical.py:214
+#, python-format
+msgid ""
+"Owner %(id)s already has this phone number on file — add the pet to them "
+"instead of creating a new owner."
+msgstr ""
+
+#: routes/clinical.py:216
+msgid "That phone number is already on file for another owner."
+msgstr "رقم الهاتف هذا مسجّل بالفعل لمالك آخر."
+
+#: routes/clinical.py:218
+#, python-format
+msgid "Owner %(oid)s added."
+msgstr "تمت إضافة المالك %(oid)s."
+
+#: routes/clinical.py:229 routes/clinical.py:241
+msgid "Owner not found."
+msgstr "المالك غير موجود."
+
+#: routes/clinical.py:259
+msgid "Owner updated."
+msgstr "تم تحديث المالك."
+
+#: routes/clinical.py:310 routes/clinical.py:329 routes/clinical.py:386
+msgid "Patient not found."
+msgstr "المريض غير موجود."
+
+#: routes/clinical.py:346 routes/clinical.py:514
+msgid "That microchip number doesn't look valid — check the digits and try again."
+msgstr "رقم الشريحة لا يبدو صحيحًا — تحقق من الأرقام وحاول مرة أخرى."
+
+#: routes/clinical.py:369 routes/clinical.py:579
+msgid "That microchip number is already on another patient's record."
+msgstr "رقم الشريحة هذا مسجّل بالفعل في سجل مريض آخر."
+
+#: routes/clinical.py:373
+msgid "Patient updated."
+msgstr "تم تحديث المريض."
+
+#: routes/clinical.py:459
+msgid "Pick a patient from the search results before logging a visit."
+msgstr "اختر مريضًا من نتائج البحث قبل تسجيل الزيارة."
+
+#: routes/clinical.py:487
+msgid ""
+"That owner phone number doesn't look valid — check the digits and try "
+"again."
+msgstr ""
+
+#: routes/clinical.py:495 routes/clinical.py:779 routes/clinical.py:1704
+msgid "Weight and BCS must be valid numbers."
+msgstr "يجب أن يكون الوزن ودرجة الحالة الجسدية أرقامًا صالحة."
+
+#: routes/clinical.py:535 routes/clinical.py:562
+#, python-format
+msgid ""
+"Owner %(oid)s already has this phone number on file — the new pet was "
+"added to their existing profile."
+msgstr ""
+
+#: routes/clinical.py:558
+msgid ""
+"That owner couldn't be saved — check the name and phone number and try "
+"again."
+msgstr ""
+
+#: routes/clinical.py:729 routes/clinical.py:740 routes/clinical.py:861
+#: routes/clinical.py:869 routes/clinical.py:999 routes/clinical.py:1020
+#: routes/clinical.py:1058 routes/clinical.py:1067 routes/clinical.py:1121
+#: routes/clinical.py:1212 routes/clinical.py:1241 routes/clinical.py:1272
+msgid "Visit not found."
+msgstr "الزيارة غير موجودة."
+
+#: routes/clinical.py:763
+msgid "Visit type must be Outpatient or Inpatient."
+msgstr "يجب أن يكون نوع الزيارة عيادات خارجية أو تنويم."
+
+#: routes/clinical.py:782 routes/clinical.py:1712 routes/clinical.py:1791
+msgid "Weight can't be negative."
+msgstr "لا يمكن أن يكون الوزن سالبًا."
+
+#: routes/clinical.py:817
+#, python-format
+msgid ""
+"Inpatient case #%(id)s is still open for this visit — dismiss it there "
+"first, or leave the status as Admitted to Inpatient."
+msgstr ""
+
+#: routes/clinical.py:834
+msgid "An inpatient case was opened for this visit."
+msgstr "تم فتح حالة تنويم لهذه الزيارة."
+
+#: routes/clinical.py:836
+msgid "Visit updated."
+msgstr "تم تحديث الزيارة."
+
+#: routes/clinical.py:902
+msgid "Add at least one billed item."
+msgstr "أضف صنفًا واحدًا على الأقل إلى الفاتورة."
+
+#: routes/clinical.py:916
+#, python-format
+msgid ""
+"Can't save — this bill has a %(discount_percent)s%% discount applied, but"
+" includes item(s) marked as not discountable: %(join)s. Remove the "
+"discount first, or leave these items off this bill."
+msgstr ""
+
+#: routes/clinical.py:921
+msgid "Manual amount must be a valid number."
+msgstr "يجب أن يكون المبلغ اليدوي رقمًا صالحًا."
+
+#: routes/clinical.py:924
+msgid "Manual Entry requires a Billed Amount greater than 0."
+msgstr "الإدخال اليدوي يتطلب مبلغًا مفوترًا أكبر من ٠."
+
+#: routes/clinical.py:952
+#, python-format
+msgid ""
+"That change would leave %(fmt_money)s paid against a %(fmt_money2)s JOD "
+"bill. Process a service refund for the difference first."
+msgstr ""
+
+#: routes/clinical.py:983 routes/clinical.py:1928
+msgid "Some quantities weren't valid numbers and were skipped."
+msgstr "بعض الكميات لم تكن أرقامًا صالحة وتم تجاهلها."
+
+#: routes/clinical.py:985 routes/clinical.py:1930
+msgid "Some selected items no longer exist in the Price List and were skipped."
+msgstr "بعض الأصناف المختارة لم تعد موجودة في قائمة الأسعار وتم تجاهلها."
+
+#: routes/clinical.py:986
+msgid "Billing saved."
+msgstr "تم حفظ الفاتورة."
+
+#: routes/clinical.py:1006 routes/clinical.py:1571 routes/clinical.py:1985
+msgid "Discount must be a valid number."
+msgstr "يجب أن يكون الخصم رقمًا صالحًا."
+
+#: routes/clinical.py:1026 routes/clinical.py:2006
+#, python-format
+msgid ""
+"Can't apply a discount — this bill includes item(s) marked as not "
+"discountable: %(join)s."
+msgstr ""
+
+#: routes/clinical.py:1034
+msgid "Save the bill first — a discount needs something to apply to."
+msgstr "احفظ الفاتورة أولًا — الخصم يحتاج إلى ما يُطبَّق عليه."
+
+#: routes/clinical.py:1045 routes/clinical.py:2015
+#, python-format
+msgid "%(percent)s%% discount applied."
+msgstr "تم تطبيق خصم %(percent)s٪."
+
+#: routes/clinical.py:1072 routes/clinical.py:1562 routes/clinical.py:2042
+#: routes/consignment.py:290
+msgid "Payment amount must be a valid number."
+msgstr "يجب أن يكون مبلغ الدفعة رقمًا صالحًا."
+
+#: routes/clinical.py:1075 routes/clinical.py:1565 routes/clinical.py:2045
+msgid "Payment amount must be greater than 0."
+msgstr "يجب أن يكون مبلغ الدفعة أكبر من ٠."
+
+#: routes/clinical.py:1080
+#, python-format
+msgid "That's more than the remaining balance of %(fmt_money)s JOD on this visit."
+msgstr "هذا أكثر من الرصيد المتبقي البالغ %(fmt_money)s د.أ على هذه الزيارة."
+
+#: routes/clinical.py:1085 routes/clinical.py:1581 routes/clinical.py:2055
+msgid "Clean Up amount must be a valid number."
+msgstr "يجب أن تكون قيمة الإعفاء عن الفئات القليلة رقمًا صالحًا."
+
+#: routes/clinical.py:1111 routes/clinical.py:1631 routes/clinical.py:2081
+#: routes/consignment.py:322
+msgid "Payment recorded."
+msgstr "تم تسجيل الدفعة."
+
+#: routes/clinical.py:1125 routes/clinical.py:2095
+msgid "No file selected."
+msgstr "لم يتم اختيار أي ملف."
+
+#: routes/clinical.py:1138
+msgid "File not found."
+msgstr "الملف غير موجود."
+
+#: routes/clinical.py:1147
+msgid ""
+"This file's record exists but the file itself is missing from the uploads"
+" folder — it may not have been included in a backup/restore. Check with "
+"whoever manages backups before re-uploading."
+msgstr ""
+
+#: routes/clinical.py:1168 routes/clinical.py:1183
+msgid "File not found — it may have already been deleted."
+msgstr "الملف غير موجود — ربما تم حذفه بالفعل."
+
+#: routes/clinical.py:1187
+#, python-format
+msgid "Deleted %(original_name)s."
+msgstr "تم حذف %(original_name)s."
+
+#: routes/clinical.py:1217
+msgid "Follow-up status updated."
+msgstr "تم تحديث حالة المتابعة."
+
+#: routes/clinical.py:1247
+msgid "Wellness reminder updated."
+msgstr "تم تحديث تذكير الرعاية الوقائية."
+
+#: routes/clinical.py:1278
+msgid "Grooming entry updated."
+msgstr "تم تحديث سجل العناية و تصفيف الحيوان."
+
+#: routes/clinical.py:1361 routes/clinical.py:1716
+msgid "Pick a patient from the search results first."
+msgstr "اختر مريضًا من نتائج البحث أولًا."
+
+#: routes/clinical.py:1367 routes/clinical.py:1426
+msgid "Price per Day and Total must be valid numbers."
+msgstr "يجب أن يكون السعر اليومي والإجمالي أرقامًا صالحة."
+
+#: routes/clinical.py:1370 routes/clinical.py:1429
+msgid "Price per Day and Total can't be negative."
+msgstr "لا يمكن أن يكون السعر اليومي والإجمالي سالبين."
+
+#: routes/clinical.py:1395
+msgid "Boarding session added."
+msgstr "تمت إضافة فترة الإيواء."
+
+#: routes/clinical.py:1406 routes/clinical.py:1488 routes/clinical.py:1520
+#: routes/clinical.py:1557
+msgid "Boarding session not found."
+msgstr "فترة الإيواء غير موجودة."
+
+#: routes/clinical.py:1442
+msgid "A stay can't end before it starts — check the dates."
+msgstr "لا يمكن أن تنتهي الإقامة قبل أن تبدأ — تحقق من التواريخ."
+
+#: routes/clinical.py:1472
+msgid "Boarding session updated."
+msgstr "تم تحديث فترة الإيواء."
+
+#: routes/clinical.py:1474
+msgid ""
+"This stay is already picked up, so dates/price/total stayed locked at the"
+" billed figure — only room, admitted items, and special needs were "
+"changed."
+msgstr ""
+
+#: routes/clinical.py:1511
+msgid "Marked as picked up."
+msgstr "تم وضع علامة الاستلام."
+
+#: routes/clinical.py:1525
+msgid "Describe what's wrong before submitting."
+msgstr "صف المشكلة قبل الإرسال."
+
+#: routes/clinical.py:1537
+msgid "Incident logged."
+msgstr "تم تسجيل الحادثة."
+
+#: routes/clinical.py:1587
+#, python-format
+msgid "Clean Up can't exceed %(CLEANUP_CAP)s JOD total on this bill."
+msgstr "لا يمكن الإعفاء عن الفئات القليلة أكثر من %(CLEANUP_CAP)s د.أ كمجموع لهذه الفاتورة."
+"لا يمكن الإعفاء عن الفئات القليلة أكثر من %(CLEANUP_CAP)s د.أ كمجموع لهذه"
+" الفاتورة."
+
+#: routes/clinical.py:1605
+#, python-format
+msgid "That's more than the remaining balance of %(fmt_money)s JOD on this stay."
+msgstr "هذا أكثر من الرصيد المتبقي البالغ %(fmt_money)s د.أ على هذه الإقامة."
+
+#: routes/clinical.py:1726
+msgid "Patient admitted."
+msgstr "تم تنويم المريض."
+
+#: routes/clinical.py:1759 routes/clinical.py:1773 routes/clinical.py:1873
+#: routes/clinical.py:1978 routes/clinical.py:1998 routes/clinical.py:2028
+#: routes/clinical.py:2037 routes/clinical.py:2091
+msgid "Inpatient case not found."
+msgstr "حالة التنويم غير موجودة."
+
+#: routes/clinical.py:1801
+msgid "A case can't be discharged before it was admitted — check the dates."
+msgstr "لا يمكن إخراج الحالة قبل تاريخ تنويمها — تحقق من التواريخ."
+
+#: routes/clinical.py:1818
+msgid "Case updated."
+msgstr "تم تحديث الحالة."
+
+#: routes/clinical.py:1832
+msgid "Update logged."
+msgstr "تم تسجيل التحديث."
+
+#: routes/clinical.py:1846
+msgid "Update edited."
+msgstr "تم تعديل التحديث."
+
+#: routes/clinical.py:1860
+msgid "Contact attempt logged."
+msgstr "تم تسجيل محاولة التواصل."
+
+#: routes/clinical.py:1932
+msgid ""
+"Some selected items are marked as not discountable and can't be added to "
+"a bill that already has a discount applied — remove the discount first, "
+"or leave them off this bill."
+msgstr ""
+
+#: routes/clinical.py:1935
+#, python-format
+msgid "%(added)s procedure(s) added to the bill."
+msgstr "تمت إضافة %(added)s إجراء إلى الفاتورة."
+
+#: routes/clinical.py:1945
+msgid "That billing line was already removed."
+msgstr "سطر الفاتورة هذا تمت إزالته بالفعل."
+
+#: routes/clinical.py:1957
+#, python-format
+msgid ""
+"Removing this line would leave %(fmt_money)s paid against a "
+"%(fmt_money2)s JOD bill. Process a service refund for the difference "
+"first."
+msgstr ""
+
+#: routes/clinical.py:1965
+msgid "Line removed."
+msgstr "تمت إزالة السطر."
+
+#: routes/clinical.py:2050
+#, python-format
+msgid "That's more than the remaining balance of %(fmt_money)s JOD on this case."
+msgstr "هذا أكثر من الرصيد المتبقي البالغ %(fmt_money)s د.أ على هذه الحالة."
+
+#: routes/clinical.py:2126
+msgid "That week link wasn't valid, showing the current week instead."
+msgstr "رابط الأسبوع غير صالح، يتم عرض الأسبوع الحالي بدلًا منه."
+
+#: routes/clinical.py:2134
+msgid "That date wasn't valid, showing today instead."
+msgstr "التاريخ غير صالح، يتم عرض تاريخ اليوم بدلًا منه."
+
+#: routes/clinical.py:2170
+msgid "Appointment date is required."
+msgstr "تاريخ الموعد مطلوب."
+
+#: routes/clinical.py:2193
+msgid "Pick a valid, active vet for this appointment."
+msgstr "اختر طبيبًا بيطريًا نشطًا وصالحًا لهذا الموعد."
+
+#: routes/clinical.py:2196
+msgid ""
+"That's not a valid time slot — the schedule may have changed. Reload and "
+"try again."
+msgstr ""
+
+#: routes/clinical.py:2200 routes/clinical.py:2229
+msgid "That slot is already booked for this vet/groomer."
+msgstr "هذه الفترة محجوزة بالفعل لهذا الطبيب أو مقدّم العناية."
+
+#: routes/clinical.py:2231
+msgid "Appointment booked."
+msgstr "تم حجز الموعد."
+
+#: routes/clinical.py:2241
+msgid "Appointment not found."
+msgstr "الموعد غير موجود."
+
+#: routes/clinical.py:2246
+msgid "Appointment cancelled."
+msgstr "تم إلغاء الموعد."
+
+#: routes/consignment.py:70 routes/consignment.py:118
+msgid "Lead Time (Days) must be a whole number."
+msgstr "يجب أن تكون مدة التوريد (بالأيام) رقمًا صحيحًا."
+
+#: routes/consignment.py:76 routes/consignment.py:124
+msgid "Lead Time (Days) can't be negative."
+msgstr "لا يمكن أن تكون مدة التوريد (بالأيام) سالبة."
+
+#: routes/consignment.py:90
+#, python-format
+msgid "%(did)s added."
+msgstr "تمت إضافة %(did)s."
+
+#: routes/consignment.py:141
+msgid "Distributor updated."
+msgstr "تم تحديث المورد."
+
+#: routes/consignment.py:150 routes/consignment.py:202
+#: routes/consignment.py:351 routes/consignment.py:728
+#: routes/consignment.py:749
+msgid "Distributor not found."
+msgstr "المورد غير موجود."
+
+#: routes/consignment.py:174
+msgid "Distributor deleted."
+msgstr "تم حذف المورد."
+
+#: routes/consignment.py:222
+msgid "Total amount must be a valid number."
+msgstr "يجب أن يكون المبلغ الإجمالي رقمًا صالحًا."
+
+#: routes/consignment.py:225
+msgid "Total amount must be greater than zero."
+msgstr "يجب أن يكون المبلغ الإجمالي أكبر من صفر."
+
+#: routes/consignment.py:241
+#, python-format
+msgid "Bill %(bid)s logged."
+msgstr "تم تسجيل الفاتورة %(bid)s."
+
+#: routes/consignment.py:250 routes/consignment.py:285
+msgid "Bill not found."
+msgstr "الفاتورة غير موجودة."
+
+#: routes/consignment.py:256
+msgid "Delete the payments on this bill first."
+msgstr "احذف الدفعات على هذه الفاتورة أولًا."
+
+#: routes/consignment.py:261
+msgid "Bill deleted."
+msgstr "تم حذف الفاتورة."
+
+#: routes/consignment.py:293
+msgid "Payment amount must be greater than zero."
+msgstr "يجب أن يكون مبلغ الدفعة أكبر من صفر."
+
+#: routes/consignment.py:306
+#, python-format
+msgid "That's more than the remaining balance of %(fmt_money)s JOD on this bill."
+msgstr "هذا أكثر من الرصيد المتبقي البالغ %(fmt_money)s د.أ على هذه الفاتورة."
+
+#: routes/consignment.py:336
+msgid "Payment not found."
+msgstr "الدفعة غير موجودة."
+
+#: routes/consignment.py:341
+msgid "Payment deleted."
+msgstr "تم حذف الدفعة."
+
+#: routes/consignment.py:522 routes/consignment.py:583
+#: routes/consignment.py:653
+msgid "Pick a Consignment item first."
+msgstr "اختر صنفًا بنظام الأمانة أولًا."
+
+#: routes/consignment.py:528
+msgid "Quantity and Unit Cost must be valid numbers."
+msgstr "يجب أن تكون الكمية وتكلفة الوحدة أرقامًا صالحة."
+
+#: routes/consignment.py:531 routes/consignment.py:591
+#: routes/consignment.py:661
+msgid "Quantity must be greater than 0."
+msgstr "يجب أن تكون الكمية أكبر من ٠."
+
+#: routes/consignment.py:534
+msgid "Unit Cost can't be negative."
+msgstr "لا يمكن أن تكون تكلفة الوحدة سالبة."
+
+#: routes/consignment.py:545
+#, python-format
+msgid "Received %(quantity)s %(name)s."
+msgstr "تم استلام %(quantity)s %(name)s."
+
+#: routes/consignment.py:588 routes/consignment.py:658
+msgid "Quantity must be a valid number."
+msgstr "يجب أن تكون الكمية رقمًا صالحًا."
+
+#: routes/consignment.py:595
+msgid "Reason must be Damaged, Expired, or Other."
+msgstr "يجب أن يكون السبب: تالف، أو منتهي الصلاحية، أو غير ذلك."
+
+#: routes/consignment.py:603
+msgid "Liable Party must be Distributor or Clinic."
+msgstr "يجب أن يكون الطرف المسؤول: المورد أو العيادة."
+
+#: routes/consignment.py:615
+#, python-format
+msgid "Logged %(quantity)s %(name)s as shrinkage (%(liable_party)s liable)."
+msgstr "تم تسجيل %(quantity)s %(name)s كهالك (المسؤولية على %(liable_party)s)."
+
+#: routes/consignment.py:676
+#, python-format
+msgid "Returned %(quantity)s %(name)s to %(distributor_id)s."
+msgstr "تمت إعادة %(quantity)s %(name)s إلى %(distributor_id)s."
+
+#: routes/consignment.py:769
+msgid "Amount Paid must be a valid number."
+msgstr "يجب أن يكون المبلغ المدفوع رقمًا صالحًا."
+
+#: routes/consignment.py:772
+msgid "Amount Paid can't be negative."
+msgstr "لا يمكن أن يكون المبلغ المدفوع سالبًا."
+
+#: routes/consignment.py:781
+msgid "There's nothing to settle for this distributor yet."
+msgstr "لا يوجد ما يستوجب التسوية مع هذا المورد حتى الآن."
+
+#: routes/consignment.py:784
+#, python-format
+msgid "That's more than the %(fmt_money)s JOD owed this period."
+msgstr "هذا أكثر من المبلغ المستحق لهذه الفترة البالغ %(fmt_money)s د.أ."
+
+#: routes/consignment.py:799
+#, python-format
+msgid ""
+"Settlement recorded: %(fmt_money)s JOD paid of %(fmt_money2)s JOD owed — "
+"%(fmt_money3)s JOD carries forward."
+msgstr ""
+
+#: routes/consignment.py:801
+#, python-format
+msgid "Settlement recorded: %(fmt_money)s JOD paid, settled in full."
+msgstr "تم تسجيل التسوية: دُفع %(fmt_money)s د.أ، وتمت التسوية بالكامل."
+
+#: routes/consignment.py:811
+msgid "Settlement not found."
+msgstr "التسوية غير موجودة."
+
+#: routes/inventory.py:134 routes/inventory.py:188
+msgid "Cost Price and Sale Price must be valid numbers."
+msgstr "يجب أن يكون سعر التكلفة وسعر البيع أرقامًا صالحة."
+
+#: routes/inventory.py:137 routes/inventory.py:191
+msgid "Cost Price and Sale Price can't be negative."
+msgstr "لا يمكن أن يكون سعر التكلفة وسعر البيع سالبين."
+
+#: routes/inventory.py:145 routes/inventory.py:203
+msgid "That inventory item no longer exists — reload the page and pick again."
+msgstr "هذا الصنف لم يعد موجودًا — أعد تحميل الصفحة واختر مرة أخرى."
+
+#: routes/inventory.py:157 routes/inventory.py:211
+#, python-format
+msgid ""
+"That inventory item is already linked to %(id)s (%(name)s) — an item can "
+"only be linked from one active Price List row at a time."
+msgstr ""
+
+#: routes/inventory.py:171
+#, python-format
+msgid "%(pid)s added to price list."
+msgstr "تمت إضافة %(pid)s إلى قائمة الأسعار."
+
+#: routes/inventory.py:198
+msgid "Price list item not found."
+msgstr "صنف قائمة الأسعار غير موجود."
+
+#: routes/inventory.py:232
+msgid "Price updated."
+msgstr "تم تحديث السعر."
+
+#: routes/inventory.py:325
+msgid "Item removed from price list."
+msgstr "تمت إزالة الصنف من قائمة الأسعار."
+
+#: routes/inventory.py:380 routes/inventory.py:423
+msgid "Cost Price must be a valid number."
+msgstr "يجب أن يكون سعر التكلفة رقمًا صالحًا."
+
+#: routes/inventory.py:385 routes/inventory.py:426
+msgid "Cost Price can't be negative."
+msgstr "لا يمكن أن يكون سعر التكلفة سالبًا."
+
+#: routes/inventory.py:393 routes/inventory.py:442
+msgid "That distributor no longer exists — reload the page and pick again."
+msgstr "هذا المورد لم يعد موجودًا — أعد تحميل الصفحة واختر مرة أخرى."
+
+#: routes/inventory.py:407
+#, python-format
+msgid "%(iid)s added to inventory catalog."
+msgstr "تمت إضافة %(iid)s إلى دليل الأصناف."
+
+#: routes/inventory.py:433
+msgid "Inventory item not found."
+msgstr "الصنف غير موجود."
+
+#: routes/inventory.py:437
+msgid ""
+"Set this item back to Owned on the Consignment Items page before changing"
+" its category."
+msgstr ""
+
+#: routes/inventory.py:445
+msgid ""
+"This item has consignment activity against it — its distributor can't be "
+"changed here. Create a new inventory item for the new supply source."
+msgstr ""
+
+#: routes/inventory.py:467
+msgid "Inventory item updated."
+msgstr "تم تحديث الصنف."
+
+#: routes/inventory.py:544
+msgid "Item not found."
+msgstr "الصنف غير موجود."
+
+#: routes/inventory.py:654
+msgid "This item doesn't have a barcode yet."
+msgstr "لا يوجد باركود لهذا الصنف بعد."
+
+#: routes/inventory.py:706
+msgid "No barcodes selected to print."
+msgstr "لم يتم اختيار أي باركود للطباعة."
+
+#: routes/inventory.py:796
+msgid "Audit session not found."
+msgstr "جلسة الجرد غير موجودة."
+
+#: routes/inventory.py:881
+msgid "This audit is confirmed and can no longer be edited."
+msgstr "تم تأكيد هذا الجرد ولم يعد بالإمكان تعديله."
+
+#: routes/inventory.py:893
+msgid ""
+"Audit counts must be valid numbers. The draft was not saved — please "
+"correct the highlighted value(s)."
+msgstr ""
+
+#: routes/inventory.py:900
+msgid ""
+"Audit saved. You can come back and finish it later, or confirm it once "
+"it's complete."
+msgstr ""
+
+#: routes/inventory.py:910
+msgid "This audit is already confirmed."
+msgstr "تم تأكيد هذا الجرد بالفعل."
+
+#: routes/inventory.py:916
+msgid ""
+"Audit counts must be valid numbers. Nothing was confirmed — please "
+"correct the highlighted value(s)."
+msgstr ""
+
+#: routes/inventory.py:929
+msgid ""
+"Nothing has been counted in this audit yet — fill in at least one item "
+"before confirming."
+msgstr ""
+
+#: routes/inventory.py:945
+msgid ""
+"Audit confirmed and locked. Inventory Status and Ordering Sheet now "
+"reflect these counts."
+msgstr ""
+
+#: routes/inventory.py:961
+msgid "Only a draft audit can be discarded."
+msgstr "يمكن تجاهل الجرد المسودة فقط."
+
+#: routes/inventory.py:967
+msgid "Draft audit discarded."
+msgstr "تم تجاهل الجرد المسودة."
+
+#: routes/sales.py:93
+msgid "That date wasn't valid — showing today instead."
+msgstr "التاريخ غير صالح — يتم عرض تاريخ اليوم بدلًا منه."
+
+#: routes/sales.py:117
+msgid "Amount must be a valid number."
+msgstr "يجب أن يكون المبلغ رقمًا صالحًا."
+
+#: routes/sales.py:120
+msgid "Amount must be greater than 0."
+msgstr "يجب أن يكون المبلغ أكبر من ٠."
+
+#: routes/sales.py:124
+msgid "Enter a reason for this payout."
+msgstr "أدخل سببًا لهذا الصرف."
+
+#: routes/sales.py:131
+#, python-format
+msgid ""
+"That's more than the %(fmt_money)s JOD currently expected in the drawer "
+"for this day."
+msgstr ""
+
+#: routes/sales.py:141
+#, python-format
+msgid "%(fmt_money)s JOD logged out of the register."
+msgstr "تم تسجيل خروج %(fmt_money)s د.أ من الصندوق."
+
+#: routes/sales.py:164
+msgid "Counted cash must be a valid number."
+msgstr "يجب أن يكون النقد المعدود رقمًا صالحًا."
+
+#: routes/sales.py:167
+msgid "Counted cash can't be negative."
+msgstr "لا يمكن أن يكون النقد المعدود سالبًا."
+
+#: routes/sales.py:191
+#, python-format
+msgid ""
+"Audit recorded for %(day)s: Perfect — counted cash matches the system "
+"exactly."
+msgstr ""
+
+#: routes/sales.py:197
+#, python-format
+msgid "Audit recorded for %(day)s: %(status)s of %(fmt_money)s JOD."
+msgstr "تم تسجيل الجرد ليوم %(day)s: %(status)s بمقدار %(fmt_money)s د.أ."
+
+#: routes/sales.py:499
+#, python-format
+msgid "Sale #%(sale_id)s completed — total %(fmt_money)s JOD."
+msgstr "تم إتمام البيع رقم %(sale_id)s — الإجمالي %(fmt_money)s د.أ."
+
+#: routes/sales.py:509 routes/sales.py:624
+msgid "Sale not found."
+msgstr "عملية البيع غير موجودة."
+
+#: routes/sales.py:585
+msgid ""
+"Look up a sale first — a retail refund must be linked to the sale it's "
+"refunding."
+msgstr ""
+
+#: routes/sales.py:606
+msgid "No items selected — nothing to refund."
+msgstr "لم يتم اختيار أي صنف — لا يوجد ما يُسترد."
+
+#: routes/sales.py:611
+msgid "Invalid item selection."
+msgstr "اختيار الصنف غير صالح."
+
+#: routes/sales.py:633
+msgid "Refund quantities must be valid numbers."
+msgstr "يجب أن تكون كميات الاسترداد أرقامًا صالحة."
+
+#: routes/sales.py:643
+msgid "One of the selected items isn't part of that sale."
+msgstr "أحد الأصناف المختارة ليس ضمن عملية البيع تلك."
+
+#: routes/sales.py:646
+#, python-format
+msgid ""
+"Can't refund %(qty)s %(name)s — only %(remaining)s left refundable from "
+"this sale."
+msgstr ""
+
+#: routes/sales.py:654
+msgid "Nothing to refund."
+msgstr "لا يوجد ما يُسترد."
+
+#: routes/sales.py:671
+#, python-format
+msgid ""
+"That's more than this sale actually collected (%(fmt_money)s JOD, after "
+"any Clean Up applied at sale time) minus what's already been refunded."
+msgstr ""
+
+#: routes/sales.py:715
+msgid "Refund amount must be a valid number."
+msgstr "يجب أن يكون مبلغ الاسترداد رقمًا صالحًا."
+
+#: routes/sales.py:734
+msgid "Refund amount must be greater than 0."
+msgstr "يجب أن يكون مبلغ الاسترداد أكبر من ٠."
+
+#: routes/sales.py:745
+msgid ""
+"A service refund must be linked to exactly one visit, inpatient case, or "
+"boarding stay."
+msgstr ""
+
+#: routes/sales.py:756
+#, python-format
+msgid "Visit %(visit_id)s not found."
+msgstr "الزيارة %(visit_id)s غير موجودة."
+
+#: routes/sales.py:764
+#, python-format
+msgid "That's more than what's left refundable on this visit (%(fmt_money)s JOD)."
+msgstr "هذا أكثر من المبلغ المتبقي القابل للاسترداد على هذه الزيارة (%(fmt_money)s د.أ)."
+"هذا أكثر من المبلغ المتبقي القابل للاسترداد على هذه الزيارة "
+"(%(fmt_money)s د.أ)."
+
+#: routes/sales.py:772
+#, python-format
+msgid "Inpatient case %(case_id_raw)s not found."
+msgstr "حالة التنويم %(case_id_raw)s غير موجودة."
+
+#: routes/sales.py:781
+#, python-format
+msgid "That's more than what's left refundable on this case (%(fmt_money)s JOD)."
+msgstr "هذا أكثر من المبلغ المتبقي القابل للاسترداد على هذه الحالة (%(fmt_money)s د.أ)."
+"هذا أكثر من المبلغ المتبقي القابل للاسترداد على هذه الحالة (%(fmt_money)s"
+" د.أ)."
+
+#: routes/sales.py:789
+#, python-format
+msgid "Boarding stay %(boarding_id_raw)s not found."
+msgstr "إقامة الإيواء %(boarding_id_raw)s غير موجودة."
+
+#: routes/sales.py:798
+#, python-format
+msgid "That's more than what's left refundable on this stay (%(fmt_money)s JOD)."
+msgstr "هذا أكثر من المبلغ المتبقي القابل للاسترداد على هذه الإقامة (%(fmt_money)s د.أ)."
+"هذا أكثر من المبلغ المتبقي القابل للاسترداد على هذه الإقامة "
+"(%(fmt_money)s د.أ)."
+
+#: routes/sales.py:827
+#, python-format
+msgid "Service refund of %(amount)s JOD recorded."
+msgstr "تم تسجيل استرداد خدمة بقيمة %(amount)s د.أ."
+
+#: routes/settings.py:197
+#, python-format
+msgid "%(title)s must be a whole number."
+msgstr "يجب أن يكون %(title)s رقمًا صحيحًا."
+
+#: routes/settings.py:200
+#, python-format
+msgid "%(title)s must be between %(lo)s and %(hi)s."
+msgstr "يجب أن يكون %(title)s بين %(lo)s و%(hi)s."
+
+#: routes/settings.py:223
+#, python-format
+msgid "%(title)s must be a valid time (HH:MM)."
+msgstr "يجب أن يكون %(title)s وقتًا صالحًا (ساعة:دقيقة)."
+
+#: routes/settings.py:229
+msgid "Day Ends At must be after Day Starts At."
+msgstr "يجب أن يكون وقت نهاية اليوم بعد وقت بدايته."
+
+#: routes/settings.py:239
+msgid "The monitoring ping URL must start with https://"
+msgstr "يجب أن يبدأ رابط المراقبة بـ https://"
+
+#: routes/settings.py:292
+msgid "Settings saved."
+msgstr "تم حفظ الإعدادات."
+
+#: templates/_pagination.html:5 templates/_pagination.html:7
+msgid "← Prev"
+msgstr "← السابق"
+
+#: templates/_pagination.html:11 templates/_pagination.html:13
+msgid "Next →"
+msgstr "التالي →"
+
+#: templates/_visit_fields.html:7
+msgid "Visit"
+msgstr "الزيارة"
+
+#: templates/_visit_fields.html:9 templates/appointments.html:20
+#: templates/audit_sessions_list.html:12 templates/cash_register.html:27
+#: templates/consignment_receiving.html:42
+#: templates/consignment_returns.html:42
+#: templates/consignment_settlements.html:45
+#: templates/consignment_shrinkage.html:55 templates/distributor_detail.html:57
+#: templates/insights.html:152 templates/patient_detail.html:68
+#: templates/patient_detail.html:85 templates/pos_history.html:14
+#: templates/refunds.html:92 templates/visit_detail.html:63
+#: templates/visits_list.html:26
+msgid "Date"
+msgstr "التاريخ"
+
+#: templates/_visit_fields.html:10 templates/patient_detail.html:85
+#: templates/visit_detail.html:20 templates/visits_list.html:26
+msgid "Doctor"
+msgstr "الطبيب"
+
+#: templates/_visit_fields.html:12
+msgid "Select Vet…"
+msgstr "اختر الطبيب…"
+
+#: templates/_visit_fields.html:16 templates/inpatient_detail.html:28
+#: templates/inpatient_new.html:21
+msgid "Weight (KG)"
+msgstr "الوزن (كغم)"
+
+#: templates/_visit_fields.html:17 templates/inpatient_detail.html:29
+#: templates/inpatient_new.html:22
+msgid "BCS (1–9)"
+msgstr "درجة الحالة الجسدية (١–٩)"
+
+#: templates/_visit_fields.html:20
+msgid "Admit as Inpatient Now"
+msgstr "تنويم المريض الآن"
+
+#: templates/_visit_fields.html:27
+msgid "Wellness Visit?"
+msgstr "زيارة رعاية وقائية؟"
+
+#: templates/_visit_fields.html:29 templates/_visit_fields.html:44
+#: templates/grooming_list.html:30 templates/inpatient_detail.html:110
+#: templates/visit_form_edit.html:31 templates/visit_form_edit.html:54
+#: templates/wellness_list.html:21
+msgid "No"
+msgstr "لا"
+
+#: templates/_visit_fields.html:30 templates/_visit_fields.html:45
+#: templates/boarding.html:119 templates/grooming_list.html:31
+#: templates/inpatient_detail.html:110 templates/visit_form_edit.html:32
+#: templates/visit_form_edit.html:54 templates/wellness_list.html:22
+msgid "Yes"
+msgstr "نعم"
+
+#: templates/_visit_fields.html:33
+msgid "Wellness Type"
+msgstr "نوع الرعاية الوقائية"
+
+#: templates/_visit_fields.html:39 templates/visit_detail.html:74
+#: templates/wellness_list.html:9
+msgid "Next Dose Date"
+msgstr "تاريخ الجرعة التالية"
+
+#: templates/_visit_fields.html:42
+msgid "Grooming?"
+msgstr "عناية وتصفيف؟"
+
+#: templates/_visit_fields.html:51
+msgid "Grooming Services"
+msgstr "خدمات العناية والتصفيف"
+
+#: templates/_visit_fields.html:61
+msgid "Grooming Notes"
+msgstr "ملاحظات العناية والتصفيف"
+
+#: templates/_visit_fields.html:62 templates/inpatient_new.html:31
+msgid "Admitted Items (Leash, Carrier, Etc.)"
+msgstr "الأغراض المستلمة (رباط، قفص، إلخ)"
+
+#: templates/admin_logs.html:5 templates/base.html:163
+msgid "Logins and Changes"
+msgstr "سجل الدخول والتغييرات"
+
+#: templates/admin_logs.html:5
+msgid "Pick a date to review who logged in and what was changed."
+msgstr "اختر تاريخًا لمراجعة من سجّل الدخول وما الذي تم تغييره."
+
+#: templates/admin_logs.html:8 templates/cash_register.html:20
+#: templates/consignment_sales.html:20 templates/distributors.html:44
+#: templates/inventory_catalog.html:30 templates/inventory_status.html:24
+#: templates/owners_list.html:11 templates/patients_list.html:12
+#: templates/pos_history.html:9 templates/price_list.html:26
+#: templates/refunds.html:83
+msgid "Clear"
+msgstr "مسح"
+
+#: templates/admin_logs.html:15 templates/admin_logs.html:37
+#: templates/appointments.html:20
+msgid "Time"
+msgstr "الوقت"
+
+#: templates/admin_logs.html:15
+msgid "Who"
+msgstr "من"
+
+#: templates/admin_logs.html:15
+msgid "Action"
+msgstr "الإجراء"
+
+#: templates/admin_logs.html:15
+msgid "Table"
+msgstr "الجدول"
+
+#: templates/admin_logs.html:15
+msgid "Record"
+msgstr "السجل"
+
+#: templates/admin_logs.html:15
+msgid "Field"
+msgstr "الحقل"
+
+#: templates/admin_logs.html:15
+msgid "Old → New"
+msgstr "القديم ← الجديد"
+
+#: templates/admin_logs.html:28
+msgid "No changes logged on this date."
+msgstr "لا توجد تغييرات مسجلة في هذا التاريخ."
+
+#: templates/admin_logs.html:37 templates/admin_users.html:21
+#: templates/admin_users.html:144 templates/login.html:20
+msgid "Username"
+msgstr "اسم المستخدم"
+
+#: templates/admin_logs.html:37
+msgid "Result"
+msgstr "النتيجة"
+
+#: templates/admin_logs.html:37
+msgid "IP"
+msgstr "عنوان الشبكة"
+
+#: templates/admin_logs.html:37
+msgid "Device"
+msgstr "الجهاز"
+
+#: templates/admin_logs.html:48
+msgid "No login activity on this date."
+msgstr "لا يوجد نشاط تسجيل دخول في هذا التاريخ."
+
+#: templates/admin_users.html:6 templates/base.html:160
+msgid "Users & Roles"
+msgstr "المستخدمون والصلاحيات"
+
+#: templates/admin_users.html:7
+msgid ""
+"Add staff, and add or edit the roles they can be assigned — including "
+"what each role can access and its discount limit."
+msgstr ""
+
+#: templates/admin_users.html:9
+msgid "+ New User"
+msgstr "+ مستخدم جديد"
+
+#: templates/admin_users.html:13
+msgid "Staff"
+msgstr "الموظفون"
+
+#: templates/admin_users.html:14
+msgid "Roles & Permissions"
+msgstr "الأدوار والصلاحيات"
+
+#: templates/admin_users.html:21 templates/consignment_items.html:17
+#: templates/distributors.html:71 templates/inventory_catalog.html:68
+#: templates/owner_form.html:9 templates/owners_list.html:15
+#: templates/price_list.html:34 templates/price_list.html:58
+msgid "Name"
+msgstr "الاسم"
+
+#: templates/admin_users.html:21 templates/admin_users.html:146
+msgid "Role"
+msgstr "الدور"
+
+#: templates/admin_users.html:21 templates/admin_users.html:153
+msgid "Discount Limit"
+msgstr "حد الخصم"
+
+#: templates/admin_users.html:21 templates/audit_sessions_list.html:12
+#: templates/followups_list.html:14 templates/grooming_list.html:13
+#: templates/inpatient_list.html:15 templates/insights.html:152
+#: templates/patient_detail.html:32 templates/patient_detail.html:68
+#: templates/patient_detail.html:85 templates/settings.html:129
+#: templates/settings.html:180 templates/visit_detail.html:64
+#: templates/visit_detail.html:85 templates/visit_form_edit.html:50
+#: templates/visits_list.html:12 templates/visits_list.html:26
+msgid "Status"
+msgstr "الحالة"
+
+#: templates/admin_users.html:21
+msgid "Reset Password"
+msgstr "إعادة تعيين كلمة المرور"
+
+#: templates/admin_users.html:46 templates/change_password.html:14
+msgid "New Password"
+msgstr "كلمة مرور جديدة"
+
+#: templates/admin_users.html:47
+msgid "Reset"
+msgstr "إعادة تعيين"
+
+#: templates/admin_users.html:61
+msgid ""
+"The Role dropdown always reflects whatever roles exist in the Roles &amp;"
+" Permissions tab. A per-user discount override (set at creation, in the "
+"New User form) shows here as \"Custom\" — most staff just inherit their "
+"role's limit."
+msgstr ""
+
+#: templates/admin_users.html:73
+msgid "System role — can't be renamed, deleted, or edited"
+msgstr "دور نظامي — لا يمكن إعادة تسميته أو حذفه أو تعديله"
+
+#: templates/admin_users.html:76
+msgid "System role"
+msgstr "دور نظامي"
+
+#: templates/admin_users.html:76 templates/admin_users.html:101
+#: templates/distributor_detail.html:66 templates/distributors.html:92
+#: templates/inpatient_detail.html:198 templates/visit_detail.html:42
+msgid "Delete"
+msgstr "حذف"
+
+#: templates/admin_users.html:86 templates/admin_users.html:112
+msgid "Max Discount"
+msgstr "الحد الأقصى للخصم"
+
+#: templates/admin_users.html:87 templates/admin_users.html:113
+#: templates/admin_users.html:196
+msgid ""
+"Whether staff with this role show up as a vet to assign in Appointments, "
+"Visits, Grooming, and Inpatient"
+msgstr ""
+
+#: templates/admin_users.html:87 templates/admin_users.html:113
+#: templates/admin_users.html:196
+msgid "Can be assigned as a vet"
+msgstr "يمكن إسناده كطبيب بيطري"
+
+#: templates/admin_users.html:96 templates/admin_users.html:182
+msgid "Description (optional)"
+msgstr "الوصف (اختياري)"
+
+#: templates/admin_users.html:99
+msgid "Custom role"
+msgstr "دور مخصص"
+
+#: templates/admin_users.html:117
+msgid "Unsaved changes"
+msgstr "تغييرات غير محفوظة"
+
+#: templates/admin_users.html:118 templates/admin_users.html:162
+#: templates/admin_users.html:200 templates/admin_users.html:226
+#: templates/appointments.html:30 templates/appointments.html:99
+#: templates/audit_session_view.html:71 templates/boarding.html:47
+#: templates/boarding.html:71 templates/boarding.html:97
+#: templates/cash_register.html:108 templates/cash_register.html:135
+#: templates/consignment_receiving.html:33
+#: templates/consignment_returns.html:33
+#: templates/consignment_shrinkage.html:46 templates/distributor_detail.html:37
+#: templates/distributors.html:63 templates/inpatient_new.html:35
+#: templates/inventory_catalog.html:50 templates/inventory_catalog.html:117
+#: templates/owner_form.html:16 templates/patient_form_edit.html:28
+#: templates/price_list.html:51 templates/settings.html:482
+#: templates/visit_form_edit.html:61 templates/visit_new_existing.html:23
+#: templates/visit_new_patient.html:35
+msgid "Cancel"
+msgstr "إلغاء"
+
+#: templates/admin_users.html:119 templates/audit_session_view.html:11
+#: templates/distributors.html:89 templates/grooming_list.html:34
+#: templates/inpatient_detail.html:45 templates/inpatient_detail.html:71
+#: templates/inpatient_detail.html:95 templates/inventory_catalog.html:138
+#: templates/wellness_list.html:32
+msgid "Save"
+msgstr "حفظ"
+
+#: templates/admin_users.html:128
+msgid "Add a new role"
+msgstr "إضافة دور جديد"
+
+#: templates/admin_users.html:128
+msgid "+ Add Role"
+msgstr "+ إضافة دور"
+
+#: templates/admin_users.html:139
+msgid "New User"
+msgstr "مستخدم جديد"
+
+#: templates/admin_users.html:143
+msgid "Full Name"
+msgstr "الاسم الكامل"
+
+#: templates/admin_users.html:143
+msgid "e.g. Jordan Lee"
+msgstr "مثال: أحمد الراشد"
+
+#: templates/admin_users.html:144
+msgid "jlee"
+msgstr "ahmad"
+
+#: templates/admin_users.html:145
+msgid "Temporary Password"
+msgstr "كلمة مرور مؤقتة"
+
+#: templates/admin_users.html:145
+msgid "min. 8 characters"
+msgstr "٨ أحرف على الأقل"
+
+#: templates/admin_users.html:155
+msgid "Inherit from role"
+msgstr "موروث من الدور"
+
+#: templates/admin_users.html:156
+msgid "Custom override for this person:"
+msgstr "تجاوز مخصص لهذا الشخص:"
+
+#: templates/admin_users.html:161
+msgid "Create User"
+msgstr "إنشاء مستخدم"
+
+#: templates/admin_users.html:173 templates/admin_users.html:199
+msgid "Add Role"
+msgstr "إضافة دور"
+
+#: templates/admin_users.html:174
+msgid ""
+"New roles start with everything below unchecked — turn on only what this "
+"role needs."
+msgstr ""
+
+#: templates/admin_users.html:179
+msgid "Role Name"
+msgstr "اسم الدور"
+
+#: templates/admin_users.html:180
+msgid "e.g. Vet Tech"
+msgstr "مثال: مساعد بيطري"
+
+#: templates/admin_users.html:182
+msgid "e.g. Assists vets, no billing access"
+msgstr "مثال: يساعد الأطباء، دون صلاحية الفوترة"
+
+#: templates/admin_users.html:195
+#, python-format
+msgid "Max Discount (%%)"
+msgstr "الحد الأقصى للخصم (٪)"
+
+#: templates/admin_users.html:211
+msgid "Delete role"
+msgstr "حذف الدور"
+
+#: templates/admin_users.html:214
+msgid ""
+"Pick a role to move them to before this role can be deleted. Nobody is "
+"left without a role."
+msgstr ""
+
+#: templates/admin_users.html:217
+msgid "Move affected staff to"
+msgstr "نقل الموظفين المتأثرين إلى"
+
+#: templates/admin_users.html:223
+msgid "No one is currently assigned to this role. It can be deleted right away."
+msgstr "لا يوجد أحد مُسند إلى هذا الدور حاليًا. يمكن حذفه مباشرة."
+
+#: templates/admin_users.html:225
+msgid "Delete Role"
+msgstr "حذف الدور"
+
+#: templates/appointments.html:5 templates/base.html:79
+#: templates/settings.html:25
+msgid "Appointments"
+msgstr "المواعيد"
+
+#: templates/appointments.html:5
+msgid "Slot length and hours are set in Settings."
+msgstr "تُضبط مدة الفترة وساعات العمل من الإعدادات."
+
+#: templates/appointments.html:7
+msgid "This Week"
+msgstr "هذا الأسبوع"
+
+#: templates/appointments.html:15
+msgid ""
+"Still booked, but either the vet assigned is no longer active, or the "
+"appointment's time no longer matches\n"
+"    the clinic's current scheduling hours/slot length (Settings). Cancel "
+"and rebook to fix."
+msgstr ""
+
+#: templates/appointments.html:20
+msgid "Pet"
+msgstr "الحيوان"
+
+#: templates/appointments.html:20 templates/boarding.html:106
+#: templates/followups_list.html:14 templates/grooming_list.html:13
+#: templates/inpatient_detail.html:27 templates/inpatient_list.html:15
+#: templates/insights.html:86 templates/patients_list.html:25
+#: templates/visits_list.html:26 templates/wellness_list.html:9
+msgid "Owner"
+msgstr "المالك"
+
+#: templates/appointments.html:20
+msgid "Assigned To"
+msgstr "مُسند إلى"
+
+#: templates/appointments.html:20
+msgid "Why"
+msgstr "السبب"
+
+#: templates/appointments.html:41
+msgid "Hide past bookings"
+msgstr "إخفاء الحجوزات السابقة"
+
+#: templates/appointments.html:43
+msgid "Show past unreachable bookings"
+msgstr "إظهار الحجوزات السابقة غير المتاحة"
+
+#: templates/appointments.html:55
+msgid "← Prior Week"
+msgstr "← الأسبوع السابق"
+
+#: templates/appointments.html:56
+msgid "Next Week →"
+msgstr "الأسبوع التالي →"
+
+#: templates/appointments.html:60
+msgid "Slot"
+msgstr "الفترة"
+
+#: templates/appointments.html:84
+msgid "New Appointment"
+msgstr "موعد جديد"
+
+#: templates/appointments.html:92
+msgid "Pet Name"
+msgstr "اسم الحيوان"
+
+#: templates/appointments.html:93 templates/visit_new_patient.html:10
+msgid "Owner Name"
+msgstr "اسم المالك"
+
+#: templates/appointments.html:94 templates/cash_register.html:27
+#: templates/dashboard.html:173 templates/patient_detail.html:85
+#: templates/refunds.html:92 templates/visit_detail.html:73
+#: templates/visits_list.html:26 templates/wellness_list.html:9
+msgid "Type"
+msgstr "النوع"
+
+#: templates/appointments.html:95
+msgid "Medical"
+msgstr "طبي"
+
+#: templates/appointments.html:95 templates/base.html:77
+#: templates/visit_detail.html:82 templates/visits_list.html:31
+msgid "Grooming"
+msgstr "العناية و تصفيف الحيوان"
+
+#: templates/appointments.html:97 templates/cash_register.html:103
+#: templates/consignment_returns.html:28 templates/consignment_returns.html:43
+#: templates/consignment_shrinkage.html:26
+#: templates/consignment_shrinkage.html:56 templates/followups_list.html:14
+#: templates/refunds.html:92 templates/visit_detail.html:62
+#: templates/visit_form_edit.html:41
+msgid "Reason"
+msgstr "السبب"
+
+#: templates/appointments.html:100
+msgid "Book"
+msgstr "حجز"
+
+#: templates/audit_session_view.html:12 templates/cash_register.html:109
+#: templates/cash_register.html:136
+msgid "Confirm"
+msgstr "تأكيد"
+
+#: templates/audit_session_view.html:19 templates/audit_session_view.html:33
+msgid "Stock Counted"
+msgstr "المخزون المعدود"
+
+#: templates/audit_session_view.html:19
+msgid "— what you physically counted on the shelf today."
+msgstr "— ما قمت بعدّه فعليًا على الرف اليوم."
+
+#: templates/audit_session_view.html:20
+msgid "Received Since Prior Audit"
+msgstr "المستلم منذ الجرد السابق"
+
+#: templates/audit_session_view.html:20
+msgid "— new stock that arrived since the last confirmed audit (0 if none)."
+msgstr "— المخزون الجديد الذي وصل منذ آخر جرد مؤكد (٠ إن لم يوجد)."
+
+#: templates/audit_session_view.html:21 templates/audit_session_view.html:34
+msgid "Reorder Threshold"
+msgstr "حد إعادة الطلب"
+
+#: templates/audit_session_view.html:21
+msgid ""
+"— stock level at or below which this item is flagged LOW STOCK; leave "
+"blank to keep the last value set for this item."
+msgstr ""
+
+#: templates/audit_session_view.html:22
+msgid "Critical Item?"
+msgstr "صنف حرج؟"
+
+#: templates/audit_session_view.html:22
+msgid "— Y/N; leave blank to keep the last value set."
+msgstr "— نعم/لا؛ اتركه فارغًا للإبقاء على آخر قيمة."
+
+#: templates/audit_session_view.html:23 templates/audit_session_view.html:34
+msgid "Target Coverage (Days)"
+msgstr "التغطية المستهدفة (بالأيام)"
+
+#: templates/audit_session_view.html:23
+msgid ""
+"— how many days of stock you want on hand when reordering; leave blank to"
+" keep the last value set (defaults to 30 if never set)."
+msgstr ""
+
+#: templates/audit_session_view.html:24
+msgid "Nearest Expiry Date"
+msgstr "أقرب تاريخ انتهاء"
+
+#: templates/audit_session_view.html:24
+msgid "— the soonest expiry date among current stock of this item."
+msgstr "— أقرب تاريخ انتهاء ضمن المخزون الحالي لهذا الصنف."
+
+#: templates/audit_session_view.html:33 templates/consignment_receiving.html:19
+#: templates/consignment_receiving.html:42
+#: templates/consignment_returns.html:20 templates/consignment_returns.html:42
+#: templates/consignment_sales.html:26 templates/consignment_shrinkage.html:19
+#: templates/consignment_shrinkage.html:55 templates/inventory_status.html:30
+#: templates/ordering_sheet.html:14
+msgid "Item"
+msgstr "الصنف"
+
+#: templates/audit_session_view.html:33
+msgid "Received"
+msgstr "المستلم"
+
+#: templates/audit_session_view.html:34
+msgid "Critical?"
+msgstr "حرج؟"
+
+#: templates/audit_session_view.html:35 templates/inventory_status.html:31
+msgid "Nearest Expiry"
+msgstr "أقرب تاريخ انتهاء"
+
+#: templates/audit_session_view.html:35 templates/boarding.html:94
+#: templates/consignment_receiving.html:29
+#: templates/consignment_receiving.html:43
+#: templates/consignment_returns.html:29 templates/consignment_returns.html:43
+#: templates/consignment_settlements.html:32
+#: templates/consignment_shrinkage.html:40
+#: templates/consignment_shrinkage.html:56 templates/distributor_detail.html:33
+#: templates/distributor_detail.html:57 templates/distributor_detail.html:86
+#: templates/distributors.html:59 templates/inpatient_detail.html:112
+#: templates/inventory_catalog.html:46 templates/owner_detail.html:11
+#: templates/owner_form.html:12 templates/patient_detail.html:24
+#: templates/patient_detail.html:68 templates/patient_form_edit.html:24
+#: templates/price_list.html:43 templates/price_list.html:58
+#: templates/visit_detail.html:114
+msgid "Notes"
+msgstr "ملاحظات"
+
+#: templates/audit_session_view.html:42 templates/inventory_status.html:36
+msgid "consignment"
+msgstr "أمانة"
+
+#: templates/audit_session_view.html:42
+msgid "deactivated"
+msgstr "معطّل"
+
+#: templates/audit_session_view.html:67
+msgid "Confirm This Audit?"
+msgstr "تأكيد هذا الجرد؟"
+
+#: templates/audit_session_view.html:68
+msgid ""
+"Continuing will confirm the audit and it can't be edited after. If you "
+"intend to save it for later, click Cancel and use Save instead."
+msgstr ""
+
+#: templates/audit_session_view.html:73
+msgid "Yes, Confirm Permanently"
+msgstr "نعم، تأكيد نهائي"
+
+#: templates/audit_sessions_list.html:5 templates/base.html:95
+msgid "Audit History"
+msgstr "سجل الجرد"
+
+#: templates/audit_sessions_list.html:7 templates/inventory_status.html:10
+msgid "+ Start / Resume Today's Audit"
+msgstr "+ بدء / استئناف جرد اليوم"
+
+#: templates/audit_sessions_list.html:12
+msgid "Performed By"
+msgstr "نُفِّذ بواسطة"
+
+#: templates/audit_sessions_list.html:12
+msgid "Items Filled"
+msgstr "الأصناف المعبأة"
+
+#: templates/audit_sessions_list.html:21 templates/pos_history.html:24
+msgid "View"
+msgstr "عرض"
+
+#: templates/audit_sessions_list.html:25
+msgid "Discard"
+msgstr "تجاهل"
+
+#: templates/audit_sessions_list.html:30
+msgid "No audits logged yet — start one above."
+msgstr "لا توجد عمليات جرد مسجلة بعد — ابدأ واحدة أعلاه."
+
+#: templates/barcode_bulk_print.html:5 templates/inventory_catalog.html:9
+#: templates/inventory_catalog.html:108
+msgid "Bulk Barcode Print"
+msgstr "طباعة باركود مجمّعة"
+
+#: templates/barcode_bulk_print.html:7 templates/barcode_label.html:7
+#: templates/inventory_catalog.html:118
+msgid "Print"
+msgstr "طباعة"
+
+#: templates/barcode_bulk_print.html:8 templates/barcode_label.html:8
+msgid "Back"
+msgstr "رجوع"
+
+#: templates/barcode_bulk_print.html:12
+msgid ""
+"One or more barcodes could not be rendered — check the flagged item(s) "
+"below before printing."
+msgstr ""
+
+#: templates/barcode_bulk_print.html:22
+msgid "Could not render this barcode."
+msgstr "تعذّر عرض هذا الباركود."
+
+#: templates/barcode_label.html:5
+msgid "Barcode Label"
+msgstr "ملصق الباركود"
+
+#: templates/barcode_label.html:16
+msgid "Could not render the barcode. Try refreshing the page."
+msgstr "تعذّر عرض الباركود. حاول تحديث الصفحة."
 
 #: templates/base.html:27
 msgid "Open menu"
@@ -58,7 +1764,7 @@ msgstr "تبديل الوضع الداكن"
 msgid "Switch language"
 msgstr "تغيير اللغة"
 
-#: templates/base.html:66
+#: templates/base.html:66 templates/dashboard.html:6
 msgid "Dashboard"
 msgstr "لوحة التحكم"
 
@@ -66,19 +1772,21 @@ msgstr "لوحة التحكم"
 msgid "Patients & Visits"
 msgstr "المرضى والزيارات"
 
-#: templates/base.html:72
+#: templates/base.html:72 templates/owners_list.html:5
 msgid "Owners"
 msgstr "الملاك"
 
-#: templates/base.html:73
+#: templates/base.html:73 templates/owners_list.html:15
+#: templates/patients_list.html:5
 msgid "Patients"
 msgstr "المرضى"
 
-#: templates/base.html:74
+#: templates/base.html:74 templates/insights.html:64
+#: templates/visits_list.html:5
 msgid "Visits"
 msgstr "الزيارات"
 
-#: templates/base.html:75
+#: templates/base.html:75 templates/followups_list.html:5
 msgid "Follow-Ups"
 msgstr "المتابعات"
 
@@ -86,45 +1794,41 @@ msgstr "المتابعات"
 msgid "Wellness"
 msgstr "الرعاية الوقائية"
 
-#: templates/base.html:77
-msgid "Grooming"
-msgstr "العناية و تصفيف الحيوان"
-
-#: templates/base.html:78
+#: templates/base.html:78 templates/boarding.html:5
 msgid "Boarding"
 msgstr "الإيواء"
-
-#: templates/base.html:79
-msgid "Appointments"
-msgstr "المواعيد"
 
 #: templates/base.html:83
 msgid "Inpatient"
 msgstr "التنويم"
 
-#: templates/base.html:84
+#: templates/base.html:84 templates/inpatient_list.html:5
 msgid "Inpatient Cases"
 msgstr "حالات التنويم"
 
-#: templates/base.html:93
+#: templates/base.html:89
+msgid "Inventory"
+msgstr "المخزون"
+
+#: templates/base.html:93 templates/inventory_status.html:6
 msgid "Inventory Status"
 msgstr "حالة المخزون"
 
-#: templates/base.html:94
+#: templates/base.html:94 templates/ordering_sheet.html:6
 msgid "Ordering Sheet"
 msgstr "كشف الطلبات"
 
-#: templates/base.html:95
-msgid "Audit History"
-msgstr "سجل الجرد"
-
-#: templates/base.html:96
+#: templates/base.html:96 templates/inventory_catalog.html:6
 msgid "Inventory Catalog"
 msgstr "دليل الأصناف"
 
-#: templates/base.html:97
+#: templates/base.html:97 templates/distributors.html:6
 msgid "Distributors"
 msgstr "الموردون"
+
+#: templates/base.html:105 templates/consignment_overview.html:6
+msgid "Consignment"
+msgstr "الأمانة"
 
 #: templates/base.html:110
 msgid "Overview"
@@ -146,7 +1850,7 @@ msgstr "الهالك"
 msgid "Returns"
 msgstr "المرتجعات إلى المورد"
 
-#: templates/base.html:115
+#: templates/base.html:115 templates/consignment_sales.html:6
 msgid "Sales by Distributor"
 msgstr "المبيعات حسب المورد"
 
@@ -154,51 +1858,51 @@ msgstr "المبيعات حسب المورد"
 msgid "Settlements"
 msgstr "التسويات"
 
-#: templates/base.html:130
+#: templates/base.html:126
+msgid "Sales & Billing"
+msgstr "المبيعات والفوترة"
+
+#: templates/base.html:130 templates/pos.html:4
 msgid "Point of Sale"
 msgstr "نقطة البيع"
 
-#: templates/base.html:131
+#: templates/base.html:131 templates/pos_history.html:5
 msgid "Sales History"
 msgstr "سجل المبيعات"
 
-#: templates/base.html:133
+#: templates/base.html:133 templates/price_list.html:5
 msgid "Price List"
 msgstr "قائمة الأسعار"
 
-#: templates/base.html:136
+#: templates/base.html:136 templates/refunds.html:4
 msgid "Refunds"
 msgstr "المرتجعات"
 
-#: templates/base.html:139
+#: templates/base.html:139 templates/cash_register.html:6
 msgid "Cash Register"
 msgstr "الصندوق"
 
-#: templates/base.html:142
+#: templates/base.html:142 templates/reports.html:5
 msgid "Monthly P&L"
 msgstr "الأرباح والخسائر الشهرية"
 
-#: templates/base.html:143
+#: templates/base.html:143 templates/reports_yearly.html:5
 msgid "Yearly P&L"
 msgstr "الأرباح والخسائر السنوية"
 
-#: templates/base.html:146
+#: templates/base.html:146 templates/insights.html:5
 msgid "Insights"
 msgstr "التحليلات"
 
-#: templates/base.html:147
+#: templates/base.html:147 templates/retention.html:6
 msgid "Retention"
 msgstr "ولاء العملاء"
 
-#: templates/base.html:160
-msgid "Users & Roles"
-msgstr "المستخدمون والصلاحيات"
+#: templates/base.html:155
+msgid "Admin"
+msgstr "الإدارة"
 
-#: templates/base.html:163
-msgid "Logins and Changes"
-msgstr "سجل الدخول والتغييرات"
-
-#: templates/base.html:166
+#: templates/base.html:166 templates/settings.html:4
 msgid "Settings"
 msgstr "الإعدادات"
 
@@ -206,6 +1910,2634 @@ msgstr "الإعدادات"
 msgid "Log Out"
 msgstr "تسجيل الخروج"
 
+#: templates/boarding.html:6
+msgid "+ Add Boarding"
+msgstr "+ إضافة إيواء"
+
+#: templates/boarding.html:10
+msgid "Currently Boarding"
+msgstr "في الإيواء حاليًا"
+
+#: templates/boarding.html:11
+msgid "All (Incl. Picked Up)"
+msgstr "الكل (بما في ذلك المستلَم)"
+
+#: templates/boarding.html:17 templates/inpatient_new.html:8
+#: templates/visit_new_existing.html:8
+msgid "Search Patient (Name, Patient ID, Owner Name, or Owner Phone)"
+msgstr "ابحث عن مريض (الاسم، رقم المريض، اسم المالك، أو هاتف المالك)"
+
+#: templates/boarding.html:18 templates/inpatient_new.html:9
+#: templates/visit_new_existing.html:9
+msgid "Start Typing…"
+msgstr "ابدأ الكتابة…"
+
+#: templates/boarding.html:24 templates/inpatient_new.html:15
+msgid "Patient:"
+msgstr "المريض:"
+
+#: templates/boarding.html:27 templates/boarding.html:150
+msgid "Entry Date"
+msgstr "تاريخ الدخول"
+
+#: templates/boarding.html:28
+msgid "Expected Dismissal Date"
+msgstr "تاريخ الخروج المتوقع"
+
+#: templates/boarding.html:29
+msgid "Allocated Room"
+msgstr "الغرفة المخصصة"
+
+#: templates/boarding.html:30
+msgid "Admitted Items (Leash, Bed, Etc.)"
+msgstr "الأغراض المستلمة (رباط، فراش، إلخ)"
+
+#: templates/boarding.html:32 templates/boarding.html:155
+msgid "Auto-suggested from price × nights"
+msgstr "مقترح تلقائيًا من السعر × عدد الليالي"
+
+#: templates/boarding.html:37 templates/boarding.html:159
+msgid "Special Needs?"
+msgstr "احتياجات خاصة؟"
+
+#: templates/boarding.html:39
+msgid ""
+"Check this to report any chronic diseases or custom requirements for the "
+"stay (medication schedule, dietary restrictions, mobility issues, etc.)."
+msgstr ""
+
+#: templates/boarding.html:41 templates/boarding.html:161
+msgid "Describe the special need…"
+msgstr "صف الاحتياج الخاص…"
+
+#: templates/boarding.html:46
+msgid "Add Boarding"
+msgstr "إضافة إيواء"
+
+#: templates/boarding.html:54
+msgid "Something's Wrong"
+msgstr "هناك مشكلة"
+
+#: templates/boarding.html:58
+msgid "What's wrong?"
+msgstr "ما المشكلة؟"
+
+#: templates/boarding.html:61
+msgid "Contacted the owner?"
+msgstr "هل تم التواصل مع المالك؟"
+
+#: templates/boarding.html:64
+msgid "How?"
+msgstr "كيف؟"
+
+#: templates/boarding.html:65 templates/wellness_list.html:28
+msgid "Phone Call"
+msgstr "مكالمة هاتفية"
+
+#: templates/boarding.html:65
+msgid "Text Message"
+msgstr "رسالة نصية"
+
+#: templates/boarding.html:67
+msgid "Owner's Response"
+msgstr "رد المالك"
+
+#: templates/boarding.html:70
+msgid "Log Incident"
+msgstr "تسجيل حادثة"
+
+#: templates/boarding.html:79 templates/boarding.html:96
+#: templates/distributor_detail.html:87
+msgid "Record Payment"
+msgstr "تسجيل دفعة"
+
+#: templates/boarding.html:86 templates/consignment_settlements.html:46
+#: templates/distributor_detail.html:57 templates/distributor_detail.html:80
+#: templates/followups_list.html:14 templates/inpatient_detail.html:176
+#: templates/refunds.html:33 templates/refunds.html:60
+#: templates/refunds.html:92 templates/visit_detail.html:61
+#: templates/visit_detail.html:136
+msgid "Method"
+msgstr "الطريقة"
+
+#: templates/boarding.html:89 templates/cash_register.html:56
+#: templates/consignment_settlements.html:29
+#: templates/distributor_detail.html:83 templates/inpatient_detail.html:179
+#: templates/pos.html:32 templates/refunds.html:36 templates/refunds.html:63
+#: templates/visit_detail.html:139
+msgid "Cash"
+msgstr "نقدًا"
+
+#: templates/boarding.html:90 templates/consignment_settlements.html:29
+#: templates/distributor_detail.html:83 templates/inpatient_detail.html:180
+#: templates/pos.html:33 templates/refunds.html:37 templates/refunds.html:64
+#: templates/visit_detail.html:140
+msgid "Card"
+msgstr "بطاقة"
+
+#: templates/boarding.html:91 templates/consignment_settlements.html:29
+#: templates/distributor_detail.html:83 templates/inpatient_detail.html:181
+#: templates/pos.html:34 templates/refunds.html:38 templates/refunds.html:65
+#: templates/visit_detail.html:141
+msgid "Transfer"
+msgstr "حوالة"
+
+#: templates/boarding.html:106 templates/dashboard.html:173
+msgid "Patient"
+msgstr "المريض"
+
+#: templates/boarding.html:106 templates/boarding.html:152
+#: templates/patient_detail.html:49
+msgid "Room"
+msgstr "الغرفة"
+
+#: templates/boarding.html:106 templates/patient_detail.html:49
+msgid "Entry"
+msgstr "الدخول"
+
+#: templates/boarding.html:106 templates/patient_detail.html:49
+msgid "Dismissal"
+msgstr "الخروج"
+
+#: templates/boarding.html:107 templates/boarding.html:125
+#: templates/cash_register.html:28 templates/pos_history.html:14
+#: templates/visits_list.html:13 templates/visits_list.html:26
+msgid "Payment"
+msgstr "الدفع"
+
+#: templates/boarding.html:107
+msgid "Special Needs"
+msgstr "احتياجات خاصة"
+
+#: templates/boarding.html:107
+msgid "Incidents"
+msgstr "الحوادث"
+
+#: templates/boarding.html:119
+msgid "None"
+msgstr "لا شيء"
+
+#: templates/boarding.html:123
+msgid "Something's Wrong!"
+msgstr "هناك مشكلة!"
+
+#: templates/boarding.html:126 templates/inpatient_detail.html:66
+#: templates/inpatient_detail.html:90
+msgid "Edit"
+msgstr "تعديل"
+
+#: templates/boarding.html:128
+msgid "Export (PDF)"
+msgstr "تصدير (PDF)"
+
+#: templates/boarding.html:132
+msgid "Mark Picked Up"
+msgstr "تحديد كمُستلَم"
+
+#: templates/boarding.html:137 templates/followups_list.html:35
+#: templates/wellness_list.html:36
+msgid "Send WhatsApp Message"
+msgstr "إرسال رسالة واتساب"
+
+#: templates/boarding.html:139
+msgid "Add phone to send WhatsApp"
+msgstr "أضف رقم هاتف لإرسال واتساب"
+
+#: templates/boarding.html:151 templates/inpatient_detail.html:43
+msgid "Dismissal Date"
+msgstr "تاريخ الخروج"
+
+#: templates/boarding.html:153 templates/grooming_list.html:13
+#: templates/inpatient_detail.html:32 templates/visit_detail.html:84
+msgid "Admitted Items"
+msgstr "الأغراض المستلمة"
+
+#: templates/boarding.html:163
+msgid ""
+"Notes on file but Special Needs is unchecked — they won't be saved unless"
+" you check the box."
+msgstr ""
+
+#: templates/boarding.html:166 templates/consignment_items.html:11
+#: templates/inventory_catalog.html:11 templates/patient_form_edit.html:27
+#: templates/price_list.html:7 templates/visit_form_edit.html:60
+msgid "Save Changes"
+msgstr "حفظ التغييرات"
+
+#: templates/boarding.html:170
+msgid "No boarding sessions on record."
+msgstr "لا توجد فترات إيواء مسجلة."
+
+#: templates/cash_register.html:14 templates/cash_register.html:93
+msgid "Pay From Cash Register"
+msgstr "الصرف من الصندوق"
+
+#: templates/cash_register.html:15
+msgid "Perform Audit"
+msgstr "تنفيذ جرد"
+
+#: templates/cash_register.html:19 templates/pos_history.html:8
+#: templates/refunds.html:82
+msgid "View by Date"
+msgstr "عرض حسب التاريخ"
+
+#: templates/cash_register.html:27
+msgid "Employee"
+msgstr "الموظف"
+
+#: templates/cash_register.html:27 templates/inpatient_detail.html:162
+#: templates/pos.html:19 templates/pos_history.html:14
+#: templates/pos_receipt.html:11 templates/visit_detail.html:120
+msgid "Subtotal"
+msgstr "المجموع الفرعي"
+
+#: templates/cash_register.html:28 templates/pos_history.html:14
+#: templates/pos_receipt.html:12
+msgid "Discount"
+msgstr "الخصم"
+
+#: templates/cash_register.html:47
+msgid "Paid Out of Register"
+msgstr "المصروف من الصندوق"
+
+#: templates/cash_register.html:52
+msgid "Register Payout"
+msgstr "صرف من الصندوق"
+
+#: templates/cash_register.html:71 templates/insights.html:158
+msgid "Perfect"
+msgstr "مطابق"
+
+#: templates/cash_register.html:72 templates/insights.html:159
+msgid "Deficit"
+msgstr "عجز"
+
+#: templates/cash_register.html:73 templates/insights.html:160
+msgid "Surplus"
+msgstr "فائض"
+
+#: templates/cash_register.html:75 templates/insights.html:161
+msgid "Not Audited"
+msgstr "لم يُجرد"
+
+#: templates/cash_register.html:104
+msgid "e.g. paid the produce delivery driver"
+msgstr "مثال: دفع لسائق توصيل المستلزمات"
+
+#: templates/cash_register.html:118
+msgid ""
+"Only Cash is audited here — Card and Transfer settle\n"
+"      electronically and can't be counted out of a drawer."
+msgstr ""
+
+#: templates/cash_register.html:120
+msgid "System Cash Total"
+msgstr "إجمالي النقد في النظام"
+
+#: templates/cash_register.html:121
+msgid "System Card Total"
+msgstr "إجمالي البطاقة في النظام"
+
+#: templates/cash_register.html:122
+msgid "System Transfer Total"
+msgstr "إجمالي الحوالات في النظام"
+
+#: templates/cash_register.html:130
+msgid "Notes (optional)"
+msgstr "ملاحظات (اختياري)"
+
+#: templates/cash_register.html:131
+msgid "e.g. counted twice, drawer was short a note"
+msgstr "مثال: تم العد مرتين، وينقص الصندوق ورقة نقدية"
+
+#: templates/change_password.html:6
+msgid "Change Password"
+msgstr "تغيير كلمة المرور"
+
+#: templates/change_password.html:7
+msgid "You need to set a new password before continuing."
+msgstr "عليك تعيين كلمة مرور جديدة قبل المتابعة."
+
+#: templates/change_password.html:13
+msgid "Current Password"
+msgstr "كلمة المرور الحالية"
+
+#: templates/change_password.html:15
+msgid "Confirm New Password"
+msgstr "تأكيد كلمة المرور الجديدة"
+
+#: templates/change_password.html:16
+msgid "Update Password"
+msgstr "تحديث كلمة المرور"
+
+#: templates/consignment_items.html:6
+msgid "Consignment Items"
+msgstr "أصناف الأمانة"
+
+#: templates/consignment_items.html:7
+msgid ""
+"Retail inventory items. Check \"Consignment?\" and pick a distributor to "
+"attach one and start\n"
+"      logging receiving/shrinkage/returns against it — check the box for "
+"as many items as you need, then save them\n"
+"      all at once."
+msgstr ""
+
+#: templates/consignment_items.html:17 templates/distributors.html:71
+#: templates/inventory_catalog.html:68 templates/owner_detail.html:17
+#: templates/owners_list.html:15 templates/patients_list.html:25
+#: templates/price_list.html:58 templates/visits_list.html:26
+msgid "ID"
+msgstr "المعرّف"
+
+#: templates/consignment_items.html:17
+msgid "Consignment?"
+msgstr "أمانة؟"
+
+#: templates/consignment_items.html:17 templates/consignment_overview.html:14
+#: templates/consignment_receiving.html:42
+#: templates/consignment_returns.html:42 templates/consignment_sales.html:26
+#: templates/consignment_shrinkage.html:36
+#: templates/consignment_shrinkage.html:55 templates/distributors.html:28
+#: templates/inventory_catalog.html:68 templates/ordering_sheet.html:15
+msgid "Distributor"
+msgstr "المورد"
+
+#: templates/consignment_items.html:31
+msgid "Locked — has consignment activity"
+msgstr "مقفل — لديه حركة أمانة"
+
+#: templates/consignment_items.html:70
+msgid "No active Retail items — add one from Inventory Catalog first."
+msgstr "لا توجد أصناف تجزئة نشطة — أضف صنفًا من دليل الأصناف أولًا."
+
+#: templates/consignment_overview.html:15
+msgid "Shelf Units"
+msgstr "الوحدات على الرف"
+
+#: templates/consignment_overview.html:18
+msgid "Last Settlement"
+msgstr "آخر تسوية"
+
+#: templates/consignment_overview.html:19
+msgid "Sold This Month"
+msgstr "المُباع هذا الشهر"
+
+#: templates/consignment_overview.html:33
+msgid "Settle"
+msgstr "تسوية"
+
+#: templates/consignment_overview.html:35
+msgid "Sales"
+msgstr "المبيعات"
+
+#: templates/consignment_overview.html:39
+msgid "No Consignment items flagged yet — start from Consignment > Items."
+msgstr "لم يتم تحديد أي أصناف أمانة بعد — ابدأ من الأمانة > الأصناف."
+
+#: templates/consignment_receiving.html:6
+msgid "Consignment Receiving"
+msgstr "استلام الأمانة"
+
+#: templates/consignment_receiving.html:10
+msgid "+ Log Receipt"
+msgstr "+ تسجيل استلام"
+
+#: templates/consignment_receiving.html:25
+#: templates/consignment_receiving.html:42
+#: templates/consignment_returns.html:26 templates/consignment_returns.html:42
+#: templates/consignment_shrinkage.html:25
+#: templates/consignment_shrinkage.html:55
+msgid "Quantity"
+msgstr "الكمية"
+
+#: templates/consignment_receiving.html:27
+msgid "Received Date"
+msgstr "تاريخ الاستلام"
+
+#: templates/consignment_receiving.html:28
+msgid "Delivery Reference"
+msgstr "مرجع التسليم"
+
+#: templates/consignment_receiving.html:28
+msgid "Invoice/delivery note #"
+msgstr "رقم الفاتورة / إشعار التسليم"
+
+#: templates/consignment_receiving.html:32
+msgid "Log Receipt"
+msgstr "تسجيل الاستلام"
+
+#: templates/consignment_receiving.html:43
+msgid "Reference"
+msgstr "المرجع"
+
+#: templates/consignment_receiving.html:57
+msgid "No receipts logged yet."
+msgstr "لا توجد عمليات استلام مسجلة بعد."
+
+#: templates/consignment_returns.html:6
+msgid "Consignment Returns"
+msgstr "مرتجعات الأمانة"
+
+#: templates/consignment_returns.html:11
+msgid "+ Log Return"
+msgstr "+ تسجيل مرتجع"
+
+#: templates/consignment_returns.html:27
+msgid "Return Date"
+msgstr "تاريخ الإرجاع"
+
+#: templates/consignment_returns.html:28
+msgid "E.g. slow-moving, discontinued"
+msgstr "مثال: بطيء الحركة، موقوف"
+
+#: templates/consignment_returns.html:32
+msgid "Log Return"
+msgstr "تسجيل المرتجع"
+
+#: templates/consignment_returns.html:57
+msgid "No returns logged yet."
+msgstr "لا توجد مرتجعات مسجلة بعد."
+
+#: templates/consignment_sales.html:7
+msgid ""
+"What sold, what's owed the distributor, and your markup — priced at what "
+"each sale actually\n"
+"      charged and cost at the time, not today's Price List."
+msgstr ""
+
+#: templates/consignment_sales.html:14
+msgid "All Distributors"
+msgstr "جميع الموردين"
+
+#: templates/consignment_sales.html:17
+msgid "From"
+msgstr "من"
+
+#: templates/consignment_sales.html:18
+msgid "To"
+msgstr "إلى"
+
+#: templates/consignment_sales.html:19
+msgid "Filter"
+msgstr "تصفية"
+
+#: templates/consignment_sales.html:26 templates/insights.html:35
+#: templates/insights.html:130 templates/reports.html:19
+#: templates/reports.html:46
+msgid "Month"
+msgstr "الشهر"
+
+#: templates/consignment_sales.html:26
+msgid "Units Sold"
+msgstr "الوحدات المباعة"
+
+#: templates/consignment_sales.html:41
+msgid "No Consignment sales in this range."
+msgstr "لا توجد مبيعات أمانة في هذه الفترة."
+
+#: templates/consignment_settlements.html:9
+msgid "← Back to Overview"
+msgstr "← العودة إلى النظرة العامة"
+
+#: templates/consignment_settlements.html:13
+msgid "Current Balance"
+msgstr "الرصيد الحالي"
+
+#: templates/consignment_settlements.html:15
+msgid "Carried forward from last settlement"
+msgstr "مرحّل من التسوية السابقة"
+
+#: templates/consignment_settlements.html:16
+msgid "New activity this period"
+msgstr "نشاط جديد في هذه الفترة"
+
+#: templates/consignment_settlements.html:17
+msgid "Amount Owed Now"
+msgstr "المبلغ المستحق الآن"
+
+#: templates/consignment_settlements.html:26 templates/pos.html:30
+#: templates/pos_receipt.html:14
+msgid "Payment Method"
+msgstr "طريقة الدفع"
+
+#: templates/consignment_settlements.html:34
+msgid "Record Settlement"
+msgstr "تسجيل تسوية"
+
+#: templates/consignment_settlements.html:37
+msgid ""
+"A partial payment carries the remainder forward as the starting balance "
+"for the next settlement."
+msgstr ""
+
+#: templates/consignment_settlements.html:41
+msgid "Settlement History"
+msgstr "سجل التسويات"
+
+#: templates/consignment_settlements.html:45
+msgid "Period"
+msgstr "الفترة"
+
+#: templates/consignment_settlements.html:46
+msgid "Recorded By"
+msgstr "سُجِّل بواسطة"
+
+#: templates/consignment_settlements.html:58
+msgid "PDF"
+msgstr "PDF"
+
+#: templates/consignment_settlements.html:61
+msgid "No settlements recorded yet."
+msgstr "لا توجد تسويات مسجلة بعد."
+
+#: templates/consignment_shrinkage.html:6
+msgid "Consignment Shrinkage"
+msgstr "هالك الأمانة"
+
+#: templates/consignment_shrinkage.html:10
+msgid "+ Log Shrinkage"
+msgstr "+ تسجيل هالك"
+
+#: templates/consignment_shrinkage.html:28
+msgid "Damaged"
+msgstr "تالف"
+
+#: templates/consignment_shrinkage.html:29
+msgid "Expired"
+msgstr "منتهي الصلاحية"
+
+#: templates/consignment_shrinkage.html:30
+msgid "Other"
+msgstr "غير ذلك"
+
+#: templates/consignment_shrinkage.html:33
+msgid "Liable Party"
+msgstr "الطرف المسؤول"
+
+#: templates/consignment_shrinkage.html:35
+msgid "Default for reason (Expired → Distributor, else → Clinic)"
+msgstr "الافتراضي حسب السبب (منتهي الصلاحية ← المورد، غير ذلك ← العيادة)"
+
+#: templates/consignment_shrinkage.html:37 templates/settings.html:12
+msgid "Clinic"
+msgstr "العيادة"
+
+#: templates/consignment_shrinkage.html:42
+msgid ""
+"Clinic-liable shrinkage adds to what's owed the distributor at settlement"
+" — they're\n"
+"      still owed for stock lost on your side. Distributor-liable "
+"shrinkage adds nothing — they absorb that loss directly."
+msgstr ""
+
+#: templates/consignment_shrinkage.html:45
+msgid "Log Shrinkage"
+msgstr "تسجيل الهالك"
+
+#: templates/consignment_shrinkage.html:56
+msgid "Liable"
+msgstr "المسؤول"
+
+#: templates/consignment_shrinkage.html:66
+msgid "(overridden)"
+msgstr "(تم التجاوز)"
+
+#: templates/consignment_shrinkage.html:71
+msgid "No shrinkage logged yet."
+msgstr "لا يوجد هالك مسجل بعد."
+
+#: templates/dashboard.html:10 templates/patients_list.html:6
+#: templates/visits_list.html:6
+msgid "+ Log a Visit"
+msgstr "+ تسجيل زيارة"
+
+#: templates/dashboard.html:16
+msgid ""
+"This month's operating costs haven't been entered yet — add them on the "
+"Monthly P&amp;L page before the month closes."
+msgstr ""
+
+#: templates/dashboard.html:22 templates/dashboard.html:46
+msgid "Open Settings →"
+msgstr "فتح الإعدادات →"
+
+#: templates/dashboard.html:54
+msgid "This install has failed its health check for 3 days running"
+msgstr "فشل فحص السلامة لهذا التثبيت ثلاثة أيام متتالية"
+
+#: templates/dashboard.html:56
+msgid ""
+"You're seeing this because you can change Settings. It will come back "
+"next time you sign in,\n"
+"      until the problem below is fixed."
+msgstr ""
+
+#: templates/dashboard.html:63
+msgid "Not now"
+msgstr "ليس الآن"
+
+#: templates/dashboard.html:64
+msgid "Open Settings"
+msgstr "فتح الإعدادات"
+
+#: templates/dashboard.html:87
+msgid "Total Patients on File"
+msgstr "إجمالي المرضى المسجلين"
+
+#: templates/dashboard.html:88
+msgid "Active / Ongoing Cases"
+msgstr "الحالات النشطة / الجارية"
+
+#: templates/dashboard.html:89 templates/dashboard.html:95
+msgid "Follow-Ups Due Today"
+msgstr "المتابعات المستحقة اليوم"
+
+#: templates/dashboard.html:90
+msgid "Currently Admitted (Inpatient)"
+msgstr "المنوّمون حاليًا"
+
+#: templates/dashboard.html:100 templates/dashboard.html:113
+#: templates/dashboard.html:126 templates/dashboard.html:181
+msgid "Open"
+msgstr "فتح"
+
+#: templates/dashboard.html:103 templates/dashboard.html:116
+msgid "View all follow-ups →"
+msgstr "عرض جميع المتابعات →"
+
+#: templates/dashboard.html:104
+msgid "Nothing due today."
+msgstr "لا يوجد ما هو مستحق اليوم."
+
+#: templates/dashboard.html:108
+msgid "Reminder Calls — Call Today for Tomorrow's Visit"
+msgstr "مكالمات التذكير — اتصل اليوم لزيارة الغد"
+
+#: templates/dashboard.html:117
+msgid "No reminder calls needed today."
+msgstr "لا توجد مكالمات تذكير مطلوبة اليوم."
+
+#: templates/dashboard.html:121
+msgid "Wellness Reminders Due"
+msgstr "تذكيرات الرعاية الوقائية المستحقة"
+
+#: templates/dashboard.html:129
+msgid "View all wellness reminders →"
+msgstr "عرض جميع تذكيرات الرعاية الوقائية →"
+
+#: templates/dashboard.html:130
+msgid "No wellness reminders due."
+msgstr "لا توجد تذكيرات رعاية وقائية مستحقة."
+
+#: templates/dashboard.html:134 templates/grooming_list.html:4
+msgid "Grooming Queue"
+msgstr "قائمة العناية والتصفيف"
+
+#: templates/dashboard.html:141
+msgid "View grooming queue →"
+msgstr "عرض قائمة العناية والتصفيف →"
+
+#: templates/dashboard.html:142
+msgid "No grooming in progress."
+msgstr "لا توجد عمليات عناية وتصفيف جارية."
+
+#: templates/dashboard.html:146 templates/inventory_status.html:15
+msgid "Low Stock"
+msgstr "مخزون منخفض"
+
+#: templates/dashboard.html:149
+msgid "View ordering sheet →"
+msgstr "عرض كشف الطلبات →"
+
+#: templates/dashboard.html:150
+msgid "Nothing below threshold."
+msgstr "لا يوجد ما هو دون الحد."
+
+#: templates/dashboard.html:154
+msgid "Audit & Expiry Alerts"
+msgstr "تنبيهات الجرد والانتهاء"
+
+#: templates/dashboard.html:164
+msgid "View inventory status →"
+msgstr "عرض حالة المخزون →"
+
+#: templates/dashboard.html:165
+msgid "No audit or expiry issues."
+msgstr "لا توجد مشكلات جرد أو انتهاء."
+
+#: templates/dashboard.html:170
+msgid "Missed Items — Needs Admin Review"
+msgstr "عناصر فائتة — تحتاج مراجعة الإدارة"
+
+#: templates/dashboard.html:173
+msgid "Deadline Passed"
+msgstr "انقضى الموعد النهائي"
+
+#: templates/dashboard.html:173
+msgid "Responsible Staff"
+msgstr "الموظف المسؤول"
+
+#: templates/dashboard.html:184
+msgid "Nothing overdue by more than two weeks."
+msgstr "لا يوجد ما تأخر أكثر من أسبوعين."
+
+#: templates/distributor_detail.html:9
+msgid "Export PDF"
+msgstr "تصدير PDF"
+
+#: templates/distributor_detail.html:14
+msgid "Total Billed"
+msgstr "إجمالي المفوتر"
+
+#: templates/distributor_detail.html:15
+msgid "Total Paid"
+msgstr "إجمالي المدفوع"
+
+#: templates/distributor_detail.html:16
+msgid "Outstanding"
+msgstr "المستحق"
+
+#: templates/distributor_detail.html:21
+msgid "Order Bills"
+msgstr "فواتير الطلبات"
+
+#: templates/distributor_detail.html:22
+msgid "+ Log Bill"
+msgstr "+ تسجيل فاتورة"
+
+#: templates/distributor_detail.html:30
+msgid "Bill Date"
+msgstr "تاريخ الفاتورة"
+
+#: templates/distributor_detail.html:31
+msgid "Bill / Invoice #"
+msgstr "رقم الفاتورة"
+
+#: templates/distributor_detail.html:31
+msgid "Distributor's own reference, optional"
+msgstr "مرجع المورد الخاص، اختياري"
+
+#: templates/distributor_detail.html:36
+msgid "Save Bill"
+msgstr "حفظ الفاتورة"
+
+#: templates/distributor_detail.html:70
+msgid "No payments recorded yet."
+msgstr "لا توجد دفعات مسجلة بعد."
+
+#: templates/distributor_detail.html:78
+msgid "Payment Date"
+msgstr "تاريخ الدفع"
+
+#: templates/distributor_detail.html:93
+msgid "Delete Bill"
+msgstr "حذف الفاتورة"
+
+#: templates/distributor_detail.html:97
+msgid "No bills logged yet for this distributor."
+msgstr "لا توجد فواتير مسجلة لهذا المورد بعد."
+
+#: templates/distributors.html:9
+msgid "+ New Distributor"
+msgstr "+ مورد جديد"
+
+#: templates/distributors.html:17
+msgid "Distributors With a Balance"
+msgstr "الموردون ذوو رصيد"
+
+#: templates/distributors.html:20
+msgid "Fully Unpaid Bills"
+msgstr "فواتير غير مدفوعة بالكامل"
+
+#: templates/distributors.html:26
+msgid "Who You Owe Most"
+msgstr "من تدين له بالأكثر"
+
+#: templates/distributors.html:42
+msgid "Search by Distributor Name…"
+msgstr "ابحث باسم المورد…"
+
+#: templates/distributors.html:43 templates/inventory_catalog.html:29
+#: templates/inventory_status.html:23 templates/owners_list.html:10
+#: templates/patients_list.html:11 templates/price_list.html:25
+#: templates/visits_list.html:20
+msgid "Search"
+msgstr "بحث"
+
+#: templates/distributors.html:52
+msgid "Distributor Name"
+msgstr "اسم المورد"
+
+#: templates/distributors.html:53
+msgid "Contact Person"
+msgstr "الشخص المسؤول"
+
+#: templates/distributors.html:54 templates/distributors.html:71
+#: templates/followups_list.html:14 templates/grooming_list.html:13
+#: templates/owner_form.html:10 templates/owners_list.html:15
+#: templates/patients_list.html:25 templates/wellness_list.html:9
+msgid "Phone"
+msgstr "الهاتف"
+
+#: templates/distributors.html:55 templates/distributors.html:71
+msgid "Email"
+msgstr "البريد الإلكتروني"
+
+#: templates/distributors.html:56
+msgid "Product Catalog Link"
+msgstr "رابط دليل المنتجات"
+
+#: templates/distributors.html:57
+msgid "Lead Time (Days)"
+msgstr "مدة التوريد (بالأيام)"
+
+#: templates/distributors.html:58
+msgid "Payment Terms"
+msgstr "شروط الدفع"
+
+#: templates/distributors.html:58
+msgid "E.g. Net 30"
+msgstr "مثال: صافي ٣٠ يومًا"
+
+#: templates/distributors.html:62
+msgid "Add Distributor"
+msgstr "إضافة مورد"
+
+#: templates/distributors.html:71
+msgid "Contact"
+msgstr "جهة الاتصال"
+
+#: templates/distributors.html:71 templates/ordering_sheet.html:15
+msgid "Lead Time"
+msgstr "مدة التوريد"
+
+#: templates/distributors.html:71
+msgid "Terms"
+msgstr "الشروط"
+
+#: templates/distributors.html:88
+msgid "Ledger"
+msgstr "دفتر الحسابات"
+
+#: templates/distributors.html:97
+msgid "No distributors yet — add your suppliers here."
+msgstr "لا يوجد موردون بعد — أضف مورديك هنا."
+
+#: templates/error_403.html:14 templates/error_403.html:27
+msgid "Not allowed in here."
+msgstr "غير مسموح بالدخول هنا."
+
+#: templates/error_403.html:15
+msgid ""
+"Your role doesn't have access to this page. If that seems wrong, check "
+"with an Admin."
+msgstr ""
+
+#: templates/error_403.html:17 templates/error_404.html:17
+#: templates/error_500.html:30 templates/error_busy.html:21
+msgid "Back to Dashboard"
+msgstr "العودة إلى لوحة التحكم"
+
+#: templates/error_403.html:28
+msgid "You don't have access to that page."
+msgstr "ليس لديك صلاحية الوصول إلى تلك الصفحة."
+
+#: templates/error_403.html:30 templates/error_404.html:31
+msgid "Back to Log In"
+msgstr "العودة إلى تسجيل الدخول"
+
+#: templates/error_404.html:14 templates/error_404.html:28
+msgid "Hmm, we can't find that one."
+msgstr "لم نتمكن من العثور على ذلك."
+
+#: templates/error_404.html:15 templates/error_404.html:29
+msgid ""
+"The page you're looking for doesn't exist, or may have been moved or "
+"deleted."
+msgstr ""
+
+#: templates/error_404.html:18
+msgid "Go Back"
+msgstr "رجوع"
+
+#: templates/error_500.html:9
+msgid "Something went wrong on our end."
+msgstr "حدث خطأ من جانبنا."
+
+#: templates/error_500.html:11
+msgid ""
+"This wasn't your fault — an unexpected error happened while handling that"
+" page.\n"
+"    Copy the box below and send it along and it can be looked into."
+msgstr ""
+
+#: templates/error_500.html:17
+msgid "Details for support — safe to copy and send"
+msgstr "تفاصيل للدعم الفني — يمكن نسخها وإرسالها بأمان"
+
+#: templates/error_500.html:18
+msgid "Copy"
+msgstr "نسخ"
+
+#: templates/error_500.html:31 templates/error_busy.html:20
+#: templates/error_busy.html:34
+msgid "Try Again"
+msgstr "حاول مرة أخرى"
+
+#: templates/error_busy.html:17 templates/error_busy.html:31
+msgid "The system is busy right now."
+msgstr "النظام مشغول حاليًا."
+
+#: templates/error_busy.html:18 templates/error_busy.html:32
+msgid "Too many people are using it at once. Wait a moment, then try again."
+msgstr "عدد المستخدمين في الوقت نفسه كبير. انتظر لحظة ثم حاول مرة أخرى."
+
+#: templates/followups_list.html:8
+msgid "Pending Only"
+msgstr "المعلّقة فقط"
+
+#: templates/followups_list.html:9
+msgid "All Follow-Ups"
+msgstr "جميع المتابعات"
+
+#: templates/followups_list.html:14 templates/visit_form_edit.html:44
+msgid "Follow-Up Date"
+msgstr "تاريخ المتابعة"
+
+#: templates/followups_list.html:14
+msgid "Reminder Call"
+msgstr "مكالمة تذكير"
+
+#: templates/followups_list.html:14 templates/grooming_list.html:13
+#: templates/inpatient_list.html:15 templates/owner_detail.html:17
+#: templates/patients_list.html:25 templates/visits_list.html:26
+#: templates/wellness_list.html:9
+msgid "Animal"
+msgstr "الحيوان"
+
+#: templates/followups_list.html:18 templates/wellness_list.html:15
+msgid "MISSED"
+msgstr "فائت"
+
+#: templates/followups_list.html:37 templates/wellness_list.html:38
+msgid "Add phone"
+msgstr "أضف رقم هاتف"
+
+#: templates/followups_list.html:41
+msgid "No follow-ups to show."
+msgstr "لا توجد متابعات لعرضها."
+
+#: templates/grooming_list.html:7
+msgid "In Progress"
+msgstr "قيد التنفيذ"
+
+#: templates/grooming_list.html:8
+msgid "Include Finished"
+msgstr "تضمين المنتهية"
+
+#: templates/grooming_list.html:13
+msgid "Patient ID"
+msgstr "رقم المريض"
+
+#: templates/grooming_list.html:13 templates/visit_form_edit.html:53
+#: templates/wellness_list.html:9
+msgid "Contacted?"
+msgstr "تم التواصل؟"
+
+#: templates/grooming_list.html:36
+msgid "Nothing in the grooming queue."
+msgstr "لا يوجد شيء في قائمة العناية والتصفيف."
+
+#: templates/inpatient_detail.html:9
+msgid "Export Inpatient (PDF)"
+msgstr "تصدير التنويم (PDF)"
+
+#: templates/inpatient_detail.html:13
+msgid "Info"
+msgstr "معلومات"
+
+#: templates/inpatient_detail.html:14
+msgid "Daily Updates"
+msgstr "التحديثات اليومية"
+
+#: templates/inpatient_detail.html:15
+msgid "Contact Log"
+msgstr "سجل التواصل"
+
+#: templates/inpatient_detail.html:16 templates/visit_detail.html:90
+msgid "Billing"
+msgstr "الفوترة"
+
+#: templates/inpatient_detail.html:17
+msgid "Attachments"
+msgstr "المرفقات"
+
+#: templates/inpatient_detail.html:26
+msgid "Species / Sex / Age"
+msgstr "النوع / الجنس / العمر"
+
+#: templates/inpatient_detail.html:30 templates/inpatient_new.html:29
+#: templates/visit_detail.html:25 templates/visit_form_edit.html:19
+msgid "Presenting Complaint"
+msgstr "الشكوى الحالية"
+
+#: templates/inpatient_detail.html:31 templates/inpatient_new.html:30
+msgid "Physical Exam Findings & Diagnostics"
+msgstr "نتائج الفحص السريري والتشخيص"
+
+#: templates/inpatient_detail.html:33 templates/inpatient_new.html:23
+msgid "Attending Veterinarian"
+msgstr "الطبيب البيطري المعالج"
+
+#: templates/inpatient_detail.html:36 templates/inpatient_new.html:26
+msgid "Supervising Veterinarian"
+msgstr "الطبيب البيطري المشرف"
+
+#: templates/inpatient_detail.html:41
+msgid "Dismissed"
+msgstr "تم الإخراج"
+
+#: templates/inpatient_detail.html:54
+msgid "Add a Daily Update — Condition of the Patient"
+msgstr "إضافة تحديث يومي — حالة المريض"
+
+#: templates/inpatient_detail.html:55
+msgid "Log Update"
+msgstr "تسجيل التحديث"
+
+#: templates/inpatient_detail.html:58 templates/inpatient_detail.html:117
+msgid "Last 3 Days"
+msgstr "آخر ٣ أيام"
+
+#: templates/inpatient_detail.html:74
+msgid "No updates logged yet."
+msgstr "لا توجد تحديثات مسجلة بعد."
+
+#: templates/inpatient_detail.html:82
+msgid "Earlier Entries"
+msgstr "السجلات الأقدم"
+
+#: templates/inpatient_detail.html:109
+msgid "Did the Owner Pick Up?"
+msgstr "هل استلم المالك؟"
+
+#: templates/inpatient_detail.html:114
+msgid "Log Contact Attempt"
+msgstr "تسجيل محاولة تواصل"
+
+#: templates/inpatient_detail.html:120
+msgid "No contact attempts logged yet."
+msgstr "لا توجد محاولات تواصل مسجلة بعد."
+
+#: templates/inpatient_detail.html:132
+msgid "Check any procedure used and enter how many times it was given."
+msgstr "حدد أي إجراء تم استخدامه وأدخل عدد مرات تقديمه."
+
+#: templates/inpatient_detail.html:133
+msgid "Search by code or service name…"
+msgstr "ابحث بالرمز أو اسم الخدمة…"
+
+#: templates/inpatient_detail.html:143
+msgid "No matching items."
+msgstr "لا توجد أصناف مطابقة."
+
+#: templates/inpatient_detail.html:145
+msgid "Add to Bill"
+msgstr "إضافة إلى الفاتورة"
+
+#: templates/inpatient_detail.html:150
+msgid "Bill so Far"
+msgstr "الفاتورة حتى الآن"
+
+#: templates/inpatient_detail.html:160
+msgid "No procedures billed yet."
+msgstr "لم تتم فوترة أي إجراءات بعد."
+
+#: templates/inpatient_detail.html:166 templates/visit_detail.html:124
+msgid "Apply"
+msgstr "تطبيق"
+
+#: templates/inpatient_detail.html:168 templates/insights.html:37
+#: templates/insights.html:50 templates/pos.html:28
+#: templates/pos_receipt.html:13 templates/visit_detail.html:126
+msgid "Total"
+msgstr "الإجمالي"
+
+#: templates/inpatient_detail.html:169 templates/visit_detail.html:128
+msgid "Clean Up applied"
+msgstr "تم تطبيق الإعفاء عن الفئات القليلة"
+
+#: templates/inpatient_detail.html:184 templates/visit_detail.html:144
+msgid "Add"
+msgstr "إضافة"
+
+#: templates/inpatient_detail.html:202 templates/visit_detail.html:46
+msgid "No files uploaded yet."
+msgstr "لم يتم رفع أي ملفات بعد."
+
+#: templates/inpatient_detail.html:206 templates/visit_detail.html:50
+msgid "Upload"
+msgstr "رفع"
+
+#: templates/inpatient_list.html:6
+msgid "+ Admit Patient"
+msgstr "+ تنويم مريض"
+
+#: templates/inpatient_list.html:9
+msgid "Currently Admitted"
+msgstr "المنوّمون حاليًا"
+
+#: templates/inpatient_list.html:10
+msgid "All Cases"
+msgstr "جميع الحالات"
+
+#: templates/inpatient_list.html:11
+msgid "Balance Due"
+msgstr "الرصيد المستحق"
+
+#: templates/inpatient_list.html:15 templates/patient_detail.html:32
+msgid "Admitted"
+msgstr "تم التنويم"
+
+#: templates/inpatient_list.html:15 templates/patient_detail.html:32
+#: templates/patient_detail.html:85
+msgid "Complaint"
+msgstr "الشكوى"
+
+#: templates/inpatient_new.html:4
+msgid "Admit Patient"
+msgstr "تنويم المريض"
+
+#: templates/inpatient_new.html:20
+msgid "Admission Date"
+msgstr "تاريخ التنويم"
+
+#: templates/inpatient_new.html:34
+msgid "Admit"
+msgstr "تنويم"
+
+#: templates/insights.html:7
+msgid "Retention →"
+msgstr "ولاء العملاء →"
+
+#: templates/insights.html:13
+msgid "Clients With Paid Visits (Lifetime)"
+msgstr "العملاء ذوو زيارات مدفوعة (الإجمالي)"
+
+#: templates/insights.html:15
+msgid "Vets Billing This Window"
+msgstr "الأطباء الذين فوتروا في هذه الفترة"
+
+#: templates/insights.html:20
+msgid "Revenue by Service Category"
+msgstr "الإيرادات حسب فئة الخدمة"
+
+#: templates/insights.html:25
+msgid "Payment Method Mix"
+msgstr "توزيع طرق الدفع"
+
+#: templates/insights.html:60
+msgid "Vet Performance"
+msgstr "أداء الأطباء"
+
+#: templates/insights.html:64
+msgid "Vet"
+msgstr "الطبيب البيطري"
+
+#: templates/insights.html:64
+msgid "Avg / Visit"
+msgstr "المتوسط / زيارة"
+
+#: templates/insights.html:74
+msgid "No billed visits with a recorded vet in this window."
+msgstr "لا توجد زيارات مفوترة بطبيب مسجل في هذه الفترة."
+
+#: templates/insights.html:82
+msgid "Top Clients by Lifetime Spend"
+msgstr "أفضل العملاء حسب إجمالي الإنفاق"
+
+#: templates/insights.html:83
+msgid ""
+"From visit, inpatient &amp; boarding payments (walk-in POS retail sales "
+"aren't linked to a client in this system)."
+msgstr ""
+
+#: templates/insights.html:86
+msgid "Payments"
+msgstr "الدفعات"
+
+#: templates/insights.html:95
+msgid "No payments on file yet."
+msgstr "لا توجد دفعات مسجلة بعد."
+
+#: templates/insights.html:103
+msgid "Appointment Demand by Day of Week"
+msgstr "الطلب على المواعيد حسب يوم الأسبوع"
+
+#: templates/insights.html:105
+msgid ""
+"Amman work week (Sunday–Thursday) shown first; Friday/Saturday is the "
+"weekend. \"Fulfillment\" compares appointments booked that weekday "
+"against visits logged on the same weekday system-wide — an approximation,"
+" since appointments aren't linked to a specific visit record in this "
+"system."
+msgstr ""
+
+#: templates/insights.html:109
+msgid "Day"
+msgstr "اليوم"
+
+#: templates/insights.html:109
+msgid "Appointments Booked"
+msgstr "المواعيد المحجوزة"
+
+#: templates/insights.html:109
+msgid "Visits Logged (Same Weekday)"
+msgstr "الزيارات المسجلة (نفس يوم الأسبوع)"
+
+#: templates/insights.html:109
+msgid "Approx. Fulfillment"
+msgstr "نسبة الإنجاز التقريبية"
+
+#: templates/insights.html:113
+msgid "Weekend"
+msgstr "عطلة نهاية الأسبوع"
+
+#: templates/insights.html:123
+msgid "Inpatient & Boarding Load"
+msgstr "حِمل التنويم والإيواء"
+
+#: templates/insights.html:125
+msgid "Avg. Inpatient Stay (Days)"
+msgstr "متوسط مدة التنويم (بالأيام)"
+
+#: templates/insights.html:126
+msgid "Avg. Boarding Stay (Days)"
+msgstr "متوسط مدة الإيواء (بالأيام)"
+
+#: templates/insights.html:130
+msgid "Active Inpatient Cases"
+msgstr "حالات التنويم النشطة"
+
+#: templates/insights.html:130
+msgid "Active Boarding Stays"
+msgstr "إقامات الإيواء النشطة"
+
+#: templates/insights.html:144
+msgid "Cash Register Health"
+msgstr "سلامة الصندوق"
+
+#: templates/insights.html:146
+msgid ""
+"Last 30 days' Cash Register audit status. \"Not Audited\" means nobody "
+"closed out that day at all — on its own that's\n"
+"  a documentation gap, not proof of a problem, but a pattern of skipped "
+"audits (or repeated Deficits) is worth\n"
+"  looking into."
+msgstr ""
+
+#: templates/inventory_catalog.html:12 templates/price_list.html:8
+msgid "+ New Item"
+msgstr "+ صنف جديد"
+
+#: templates/inventory_catalog.html:17
+msgid "Active"
+msgstr "نشط"
+
+#: templates/inventory_catalog.html:18
+msgid "Include Inactive"
+msgstr "تضمين غير النشط"
+
+#: templates/inventory_catalog.html:23
+msgid ""
+"Highlighted rows: this Retail item has no matching entry in the Price "
+"List — check Price List's Linked Inventory Item."
+msgstr ""
+
+#: templates/inventory_catalog.html:28 templates/price_list.html:24
+msgid "Search by Product Name…"
+msgstr "ابحث باسم المنتج…"
+
+#: templates/inventory_catalog.html:38
+msgid "Item Name"
+msgstr "اسم الصنف"
+
+#: templates/inventory_catalog.html:39 templates/inventory_catalog.html:68
+#: templates/price_list.html:35 templates/price_list.html:58
+msgid "Category"
+msgstr "الفئة"
+
+#: templates/inventory_catalog.html:40 templates/inventory_catalog.html:68
+#: templates/inventory_status.html:30
+msgid "Unit"
+msgstr "الوحدة"
+
+#: templates/inventory_catalog.html:40
+msgid "Bottle, Box, Piece…"
+msgstr "زجاجة، علبة، قطعة…"
+
+#: templates/inventory_catalog.html:42
+msgid "Preferred Distributor"
+msgstr "المورد المفضل"
+
+#: templates/inventory_catalog.html:45
+msgid "Track Expiry Date"
+msgstr "تتبع تاريخ الانتهاء"
+
+#: templates/inventory_catalog.html:49 templates/price_list.html:50
+msgid "Add Item"
+msgstr "إضافة صنف"
+
+#: templates/inventory_catalog.html:68
+msgid "Barcode"
+msgstr "الباركود"
+
+#: templates/inventory_catalog.html:68
+msgid "Track Expiry"
+msgstr "تتبع الانتهاء"
+
+#: templates/inventory_catalog.html:74
+msgid ""
+"Retail data inconsistency: no active Retail Price List item is linked to "
+"this inventory item."
+msgstr ""
+
+#: templates/inventory_catalog.html:80
+msgid "print"
+msgstr "طباعة"
+
+#: templates/inventory_catalog.html:87
+msgid "Click to change distributor"
+msgstr "اضغط لتغيير المورد"
+
+#: templates/inventory_catalog.html:100 templates/ordering_sheet.html:36
+msgid "No inventory items yet."
+msgstr "لا توجد أصناف في المخزون بعد."
+
+#: templates/inventory_catalog.html:110
+msgid ""
+"Every item with a barcode. Set how many labels each one needs, remove any"
+"\n"
+"      you don't want on this run, then print them all together."
+msgstr ""
+
+#: templates/inventory_catalog.html:113
+msgid "Loading…"
+msgstr "جارٍ التحميل…"
+
+#: templates/inventory_catalog.html:114
+msgid "Nothing left to print."
+msgstr "لا يوجد ما يُطبع."
+
+#: templates/inventory_catalog.html:125
+msgid "Barcode —"
+msgstr "الباركود —"
+
+#: templates/inventory_catalog.html:127
+msgid ""
+"Every item has at most one barcode — either a real one scanned or typed "
+"in from its own\n"
+"      packaging, or one this app creates for you to print. Never both at "
+"once: setting one up\n"
+"      below turns off the other option until you remove it."
+msgstr ""
+
+#: templates/inventory_catalog.html:133
+msgid "Manually Enter Barcode"
+msgstr "إدخال الباركود يدويًا"
+
+#: templates/inventory_catalog.html:135
+msgid "Scan or type the barcode from the packaging"
+msgstr "امسح أو اكتب الباركود من العبوة"
+
+#: templates/inventory_catalog.html:139 templates/inventory_catalog.html:149
+msgid "Remove Barcode"
+msgstr "إزالة الباركود"
+
+#: templates/inventory_catalog.html:144
+msgid "Create Barcode"
+msgstr "إنشاء باركود"
+
+#: templates/inventory_catalog.html:145
+msgid ""
+"No barcode on the packaging? This app can create one and print a label to"
+" stick on the item."
+msgstr ""
+
+#: templates/inventory_catalog.html:147
+msgid "Create Now"
+msgstr "إنشاء الآن"
+
+#: templates/inventory_catalog.html:148
+msgid "Print Label"
+msgstr "طباعة الملصق"
+
+#: templates/inventory_catalog.html:154 templates/visit_detail.html:51
+msgid "Close"
+msgstr "إغلاق"
+
+#: templates/inventory_status.html:7
+msgid ""
+"Auto-calculated from audit history. Read-only — log a new count in Audit "
+"history."
+msgstr ""
+
+#: templates/inventory_status.html:14 templates/price_list.html:13
+msgid "All"
+msgstr "الكل"
+
+#: templates/inventory_status.html:16
+msgid "Audit Overdue"
+msgstr "الجرد متأخر"
+
+#: templates/inventory_status.html:17
+msgid "Expiring / Expired"
+msgstr "قارب على الانتهاء / منتهي"
+
+#: templates/inventory_status.html:22
+msgid "Search by Item Name…"
+msgstr "ابحث باسم الصنف…"
+
+#: templates/inventory_status.html:30 templates/ordering_sheet.html:14
+msgid "Stock"
+msgstr "المخزون"
+
+#: templates/inventory_status.html:30
+msgid "Threshold"
+msgstr "الحد"
+
+#: templates/inventory_status.html:31
+msgid "Latest Audit"
+msgstr "آخر جرد"
+
+#: templates/inventory_status.html:31
+msgid "Stock Status"
+msgstr "حالة المخزون"
+
+#: templates/inventory_status.html:31
+msgid "Expiry Status"
+msgstr "حالة الانتهاء"
+
+#: templates/inventory_status.html:31
+msgid "Audit Status"
+msgstr "حالة الجرد"
+
+#: templates/inventory_status.html:36
+msgid "critical"
+msgstr "حرج"
+
+#: templates/inventory_status.html:47
+msgid "No items match this filter."
+msgstr "لا توجد أصناف تطابق هذا المرشّح."
+
+#: templates/login.html:24
+msgid "Password"
+msgstr "كلمة المرور"
+
+#: templates/login.html:27
+msgid "Log In"
+msgstr "تسجيل الدخول"
+
+#: templates/ordering_sheet.html:7
+msgid "Sorted by priority — use this to place your monthly order."
+msgstr "مرتبة حسب الأولوية — استخدمها لتقديم طلبك الشهري."
+
+#: templates/ordering_sheet.html:14
+msgid "Days Left"
+msgstr "الأيام المتبقية"
+
+#: templates/ordering_sheet.html:14
+msgid "Priority"
+msgstr "الأولوية"
+
+#: templates/ordering_sheet.html:15
+msgid "Suggested Order Qty"
+msgstr "الكمية المقترحة للطلب"
+
+#: templates/ordering_sheet.html:15
+msgid "Trend"
+msgstr "الاتجاه"
+
+#: templates/ordering_sheet.html:15
+msgid "Note"
+msgstr "ملاحظة"
+
+#: templates/owner_detail.html:6
+msgid "Edit Owner"
+msgstr "تعديل المالك"
+
+#: templates/owner_detail.html:10 templates/owner_form.html:11
+msgid "Address"
+msgstr "العنوان"
+
+#: templates/owner_detail.html:17 templates/patient_form_edit.html:10
+#: templates/patients_list.html:25 templates/visit_new_patient.html:18
+msgid "Species"
+msgstr "النوع"
+
+#: templates/owner_detail.html:17 templates/patient_form_edit.html:13
+#: templates/patients_list.html:25 templates/visit_new_patient.html:21
+msgid "Sex"
+msgstr "الجنس"
+
+#: templates/owner_detail.html:23
+msgid "No patients under this owner yet."
+msgstr "لا يوجد مرضى لهذا المالك بعد."
+
+#: templates/owners_list.html:6
+msgid "+ New Owner"
+msgstr "+ مالك جديد"
+
+#: templates/owners_list.html:9
+msgid "Search Name or Phone…"
+msgstr "ابحث بالاسم أو الهاتف…"
+
+#: templates/owners_list.html:22
+msgid "No owners match."
+msgstr "لا يوجد ملاك مطابقون."
+
+#: templates/patient_detail.html:10 templates/patient_form_edit.html:4
+msgid "Edit Patient Details"
+msgstr "تعديل بيانات المريض"
+
+#: templates/patient_detail.html:11
+msgid "Full History"
+msgstr "السجل الكامل"
+
+#: templates/patient_detail.html:12
+msgid "Export Patient File (PDF)"
+msgstr "تصدير ملف المريض (PDF)"
+
+#: templates/patient_detail.html:13
+msgid "Export Billing (PDF)"
+msgstr "تصدير الفوترة (PDF)"
+
+#: templates/patient_detail.html:14
+msgid "+ Log Visit"
+msgstr "+ تسجيل زيارة"
+
+#: templates/patient_detail.html:20 templates/visit_new_patient.html:11
+msgid "Owner Phone"
+msgstr "هاتف المالك"
+
+#: templates/patient_detail.html:21 templates/patient_form_edit.html:20
+#: templates/visit_new_patient.html:26
+msgid "Housing"
+msgstr "بيئة الإيواء"
+
+#: templates/patient_detail.html:22 templates/patient_form_edit.html:19
+#: templates/visit_new_patient.html:25
+msgid "Age / DOB Note"
+msgstr "ملاحظة العمر / تاريخ الميلاد"
+
+#: templates/patient_detail.html:23
+msgid "Microchip"
+msgstr "الشريحة"
+
+#: templates/patient_detail.html:32
+msgid "Discharged"
+msgstr "تم الإخراج"
+
+#: templates/patient_detail.html:68 templates/visit_detail.html:83
+msgid "Services"
+msgstr "الخدمات"
+
+#: templates/patient_detail.html:85 templates/visit_detail.html:59
+#: templates/visit_form_edit.html:26
+msgid "Follow-Up"
+msgstr "المتابعة"
+
+#: templates/patient_detail.html:94
+msgid "No visits logged yet."
+msgstr "لا توجد زيارات مسجلة بعد."
+
+#: templates/patient_form_edit.html:9 templates/visit_new_patient.html:17
+msgid "Animal Name"
+msgstr "اسم الحيوان"
+
+#: templates/patient_form_edit.html:16 templates/visit_new_patient.html:22
+msgid "Reproductive Status"
+msgstr "الحالة التناسلية"
+
+#: templates/patient_form_edit.html:23 templates/visit_new_patient.html:27
+msgid "Microchip Number (optional)"
+msgstr "رقم الشريحة (اختياري)"
+
+#: templates/patient_history.html:6
+msgid "Back to Patient"
+msgstr "العودة إلى المريض"
+
+#: templates/patient_history.html:13
+msgid "Open visit →"
+msgstr "فتح الزيارة →"
+
+#: templates/patient_history.html:14
+msgid "Open case →"
+msgstr "فتح الحالة →"
+
+#: templates/patient_history.html:15
+msgid "View boarding record →"
+msgstr "عرض سجل الإيواء →"
+
+#: templates/patient_history.html:20
+msgid "No history recorded yet."
+msgstr "لا يوجد سجل مسجل بعد."
+
+#: templates/patients_list.html:10
+msgid "Search ID, Animal, Microchip, Owner, or Phone…"
+msgstr "ابحث بالمعرّف أو الحيوان أو الشريحة أو المالك أو الهاتف…"
+
+#: templates/patients_list.html:32
+msgid "No patients match."
+msgstr "لا يوجد مرضى مطابقون."
+
+#: templates/pos.html:4
+msgid "Scan or search a Retail item to add it to the sale."
+msgstr "امسح أو ابحث عن صنف تجزئة لإضافته إلى عملية البيع."
+
+#: templates/pos.html:9
+msgid "Scan Barcode or Search Item Name"
+msgstr "امسح الباركود أو ابحث باسم الصنف"
+
+#: templates/pos.html:10
+msgid "Scan Barcode or Type Item Name…"
+msgstr "امسح الباركود أو اكتب اسم الصنف…"
+
+#: templates/pos.html:16
+msgid "Current Sale"
+msgstr "عملية البيع الحالية"
+
+#: templates/pos.html:17
+msgid "Cart is empty."
+msgstr "السلة فارغة."
+
+#: templates/pos.html:42 templates/pos_receipt.html:17
+msgid "Change Due"
+msgstr "الباقي"
+
+#: templates/pos.html:53
+msgid "Complete Sale"
+msgstr "إتمام البيع"
+
+#: templates/pos_history.html:14
+msgid "Cashier"
+msgstr "أمين الصندوق"
+
+#: templates/pos_history.html:25
+msgid "Export Bill (PDF)"
+msgstr "تصدير الفاتورة (PDF)"
+
+#: templates/pos_receipt.html:5
+msgid "New Sale"
+msgstr "عملية بيع جديدة"
+
+#: templates/pos_receipt.html:16
+msgid "Cash Received"
+msgstr "النقد المستلم"
+
+#: templates/price_list.html:19
+msgid ""
+"Highlighted rows: Retail item doesn't match an active Retail item in "
+"Inventory Catalog — check the linked item."
+msgstr ""
+
+#: templates/price_list.html:40
+msgid "Linked Inventory Item (Retail Only — for POS)"
+msgstr "الصنف المرتبط في المخزون (التجزئة فقط — لنقطة البيع)"
+
+#: templates/price_list.html:45 templates/price_list.html:58
+msgid "Can Be Discounted?"
+msgstr "قابل للخصم؟"
+
+#: templates/price_list.html:46
+msgid ""
+"Checked = a discount can be applied to a bill that includes this item. "
+"Unchecked = it blocks any discount on that bill."
+msgstr ""
+
+#: templates/price_list.html:58
+msgid "Checked = a discount can be applied to a bill including this item."
+msgstr "محدد = يمكن تطبيق خصم على فاتورة تتضمن هذا الصنف."
+
+#: templates/price_list.html:64
+msgid ""
+"Retail data inconsistency: this item's Linked Inventory Item doesn't "
+"match an active Retail item in Inventory Catalog."
+msgstr ""
+
+#: templates/price_list.html:79
+msgid "Remove"
+msgstr "إزالة"
+
+#: templates/price_list.html:83
+msgid "No priced items yet."
+msgstr "لا توجد أصناف مسعّرة بعد."
+
+#: templates/refunds.html:4
+msgid ""
+"Refund a retail sale (restores stock, optional) or reduce revenue for a "
+"service. Both remove the amount from Monthly & Yearly P&L, in the month "
+"the refund is processed."
+msgstr ""
+
+#: templates/refunds.html:8
+msgid "Retail Refund"
+msgstr "استرداد تجزئة"
+
+#: templates/refunds.html:9
+msgid ""
+"Look up the original sale by ID, then choose which items and quantities "
+"to refund. Stock is only put back if you check \"Return to stock\"."
+msgstr ""
+
+#: templates/refunds.html:12
+msgid "Sale ID"
+msgstr "رقم عملية البيع"
+
+#: templates/refunds.html:15
+msgid "Find Sale"
+msgstr "البحث عن عملية بيع"
+
+#: templates/refunds.html:19
+msgid "Look up a sale to see its refundable items."
+msgstr "ابحث عن عملية بيع لعرض أصنافها القابلة للاسترداد."
+
+#: templates/refunds.html:22
+msgid "Refund Total"
+msgstr "إجمالي الاسترداد"
+
+#: templates/refunds.html:25
+msgid "Return item(s) to stock"
+msgstr "إعادة الأصناف إلى المخزون"
+
+#: templates/refunds.html:32 templates/refunds.html:59
+msgid "Refund Date"
+msgstr "تاريخ الاسترداد"
+
+#: templates/refunds.html:41 templates/refunds.html:71
+msgid "Reason (optional)"
+msgstr "السبب (اختياري)"
+
+#: templates/refunds.html:41
+msgid "e.g. wrong item, customer changed mind"
+msgstr "مثال: صنف خاطئ، أو غيّر العميل رأيه"
+
+#: templates/refunds.html:46
+msgid "Process Retail Refund"
+msgstr "تنفيذ استرداد تجزئة"
+
+#: templates/refunds.html:53
+msgid "Service Refund"
+msgstr "استرداد خدمة"
+
+#: templates/refunds.html:54
+msgid "Removes a revenue amount only — no stock is touched. Enter"
+msgstr "يزيل مبلغ إيراد فقط — دون المساس بالمخزون. أدخل"
+
+#: templates/refunds.html:54
+msgid "exactly one"
+msgstr "واحدًا فقط"
+
+#: templates/refunds.html:54
+msgid ""
+"of Visit ID, Inpatient Case ID or Boarding ID: the refund reverses that "
+"specific record, and the amount is capped at what is still refundable "
+"against it. A goodwill refund with no record behind it belongs in Cash "
+"Register instead."
+msgstr ""
+
+#: templates/refunds.html:68
+msgid "Visit ID"
+msgstr "رقم الزيارة"
+
+#: templates/refunds.html:68 templates/refunds.html:69
+#: templates/refunds.html:70
+msgid "(one of these three)"
+msgstr "(واحد من هذه الثلاثة)"
+
+#: templates/refunds.html:69
+msgid "Inpatient Case ID"
+msgstr "رقم حالة التنويم"
+
+#: templates/refunds.html:70
+msgid "Boarding ID"
+msgstr "رقم الإيواء"
+
+#: templates/refunds.html:71
+msgid "e.g. service not completed"
+msgstr "مثال: لم تُنفَّذ الخدمة"
+
+#: templates/refunds.html:73
+msgid "Process Service Refund"
+msgstr "تنفيذ استرداد خدمة"
+
+#: templates/refunds.html:79
+msgid "Recent Refunds"
+msgstr "المرتجعات الأخيرة"
+
+#: templates/refunds.html:92
+msgid "Details"
+msgstr "التفاصيل"
+
+#: templates/refunds.html:92
+msgid "Amount"
+msgstr "المبلغ"
+
+#: templates/refunds.html:92
+msgid "Processed By"
+msgstr "نُفِّذ بواسطة"
+
+#: templates/refunds.html:99
+msgid "Retail"
+msgstr "تجزئة"
+
+#: templates/refunds.html:100
+msgid "Restocked"
+msgstr "أُعيد للمخزون"
+
+#: templates/refunds.html:100
+msgid "Not restocked"
+msgstr "لم يُعد للمخزون"
+
+#: templates/refunds.html:102
+msgid "Service"
+msgstr "خدمة"
+
+#: templates/reports.html:5
+msgid "Revenue from billing & retail sales, COGS from measured usage. Admin only."
+msgstr "الإيرادات من الفوترة ومبيعات التجزئة، وتكلفة البضاعة من الاستهلاك المقاس. للإدارة فقط."
+
+#: templates/reports.html:10 templates/reports_yearly.html:10
+msgid ""
+"Force a full recalculation of every month, in case anything ever looks "
+"out of sync"
+msgstr ""
+
+#: templates/reports.html:10 templates/reports_yearly.html:10
+msgid "Rebuild Report Data"
+msgstr "إعادة بناء بيانات التقارير"
+
+#: templates/reports.html:12
+msgid "Yearly P&L →"
+msgstr "الأرباح والخسائر السنوية →"
+
+#: templates/reports.html:19 templates/reports_yearly.html:19
+msgid "Revenue"
+msgstr "الإيرادات"
+
+#: templates/reports.html:19 templates/reports_yearly.html:19
+msgid "COGS"
+msgstr "تكلفة البضاعة المباعة"
+
+#: templates/reports.html:19 templates/reports_yearly.html:19
+msgid "Gross Profit"
+msgstr "إجمالي الربح"
+
+#: templates/reports.html:20 templates/reports_yearly.html:20
+msgid "OpEx"
+msgstr "المصاريف التشغيلية"
+
+#: templates/reports.html:20 templates/reports_yearly.html:20
+msgid "Net Profit"
+msgstr "صافي الربح"
+
+#: templates/reports.html:20 templates/reports_yearly.html:20
+msgid "Net Margin"
+msgstr "هامش الربح الصافي"
+
+#: templates/reports.html:20
+msgid "MoM Change"
+msgstr "التغير الشهري"
+
+#: templates/reports.html:41
+msgid "Enter Operating Costs for a Month"
+msgstr "أدخل التكاليف التشغيلية لشهر"
+
+#: templates/reports.html:54
+msgid "Save Operating Costs"
+msgstr "حفظ التكاليف التشغيلية"
+
+#: templates/reports_yearly.html:12
+msgid "← Monthly P&L"
+msgstr "← الأرباح والخسائر الشهرية"
+
+#: templates/reports_yearly.html:19
+msgid "Year"
+msgstr "السنة"
+
+#: templates/reports_yearly.html:20
+msgid "YoY Change"
+msgstr "التغير السنوي"
+
+#: templates/reports_yearly.html:36
+msgid "Not enough data yet."
+msgstr "لا توجد بيانات كافية بعد."
+
+#: templates/retention.html:7
+msgid "Each row is the group of clients whose"
+msgstr "كل صف يمثل مجموعة العملاء الذين"
+
+#: templates/retention.html:7
+msgid "first-ever visit"
+msgstr "زيارتهم الأولى"
+
+#: templates/retention.html:7
+#, python-format
+msgid ""
+"fell in that month. Each column is how many months later. The cell is the"
+" % of that group still coming back. Admin only."
+msgstr ""
+
+#: templates/retention.html:10
+msgid "← Insights"
+msgstr "← التحليلات"
+
+#: templates/retention.html:16
+msgid ""
+"Not enough visit history yet to build a cohort grid — this fills in "
+"automatically as patients return for follow-up visits."
+msgstr ""
+
+#: templates/retention.html:23
+msgid "Cohort (First Visit)"
+msgstr "المجموعة (الزيارة الأولى)"
+
+#: templates/retention.html:24 templates/settings.html:129
+msgid "Size"
+msgstr "الحجم"
+
+#: templates/retention.html:46
+msgid ""
+"Reading down a column shows whether retention at that stage is improving "
+"over time. Reading across a row shows how fast that group drops off. "
+"\"—\" means that much time hasn't passed yet for that cohort."
+msgstr ""
+
+#: templates/settings.html:4
+msgid "Staff on the clinic network can reach this app at"
+msgstr "يمكن للموظفين على شبكة العيادة الوصول إلى التطبيق عبر"
+
+#: templates/settings.html:8
+msgid "Clinic Settings"
+msgstr "إعدادات العيادة"
+
+#: templates/settings.html:8
+msgid "Saved with the button below"
+msgstr "يُحفظ بالزر أدناه"
+
+#: templates/settings.html:9
+msgid "Nothing here takes effect until you press Save Settings."
+msgstr "لا شيء هنا يسري حتى تضغط على حفظ الإعدادات."
+
+#: templates/settings.html:14
+msgid "Clinic Name"
+msgstr "اسم العيادة"
+
+#: templates/settings.html:15
+msgid "Location"
+msgstr "الموقع"
+
+#: templates/settings.html:16
+msgid "Clinic Opening Date"
+msgstr "تاريخ افتتاح العيادة"
+
+#: templates/settings.html:19
+msgid "Inventory Alerts"
+msgstr "تنبيهات المخزون"
+
+#: templates/settings.html:21
+msgid "Audit Overdue After (Days)"
+msgstr "يُعد الجرد متأخرًا بعد (أيام)"
+
+#: templates/settings.html:22
+msgid "Expiry Warning Window (Days)"
+msgstr "مدة التنبيه قبل الانتهاء (أيام)"
+
+#: templates/settings.html:27
+msgid "Day Starts At"
+msgstr "يبدأ اليوم عند"
+
+#: templates/settings.html:28
+msgid "Day Ends At"
+msgstr "ينتهي اليوم عند"
+
+#: templates/settings.html:29
+msgid "Slot Length (Minutes)"
+msgstr "مدة الفترة (بالدقائق)"
+
+#: templates/settings.html:33
+msgid "Backups"
+msgstr "النسخ الاحتياطي"
+
+#: templates/settings.html:35
+msgid "Backup Folder (on this computer)"
+msgstr "مجلد النسخ الاحتياطي (على هذا الجهاز)"
+
+#: templates/settings.html:37
+msgid "e.g. /Users/you/VetClinicSystemJOBackups or D:\\VetClinicSystemJOBackups"
+msgstr "مثال: /Users/you/VetClinicSystemJOBackups أو D:\\VetClinicSystemJOBackups"
+
+#: templates/settings.html:38 templates/settings.html:164
+msgid "Browse…"
+msgstr "تصفح…"
+
+#: templates/settings.html:41
+msgid "Nightly Backup Time"
+msgstr "وقت النسخ الاحتياطي الليلي"
+
+#: templates/settings.html:42
+msgid "Keep Last N Backups"
+msgstr "الاحتفاظ بآخر عدد من النسخ"
+
+#: templates/settings.html:43
+msgid "Keep Logs For (Days)"
+msgstr "الاحتفاظ بالسجلات لمدة (أيام)"
+
+#: templates/settings.html:48
+msgid "Health Check"
+msgstr "فحص السلامة"
+
+#: templates/settings.html:50
+msgid ""
+"Once a day, shortly after the nightly backup, this app checks itself — "
+"that backups are\n"
+"    running and restorable, that the backup folder is writable, and that "
+"the disk isn't full —\n"
+"    and shows a warning on the Dashboard if something needs attention."
+msgstr ""
+
+#: templates/settings.html:56
+msgid "Warn If No Backup For (Days)"
+msgstr "التنبيه إذا لم توجد نسخة خلال (أيام)"
+
+#: templates/settings.html:61
+msgid "Daily Health Check"
+msgstr "فحص السلامة اليومي"
+
+#: templates/settings.html:69
+msgid "Run the daily health check and show its warnings"
+msgstr "تشغيل فحص السلامة اليومي وإظهار تحذيراته"
+
+#: templates/settings.html:74
+msgid "Remote Monitoring (optional)"
+msgstr "المراقبة عن بُعد (اختياري)"
+
+#: templates/settings.html:76
+msgid ""
+"Off unless you fill this in. When set, this clinic sends a short daily "
+"status ping —\n"
+"    counts and statuses only, never patient, owner or staff details, and "
+"never any amounts.\n"
+"    The point is the"
+msgstr ""
+
+#: templates/settings.html:78
+msgid "missing"
+msgstr "مفقود"
+
+#: templates/settings.html:78
+msgid ""
+"ping: if this machine stops sending, whoever maintains\n"
+"    the system gets told, which is the one thing the app cannot report "
+"while it is switched off."
+msgstr ""
+
+#: templates/settings.html:83
+msgid "Monitoring Ping URL"
+msgstr "رابط المراقبة"
+
+#: templates/settings.html:84
+msgid "https://… (leave blank to disable)"
+msgstr "https://… (اتركه فارغًا للتعطيل)"
+
+#: templates/settings.html:87
+msgid "Must start with"
+msgstr "يجب أن يبدأ بـ"
+
+#: templates/settings.html:87
+msgid ""
+". Use a different URL for each clinic, so an alert\n"
+"        can say which one went quiet."
+msgstr ""
+
+#: templates/settings.html:88
+msgid "Treat it like a password"
+msgstr "تعامل معه ككلمة مرور"
+
+#: templates/settings.html:88
+msgid ""
+"— anyone who has\n"
+"        it can send a fake ping and stop a real alert from ever reaching "
+"you."
+msgstr ""
+
+#: templates/settings.html:94
+msgid "This Install's ID"
+msgstr "معرّف هذا التثبيت"
+
+#: templates/settings.html:96
+msgid ""
+"Included in every ping so one monitoring account can watch several "
+"clinics."
+msgstr ""
+
+#: templates/settings.html:102
+msgid "Saves the sections above."
+msgstr "يحفظ الأقسام أعلاه."
+
+#: templates/settings.html:103
+msgid "Save Settings"
+msgstr "حفظ الإعدادات"
+
+#: templates/settings.html:112
+msgid "Backups & Restore"
+msgstr "النسخ الاحتياطي والاستعادة"
+
+#: templates/settings.html:112 templates/settings.html:197
+msgid "Runs when you click"
+msgstr "يعمل عند الضغط على"
+
+#: templates/settings.html:113
+msgid ""
+"The backup history and the restore that reads it, beside the folder they "
+"use."
+msgstr ""
+
+#: templates/settings.html:117
+msgid "Back Up Now"
+msgstr "نسخ احتياطي الآن"
+
+#: templates/settings.html:119
+msgid "Set a backup folder above and save, then you can back up."
+msgstr "حدد مجلد النسخ الاحتياطي أعلاه واحفظ، ثم يمكنك أخذ نسخة."
+
+#: templates/settings.html:126
+msgid "Recent Backups"
+msgstr "النسخ الاحتياطية الأخيرة"
+
+#: templates/settings.html:129 templates/settings.html:180
+msgid "Started"
+msgstr "بدأ"
+
+#: templates/settings.html:129 templates/settings.html:180
+msgid "Triggered By"
+msgstr "بدأه"
+
+#: templates/settings.html:129
+msgid "File"
+msgstr "الملف"
+
+#: templates/settings.html:135 templates/settings.html:186
+msgid "Success"
+msgstr "نجح"
+
+#: templates/settings.html:135
+msgid "Running"
+msgstr "قيد التشغيل"
+
+#: templates/settings.html:146
+msgid "Restore From Backup"
+msgstr "الاستعادة من نسخة احتياطية"
+
+#: templates/settings.html:149
+msgid ""
+"A restore may not have completed — the app was stopped or crashed partway"
+" through the last one.\n"
+"  Check the database carefully before continuing to use the app."
+msgstr ""
+
+#: templates/settings.html:154
+msgid "Replaces"
+msgstr "يستبدل"
+
+#: templates/settings.html:154
+msgid "all"
+msgstr "كل"
+
+#: templates/settings.html:154
+msgid ""
+"current data in VetClinicSystem JO with the contents of a backup file. "
+"This can't be undone —\n"
+"  take a fresh backup first if you're not sure. Uploaded files (X-rays, "
+"lab results) aren't part of the backup\n"
+"  itself and are unaffected by a restore, but any that were attached"
+msgstr ""
+
+#: templates/settings.html:156
+msgid "after"
+msgstr "بعد"
+
+#: templates/settings.html:156
+msgid ""
+"the backup being restored was\n"
+"  taken will need reconnecting — run"
+msgstr ""
+
+#: templates/settings.html:157
+msgid "python3 reconcile_attachments.py"
+msgstr "python3 reconcile_attachments.py"
+
+#: templates/settings.html:157
+msgid ""
+"from the app folder afterward\n"
+"  to find and relink them safely."
+msgstr ""
+
+#: templates/settings.html:161
+msgid "Backup File To Restore"
+msgstr "ملف النسخة المراد استعادتها"
+
+#: templates/settings.html:163
+msgid "Browse to a .dump backup file"
+msgstr "تصفح للوصول إلى ملف نسخة .dump"
+
+#: templates/settings.html:171
+msgid "Restore Now"
+msgstr "استعادة الآن"
+
+#: templates/settings.html:177
+msgid "Recent Restores"
+msgstr "عمليات الاستعادة الأخيرة"
+
+#: templates/settings.html:180
+msgid "Source File"
+msgstr "الملف المصدر"
+
+#: templates/settings.html:197 templates/settings.html:198
+msgid "Updates"
+msgstr "التحديثات"
+
+#: templates/settings.html:200
+msgid "Current Version"
+msgstr "الإصدار الحالي"
+
+#: templates/settings.html:202
+msgid "Check for Updates"
+msgstr "التحقق من التحديثات"
+
+#: templates/settings.html:206
+msgid "Version"
+msgstr "الإصدار"
+
+#: templates/settings.html:206
+msgid "is available"
+msgstr "متاح"
+
+#: templates/settings.html:209
+msgid "Update Now"
+msgstr "تحديث الآن"
+
+#: templates/settings.html:210
+msgid "Not Now"
+msgstr "ليس الآن"
+
+#: templates/settings.html:215
+msgid "Rollback to Previous Version"
+msgstr "الرجوع إلى الإصدار السابق"
+
+#: templates/settings.html:219
+msgid ""
+"Automatic updates aren't set up on this install yet. An administrator can"
+" enable them by running"
+msgstr ""
+
+#: templates/settings.html:220
+msgid "python3 setup.py --enable-updates"
+msgstr "python3 setup.py --enable-updates"
+
+#: templates/settings.html:220
+msgid "on the computer running VetClinicSystem JO."
+msgstr "على الجهاز الذي يشغّل VetClinicSystem JO."
+
+#: templates/settings.html:226 templates/settings.html:235
+msgid "Startup & Shutdown"
+msgstr "التشغيل والإيقاف"
+
+#: templates/settings.html:226
+msgid "Applies immediately"
+msgstr "يسري فورًا"
+
+#: templates/settings.html:245
+msgid "Start VetClinicSystem JO automatically when this computer starts"
+msgstr "تشغيل VetClinicSystem JO تلقائيًا عند بدء تشغيل هذا الجهاز"
+
+#: templates/settings.html:249
+msgid ""
+"On shutdown or restart, the app closes its database connections cleanly "
+"before the\n"
+"        computer powers off, so nothing is left mid-write."
+msgstr ""
+
+#: templates/settings.html:254
+msgid ""
+"Not available on this operating system — start VetClinicSystem JO "
+"manually using the launcher."
+msgstr ""
+
+#: templates/settings.html:471
+msgid "Choose Backup Folder"
+msgstr "اختيار مجلد النسخ الاحتياطي"
+
+#: templates/settings.html:472
+msgid ""
+"Browsing this computer's folders — the one running VetClinicSystem JO, "
+"since that's where backups are actually read and written."
+msgstr ""
+
+#: templates/settings.html:478
+msgid "New folder name"
+msgstr "اسم المجلد الجديد"
+
+#: templates/settings.html:479
+msgid "+ New Folder"
+msgstr "+ مجلد جديد"
+
+#: templates/settings.html:483
+msgid "Select This Folder"
+msgstr "اختيار هذا المجلد"
+
+#: templates/visit_detail.html:10
+msgid "Export Visit (PDF)"
+msgstr "تصدير الزيارة (PDF)"
+
+#: templates/visit_detail.html:11 templates/visit_form_edit.html:4
+msgid "Edit Visit"
+msgstr "تعديل الزيارة"
+
+#: templates/visit_detail.html:17
+msgid "Case"
+msgstr "الحالة"
+
+#: templates/visit_detail.html:19 templates/visit_form_edit.html:16
+#: templates/visits_list.html:11
+msgid "Visit Type"
+msgstr "نوع الزيارة"
+
+#: templates/visit_detail.html:21
+msgid "Weight"
+msgstr "الوزن"
+
+#: templates/visit_detail.html:22
+msgid "BCS"
+msgstr "درجة الحالة الجسدية"
+
+#: templates/visit_detail.html:23 templates/visit_form_edit.html:13
+msgid "Case Status"
+msgstr "حالة الحالة"
+
+#: templates/visit_detail.html:26 templates/visit_form_edit.html:20
+msgid "History"
+msgstr "التاريخ المرضي"
+
+#: templates/visit_detail.html:27 templates/visit_form_edit.html:21
+msgid "Physical Exam & Diagnostics"
+msgstr "الفحص السريري والتشخيص"
+
+#: templates/visit_detail.html:28 templates/visit_form_edit.html:22
+msgid "Treatment Plan"
+msgstr "خطة العلاج"
+
+#: templates/visit_detail.html:29 templates/visit_form_edit.html:23
+msgid "Updates Log"
+msgstr "سجل التحديثات"
+
+#: templates/visit_detail.html:32
+msgid "Additional Tests / X-Rays"
+msgstr "فحوصات إضافية / أشعة"
+
+#: templates/visit_detail.html:71
+msgid "Wellness Reminder"
+msgstr "تذكير الرعاية الوقائية"
+
+#: templates/visit_detail.html:75
+msgid "Contacted"
+msgstr "تم التواصل"
+
+#: templates/visit_detail.html:95
+msgid "Automatic Calculation"
+msgstr "حساب تلقائي"
+
+#: templates/visit_detail.html:98
+msgid "Manual Entry"
+msgstr "إدخال يدوي"
+
+#: templates/visit_detail.html:102
+msgid "Add Billed Items"
+msgstr "إضافة أصناف للفاتورة"
+
+#: templates/visit_detail.html:104
+msgid "Search by service, medicine, or item name…"
+msgstr "ابحث باسم الخدمة أو الدواء أو الصنف…"
+
+#: templates/visit_detail.html:113
+msgid "Date Billed"
+msgstr "تاريخ الفوترة"
+
+#: templates/visit_detail.html:115
+msgid "Save Billing"
+msgstr "حفظ الفاتورة"
+
+#: templates/visit_detail.html:127
+msgid "Paid"
+msgstr "مدفوع"
+
+#: templates/visit_form_edit.html:11
+msgid "Clinical Notes"
+msgstr "ملاحظات سريرية"
+
+#: templates/visit_form_edit.html:29
+msgid "Follow-Up Needed?"
+msgstr "هل المتابعة مطلوبة؟"
+
+#: templates/visit_form_edit.html:35
+msgid "Follow-Up Status"
+msgstr "حالة المتابعة"
+
+#: templates/visit_form_edit.html:38
+msgid "Follow-Up Method"
+msgstr "طريقة المتابعة"
+
+#: templates/visit_form_edit.html:48
+msgid "Grooming Status"
+msgstr "حالة العناية والتصفيف"
+
+#: templates/visit_new_existing.html:4
+msgid "Log Visit — Existing Patient"
+msgstr "تسجيل زيارة — مريض حالي"
+
+#: templates/visit_new_existing.html:15
+msgid "Selected patient:"
+msgstr "المريض المختار:"
+
+#: templates/visit_new_existing.html:19 templates/visit_new_patient.html:30
+msgid "Presenting Complaint / Reason for Visit"
+msgstr "الشكوى الحالية / سبب الزيارة"
+
+#: templates/visit_new_existing.html:22 templates/visit_new_patient.html:34
+msgid "Log Visit"
+msgstr "تسجيل زيارة"
+
+#: templates/visit_new_patient.html:4
+msgid "Log Visit — New Patient"
+msgstr "تسجيل زيارة — مريض جديد"
+
+#: templates/visit_new_patient.html:8
+msgid "Owner Details"
+msgstr "بيانات المالك"
+
+#: templates/visit_new_patient.html:12
+msgid "Owner Address"
+msgstr "عنوان المالك"
+
+#: templates/visit_new_patient.html:15
+msgid "Patient Details"
+msgstr "بيانات المريض"
+
+#: templates/visit_new_patient.html:23
+msgid "Intact"
+msgstr "غير معقّم"
+
+#: templates/visit_new_patient.html:23
+msgid "Neutered"
+msgstr "مخصي"
+
+#: templates/visit_new_patient.html:23
+msgid "Spayed"
+msgstr "معقّمة"
+
+#: templates/visit_new_patient.html:26
+msgid "Indoor"
+msgstr "داخل المنزل"
+
+#: templates/visit_new_patient.html:26
+msgid "Outdoor"
+msgstr "خارج المنزل"
+
+#: templates/visit_new_patient.html:26
+msgid "Stray"
+msgstr "سائب"
+
+#: templates/visit_new_start.html:4
+msgid "Log a Visit"
+msgstr "تسجيل زيارة"
+
+#: templates/visit_new_start.html:4
+msgid "Is this for a patient already on file, or a new one?"
+msgstr "هل هذه لمريض مسجل بالفعل أم لمريض جديد؟"
+
+#: templates/visit_new_start.html:7
+msgid "Existing Patient"
+msgstr "مريض حالي"
+
+#: templates/visit_new_start.html:8
+msgid "Search by patient name, patient ID, owner name, or owner phone number."
+msgstr "ابحث باسم المريض أو رقمه أو اسم المالك أو رقم هاتفه."
+
+#: templates/visit_new_start.html:11
+msgid "New Patient"
+msgstr "مريض جديد"
+
+#: templates/visit_new_start.html:12
+msgid "Fill in owner details and patient details, then log the visit."
+msgstr "أدخل بيانات المالك وبيانات المريض، ثم سجّل الزيارة."
+
+#: templates/visits_list.html:10
+msgid "Date (Default)"
+msgstr "التاريخ (الافتراضي)"
+
+#: templates/visits_list.html:18
+msgid "Search by Animal or Owner name…"
+msgstr "ابحث باسم الحيوان أو المالك…"
+
+#: templates/visits_list.html:21
+msgid "Clear Filters"
+msgstr "مسح المرشّحات"
+
+#: templates/visits_list.html:37
+msgid "No visits match."
+msgstr "لا توجد زيارات مطابقة."
+
+#: templates/wellness_list.html:5
+msgid "Wellness Reminders"
+msgstr "تذكيرات الرعاية الوقائية"
+
+#: templates/wellness_list.html:9
+msgid "Remind From"
+msgstr "التذكير اعتبارًا من"
+
+#: templates/wellness_list.html:9
+msgid "Method?"
+msgstr "الطريقة؟"
+
+#: templates/wellness_list.html:15
+msgid "DUE"
+msgstr "مستحق"
+
+#: templates/wellness_list.html:29
+msgid "Message"
+msgstr "الرسالة"
+
+#: templates/wellness_list.html:42
+msgid "No wellness reminders on file."
+msgstr "لا توجد تذكيرات رعاية وقائية مسجلة."
+
 #~ msgid "Clean Up can't exceed %(cap)s JOD total on this bill."
+#~ msgstr ""
+
+#~ msgid "Users &amp; Roles"
+#~ msgstr ""
+
+#~ msgid "Physical Exam Findings &amp; Diagnostics"
+#~ msgstr ""
+
+#~ msgid "Monthly P&amp;L"
+#~ msgstr ""
+
+#~ msgid "Yearly P&amp;L"
+#~ msgstr ""
+
+#~ msgid "Backups &amp; Restore"
+#~ msgstr ""
+
+#~ msgid "Startup &amp; Shutdown"
+#~ msgstr ""
+
+#~ msgid "Physical Exam &amp; Diagnostics"
+#~ msgstr ""
+
+#~ msgid "Roles &amp; Permissions"
+#~ msgstr ""
+
+#~ msgid "Sales &amp; Billing"
+#~ msgstr ""
+
+#~ msgid "No Consignment items flagged yet — start from Consignment &gt; Items."
+#~ msgstr ""
+
+#~ msgid "Audit &amp; Expiry Alerts"
+#~ msgstr ""
+
+#~ msgid "Inpatient &amp; Boarding Load"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Refund a retail sale (restores stock,"
+#~ " optional) or reduce revenue for a"
+#~ " service. Both remove the amount from"
+#~ " Monthly &amp; Yearly P&amp;L, in the"
+#~ " month the refund is processed."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Revenue from billing &amp; retail sales,"
+#~ " COGS from measured usage. Admin "
+#~ "only."
+#~ msgstr ""
+
+#~ msgid "Yearly P&amp;L →"
+#~ msgstr ""
+
+#~ msgid "← Monthly P&amp;L"
 #~ msgstr ""
 

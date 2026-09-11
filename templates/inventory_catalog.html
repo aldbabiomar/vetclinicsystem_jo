@@ -14,20 +14,20 @@
 </div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not show_inactive }}" href="{{ url_for('inventory.inventory_catalog') }}">Active</a>
-  <a class="chip {{ 'active' if show_inactive }}" href="{{ url_for('inventory.inventory_catalog', inactive=1) }}">Include Inactive</a>
+  <a class="chip {{ 'active' if not show_inactive }}" href="{{ url_for('inventory.inventory_catalog') }}">{{ _('Active') }}</a>
+  <a class="chip {{ 'active' if show_inactive }}" href="{{ url_for('inventory.inventory_catalog', inactive=1) }}">{{ _('Include Inactive') }}</a>
 </div>
 
 {% if flagged_inventory %}
 <p class="small muted u-lead-out"><span class="legend-swatch"></span>
-  Highlighted rows: this Retail item has no matching entry in the Price List — check Price List's Linked Inventory Item.</p>
+  {{ _('Highlighted rows: this Retail item has no matching entry in the Price List — check Price List\'s Linked Inventory Item.') }}</p>
 {% endif %}
 
 <form class="search-bar" method="get">
   {% if show_inactive %}<input type="hidden" name="inactive" value="1">{% endif %}
   <input type="text" name="q" value="{{ search }}" placeholder="{{ _('Search by Product Name…') }}">
   <button class="btn secondary" type="submit">{{ _('Search') }}</button>
-  {% if search %}<a class="btn secondary" href="{{ url_for('inventory.inventory_catalog', inactive=1 if show_inactive else None) }}">Clear</a>{% endif %}
+  {% if search %}<a class="btn secondary" href="{{ url_for('inventory.inventory_catalog', inactive=1 if show_inactive else None) }}">{{ _('Clear') }}</a>{% endif %}
 </form>
 
 <div class="card" id="newForm" style="display:{{ 'block' if show_new_form else 'none' }}; margin-bottom:16px;">
@@ -77,7 +77,7 @@
       <td><select class="cell-input-plain" form="edit-{{ i.id }}" name="category">{% for c in categories %}<option {{ 'selected' if fv(row_form, 'category', i.category)==c }}>{{ c }}</option>{% endfor %}</select></td>
       <td><input class="cell-input short" form="edit-{{ i.id }}" name="unit" value="{{ fv(row_form, 'unit', i.unit or '') }}"></td>
       <td class="small muted">
-        {% if i.barcode %}<span class="u-mono">{{ i.barcode }}</span> <a href="{{ url_for('inventory.inventory_barcode_label', item_id=i.id) }}">print</a><br>{% endif %}
+        {% if i.barcode %}<span class="u-mono">{{ i.barcode }}</span> <a href="{{ url_for('inventory.inventory_barcode_label', item_id=i.id) }}">{{ _('print') }}</a><br>{% endif %}
         <button class="btn small secondary" type="button" data-item-id="{{ i.id }}" data-item-name="{{ i.name }}"
                 data-vzh="inventory-catalog-4">{{ 'Manage Barcode' if i.barcode else 'Add Barcode' }}</button>
       </td>
@@ -97,7 +97,7 @@
         </form>
       </td>
     </tr>
-    {% else %}<tr><td colspan="9" class="empty-note">No inventory items yet.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="9" class="empty-note">{{ _('No inventory items yet.') }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>
@@ -107,11 +107,11 @@
   <div class="modal-box u-w-560">
     <h2 class="u-mt-0">{{ _('Bulk Barcode Print') }}</h2>
     <p class="small muted u-mt-tight">
-      Every item with a barcode. Set how many labels each one needs, remove any
-      you don't want on this run, then print them all together.
+      {{ _('Every item with a barcode. Set how many labels each one needs, remove any
+      you don\'t want on this run, then print them all together.') }}
     </p>
-    <p id="bulkBarcodeLoading" class="small muted">Loading…</p>
-    <p id="bulkBarcodeEmpty" class="small muted" style="display:none;">Nothing left to print.</p>
+    <p id="bulkBarcodeLoading" class="small muted">{{ _('Loading…') }}</p>
+    <p id="bulkBarcodeEmpty" class="small muted" style="display:none;">{{ _('Nothing left to print.') }}</p>
     <div class="scroll-box tall" id="bulkBarcodeList"></div>
     <div class="u-row-end u-mt-7">
       <button class="btn secondary" type="button" data-vzh="inventory-catalog-8">{{ _('Cancel') }}</button>
@@ -122,15 +122,15 @@
 
 <div id="barcodeManagerModal" class="modal-overlay" style="display:none;">
   <div class="modal-box u-w-520">
-    <h2 class="u-mt-0">Barcode — <span id="barcodeManagerItemName"></span></h2>
+    <h2 class="u-mt-0">{{ _('Barcode —') }} <span id="barcodeManagerItemName"></span></h2>
     <p class="small muted u-mt-tight">
-      Every item has at most one barcode — either a real one scanned or typed in from its own
+      {{ _('Every item has at most one barcode — either a real one scanned or typed in from its own
       packaging, or one this app creates for you to print. Never both at once: setting one up
-      below turns off the other option until you remove it.
+      below turns off the other option until you remove it.') }}
     </p>
 
     <div class="card-footer-rule" id="barcodeManualSection">
-      <div class="u-strong u-mb-2" id="barcodeManualTitle">Manually Enter Barcode</div>
+      <div class="u-strong u-mb-2" id="barcodeManualTitle">{{ _('Manually Enter Barcode') }}</div>
       <div class="field u-mb-3">
         <input type="text" id="barcodeManualInput" placeholder="{{ _('Scan or type the barcode from the packaging') }}" maxlength="64">
       </div>
@@ -141,11 +141,11 @@
     </div>
 
     <div class="card-footer-rule" id="barcodeGeneratedSection">
-      <div class="u-strong u-mb-1" id="barcodeGeneratedTitle">Create Barcode</div>
-      <p class="small muted u-mb-3-flush" id="barcodeGeneratedHint">No barcode on the packaging? This app can create one and print a label to stick on the item.</p>
+      <div class="u-strong u-mb-1" id="barcodeGeneratedTitle">{{ _('Create Barcode') }}</div>
+      <p class="small muted u-mb-3-flush" id="barcodeGeneratedHint">{{ _('No barcode on the packaging? This app can create one and print a label to stick on the item.') }}</p>
       <div class="u-row-sm">
         <button class="btn small secondary" type="button" id="barcodeGeneratedCreateBtn" data-vzh="inventory-catalog-12">{{ _('Create Now') }}</button>
-        <a class="btn small secondary" type="button" id="barcodeGeneratedPrintBtn" style="display:none;" href="#">Print Label</a>
+        <a class="btn small secondary" type="button" id="barcodeGeneratedPrintBtn" style="display:none;" href="#">{{ _('Print Label') }}</a>
         <button class="btn small danger" type="button" id="barcodeGeneratedRemoveBtn" style="display:none;" data-vzh="inventory-catalog-11">{{ _('Remove Barcode') }}</button>
       </div>
     </div>

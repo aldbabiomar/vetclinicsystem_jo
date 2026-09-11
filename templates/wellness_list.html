@@ -12,34 +12,34 @@
     <form id="w-{{ w.visit_id }}" method="post" action="{{ url_for('clinical.wellness_update', visit_id=w.visit_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
     <tr>
-      <td>{{ w.wellness_next_dose_date|localdate }} {% if w.missed %}<span class="badge danger">MISSED</span>{% elif w.due %}<span class="badge warn">DUE</span>{% endif %}</td>
+      <td>{{ w.wellness_next_dose_date|localdate }} {% if w.missed %}<span class="badge danger">{{ _('MISSED') }}</span>{% elif w.due %}<span class="badge warn">{{ _('DUE') }}</span>{% endif %}</td>
       <td><a href="{{ url_for('clinical.visit_detail', visit_id=w.visit_id) }}"><strong>{{ w.animal_name }}</strong></a></td>
       <td>{{ w.owner_name }}</td><td>{{ w.phone or "—" }}</td><td>{{ w.wellness_type }}</td>
       <td class="muted">{{ w.remind_from_date|localdate }}</td>
       <td>
         <select form="w-{{ w.visit_id }}" name="wellness_contacted" class="small">
-          <option value="N" {{ 'selected' if w.wellness_contacted=='N' }}>No</option>
-          <option value="Y" {{ 'selected' if w.wellness_contacted=='Y' }}>Yes</option>
+          <option value="N" {{ 'selected' if w.wellness_contacted=='N' }}>{{ _('No') }}</option>
+          <option value="Y" {{ 'selected' if w.wellness_contacted=='Y' }}>{{ _('Yes') }}</option>
         </select>
       </td>
       <td>
         <select form="w-{{ w.visit_id }}" name="wellness_contact_method" class="small">
           <option value="">—</option>
-          <option {{ 'selected' if w.wellness_contact_method=='Phone Call' }}>Phone Call</option>
-          <option {{ 'selected' if w.wellness_contact_method=='Message' }}>Message</option>
+          <option {{ 'selected' if w.wellness_contact_method=='Phone Call' }}>{{ _('Phone Call') }}</option>
+          <option {{ 'selected' if w.wellness_contact_method=='Message' }}>{{ _('Message') }}</option>
         </select>
       </td>
       <td><button class="btn small secondary" form="w-{{ w.visit_id }}" type="submit">{{ _('Save') }}</button></td>
       <td>
         {% if w.phone %}
         <a class="btn small ok" target="_blank" rel="noopener"
-           href="https://wa.me/{{ w.phone|replace('+','') }}?text={{ ('Hi ' ~ w.owner_name ~ ', this is a reminder that ' ~ w.animal_name ~ ' is due for their ' ~ w.wellness_type ~ ' on ' ~ w.wellness_next_dose_date ~ '. Please contact us to schedule. - ' ~ clinic_name)|urlencode }}">Send WhatsApp Message</a>
+           href="https://wa.me/{{ w.phone|replace('+','') }}?text={{ ('Hi ' ~ w.owner_name ~ ', this is a reminder that ' ~ w.animal_name ~ ' is due for their ' ~ w.wellness_type ~ ' on ' ~ w.wellness_next_dose_date ~ '. Please contact us to schedule. - ' ~ clinic_name)|urlencode }}">{{ _('Send WhatsApp Message') }}</a>
         {% else %}
-        <a class="btn small secondary" href="{{ url_for('clinical.owner_edit', owner_id=w.owner_id) }}">Add phone</a>
+        <a class="btn small secondary" href="{{ url_for('clinical.owner_edit', owner_id=w.owner_id) }}">{{ _('Add phone') }}</a>
         {% endif %}
       </td>
     </tr>
-    {% else %}<tr><td colspan="10" class="empty-note">No wellness reminders on file.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="10" class="empty-note">{{ _('No wellness reminders on file.') }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

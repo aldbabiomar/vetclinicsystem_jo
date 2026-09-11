@@ -12,10 +12,10 @@
   <div class="card error-card">
     {% with variant = "lost" %}{% include "_error_dog.html" %}{% endwith %}
     <h1>{{ _('Hmm, we can\'t find that one.') }}</h1>
-    <p class="page-sub">The page you're looking for doesn't exist, or may have been moved or deleted.</p>
+    <p class="page-sub">{{ _('The page you\'re looking for doesn\'t exist, or may have been moved or deleted.') }}</p>
     <div class="error-actions">
-      <a class="btn" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
-      <a class="btn secondary" href="javascript:history.back()">Go Back</a>
+      <a class="btn" href="{{ url_for('dashboard') }}">{{ _('Back to Dashboard') }}</a>
+      <a class="btn secondary" href="javascript:history.back()">{{ _('Go Back') }}</a>
     </div>
   </div>
 </div>
@@ -26,9 +26,9 @@
   <div class="auth-card error-card">
     {% with variant = "lost" %}{% include "_error_dog.html" %}{% endwith %}
     <h1>{{ _('Hmm, we can\'t find that one.') }}</h1>
-    <p class="page-sub">The page you're looking for doesn't exist, or may have been moved or deleted.</p>
+    <p class="page-sub">{{ _('The page you\'re looking for doesn\'t exist, or may have been moved or deleted.') }}</p>
     <div class="error-actions">
-      <a class="btn" href="{{ url_for('login') }}">Back to Log In</a>
+      <a class="btn" href="{{ url_for('login') }}">{{ _('Back to Log In') }}</a>
     </div>
   </div>
 </div>

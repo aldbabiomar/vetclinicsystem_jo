@@ -31,6 +31,18 @@ LATIN_CURRENCY = "JOD"
 ARABIC_CURRENCY = "د.أ"
 
 
+@pytest.fixture(autouse=True)
+def _reset_language(client):
+    """The `client` fixture is SESSION-scoped, so a lang cookie set by a test
+    here leaks into every test that runs afterwards — and the rest of the
+    suite asserts on ENGLISH flash text. That is exactly what happened: this
+    file passed in isolation and took nine tests in test_refund_boarding.py
+    down when the full suite ran. Clearing it after each test is what keeps
+    these tests from being someone else's mystery failure."""
+    yield
+    client.delete_cookie("lang")
+
+
 def _as(client, lang):
     """Set the language cookie the same way the toggle route does."""
     client.set_cookie("lang", lang)
@@ -252,9 +264,24 @@ def test_every_translated_string_is_actually_arabic():
     assert entries, "no catalogue entries found — has the .po format changed?"
     translated = [(en, ar) for en, ar in entries if ar.strip()]
     assert translated, "nothing is translated at all"
+    # An entry that is IDENTICAL to its msgid is a deliberate no-translation:
+    # a shell command typed verbatim into a terminal, or a product name. One
+    # that merely lacks Arabic while differing from the source is a mistake --
+    # a half-finished edit that would render as something nobody wrote.
+    # A username example stays Latin script on purpose: it is a sample of what
+    # someone TYPES into a login box, and Arabic there would be actively
+    # misleading. Named explicitly rather than loosening the rule for everyone.
+    LATIN_BY_NECESSITY = {"jlee"}
     bad = [(en, ar) for en, ar in translated
-           if not any("؀" <= ch <= "ۿ" for ch in ar)]
+           if not any("؀" <= ch <= "ۿ" for ch in ar)
+           and ar.strip() != en.strip()
+           and en.strip() not in LATIN_BY_NECESSITY]
     assert not bad, f"these msgstr values contain no Arabic characters: {bad[:5]}"
+
+    deliberate = [en for en, ar in translated if ar.strip() == en.strip()]
+    assert all(("python3" in d or "setup.py" in d or "PDF" in d) for d in deliberate), (
+        "a msgstr identical to its msgid should only be a command or a product "
+        f"name; found: {[d for d in deliberate if 'python3' not in d][:5]}")
 
 
 # ---------------------------------------------------------------------------

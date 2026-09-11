@@ -3,20 +3,20 @@
 {% block content %}
 <div class="page-head">
   <div><h1>{{ patient.animal_name }} — Full History</h1><p class="page-sub">{{ patient.id }} · Owner: {{ patient.owner_name }}</p></div>
-  <a class="btn secondary" href="{{ url_for('clinical.patient_detail', patient_id=patient.id) }}">Back to Patient</a>
+  <a class="btn secondary" href="{{ url_for('clinical.patient_detail', patient_id=patient.id) }}">{{ _('Back to Patient') }}</a>
 </div>
 
 {% for e in events %}
 <div class="card" style="margin-bottom:16px;">
   <div style="display:flex; justify-content:space-between; align-items:baseline;">
     <div><span class="badge {{ 'primary' if e.kind=='Visit' else 'warn' }}">{{ e.kind }}</span> <strong style="margin-left:8px;">{{ e.date|localdate or "—" }}</strong></div>
-    {% if e.kind == 'Visit' %}<a href="{{ url_for('clinical.visit_detail', visit_id=e.record.id) }}">Open visit →</a>
-    {% elif e.kind == 'Inpatient stay' %}<a href="{{ url_for('clinical.inpatient_detail', case_id=e.record.id) }}">Open case →</a>
-    {% else %}<a href="{{ url_for('clinical.boarding_export_pdf', boarding_id=e.record.id) }}">View boarding record →</a>{% endif %}
+    {% if e.kind == 'Visit' %}<a href="{{ url_for('clinical.visit_detail', visit_id=e.record.id) }}">{{ _('Open visit →') }}</a>
+    {% elif e.kind == 'Inpatient stay' %}<a href="{{ url_for('clinical.inpatient_detail', case_id=e.record.id) }}">{{ _('Open case →') }}</a>
+    {% else %}<a href="{{ url_for('clinical.boarding_export_pdf', boarding_id=e.record.id) }}">{{ _('View boarding record →') }}</a>{% endif %}
   </div>
   <p class="small muted" style="margin:8px 0 0;">{{ e.summary }}</p>
 </div>
 {% else %}
-<div class="empty-note">No history recorded yet.</div>
+<div class="empty-note">{{ _('No history recorded yet.') }}</div>
 {% endfor %}
 {% endblock %}

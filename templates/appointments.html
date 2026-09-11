@@ -2,9 +2,9 @@
 {% block title %}Appointments — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Appointments') }}</h1><p class="page-sub">Slot length and hours are set in Settings.</p></div>
+  <div><h1>{{ _('Appointments') }}</h1><p class="page-sub">{{ _('Slot length and hours are set in Settings.') }}</p></div>
   <div style="display:flex; gap:10px;">
-    <a class="btn secondary" href="{{ url_for('clinical.appointments_page', week=today_iso, day=today_iso) }}">This Week</a>
+    <a class="btn secondary" href="{{ url_for('clinical.appointments_page', week=today_iso, day=today_iso) }}">{{ _('This Week') }}</a>
   </div>
 </div>
 
@@ -12,8 +12,8 @@
 <div class="card" style="margin-bottom:16px; border-left:3px solid var(--warn);">
   <div style="font-weight:650; margin-bottom:6px;">{{ orphaned|length }} appointment(s) need attention — not shown on the grid below</div>
   <p class="small muted" style="margin:0 0 10px;">
-    Still booked, but either the vet assigned is no longer active, or the appointment's time no longer matches
-    the clinic's current scheduling hours/slot length (Settings). Cancel and rebook to fix.
+    {{ _('Still booked, but either the vet assigned is no longer active, or the appointment\'s time no longer matches
+    the clinic\'s current scheduling hours/slot length (Settings). Cancel and rebook to fix.') }}
   </p>
   <div class="table-wrap">
     <table>
@@ -38,9 +38,9 @@
 <p class="small muted" style="margin:-8px 0 12px;">
   {% if show_past %}
   Showing unreachable bookings from any date, including past ones.
-  <a href="{{ url_for('clinical.appointments_page', week=week_anchor, day=selected_day) }}">Hide past bookings</a>
+  <a href="{{ url_for('clinical.appointments_page', week=week_anchor, day=selected_day) }}">{{ _('Hide past bookings') }}</a>
   {% else %}
-  <a href="{{ url_for('clinical.appointments_page', week=week_anchor, day=selected_day, show_past=1) }}">Show past unreachable bookings</a>
+  <a href="{{ url_for('clinical.appointments_page', week=week_anchor, day=selected_day, show_past=1) }}">{{ _('Show past unreachable bookings') }}</a>
   {% endif %}
 </p>
 <div class="tabs">
@@ -52,12 +52,12 @@
 </div>
 
 <div style="display:flex; gap:10px; margin-bottom:14px;">
-  <a class="btn small secondary" href="{{ url_for('clinical.appointments_page', week=prev_week, day=prev_week) }}">← Prior Week</a>
-  <a class="btn small secondary" href="{{ url_for('clinical.appointments_page', week=next_week, day=next_week) }}">Next Week →</a>
+  <a class="btn small secondary" href="{{ url_for('clinical.appointments_page', week=prev_week, day=prev_week) }}">{{ _('← Prior Week') }}</a>
+  <a class="btn small secondary" href="{{ url_for('clinical.appointments_page', week=next_week, day=next_week) }}">{{ _('Next Week →') }}</a>
 </div>
 
 <div class="appt-grid" style="grid-template-columns: 70px repeat({{ columns|length }}, minmax(140px, 1fr));">
-  <div class="appt-head-cell">Slot</div>
+  <div class="appt-head-cell">{{ _('Slot') }}</div>
   {% for col in columns %}
   <div class="appt-head-cell">
     {{ col.label }}
@@ -92,7 +92,7 @@
       <div class="field" style="margin-bottom:10px;"><label for="appointments-1-pet_name">{{ _('Pet Name') }}</label><input id="appointments-1-pet_name" required name="pet_name" value="{{ fv(form, 'pet_name') }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="appointments-2-owner_name">{{ _('Owner Name') }}</label><input id="appointments-2-owner_name" required name="owner_name" value="{{ fv(form, 'owner_name') }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="appointments-3-appointment_type">{{ _('Type') }}</label>
-        <select id="appointments-3-appointment_type" name="appointment_type"><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Medical' }}>Medical</option><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Grooming' }}>Grooming</option></select>
+        <select id="appointments-3-appointment_type" name="appointment_type"><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Medical' }}>{{ _('Medical') }}</option><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Grooming' }}>{{ _('Grooming') }}</option></select>
       </div>
       <div class="field" style="margin-bottom:14px;"><label for="appointments-4-reason">{{ _('Reason') }}</label><input id="appointments-4-reason" name="reason" value="{{ fv(form, 'reason') }}"></div>
       <div style="display:flex; gap:10px; justify-content:flex-end;">

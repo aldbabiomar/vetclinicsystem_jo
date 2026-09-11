@@ -7,19 +7,19 @@
     <p class="page-sub">Snapshot as of today, {{ today }}.{% if current_role == 'Admin' %} Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.{% endif %}</p>
   </div>
   <div style="display:flex; gap:10px;">
-    <a class="btn secondary" href="{{ url_for('clinical.visit_new_start') }}">+ Log a Visit</a>
+    <a class="btn secondary" href="{{ url_for('clinical.visit_new_start') }}">{{ _('+ Log a Visit') }}</a>
   </div>
 </div>
 
 {% if opex_due %}
 <div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
-  This month's operating costs haven't been entered yet — add them on the Monthly P&amp;L page before the month closes.
+  {{ _('This month\'s operating costs haven\'t been entered yet — add them on the Monthly P&amp;L page before the month closes.') }}
 </div>
 {% endif %}
 
 {% if backup_alert %}
 <div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
-  {{ backup_alert }} <a href="{{ url_for('settings.settings_page') }}">Open Settings →</a>
+  {{ backup_alert }} <a href="{{ url_for('settings.settings_page') }}">{{ _('Open Settings →') }}</a>
 </div>
 {% endif %}
 
@@ -43,7 +43,7 @@
   </ul>
   <div class="small" style="margin-top:6px;">
     Last checked {{ self_check.ran_at.replace('T', ' ') }} —
-    <a href="{{ url_for('settings.settings_page') }}" style="color:inherit; text-decoration:underline;">Open Settings →</a>
+    <a href="{{ url_for('settings.settings_page') }}" style="color:inherit; text-decoration:underline;">{{ _('Open Settings →') }}</a>
   </div>
 </div>
 {% endif %}
@@ -53,15 +53,15 @@
   <div class="modal-box" style="max-width:560px;">
     <h2 style="margin-top:0; color:var(--danger);">{{ _('This install has failed its health check for 3 days running') }}</h2>
     <p class="small muted" style="margin-top:-4px;">
-      You're seeing this because you can change Settings. It will come back next time you sign in,
-      until the problem below is fixed.
+      {{ _('You\'re seeing this because you can change Settings. It will come back next time you sign in,
+      until the problem below is fixed.') }}
     </p>
     <ul style="margin:10px 0 14px; padding-left:20px;">
       {% for f in self_check.findings %}<li>{{ f.message }}</li>{% endfor %}
     </ul>
     <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
       <button class="btn secondary" type="button" data-vzh="dashboard-1">{{ _('Not now') }}</button>
-      <a class="btn" href="{{ url_for('settings.settings_page') }}">Open Settings</a>
+      <a class="btn" href="{{ url_for('settings.settings_page') }}">{{ _('Open Settings') }}</a>
     </div>
   </div>
 </div>
@@ -84,74 +84,74 @@
 {% endif %}
 
 <div class="stat-grid">
-  <div class="stat-card"><div class="num">{{ snap.total_patients }}</div><div class="label">Total Patients on File</div></div>
-  <div class="stat-card ok"><div class="num">{{ snap.active_cases }}</div><div class="label">Active / Ongoing Cases</div></div>
-  <div class="stat-card {{ 'alert' if snap.due_today }}"><div class="num">{{ snap.due_today|length }}</div><div class="label">Follow-Ups Due Today</div></div>
-  <div class="stat-card {{ 'warn' if snap.admitted_now }}"><div class="num">{{ snap.admitted_now }}</div><div class="label">Currently Admitted (Inpatient)</div></div>
+  <div class="stat-card"><div class="num">{{ snap.total_patients }}</div><div class="label">{{ _('Total Patients on File') }}</div></div>
+  <div class="stat-card ok"><div class="num">{{ snap.active_cases }}</div><div class="label">{{ _('Active / Ongoing Cases') }}</div></div>
+  <div class="stat-card {{ 'alert' if snap.due_today }}"><div class="num">{{ snap.due_today|length }}</div><div class="label">{{ _('Follow-Ups Due Today') }}</div></div>
+  <div class="stat-card {{ 'warn' if snap.admitted_now }}"><div class="num">{{ snap.admitted_now }}</div><div class="label">{{ _('Currently Admitted (Inpatient)') }}</div></div>
 </div>
 
 <div class="panel-grid">
   <div class="card panel">
-    <h2>Follow-Ups Due Today <span class="count">{{ snap.due_today|length }}</span></h2>
+    <h2>{{ _('Follow-Ups Due Today') }} <span class="count">{{ snap.due_today|length }}</span></h2>
     {% if snap.due_today %}
       {% for f in snap.due_today[:6] %}
       <div class="list-line">
         <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }})</span></div><div class="meta">{{ f.followup_method }} — {{ f.followup_reason }}</div></div>
-        <a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}">Open</a>
+        <a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}">{{ _('Open') }}</a>
       </div>
       {% endfor %}
-      {% if snap.due_today|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.followups_list') }}">View all follow-ups →</a></div>{% endif %}
-    {% else %}<div class="empty-note">Nothing due today.</div>{% endif %}
+      {% if snap.due_today|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.followups_list') }}">{{ _('View all follow-ups →') }}</a></div>{% endif %}
+    {% else %}<div class="empty-note">{{ _('Nothing due today.') }}</div>{% endif %}
   </div>
 
   <div class="card panel">
-    <h2>Reminder Calls — Call Today for Tomorrow's Visit <span class="count">{{ snap.reminders_tomorrow|length }}</span></h2>
+    <h2>{{ _('Reminder Calls — Call Today for Tomorrow\'s Visit') }} <span class="count">{{ snap.reminders_tomorrow|length }}</span></h2>
     {% if snap.reminders_tomorrow %}
       {% for f in snap.reminders_tomorrow[:6] %}
       <div class="list-line">
         <div><div class="who">{{ f.animal_name }} <span class="meta">({{ f.owner_name }}, {{ f.phone or "no phone on file" }})</span></div><div class="meta">Visit set for {{ f.followup_date|localdate }}</div></div>
-        <a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}">Open</a>
+        <a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=f.visit_id) }}">{{ _('Open') }}</a>
       </div>
       {% endfor %}
-      {% if snap.reminders_tomorrow|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.followups_list') }}">View all follow-ups →</a></div>{% endif %}
-    {% else %}<div class="empty-note">No reminder calls needed today.</div>{% endif %}
+      {% if snap.reminders_tomorrow|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.followups_list') }}">{{ _('View all follow-ups →') }}</a></div>{% endif %}
+    {% else %}<div class="empty-note">{{ _('No reminder calls needed today.') }}</div>{% endif %}
   </div>
 
   <div class="card panel">
-    <h2>Wellness Reminders Due <span class="count">{{ snap.wellness_due|length }}</span></h2>
+    <h2>{{ _('Wellness Reminders Due') }} <span class="count">{{ snap.wellness_due|length }}</span></h2>
     {% if snap.wellness_due %}
       {% for w in snap.wellness_due[:6] %}
       <div class="list-line">
         <div><div class="who">{{ w.animal_name }} <span class="meta">({{ w.owner_name }})</span></div><div class="meta">{{ w.wellness_type }} due {{ w.wellness_next_dose_date|localdate }}</div></div>
-        <a class="btn small secondary" href="{{ url_for('clinical.wellness_list') }}">Open</a>
+        <a class="btn small secondary" href="{{ url_for('clinical.wellness_list') }}">{{ _('Open') }}</a>
       </div>
       {% endfor %}
-      {% if snap.wellness_due|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.wellness_list') }}">View all wellness reminders →</a></div>{% endif %}
-    {% else %}<div class="empty-note">No wellness reminders due.</div>{% endif %}
+      {% if snap.wellness_due|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.wellness_list') }}">{{ _('View all wellness reminders →') }}</a></div>{% endif %}
+    {% else %}<div class="empty-note">{{ _('No wellness reminders due.') }}</div>{% endif %}
   </div>
 
   <div class="card panel">
-    <h2>Grooming Queue <span class="count">{{ snap.grooming_queue|length }}</span></h2>
+    <h2>{{ _('Grooming Queue') }} <span class="count">{{ snap.grooming_queue|length }}</span></h2>
     {% if snap.grooming_queue %}
       {% for gr in snap.grooming_queue[:6] %}
       <div class="list-line">
         <div><div class="who">{{ gr.animal_name }} <span class="meta">({{ gr.owner_name }})</span></div><div class="meta">{{ gr.grooming_status or "Waiting" }}</div></div>
       </div>
       {% endfor %}
-      {% if snap.grooming_queue|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.grooming_list') }}">View grooming queue →</a></div>{% endif %}
-    {% else %}<div class="empty-note">No grooming in progress.</div>{% endif %}
+      {% if snap.grooming_queue|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('clinical.grooming_list') }}">{{ _('View grooming queue →') }}</a></div>{% endif %}
+    {% else %}<div class="empty-note">{{ _('No grooming in progress.') }}</div>{% endif %}
   </div>
 
   <div class="card panel">
-    <h2>Low Stock <span class="count">{{ snap.low_stock|length }}</span></h2>
+    <h2>{{ _('Low Stock') }} <span class="count">{{ snap.low_stock|length }}</span></h2>
     {% if snap.low_stock %}
       {% for i in snap.low_stock[:6] %}<div class="list-line"><div class="who">{{ i.name }}</div><div class="meta">{{ i.current_stock }} {{ i.unit }} left (threshold {{ i.reorder_threshold }})</div></div>{% endfor %}
-      {% if snap.low_stock|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory.ordering_sheet_page') }}">View ordering sheet →</a></div>{% endif %}
-    {% else %}<div class="empty-note">Nothing below threshold.</div>{% endif %}
+      {% if snap.low_stock|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory.ordering_sheet_page') }}">{{ _('View ordering sheet →') }}</a></div>{% endif %}
+    {% else %}<div class="empty-note">{{ _('Nothing below threshold.') }}</div>{% endif %}
   </div>
 
   <div class="card panel">
-    <h2>Audit &amp; Expiry Alerts <span class="count">{{ (snap.overdue_audit|length) + (snap.expiring|length) }}</span></h2>
+    <h2>{{ _('Audit & Expiry Alerts') }} <span class="count">{{ (snap.overdue_audit|length) + (snap.expiring|length) }}</span></h2>
     {% if snap.overdue_audit or snap.expiring %}
       {% set audit_expiry_combined = snap.overdue_audit + snap.expiring %}
       {% for i in audit_expiry_combined[:6] %}
@@ -161,13 +161,13 @@
           <div class="list-line"><div class="who">{{ i.name }}</div><span class="badge warn">{{ i.expiry_status }}</span></div>
         {% endif %}
       {% endfor %}
-      {% if audit_expiry_combined|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory.inventory_status_page') }}">View inventory status →</a></div>{% endif %}
-    {% else %}<div class="empty-note">No audit or expiry issues.</div>{% endif %}
+      {% if audit_expiry_combined|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory.inventory_status_page') }}">{{ _('View inventory status →') }}</a></div>{% endif %}
+    {% else %}<div class="empty-note">{{ _('No audit or expiry issues.') }}</div>{% endif %}
   </div>
 </div>
 
 {% if is_overseer %}
-<div class="section-title" style="margin-top:28px;">Missed Items — Needs Admin Review <span class="count">{{ missed_total }}</span></div>
+<div class="section-title" style="margin-top:28px;">{{ _('Missed Items — Needs Admin Review') }} <span class="count">{{ missed_total }}</span></div>
 <div class="table-wrap sticky-scroll">
 <table>
   <thead><tr><th scope="col">{{ _('Type') }}</th><th scope="col">{{ _('Patient') }}</th><th scope="col">{{ _('Deadline Passed') }}</th><th scope="col">{{ _('Responsible Staff') }}</th><th scope="col"></th></tr></thead>
@@ -178,10 +178,10 @@
       <td>{{ m.animal_name }}</td>
       <td class="muted">{{ m.deadline }}</td>
       <td>{{ m.responsible or "Unassigned" }}</td>
-      <td><a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=m.visit_id) }}">Open</a></td>
+      <td><a class="btn small secondary" href="{{ url_for('clinical.visit_detail', visit_id=m.visit_id) }}">{{ _('Open') }}</a></td>
     </tr>
     {% else %}
-    <tr><td colspan="5" class="empty-note">Nothing overdue by more than two weeks.</td></tr>
+    <tr><td colspan="5" class="empty-note">{{ _('Nothing overdue by more than two weeks.') }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

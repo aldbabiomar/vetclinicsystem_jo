@@ -4,16 +4,16 @@
 <div class="page-head">
   <div>
     <h1>{{ _('Retention') }}</h1>
-    <p class="page-sub">Each row is the group of clients whose <em>first-ever visit</em> fell in that month. Each column is how many months later. The cell is the % of that group still coming back. Admin only.</p>
+    <p class="page-sub">{{ _('Each row is the group of clients whose') }} <em>{{ _('first-ever visit') }}</em> {{ _('fell in that month. Each column is how many months later. The cell is the % of that group still coming back. Admin only.') }}</p>
   </div>
   <div style="display:flex; gap:10px;">
-    <a class="btn secondary" href="{{ url_for('insights') }}">← Insights</a>
+    <a class="btn secondary" href="{{ url_for('insights') }}">{{ _('← Insights') }}</a>
   </div>
 </div>
 
 {% if not cohort.grid %}
 <div class="card" style="margin-bottom:16px;">
-  <p class="small muted">Not enough visit history yet to build a cohort grid — this fills in automatically as patients return for follow-up visits.</p>
+  <p class="small muted">{{ _('Not enough visit history yet to build a cohort grid — this fills in automatically as patients return for follow-up visits.') }}</p>
 </div>
 {% else %}
 <div class="card" style="overflow-x:auto;">
@@ -43,7 +43,7 @@
 </table>
 </div>
 <p class="small muted" style="margin-top:10px;">
-  Reading down a column shows whether retention at that stage is improving over time. Reading across a row shows how fast that group drops off. "—" means that much time hasn't passed yet for that cohort.
+  {{ _('Reading down a column shows whether retention at that stage is improving over time. Reading across a row shows how fast that group drops off. "—" means that much time hasn\'t passed yet for that cohort.') }}
 </p>
 {% include "_pagination.html" %}
 {% endif %}

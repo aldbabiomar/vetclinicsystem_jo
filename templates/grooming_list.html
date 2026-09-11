@@ -4,8 +4,8 @@
 <div class="page-head"><div><h1>{{ _('Grooming Queue') }}</h1><p class="page-sub">Ongoing grooming requests logged as part of a visit. {{ total_count }} shown.</p></div></div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not include_finished }}" href="{{ url_for('clinical.grooming_list') }}">In Progress</a>
-  <a class="chip {{ 'active' if include_finished }}" href="{{ url_for('clinical.grooming_list', all=1) }}">Include Finished</a>
+  <a class="chip {{ 'active' if not include_finished }}" href="{{ url_for('clinical.grooming_list') }}">{{ _('In Progress') }}</a>
+  <a class="chip {{ 'active' if include_finished }}" href="{{ url_for('clinical.grooming_list', all=1) }}">{{ _('Include Finished') }}</a>
 </div>
 
 <div class="table-wrap sticky-scroll">
@@ -27,13 +27,13 @@
       </td>
       <td>
         <select form="g-{{ gr.visit_id }}" name="grooming_contacted" class="small">
-          <option value="N" {{ 'selected' if gr.grooming_contacted=='N' }}>No</option>
-          <option value="Y" {{ 'selected' if gr.grooming_contacted=='Y' }}>Yes</option>
+          <option value="N" {{ 'selected' if gr.grooming_contacted=='N' }}>{{ _('No') }}</option>
+          <option value="Y" {{ 'selected' if gr.grooming_contacted=='Y' }}>{{ _('Yes') }}</option>
         </select>
       </td>
       <td><button class="btn small secondary" form="g-{{ gr.visit_id }}" type="submit">{{ _('Save') }}</button></td>
     </tr>
-    {% else %}<tr><td colspan="8" class="empty-note">Nothing in the grooming queue.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="8" class="empty-note">{{ _('Nothing in the grooming queue.') }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

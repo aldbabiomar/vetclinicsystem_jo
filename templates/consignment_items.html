@@ -4,9 +4,9 @@
 <div class="page-head">
   <div>
     <h1>{{ _('Consignment Items') }}</h1>
-    <p class="page-sub">Retail inventory items. Check "Consignment?" and pick a distributor to attach one and start
+    <p class="page-sub">{{ _('Retail inventory items. Check "Consignment?" and pick a distributor to attach one and start
       logging receiving/shrinkage/returns against it — check the box for as many items as you need, then save them
-      all at once.</p>
+      all at once.') }}</p>
   </div>
   <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('consignment.consignment_items_bulk_edit') }}">{{ _('Save Changes') }}</button>
 </div>
@@ -67,7 +67,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="6" class="empty-note">No active Retail items — add one from Inventory Catalog first.</td></tr>
+    <tr><td colspan="6" class="empty-note">{{ _('No active Retail items — add one from Inventory Catalog first.') }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

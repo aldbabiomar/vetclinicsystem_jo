@@ -6,15 +6,15 @@
     <h1>Settle with {{ distributor.name }}</h1>
     <p class="page-sub">{{ distributor.contact_person or '' }}{% if distributor.phone %} · {{ distributor.phone }}{% endif %}</p>
   </div>
-  <a class="btn secondary" href="{{ url_for('consignment.consignment_overview') }}">← Back to Overview</a>
+  <a class="btn secondary" href="{{ url_for('consignment.consignment_overview') }}">{{ _('← Back to Overview') }}</a>
 </div>
 
 <div class="card" style="margin-bottom:16px;">
   <h2 style="margin-top:0;">{{ _('Current Balance') }}</h2>
   <table style="width:100%; max-width:520px;">
-    <tr><td>Carried forward from last settlement</td><td class="num-col">{{ balance.residual|money }} {{ currency_label() }}</td></tr>
-    <tr><td>New activity this period</td><td class="num-col">{{ balance.new_activity|money }} {{ currency_label() }}</td></tr>
-    <tr style="font-weight:600; border-top:1px solid var(--line);"><td>Amount Owed Now</td><td class="num-col">{{ balance.amount_owed|money }} {{ currency_label() }}</td></tr>
+    <tr><td>{{ _('Carried forward from last settlement') }}</td><td class="num-col">{{ balance.residual|money }} {{ currency_label() }}</td></tr>
+    <tr><td>{{ _('New activity this period') }}</td><td class="num-col">{{ balance.new_activity|money }} {{ currency_label() }}</td></tr>
+    <tr style="font-weight:600; border-top:1px solid var(--line);"><td>{{ _('Amount Owed Now') }}</td><td class="num-col">{{ balance.amount_owed|money }} {{ currency_label() }}</td></tr>
   </table>
   <p class="small muted" style="margin-top:10px;">Period: {{ balance.period_start[:10] if balance.period_start else 'start' }} — {{ balance.period_end[:10] }}
     · {{ balance.units_sold_since|round(2) }} unit(s) sold since last settlement.</p>
@@ -26,7 +26,7 @@
     <div class="field"><label for="consignmentsettlements-2-payment_method">{{ _('Payment Method') }}</label>
       <select id="consignmentsettlements-2-payment_method" name="payment_method">
         <option value="" {{ 'selected' if fv(form, 'payment_method')=='' }}>—</option>
-        <option {{ 'selected' if fv(form, 'payment_method')=='Cash' }}>Cash</option><option {{ 'selected' if fv(form, 'payment_method')=='Card' }}>Card</option><option {{ 'selected' if fv(form, 'payment_method')=='Transfer' }}>Transfer</option>
+        <option {{ 'selected' if fv(form, 'payment_method')=='Cash' }}>{{ _('Cash') }}</option><option {{ 'selected' if fv(form, 'payment_method')=='Card' }}>{{ _('Card') }}</option><option {{ 'selected' if fv(form, 'payment_method')=='Transfer' }}>{{ _('Transfer') }}</option>
       </select>
     </div>
     <div class="field full"><label for="consignmentsettlements-3-notes">{{ _('Notes') }}</label><input id="consignmentsettlements-3-notes" name="notes" value="{{ fv(form, 'notes') }}"></div>
@@ -34,7 +34,7 @@
       <button class="btn" type="submit">{{ _('Record Settlement') }}</button>
     </div>
   </form>
-  <p class="small muted">A partial payment carries the remainder forward as the starting balance for the next settlement.</p>
+  <p class="small muted">{{ _('A partial payment carries the remainder forward as the starting balance for the next settlement.') }}</p>
   {% endif %}
 </div>
 
@@ -55,10 +55,10 @@
       <td class="num-col">{{ (s.amount_owed - s.amount_paid)|money }}</td>
       <td>{{ s.payment_method or '—' }}</td>
       <td>{{ s.settled_by_name or '—' }}</td>
-      <td><a class="btn small secondary" href="{{ url_for('consignment.consignment_settlement_export', settlement_id=s.id) }}">PDF</a></td>
+      <td><a class="btn small secondary" href="{{ url_for('consignment.consignment_settlement_export', settlement_id=s.id) }}">{{ _('PDF') }}</a></td>
     </tr>
     {% else %}
-    <tr><td colspan="8" class="empty-note">No settlements recorded yet.</td></tr>
+    <tr><td colspan="8" class="empty-note">{{ _('No settlements recorded yet.') }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

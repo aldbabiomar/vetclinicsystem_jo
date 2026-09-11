@@ -4,12 +4,12 @@
    rejected submit — in that case it takes priority over both `visit` and the new-record
    defaults, via the fv() helper, so the person sees exactly what they just typed. #}
 
-<div class="section-title">Visit</div>
+<div class="section-title">{{ _('Visit') }}</div>
 <div class="form-grid">
   <div class="field"><label for="visitfields-1-date">{{ _('Date') }}</label><input id="visitfields-1-date" required type="date" name="date" value="{{ fv(form, 'date', visit.date if visit else today) }}"></div>
   <div class="field"><label for="visitfields-2-doctor">{{ _('Doctor') }}</label>
     <select id="visitfields-2-doctor" name="doctor">
-      <option value="">Select Vet…</option>
+      <option value="">{{ _('Select Vet…') }}</option>
       {% for v in vets %}<option value="{{ v.full_name }}" {{ 'selected' if fv(form, 'doctor', visit.doctor if visit else '')==v.full_name }}>{{ v.full_name }}</option>{% endfor %}
     </select>
   </div>
@@ -26,8 +26,8 @@
   <div class="field">
     <label for="wellnessNeeded">{{ _('Wellness Visit?') }}</label>
     <select name="wellness_needed" id="wellnessNeeded" data-vzh="visit-fields-1">
-      <option value="N" {{ 'selected' if fv(form, 'wellness_needed', visit.wellness_needed if visit else 'N')=='N' }}>No</option>
-      <option value="Y" {{ 'selected' if fv(form, 'wellness_needed', visit.wellness_needed if visit else 'N')=='Y' }}>Yes</option>
+      <option value="N" {{ 'selected' if fv(form, 'wellness_needed', visit.wellness_needed if visit else 'N')=='N' }}>{{ _('No') }}</option>
+      <option value="Y" {{ 'selected' if fv(form, 'wellness_needed', visit.wellness_needed if visit else 'N')=='Y' }}>{{ _('Yes') }}</option>
     </select>
   </div>
   <div class="field wellness-only"><label for="visitfields-5-wellness_type">{{ _('Wellness Type') }}</label>
@@ -41,14 +41,14 @@
   <div class="field">
     <label for="groomingNeeded">{{ _('Grooming?') }}</label>
     <select name="grooming_needed" id="groomingNeeded" data-vzh="visit-fields-2">
-      <option value="N" {{ 'selected' if fv(form, 'grooming_needed', visit.grooming_needed if visit else 'N')=='N' }}>No</option>
-      <option value="Y" {{ 'selected' if fv(form, 'grooming_needed', visit.grooming_needed if visit else 'N')=='Y' }}>Yes</option>
+      <option value="N" {{ 'selected' if fv(form, 'grooming_needed', visit.grooming_needed if visit else 'N')=='N' }}>{{ _('No') }}</option>
+      <option value="Y" {{ 'selected' if fv(form, 'grooming_needed', visit.grooming_needed if visit else 'N')=='Y' }}>{{ _('Yes') }}</option>
     </select>
   </div>
 </div>
 
 <div class="grooming-only" style="margin-top:10px;">
-  <span id="groomingServicesLabel" class="small" style="font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--ink-soft);">Grooming Services</span>
+  <span id="groomingServicesLabel" class="small" style="font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--ink-soft);">{{ _('Grooming Services') }}</span>
   <div role="group" aria-labelledby="groomingServicesLabel" style="display:flex; flex-wrap:wrap; gap:14px; margin:8px 0 14px;">
     {% set current_services = (form.getlist('grooming_services') if form else (visit.grooming_services.split(',') if visit and visit.grooming_services else [])) %}
     {% for gs in grooming_services %}

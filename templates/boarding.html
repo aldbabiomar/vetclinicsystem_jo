@@ -7,8 +7,8 @@
 </div>
 
 <div class="filter-chips">
-  <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('clinical.boarding_page') }}">Currently Boarding</a>
-  <a class="chip {{ 'active' if show_all }}" href="{{ url_for('clinical.boarding_page', all=1) }}">All (Incl. Picked Up)</a>
+  <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('clinical.boarding_page') }}">{{ _('Currently Boarding') }}</a>
+  <a class="chip {{ 'active' if show_all }}" href="{{ url_for('clinical.boarding_page', all=1) }}">{{ _('All (Incl. Picked Up)') }}</a>
 </div>
 
 {% set new_form = form if open_new_form else None %}
@@ -21,7 +21,7 @@
 
   <form method="post" action="{{ url_for('clinical.boarding_new') }}" id="addBoardingForm" style="display:{{ 'block' if open_new_form else 'none' }};">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <p class="small muted" style="margin-bottom:14px;">Patient: <strong id="selectedPatientLabel">{{ new_form_patient_label or '' }}</strong></p>
+    <p class="small muted" style="margin-bottom:14px;">{{ _('Patient:') }} <strong id="selectedPatientLabel">{{ new_form_patient_label or '' }}</strong></p>
     <input type="hidden" name="patient_id" id="patientIdField" value="{{ fv(new_form, 'patient_id') }}">
     <div class="form-grid">
       <div class="field"><label for="entryDateField">{{ _('Entry Date') }}</label><input required type="date" name="entry_date" value="{{ fv(new_form, 'entry_date', today) }}" data-vzh="boarding-2" id="entryDateField"></div>
@@ -34,9 +34,9 @@
       <div class="field full">
         <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
           <input type="checkbox" name="special_needs" id="specialNeedsCheck" {{ 'checked' if fv(new_form, 'special_needs')=='on' }} data-vzh="boarding-3">
-          Special Needs?
+          {{ _('Special Needs?') }}
         </label>
-        <p class="small muted" style="margin:2px 0 8px;">Check this to report any chronic diseases or custom requirements for the stay (medication schedule, dietary restrictions, mobility issues, etc.).</p>
+        <p class="small muted" style="margin:2px 0 8px;">{{ _('Check this to report any chronic diseases or custom requirements for the stay (medication schedule, dietary restrictions, mobility issues, etc.).') }}</p>
         <div id="specialNeedsNotesField" style="display:{{ 'block' if fv(new_form, 'special_needs')=='on' else 'none' }};">
           <textarea name="special_needs_notes" placeholder="{{ _('Describe the special need…') }}">{{ fv(new_form, 'special_needs_notes') }}</textarea>
         </div>
@@ -51,18 +51,18 @@
 
 <div id="incidentModal" class="modal-overlay" style="display:none;">
   <div class="modal-box">
-    <div class="section-title" style="margin-top:0;">Something's Wrong</div>
+    <div class="section-title" style="margin-top:0;">{{ _('Something\'s Wrong') }}</div>
     <p class="small muted" id="incidentPatientLabel" style="margin-bottom:12px;"></p>
     <form method="post" id="incidentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field full" style="margin-bottom:12px;"><label for="boarding-3-issue">{{ _('What\'s wrong?') }}</label><textarea id="boarding-3-issue" name="issue" required></textarea></div>
       <label class="checkbox-row small" style="text-transform:none; font-weight:500; margin-bottom:8px;">
         <input type="checkbox" name="contacted" id="incidentContactedCheck" data-vzh="boarding-5">
-        Contacted the owner?
+        {{ _('Contacted the owner?') }}
       </label>
       <div id="incidentContactFields" style="display:none;">
         <div class="field" style="margin-bottom:10px;"><label for="boarding-4-contact_method">{{ _('How?') }}</label>
-          <select id="boarding-4-contact_method" name="contact_method"><option>Phone Call</option><option>Text Message</option></select>
+          <select id="boarding-4-contact_method" name="contact_method"><option>{{ _('Phone Call') }}</option><option>{{ _('Text Message') }}</option></select>
         </div>
         <div class="field full" style="margin-bottom:12px;"><label for="boarding-5-response">{{ _('Owner\'s Response') }}</label><textarea id="boarding-5-response" name="response"></textarea></div>
       </div>
@@ -76,7 +76,7 @@
 
 <div id="paymentModal" class="modal-overlay" style="display:none;">
   <div class="modal-box">
-    <div class="section-title" style="margin-top:0;">Record Payment</div>
+    <div class="section-title" style="margin-top:0;">{{ _('Record Payment') }}</div>
     <p class="small muted" id="paymentPatientLabel" style="margin-bottom:12px;"></p>
     <form method="post" id="paymentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -86,9 +86,9 @@
       <div class="field" style="margin-bottom:10px;"><label for="boarding-8-method">{{ _('Method') }}</label>
         <select id="boarding-8-method" name="method">
           {% set m = fv(form, 'method', 'Cash') if payment_error_id else 'Cash' %}
-          <option {{ 'selected' if m=='Cash' }}>Cash</option>
-          <option {{ 'selected' if m=='Card' }}>Card</option>
-          <option {{ 'selected' if m=='Transfer' }}>Transfer</option>
+          <option {{ 'selected' if m=='Cash' }}>{{ _('Cash') }}</option>
+          <option {{ 'selected' if m=='Card' }}>{{ _('Card') }}</option>
+          <option {{ 'selected' if m=='Transfer' }}>{{ _('Transfer') }}</option>
         </select>
       </div>
       <div class="field full" style="margin-bottom:12px;"><label for="boarding-9-notes">{{ _('Notes') }}</label><input id="boarding-9-notes" name="notes" value="{{ fv(form, 'notes') if payment_error_id else '' }}"></div>
@@ -116,7 +116,7 @@
       <td class="small">{{ s.dismissal_date or ("Picked up" if s.dismissed else "—") }}</td>
       <td class="num-col">{{ s.billing.total|money }}</td>
       <td><span class="badge {{ 'ok' if s.billing.status=='Fully Paid' else ('danger' if s.billing.status=='Unpaid' else 'muted') }}">{{ s.billing.status }}</span></td>
-      <td>{% if s.special_needs %}<span class="badge warn" title="{{ s.special_needs_notes or '' }}">Yes</span>{% else %}<span class="muted small">None</span>{% endif %}</td>
+      <td>{% if s.special_needs %}<span class="badge warn" title="{{ s.special_needs_notes or '' }}">{{ _('Yes') }}</span>{% else %}<span class="muted small">{{ _('None') }}</span>{% endif %}</td>
       <td>{% if s.incident_count %}<span class="badge danger">{{ s.incident_count }}</span>{% else %}<span class="muted small">0</span>{% endif %}</td>
       <td class="actions-cell">
         <div class="action-btns">
@@ -125,7 +125,7 @@
             <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-discount="{{ s.discount_percent or 0 }}" data-vzh="boarding-9">{{ _('Payment') }}</button>
             <button class="btn small secondary" type="button" data-vzh="boarding-10" data-vz-arg="{{ s.id }}">{{ _('Edit') }}</button>
           </div>
-          <a class="btn small secondary" href="{{ url_for('clinical.boarding_export_pdf', boarding_id=s.id) }}">Export (PDF)</a>
+          <a class="btn small secondary" href="{{ url_for('clinical.boarding_export_pdf', boarding_id=s.id) }}">{{ _('Export (PDF)') }}</a>
           {% if not s.dismissed %}
           <form method="post" action="{{ url_for('clinical.boarding_dismiss', boarding_id=s.id) }}" style="display:inline;" data-confirm="Mark {{ s.animal_name }} as picked up?">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -134,9 +134,9 @@
           {% endif %}
           {% if s.owner_phone %}
           <a class="btn small ok" target="_blank" rel="noopener"
-             href="https://wa.me/{{ s.owner_phone|replace('+','') }}?text={{ ('Hi ' ~ s.owner_name ~ ', this is a reminder that ' ~ s.animal_name ~ ' is due for their pickup from boarding on ' ~ (s.dismissal_date or 'the agreed date') ~ '. - ' ~ clinic_name)|urlencode }}">Send WhatsApp Message</a>
+             href="https://wa.me/{{ s.owner_phone|replace('+','') }}?text={{ ('Hi ' ~ s.owner_name ~ ', this is a reminder that ' ~ s.animal_name ~ ' is due for their pickup from boarding on ' ~ (s.dismissal_date or 'the agreed date') ~ '. - ' ~ clinic_name)|urlencode }}">{{ _('Send WhatsApp Message') }}</a>
           {% else %}
-          <a class="btn small secondary" href="{{ url_for('clinical.owner_edit', owner_id=s.owner_id) }}">Add phone to send WhatsApp</a>
+          <a class="btn small secondary" href="{{ url_for('clinical.owner_edit', owner_id=s.owner_id) }}">{{ _('Add phone to send WhatsApp') }}</a>
           {% endif %}
         </div>
       </td>
@@ -156,18 +156,18 @@
             value="{{ fv(row_form, 'total', s.total if (s.total is not none and not s.total_is_auto) else '') }}"></div>
           <div class="field full">
             <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
-              <input type="checkbox" name="special_needs" id="specialNeedsCheck-{{ s.id }}" {{ 'checked' if fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on' }} data-vzh="boarding-11" data-vz-arg="{{ s.id }}"> Special Needs?
+              <input type="checkbox" name="special_needs" id="specialNeedsCheck-{{ s.id }}" {{ 'checked' if fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on' }} data-vzh="boarding-11" data-vz-arg="{{ s.id }}"> {{ _('Special Needs?') }}
             </label>
             <textarea name="special_needs_notes" id="specialNeedsNotesField-{{ s.id }}" placeholder="{{ _('Describe the special need…') }}" style="display: {{ 'block' if (fv(row_form, 'special_needs', 'on' if s.special_needs else '')=='on') else 'none' }};">{{ fv(row_form, 'special_needs_notes', s.special_needs_notes or '') }}</textarea>
             {% if s.special_needs_notes and not s.special_needs %}
-            <p class="small muted">Notes on file but Special Needs is unchecked — they won't be saved unless you check the box.</p>
+            <p class="small muted">{{ _('Notes on file but Special Needs is unchecked — they won\'t be saved unless you check the box.') }}</p>
             {% endif %}
           </div>
           <div class="form-actions"><button class="btn small" type="submit">{{ _('Save Changes') }}</button></div>
         </form>
       </td>
     </tr>
-    {% else %}<tr><td colspan="10" class="empty-note">No boarding sessions on record.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="10" class="empty-note">{{ _('No boarding sessions on record.') }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

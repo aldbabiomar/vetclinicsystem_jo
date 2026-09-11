@@ -6,7 +6,7 @@
   <form class="search-bar" method="get" style="margin:0;">
     <input type="date" name="date" value="{{ date_filter or '' }}">
     <button class="btn secondary" type="submit">{{ _('View by Date') }}</button>
-    {% if date_filter %}<a class="btn secondary" href="{{ url_for('sales.pos_history') }}">Clear</a>{% endif %}
+    {% if date_filter %}<a class="btn secondary" href="{{ url_for('sales.pos_history') }}">{{ _('Clear') }}</a>{% endif %}
   </form>
 </div>
 <div class="table-wrap sticky-scroll">
@@ -21,8 +21,8 @@
       <td class="num-col">{{ s.total|money }}</td>
       <td>{{ s.payment_method or "—" }}</td>
       <td style="white-space:nowrap;">
-        <a class="btn small secondary" href="{{ url_for('sales.pos_receipt', sale_id=s.id) }}">View</a>
-        <a class="btn small secondary" href="{{ url_for('sales.pos_export_receipt', sale_id=s.id) }}">Export Bill (PDF)</a>
+        <a class="btn small secondary" href="{{ url_for('sales.pos_receipt', sale_id=s.id) }}">{{ _('View') }}</a>
+        <a class="btn small secondary" href="{{ url_for('sales.pos_export_receipt', sale_id=s.id) }}">{{ _('Export Bill (PDF)') }}</a>
       </td>
     </tr>
     {% else %}<tr><td colspan="7" class="empty-note">{% if date_filter %}No sales recorded on {{ date_filter }}.{% else %}No sales yet.{% endif %}</td></tr>{% endfor %}

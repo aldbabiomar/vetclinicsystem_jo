@@ -2,10 +2,10 @@
 {% block title %}Logins and Changes — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Logins and Changes') }}</h1><p class="page-sub">Pick a date to review who logged in and what was changed.</p></div>
+  <div><h1>{{ _('Logins and Changes') }}</h1><p class="page-sub">{{ _('Pick a date to review who logged in and what was changed.') }}</p></div>
   <form method="get" style="display:flex; gap:10px; align-items:center;">
     <input type="date" name="date" value="{{ day }}" data-vzh="admin-logs-1">
-    {% if day != today %}<a class="btn secondary" href="{{ url_for('admin.admin_logs') }}">Clear</a>{% endif %}
+    {% if day != today %}<a class="btn secondary" href="{{ url_for('admin.admin_logs') }}">{{ _('Clear') }}</a>{% endif %}
   </form>
 </div>
 
@@ -25,7 +25,7 @@
       <td class="small">{% if c.field %}{{ c.old_value or "—" }} → {{ c.new_value or "—" }}{% else %}whole record{% endif %}</td>
     </tr>
     {% else %}
-    <tr><td colspan="7" class="empty-note">No changes logged on this date.</td></tr>
+    <tr><td colspan="7" class="empty-note">{{ _('No changes logged on this date.') }}</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -45,7 +45,7 @@
       <td class="small">{{ l.device }}</td>
     </tr>
     {% else %}
-    <tr><td colspan="5" class="empty-note">No login activity on this date.</td></tr>
+    <tr><td colspan="5" class="empty-note">{{ _('No login activity on this date.') }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

@@ -5,11 +5,11 @@
   <div><h1>{{ _('Bulk Barcode Print') }}</h1><p class="page-sub">{{ labels|sum(attribute='qty') }} label(s) across {{ labels|length }} item(s).</p></div>
   <div style="display:flex; gap:10px;">
     <button class="btn secondary" id="printBtn" data-vzh="barcode-bulk-print-1" disabled>{{ _('Print') }}</button>
-    <a class="btn secondary" href="{{ url_for('inventory.inventory_catalog') }}">Back</a>
+    <a class="btn secondary" href="{{ url_for('inventory.inventory_catalog') }}">{{ _('Back') }}</a>
   </div>
 </div>
 <p class="small muted no-print" id="bulkPrintError" style="display:none; color:var(--danger);">
-  One or more barcodes could not be rendered — check the flagged item(s) below before printing.
+  {{ _('One or more barcodes could not be rendered — check the flagged item(s) below before printing.') }}
 </p>
 <div class="barcode-sheet">
   {% for label in labels %}
@@ -19,7 +19,7 @@
       <svg id="barcodeSvg_{{ loop.index0 }}_{{ label.id }}_{{ n }}" data-code="{{ label.barcode }}"></svg>
       <div style="font-size:11px; color:var(--ink-soft);">{{ clinic_name }}</div>
       <p class="small muted no-print barcode-render-error" style="display:none; color:var(--danger);">
-        Could not render this barcode.
+        {{ _('Could not render this barcode.') }}
       </p>
     </div>
     {% endfor %}

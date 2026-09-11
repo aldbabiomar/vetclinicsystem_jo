@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Refunds — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>{{ _('Refunds') }}</h1><p class="page-sub">Refund a retail sale (restores stock, optional) or reduce revenue for a service. Both remove the amount from Monthly &amp; Yearly P&amp;L, in the month the refund is processed.</p></div></div>
+<div class="page-head"><div><h1>{{ _('Refunds') }}</h1><p class="page-sub">{{ _('Refund a retail sale (restores stock, optional) or reduce revenue for a service. Both remove the amount from Monthly & Yearly P&L, in the month the refund is processed.') }}</p></div></div>
 
 <div class="panel-grid">
   <div class="card">
-    <div class="section-title" style="margin-top:0;">Retail Refund</div>
-    <p class="small muted">Look up the original sale by ID, then choose which items and quantities to refund. Stock is only put back if you check "Return to stock".</p>
+    <div class="section-title" style="margin-top:0;">{{ _('Retail Refund') }}</div>
+    <p class="small muted">{{ _('Look up the original sale by ID, then choose which items and quantities to refund. Stock is only put back if you check "Return to stock".') }}</p>
 
     <div class="field" style="margin-bottom:14px;">
       <label for="refundSaleId">{{ _('Sale ID') }}</label>
@@ -16,13 +16,13 @@
       </div>
     </div>
     <div id="refundSaleCleanupNote" class="small" style="display:none; margin-bottom:8px;"></div>
-    <div id="refundSaleLines"><div class="empty-note">Look up a sale to see its refundable items.</div></div>
+    <div id="refundSaleLines"><div class="empty-note">{{ _('Look up a sale to see its refundable items.') }}</div></div>
 
     <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
-      <div class="detail-item"><div class="k">Refund Total</div><div class="v" id="refundCartTotal" style="font-size:20px; font-weight:700;">0 {{ currency_label() }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('Refund Total') }}</div><div class="v" id="refundCartTotal" style="font-size:20px; font-weight:700;">0 {{ currency_label() }}</div></div>
 
       <label class="checkbox-row small" style="margin:12px 0; font-weight:500; text-transform:none;">
-        <input type="checkbox" id="restockCheck" {{ 'checked' if fv(retail_form, 'restock', 'on')=='on' }}> Return item(s) to stock
+        <input type="checkbox" id="restockCheck" {{ 'checked' if fv(retail_form, 'restock', 'on')=='on' }}> {{ _('Return item(s) to stock') }}
       </label>
 
       <form method="post" action="{{ url_for('sales.refund_retail_save') }}" id="retailRefundForm">
@@ -33,9 +33,9 @@
           <div class="field"><label for="refunds-2-refund_method">{{ _('Method') }}</label>
             <select id="refunds-2-refund_method" name="refund_method">
               <option value="" {{ 'selected' if fv(retail_form, 'refund_method')=='' }}>—</option>
-              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Cash' }}>Cash</option>
-              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Card' }}>Card</option>
-              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Transfer' }}>Transfer</option>
+              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Cash' }}>{{ _('Cash') }}</option>
+              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Card' }}>{{ _('Card') }}</option>
+              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Transfer' }}>{{ _('Transfer') }}</option>
             </select>
           </div>
           <div class="field"><label for="refunds-3-reason">{{ _('Reason (optional)') }}</label><input id="refunds-3-reason" type="text" name="reason" value="{{ fv(retail_form, 'reason') }}" placeholder="{{ _('e.g. wrong item, customer changed mind') }}"></div>
@@ -50,8 +50,8 @@
   </div>
 
   <div class="card">
-    <div class="section-title" style="margin-top:0;">Service Refund</div>
-    <p class="small muted">Removes a revenue amount only — no stock is touched. Enter <strong>exactly one</strong> of Visit ID, Inpatient Case ID or Boarding ID: the refund reverses that specific record, and the amount is capped at what is still refundable against it. A goodwill refund with no record behind it belongs in Cash Register instead.</p>
+    <div class="section-title" style="margin-top:0;">{{ _('Service Refund') }}</div>
+    <p class="small muted">{{ _('Removes a revenue amount only — no stock is touched. Enter') }} <strong>{{ _('exactly one') }}</strong> {{ _('of Visit ID, Inpatient Case ID or Boarding ID: the refund reverses that specific record, and the amount is capped at what is still refundable against it. A goodwill refund with no record behind it belongs in Cash Register instead.') }}</p>
     <form method="post" action="{{ url_for('sales.refund_service_save') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
@@ -60,14 +60,14 @@
         <div class="field"><label for="refunds-6-refund_method">{{ _('Method') }}</label>
           <select id="refunds-6-refund_method" name="refund_method">
             <option value="" {{ 'selected' if fv(service_form, 'refund_method')=='' }}>—</option>
-            <option {{ 'selected' if fv(service_form, 'refund_method')=='Cash' }}>Cash</option>
-            <option {{ 'selected' if fv(service_form, 'refund_method')=='Card' }}>Card</option>
-            <option {{ 'selected' if fv(service_form, 'refund_method')=='Transfer' }}>Transfer</option>
+            <option {{ 'selected' if fv(service_form, 'refund_method')=='Cash' }}>{{ _('Cash') }}</option>
+            <option {{ 'selected' if fv(service_form, 'refund_method')=='Card' }}>{{ _('Card') }}</option>
+            <option {{ 'selected' if fv(service_form, 'refund_method')=='Transfer' }}>{{ _('Transfer') }}</option>
           </select>
         </div>
-        <div class="field"><label for="refunds-7-visit_id">Visit ID <span class="muted">(one of these three)</span></label><input id="refunds-7-visit_id" type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
-        <div class="field"><label for="refunds-8-inpatient_case_id">Inpatient Case ID <span class="muted">(one of these three)</span></label><input id="refunds-8-inpatient_case_id" type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
-        <div class="field"><label for="refunds-9-boarding_id">Boarding ID <span class="muted">(one of these three)</span></label><input id="refunds-9-boarding_id" type="text" name="boarding_id" value="{{ fv(service_form, 'boarding_id') }}" placeholder="e.g. 7"></div>
+        <div class="field"><label for="refunds-7-visit_id">{{ _('Visit ID') }} <span class="muted">{{ _('(one of these three)') }}</span></label><input id="refunds-7-visit_id" type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
+        <div class="field"><label for="refunds-8-inpatient_case_id">{{ _('Inpatient Case ID') }} <span class="muted">{{ _('(one of these three)') }}</span></label><input id="refunds-8-inpatient_case_id" type="text" name="inpatient_case_id" value="{{ fv(service_form, 'inpatient_case_id') }}" placeholder="e.g. 12"></div>
+        <div class="field"><label for="refunds-9-boarding_id">{{ _('Boarding ID') }} <span class="muted">{{ _('(one of these three)') }}</span></label><input id="refunds-9-boarding_id" type="text" name="boarding_id" value="{{ fv(service_form, 'boarding_id') }}" placeholder="e.g. 7"></div>
         <div class="field" style="grid-column:1/-1;"><label for="refunds-10-reason">{{ _('Reason (optional)') }}</label><input id="refunds-10-reason" type="text" name="reason" value="{{ fv(service_form, 'reason') }}" placeholder="{{ _('e.g. service not completed') }}"></div>
       </div>
       <div class="form-actions"><button class="btn" type="submit">{{ _('Process Service Refund') }}</button></div>
@@ -76,11 +76,11 @@
 </div>
 
 <div class="page-head" style="margin-top:6px; align-items:flex-end;">
-  <div class="section-title" style="margin:0;">Recent Refunds</div>
+  <div class="section-title" style="margin:0;">{{ _('Recent Refunds') }}</div>
   <form class="search-bar" method="get" style="margin:0;">
     <input type="date" name="date" value="{{ date_filter or '' }}">
     <button class="btn secondary" type="submit">{{ _('View by Date') }}</button>
-    {% if date_filter %}<a class="btn secondary" href="{{ url_for('sales.refunds_page') }}">Clear</a>{% endif %}
+    {% if date_filter %}<a class="btn secondary" href="{{ url_for('sales.refunds_page') }}">{{ _('Clear') }}</a>{% endif %}
   </form>
 </div>
 {% if date_filter %}<p class="small muted" style="margin:-6px 0 12px;">Showing refunds on {{ date_filter }} only.</p>{% endif %}
@@ -96,10 +96,10 @@
       <td class="small">{{ r.refund_date|localdate }}</td>
       <td>
         {% if r.refund_type == 'retail' %}
-          <span class="badge primary">Retail</span>
-          {% if r.restocked %}<span class="badge ok">Restocked</span>{% else %}<span class="badge muted">Not restocked</span>{% endif %}
+          <span class="badge primary">{{ _('Retail') }}</span>
+          {% if r.restocked %}<span class="badge ok">{{ _('Restocked') }}</span>{% else %}<span class="badge muted">{{ _('Not restocked') }}</span>{% endif %}
         {% else %}
-          <span class="badge warn">Service</span>
+          <span class="badge warn">{{ _('Service') }}</span>
         {% endif %}
       </td>
       <td class="small">

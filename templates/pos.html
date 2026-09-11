@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Point of Sale — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>{{ _('Point of Sale') }}</h1><p class="page-sub">Scan or search a Retail item to add it to the sale.</p></div></div>
+<div class="page-head"><div><h1>{{ _('Point of Sale') }}</h1><p class="page-sub">{{ _('Scan or search a Retail item to add it to the sale.') }}</p></div></div>
 
 <div class="pos-grid">
   <div class="card">
@@ -13,10 +13,10 @@
   </div>
 
   <div class="card">
-    <div class="section-title" style="margin-top:0;">Current Sale</div>
-    <div id="cartLines"><div class="empty-note" id="emptyCart">Cart is empty.</div></div>
+    <div class="section-title" style="margin-top:0;">{{ _('Current Sale') }}</div>
+    <div id="cartLines"><div class="empty-note" id="emptyCart">{{ _('Cart is empty.') }}</div></div>
     <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
-      <div class="detail-item"><div class="k">Subtotal</div><div class="v" id="cartSubtotal">0 {{ currency_label() }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('Subtotal') }}</div><div class="v" id="cartSubtotal">0 {{ currency_label() }}</div></div>
       <div class="field" style="margin:10px 0;">
         <label for="discountInput">Discount % (Max {{ discount_cap }}%)</label>
         <input type="number" id="discountInput" min="0" max="{{ discount_cap }}" value="{{ fv(form, 'discount_percent', '0') }}" data-vzh="pos-1">
@@ -25,13 +25,13 @@
         <label for="cleanupInput">Clean Up (max {{ CLEANUP_CAP }} {{ currency_label() }})</label>
         <input type="number" id="cleanupInput" step="0.001" min="0" value="{{ fv(form, 'cleanup_amount', '0') }}" data-vzh="pos-1">
       </div>
-      <div class="detail-item"><div class="k">Total</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 {{ currency_label() }}</div></div>
+      <div class="detail-item"><div class="k">{{ _('Total') }}</div><div class="v" style="font-size:20px; font-weight:700;" id="cartTotal">0 {{ currency_label() }}</div></div>
       <div class="field" style="margin:10px 0;">
         <label for="paymentMethod">{{ _('Payment Method') }}</label>
         <select id="paymentMethod" data-vzh="pos-2">
-          <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Cash' }}>Cash</option>
-          <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Card' }}>Card</option>
-          <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Transfer' }}>Transfer</option>
+          <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Cash' }}>{{ _('Cash') }}</option>
+          <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Card' }}>{{ _('Card') }}</option>
+          <option {{ 'selected' if fv(form, 'payment_method', 'Cash')=='Transfer' }}>{{ _('Transfer') }}</option>
         </select>
       </div>
       <div id="cashFields" style="display:{{ 'none' if form and fv(form, 'payment_method', 'Cash')!='Cash' else '' }};">
@@ -39,7 +39,7 @@
           <label for="cashReceivedInput">Cash Received ({{ currency_label() }})</label>
           <input type="number" id="cashReceivedInput" step="0.001" min="0" value="{{ fv(form, 'cash_received') }}" data-vzh="pos-1">
         </div>
-        <div class="detail-item"><div class="k">Change Due</div><div class="v" style="font-size:18px; font-weight:700;" id="changeDue">—</div></div>
+        <div class="detail-item"><div class="k">{{ _('Change Due') }}</div><div class="v" style="font-size:18px; font-weight:700;" id="changeDue">—</div></div>
         <div class="meta small" id="changeNote" style="margin-top:2px;"></div>
       </div>
       <form method="post" action="{{ url_for('sales.pos_checkout') }}" id="checkoutForm">

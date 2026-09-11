@@ -3,13 +3,13 @@
 {% block content %}
 <div class="page-head">
   <div><h1>{{ _('Patients') }}</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} on file.{% endif %} New patients are created from Log a Visit.</p></div>
-  <a class="btn" href="{{ url_for('clinical.visit_new_start') }}">+ Log a Visit</a>
+  <a class="btn" href="{{ url_for('clinical.visit_new_start') }}">{{ _('+ Log a Visit') }}</a>
 </div>
 
 <form class="search-bar" method="get">
   <input type="text" name="q" placeholder="{{ _('Search ID, Animal, Microchip, Owner, or Phone…') }}" value="{{ search }}">
   <button class="btn secondary" type="submit">{{ _('Search') }}</button>
-  {% if search %}<a class="btn secondary" href="{{ url_for('clinical.patients_list') }}">Clear</a>{% endif %}
+  {% if search %}<a class="btn secondary" href="{{ url_for('clinical.patients_list') }}">{{ _('Clear') }}</a>{% endif %}
 </form>
 
 <div class="filter-chips">
@@ -29,7 +29,7 @@
       <td class="muted">{{ p.id }}</td><td><strong>{{ p.animal_name }}</strong></td><td>{{ p.species }}</td>
       <td>{{ p.sex or "—" }}</td><td>{{ p.owner_name }}</td><td>{{ p.owner_phone or "—" }}</td>
     </tr>
-    {% else %}<tr><td colspan="6" class="empty-note">No patients match.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="6" class="empty-note">{{ _('No patients match.') }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>
