@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Yearly P&amp;L — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Yearly P&L') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div><h1>{{ _('Yearly P&L') }}</h1><p class="page-sub">{{ _('Same figures as Monthly P&L, rolled up by year. %(total_count)s year(s) shown.', total_count=total_count) }}</p></div>

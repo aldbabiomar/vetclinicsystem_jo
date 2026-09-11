@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Boarding — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Boarding') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Boarding') }}</h1><p class="page-sub">{{ total_count }} {{ 'boarding session(s)' }}{% if not show_all %} currently boarding{% endif %}.</p></div>
+  <div><h1>{{ _('Boarding') }}</h1><p class="page-sub">{% if show_all %}{{ _('%(total_count)s boarding session(s).', total_count=total_count) }}{% else %}{{ _('%(total_count)s boarding session(s) currently boarding.', total_count=total_count) }}{% endif %}</p></div>
   <button class="btn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="boarding-1">{{ _('+ Add Boarding') }}</button>
 </div>
 
@@ -29,7 +29,7 @@
       <div class="field"><label for="boarding-1-room">{{ _('Allocated Room') }}</label><input id="boarding-1-room" name="room" value="{{ fv(new_form, 'room') }}"></div>
       <div class="field"><label for="boarding-2-admitted_items">{{ _('Admitted Items (Leash, Bed, Etc.)') }}</label><input id="boarding-2-admitted_items" name="admitted_items" value="{{ fv(new_form, 'admitted_items') }}"></div>
       <div class="field"><label for="pricePerDayField">{{ _('Price per Day (%(currency_label)s)', currency_label=currency_label()) }}</label><input type="number" step="0.001" min="0" name="price_per_day" id="pricePerDayField" value="{{ fv(new_form, 'price_per_day') }}" data-vzh="boarding-2"></div>
-      <div class="field"><label for="totalField">Total ({{ currency_label() }})</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="{{ _('Auto-suggested from price × nights') }}"></div>
+      <div class="field"><label for="totalField">{{ _('Total (%(currency_label)s)', currency_label=currency_label()) }}</label><input type="number" step="0.001" min="0" name="total" id="totalField" value="{{ fv(new_form, 'total') }}" placeholder="{{ _('Auto-suggested from price × nights') }}"></div>
       <div class="field full" id="boardingDateWarning" style="display:none; color:var(--danger);"></div>
       <div class="field full">
         <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
@@ -62,7 +62,7 @@
       </label>
       <div id="incidentContactFields" style="display:none;">
         <div class="field" style="margin-bottom:10px;"><label for="boarding-4-contact_method">{{ _('How?') }}</label>
-          <select id="boarding-4-contact_method" name="contact_method"><option>{{ _('Phone Call') }}</option><option>{{ _('Text Message') }}</option></select>
+          <select id="boarding-4-contact_method" name="contact_method"><option value="Phone Call">{{ _('Phone Call') }}</option><option value="Text Message">{{ _('Text Message') }}</option></select>
         </div>
         <div class="field full" style="margin-bottom:12px;"><label for="boarding-5-response">{{ _('Owner\'s Response') }}</label><textarea id="boarding-5-response" name="response"></textarea></div>
       </div>
@@ -80,15 +80,15 @@
     <p class="small muted" id="paymentPatientLabel" style="margin-bottom:12px;"></p>
     <form method="post" id="paymentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field" style="margin-bottom:10px;"><label for="boarding-6-amount">Amount ({{ currency_label() }})</label><input id="boarding-6-amount" type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
+      <div class="field" style="margin-bottom:10px;"><label for="boarding-6-amount">{{ _('Amount (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="boarding-6-amount" type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="paymentDiscountInput">{{ _('Discount (max %(discount_cap)s%%)', discount_cap=discount_cap) }}</label><input type="number" step="0.01" min="0" max="{{ discount_cap }}" name="discount_percent" id="paymentDiscountInput" value="{{ fv(form, 'discount_percent') if payment_error_id else '0' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="boarding-7-cleanup_amount">{{ _('Clean Up (max %(CLEANUP_CAP)s %(currency_label)s)', CLEANUP_CAP=CLEANUP_CAP, currency_label=currency_label()) }}</label><input id="boarding-7-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error_id else '0' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="boarding-8-method">{{ _('Method') }}</label>
         <select id="boarding-8-method" name="method">
           {% set m = fv(form, 'method', 'Cash') if payment_error_id else 'Cash' %}
-          <option {{ 'selected' if m=='Cash' }}>{{ _('Cash') }}</option>
-          <option {{ 'selected' if m=='Card' }}>{{ _('Card') }}</option>
-          <option {{ 'selected' if m=='Transfer' }}>{{ _('Transfer') }}</option>
+          <option value="Cash" {{ 'selected' if m=='Cash' }}>{{ _('Cash') }}</option>
+          <option value="Card" {{ 'selected' if m=='Card' }}>{{ _('Card') }}</option>
+          <option value="Transfer" {{ 'selected' if m=='Transfer' }}>{{ _('Transfer') }}</option>
         </select>
       </div>
       <div class="field full" style="margin-bottom:12px;"><label for="boarding-9-notes">{{ _('Notes') }}</label><input id="boarding-9-notes" name="notes" value="{{ fv(form, 'notes') if payment_error_id else '' }}"></div>
@@ -104,7 +104,7 @@
 <table>
   <thead><tr>
     <th scope="col">{{ _('Patient') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Room') }}</th><th scope="col">{{ _('Entry') }}</th><th scope="col">{{ _('Dismissal') }}</th>
-    <th scope="col" class="num-col">Total ({{ currency_label() }})</th><th scope="col">{{ _('Payment') }}</th><th scope="col">{{ _('Special Needs') }}</th><th scope="col">{{ _('Incidents') }}</th><th scope="col"></th>
+    <th scope="col" class="num-col">{{ _('Total (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col">{{ _('Payment') }}</th><th scope="col">{{ _('Special Needs') }}</th><th scope="col">{{ _('Incidents') }}</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for s in sessions %}
@@ -152,7 +152,7 @@
           <div class="field"><label for="stay-room-{{ s.id }}">{{ _('Room') }}</label><input id="stay-room-{{ s.id }}" name="room" value="{{ fv(row_form, 'room', s.room or '') }}"></div>
           <div class="field"><label for="stay-admitted_items-{{ s.id }}">{{ _('Admitted Items') }}</label><input id="stay-admitted_items-{{ s.id }}" name="admitted_items" value="{{ fv(row_form, 'admitted_items', s.admitted_items or '') }}"></div>
           <div class="field"><label for="stay-price_per_day-{{ s.id }}">{{ _('Price per Day (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="stay-price_per_day-{{ s.id }}" type="number" step="0.001" name="price_per_day" value="{{ fv(row_form, 'price_per_day', s.price_per_day if s.price_per_day is not none else '') }}"></div>
-          <div class="field"><label for="stay-total-{{ s.id }}">Total ({{ currency_label() }})</label><input id="stay-total-{{ s.id }}" type="number" step="0.001" name="total" placeholder="{{ _('Auto-suggested from price × nights') }}"
+          <div class="field"><label for="stay-total-{{ s.id }}">{{ _('Total (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="stay-total-{{ s.id }}" type="number" step="0.001" name="total" placeholder="{{ _('Auto-suggested from price × nights') }}"
             value="{{ fv(row_form, 'total', s.total if (s.total is not none and not s.total_is_auto) else '') }}"></div>
           <div class="field full">
             <label class="checkbox-row small" style="text-transform:none; font-weight:500;">
@@ -181,21 +181,21 @@ searchInput.addEventListener('input', () => {
   clearTimeout(debounceTimer);
   const q = searchInput.value.trim();
   if (q.length === 0) { resultsDiv.innerHTML = ''; return; }
-  if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">Type at least 2 characters.</div>'; return; }
+  if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">' + {{ _('Type at least 2 characters.')|tojson }} + '</div>'; return; }
   debounceTimer = setTimeout(() => {
     fetch(`{{ url_for('clinical.api_patients_search') }}?q=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .then(data => {
-        if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
+        if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">' + {{ _('No matches.')|tojson }} + '</div>'; return; }
         window.__boardingSearchResults = data;
         resultsDiv.innerHTML = data.map((p, idx) =>
           `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" data-vz-act="boarding-12">
              <div><div class="who">${escapeHtml(p.animal_name)} <span class="meta">(${escapeHtml(p.species || '')})</span></div>
-             <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || 'no phone')} · ${escapeHtml(p.id)}${p.microchip ? ' · Chip: ' + escapeHtml(p.microchip) : ''}</div></div>
+             <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || {{ _('no phone')|tojson }})} · ${escapeHtml(p.id)}${p.microchip ? ' · Chip: ' + escapeHtml(p.microchip) : ''}</div></div>
            </div>`
         ).join('');
       })
-      .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">Could not search patients; check server connection.</div>'; });
+      .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">' + {{ _('Could not search patients; check server connection.')|tojson }} + '</div>'; });
   }, 200);
 });
 function selectPatient(p) {
@@ -212,10 +212,10 @@ function suggestTotal() {
   const warningEl = document.getElementById('boardingDateWarning');
   if (dismissal && entry && new Date(dismissal) < new Date(entry)) {
     warningEl.style.display = 'block';
-    warningEl.textContent = 'Expected Dismissal Date is before Entry Date — billing will still count as 1 night. Please double-check these dates.';
+    warningEl.textContent = {{ _('Expected Dismissal Date is before Entry Date — billing will still count as 1 night. Please double-check these dates.')|tojson }};
   } else if (dismissal && entry && dismissal === entry) {
     warningEl.style.display = 'block';
-    warningEl.textContent = 'Same-day boarding is billed as 1 night.';
+    warningEl.textContent = {{ _('Same-day boarding is billed as 1 night.')|tojson }};
   } else {
     warningEl.style.display = 'none';
     warningEl.textContent = '';

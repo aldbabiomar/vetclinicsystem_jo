@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Something Went Wrong — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Something Went Wrong') }} — {{ clinic_name }}{% endblock %}
 
 {# Same dual-block pattern as error_404.html — a crash can happen while
    logged out too (e.g. the database itself is down at the login page). #}

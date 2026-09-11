@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Owners — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Owners') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Owners') }}</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} on file.{% endif %}</p></div>
+  <div><h1>{{ _('Owners') }}</h1><p class="page-sub">{% if search %}{{ _('%(total_count)s result(s) for "%(search)s".', total_count=total_count, search=search) }}{% else %}{{ _('%(total_count)s on file.', total_count=total_count) }}{% endif %}</p></div>
   <a class="btn" href="{{ url_for('clinical.owner_new') }}">{{ _('+ New Owner') }}</a>
 </div>
 <form class="search-bar" method="get">

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}{{ case.animal_name }} — Inpatient — {{ clinic_name }}{% endblock %}
+{% block title %}{{ case.animal_name }} — {{ _('Inpatient') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>{{ case.animal_name }} <span class="muted" style="font-weight:400;font-size:16px;">— {{ case.owner_name }}</span></h1>
-    <p class="page-sub">Admitted {{ case.admission_date|localdate }} · <span class="badge {{ 'ok' if case.dismissed else 'warn' }}">{{ 'Discharged' if case.dismissed else 'Admitted' }}</span></p>
+    <p class="page-sub">{{ _('Admitted %(admission_date)s', admission_date=case.admission_date|localdate) }} · <span class="badge {{ 'ok' if case.dismissed else 'warn' }}">{{ _('Discharged') if case.dismissed else _('Admitted') }}</span></p>
   </div>
   <a class="btn secondary" href="{{ url_for('clinical.inpatient_export_pdf', case_id=case.id) }}">{{ _('Export Inpatient (PDF)') }}</a>
 </div>
@@ -116,11 +116,11 @@
   </div>
   <div class="section-title">{{ _('Last 3 Days') }}</div>
   {% for c in recent_contacts %}
-  <div class="list-line"><div><span class="badge {{ 'ok' if c.picked_up else 'danger' }}">{{ 'Picked Up' if c.picked_up else 'No Answer' }}</span> <span class="meta">{{ c.timestamp[:16] }} · {{ c.full_name or "—" }}</span></div><div class="meta">{{ c.notes or '' }}</div></div>
+  <div class="list-line"><div><span class="badge {{ 'ok' if c.picked_up else 'danger' }}">{{ _('Picked Up') if c.picked_up else _('No Answer') }}</span> <span class="meta">{{ c.timestamp[:16] }} · {{ c.full_name or "—" }}</span></div><div class="meta">{{ c.notes or '' }}</div></div>
   {% else %}<div class="empty-note">{{ _('No contact attempts logged yet.') }}</div>{% endfor %}
   {% if contacts|length > 3 %}
   <details style="margin-top:10px;"><summary class="small muted" style="cursor:pointer;">{{ _('View all %(contacts)s contact attempts', contacts=contacts|length) }}</summary>
-    {% for c in contacts %}<div class="list-line"><div><span class="badge {{ 'ok' if c.picked_up else 'danger' }}">{{ 'Picked Up' if c.picked_up else 'No Answer' }}</span> <span class="meta">{{ c.timestamp[:16] }} · {{ c.full_name or "—" }}</span></div><div class="meta">{{ c.notes or '' }}</div></div>{% endfor %}
+    {% for c in contacts %}<div class="list-line"><div><span class="badge {{ 'ok' if c.picked_up else 'danger' }}">{{ _('Picked Up') if c.picked_up else _('No Answer') }}</span> <span class="meta">{{ c.timestamp[:16] }} · {{ c.full_name or "—" }}</span></div><div class="meta">{{ c.notes or '' }}</div></div>{% endfor %}
   </details>
   {% endif %}
 </div>
@@ -176,9 +176,9 @@
       <div class="field"><label for="inpatientdetail-14-method">{{ _('Method') }}</label>
         <select id="inpatientdetail-14-method" name="method">
           {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}
-          <option {{ 'selected' if m=='Cash' }}>{{ _('Cash') }}</option>
-          <option {{ 'selected' if m=='Card' }}>{{ _('Card') }}</option>
-          <option {{ 'selected' if m=='Transfer' }}>{{ _('Transfer') }}</option>
+          <option value="Cash" {{ 'selected' if m=='Cash' }}>{{ _('Cash') }}</option>
+          <option value="Card" {{ 'selected' if m=='Card' }}>{{ _('Card') }}</option>
+          <option value="Transfer" {{ 'selected' if m=='Transfer' }}>{{ _('Transfer') }}</option>
         </select>
       </div>
       <button class="btn small secondary" type="submit">{{ _('Add') }}</button>

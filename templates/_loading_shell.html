@@ -15,7 +15,7 @@
     onDone: () => { window.location = {{ reload_url | tojson }}; },
     onError: (d) => {
       window.VZProgress.render(panel, { status: 'error', steps: ['Loading'], current: 0, message: d.message });
-      window.VZToast.show(d.message || 'Something went wrong loading this page.', 'error');
+      window.VZToast.show(d.message || {{ _('Something went wrong loading this page.')|tojson }}, 'error');
     },
   });
 })();

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Sale #{{ sale.id }} — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Sale #%(sale_id)s', sale_id=sale.id) }} — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Sale #{{ sale.id }}</h1><p class="page-sub">{{ sale.sale_date|localdate }}</p></div>
+<div class="page-head"><div><h1>{{ _('Sale #%(sale_id)s', sale_id=sale.id) }}</h1><p class="page-sub">{{ sale.sale_date|localdate }}</p></div>
   <a class="btn secondary" href="{{ url_for('sales.pos_page') }}">{{ _('New Sale') }}</a>
 </div>
 <div class="card" style="max-width:420px;">

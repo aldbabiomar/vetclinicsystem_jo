@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Logins and Changes — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Logins and Changes') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div><h1>{{ _('Logins and Changes') }}</h1><p class="page-sub">{{ _('Pick a date to review who logged in and what was changed.') }}</p></div>
@@ -18,11 +18,11 @@
     <tr>
       <td class="muted">{{ c.timestamp[11:19] }}</td>
       <td>{{ c.username or "—" }}</td>
-      <td><span class="badge {{ 'ok' if c.action=='create' else ('danger' if c.action=='delete' else 'warn') }}">{{ c.action }}</span></td>
+      <td><span class="badge {{ 'ok' if c.action=='create' else ('danger' if c.action=='delete' else 'warn') }}">{{ c.action|tr }}</span></td>
       <td>{{ c.table_name }}</td>
       <td class="muted">{{ c.record_id }}</td>
       <td>{{ c.field or "—" }}</td>
-      <td class="small">{% if c.field %}{{ c.old_value or "—" }} → {{ c.new_value or "—" }}{% else %}whole record{% endif %}</td>
+      <td class="small">{% if c.field %}{{ c.old_value or "—" }} → {{ c.new_value or "—" }}{% else %}{{ _('whole record') }}{% endif %}</td>
     </tr>
     {% else %}
     <tr><td colspan="7" class="empty-note">{{ _('No changes logged on this date.') }}</td></tr>
@@ -40,7 +40,7 @@
     <tr>
       <td class="muted">{{ l.timestamp[11:19] }}</td>
       <td>{{ l.username }}</td>
-      <td><span class="badge {{ 'ok' if l.success else 'danger' }}">{{ 'Success' if l.success else 'Failed' }}</span></td>
+      <td><span class="badge {{ 'ok' if l.success else 'danger' }}">{{ _('Success') if l.success else _('Failed') }}</span></td>
       <td class="muted">{{ l.ip }}</td>
       <td class="small">{{ l.device }}</td>
     </tr>

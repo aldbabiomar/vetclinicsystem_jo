@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1>{{ visit.animal_name }} <span class="muted" style="font-weight:400;font-size:16px;">— {{ visit.date|localdate }}</span></h1>
-    <p class="page-sub">{{ visit.id }} · Owner: {{ visit.owner_name }}{% if visit.owner_phone %} ({{ visit.owner_phone }}){% endif %}</p>
+    <p class="page-sub">{{ visit.id }} · {{ _('Owner: %(owner)s', owner=visit.owner_name) }}{% if visit.owner_phone %} ({{ visit.owner_phone }}){% endif %}</p>
   </div>
   <div style="display:flex; gap:10px;">
     <a class="btn secondary" href="{{ url_for('clinical.visit_export_pdf', visit_id=visit.id) }}">{{ _('Export Visit (PDF)') }}</a>
@@ -107,7 +107,7 @@
           <div id="visitBillFieldsHidden"></div>
         </div>
         <div id="manualFields" class="field full" style="margin-bottom:12px;">
-          <label for="visitdetail-1-manual_amount">Billed Amount ({{ currency_label() }}) — Exported as "Veterinary Services"</label>
+          <label for="visitdetail-1-manual_amount">{{ _('Billed Amount (%(currency_label)s)', currency_label=currency_label()) }} {{ _('— Exported as "Veterinary Services"') }}</label>
           <input id="visitdetail-1-manual_amount" type="number" step="0.001" name="manual_amount" value="{{ fv(form, 'manual_amount', billing.manual_amount if billing and billing.manual_amount else '') }}">
         </div>
         <div class="field full" style="margin-bottom:12px;"><label for="visitdetail-2-date_billed">{{ _('Date Billed') }}</label><input id="visitdetail-2-date_billed" type="date" name="date_billed" required value="{{ fv(form, 'date_billed', billing.date_billed if billing else (visit.date or today)) }}"></div>
@@ -136,9 +136,9 @@
         <div class="field"><label for="visitdetail-7-method">{{ _('Method') }}</label>
           <select id="visitdetail-7-method" name="method">
             {% set m = fv(form, 'method', 'Cash') if payment_error else 'Cash' %}
-            <option {{ 'selected' if m=='Cash' }}>{{ _('Cash') }}</option>
-            <option {{ 'selected' if m=='Card' }}>{{ _('Card') }}</option>
-            <option {{ 'selected' if m=='Transfer' }}>{{ _('Transfer') }}</option>
+            <option value="Cash" {{ 'selected' if m=='Cash' }}>{{ _('Cash') }}</option>
+            <option value="Card" {{ 'selected' if m=='Card' }}>{{ _('Card') }}</option>
+            <option value="Transfer" {{ 'selected' if m=='Transfer' }}>{{ _('Transfer') }}</option>
           </select>
         </div>
         <button class="btn small secondary" type="submit">{{ _('Add') }}</button>
@@ -183,20 +183,20 @@ visitBillSearchInput.addEventListener('input', () => {
     fetch(`{{ url_for('inventory.api_price_list_lookup') }}?q=${encodeURIComponent(q)}&category=Service&category=Medicine`)
       .then(r => r.json())
       .then(list => {
-        if (!list.length) { visitBillResultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
+        if (!list.length) { visitBillResultsDiv.innerHTML = '<div class="empty-note">' + {{ _('No matches.')|tojson }} + '</div>'; return; }
         window.__visitBillResults = list;
         visitBillResultsDiv.innerHTML = list.map((i, idx) =>
           `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" data-vz-act="visit-detail-5">
-             <div class="who">${escapeHtml(i.name)}</div><div class="meta">${i.category} · ${i.price != null ? i.price + ' {{ currency_label() }}' : 'no price set'}</div>
+             <div class="who">${escapeHtml(i.name)}</div><div class="meta">${i.category} · ${i.price != null ? i.price + ' {{ currency_label() }}' : {{ _('no price set')|tojson }}}</div>
            </div>`
         ).join('');
       })
-      .catch(() => { visitBillResultsDiv.innerHTML = '<div class="empty-note">Could not search the Price List; check server connection.</div>'; });
+      .catch(() => { visitBillResultsDiv.innerHTML = '<div class="empty-note">' + {{ _('Could not search the Price List; check server connection.')|tojson }} + '</div>'; });
   }, 200);
 });
 
 function addToVisitBillCart(item) {
-  if (item.price == null) { window.VZToast.show(item.name + ' has no sale price set in the Price List.', 'error'); return; }
+  if (item.price == null) { window.VZToast.show({{ _('{name} has no sale price set in the Price List.')|tojson }}.replace('{name}', item.name), 'error'); return; }
   const existing = visitBillCart.find(c => c.id === item.id);
   if (existing) { existing.qty += 1; } else { visitBillCart.push({id: item.id, name: item.name, price: item.price, qty: 1}); }
   visitBillSearchInput.value = '';
@@ -221,7 +221,7 @@ function removeVisitBillLine(id) {
 }
 function renderVisitBillCart() {
   const cartDiv = document.getElementById('visitBillCart');
-  if (!visitBillCart.length) { cartDiv.innerHTML = '<div class="empty-note">No items added yet.</div>'; return; }
+  if (!visitBillCart.length) { cartDiv.innerHTML = '<div class="empty-note">' + {{ _('No items added yet.')|tojson }} + '</div>'; return; }
   cartDiv.innerHTML = visitBillCart.map(c => `
     <div class="pos-cart-line">
       <div>${escapeHtml(c.name)}<div class="meta small">${c.price} {{ currency_label() }} each</div></div>
@@ -237,7 +237,7 @@ renderVisitBillCart();
 
 function prepareBillingSubmit() {
   if (document.getElementById('btAuto').checked) {
-    if (!visitBillCart.length) { window.VZToast.show('Add at least one billed item.', 'error'); return false; }
+    if (!visitBillCart.length) { window.VZToast.show({{ _('Add at least one billed item.')|tojson }}, 'error'); return false; }
     const container = document.getElementById('visitBillFieldsHidden');
     container.innerHTML = '';
     visitBillCart.forEach(c => {

@@ -31,7 +31,7 @@ from flask import (
     session, send_from_directory, send_file, abort
 )
 from flask.json.provider import DefaultJSONProvider
-from flask_babel import Babel, get_locale, gettext as _
+from flask_babel import Babel, get_locale, gettext as _, format_date
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
@@ -490,6 +490,22 @@ def localdate_filter(d):
     cannot shadow Jinja/Python `date` in a template that also uses it."""
     formatted = logic.fmt_date(d) if not isinstance(d, str) else d
     if formatted and str(get_locale()) == "ar":
+        formatted = to_arabic_indic_digits(formatted)
+    return formatted
+
+
+@app.template_filter("weekdate")
+def weekdate_filter(d):
+    """Short "Mon 14 Sep" style date, in the current locale.
+
+    strftime's %a/%b are C-locale and stay English no matter what Babel is
+    set to, so they cannot be used for anything a user reads."""
+    if not d:
+        return ""
+    # flask_babel.format_date resolves the locale from the request itself;
+    # it takes no `locale=` keyword (that is babel.dates.format_date).
+    formatted = format_date(d, "EEE d MMM")
+    if str(get_locale()) == "ar":
         formatted = to_arabic_indic_digits(formatted)
     return formatted
 

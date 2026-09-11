@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Settle — {{ distributor.name }} — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Settle') }} — {{ distributor.name }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
@@ -16,8 +16,8 @@
     <tr><td>{{ _('New activity this period') }}</td><td class="num-col">{{ balance.new_activity|money }} {{ currency_label() }}</td></tr>
     <tr style="font-weight:600; border-top:1px solid var(--line);"><td>{{ _('Amount Owed Now') }}</td><td class="num-col">{{ balance.amount_owed|money }} {{ currency_label() }}</td></tr>
   </table>
-  <p class="small muted" style="margin-top:10px;">Period: {{ balance.period_start[:10] if balance.period_start else 'start' }} — {{ balance.period_end[:10] }}
-    · {{ balance.units_sold_since|round(2) }} unit(s) sold since last settlement.</p>
+  <p class="small muted" style="margin-top:10px;">{{ _('Period: %(start)s — %(end)s', start=balance.period_start[:10] if balance.period_start else _('start'), end=balance.period_end[:10]) }}
+    · {{ _('%(units)s unit(s) sold since last settlement.', units=balance.units_sold_since|round(2)) }}</p>
 
   {% if has_permission('manage_consignment_settlements') %}
   <form method="post" action="{{ url_for('consignment.consignment_settlement_new', distributor_id=distributor.id) }}" class="form-grid" style="margin-top:16px;" data-confirm="Record this settlement? The amount owed will be recalculated at the moment you submit.">
@@ -26,7 +26,7 @@
     <div class="field"><label for="consignmentsettlements-2-payment_method">{{ _('Payment Method') }}</label>
       <select id="consignmentsettlements-2-payment_method" name="payment_method">
         <option value="" {{ 'selected' if fv(form, 'payment_method')=='' }}>—</option>
-        <option {{ 'selected' if fv(form, 'payment_method')=='Cash' }}>{{ _('Cash') }}</option><option {{ 'selected' if fv(form, 'payment_method')=='Card' }}>{{ _('Card') }}</option><option {{ 'selected' if fv(form, 'payment_method')=='Transfer' }}>{{ _('Transfer') }}</option>
+        <option value="Cash" {{ 'selected' if fv(form, 'payment_method')=='Cash' }}>{{ _('Cash') }}</option><option value="Card" {{ 'selected' if fv(form, 'payment_method')=='Card' }}>{{ _('Card') }}</option><option value="Transfer" {{ 'selected' if fv(form, 'payment_method')=='Transfer' }}>{{ _('Transfer') }}</option>
       </select>
     </div>
     <div class="field full"><label for="consignmentsettlements-3-notes">{{ _('Notes') }}</label><input id="consignmentsettlements-3-notes" name="notes" value="{{ fv(form, 'notes') }}"></div>
@@ -42,8 +42,8 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Period') }}</th><th scope="col" class="num-col">Owed ({{ currency_label() }})</th><th scope="col" class="num-col">Paid ({{ currency_label() }})</th>
-    <th scope="col" class="num-col">Residual ({{ currency_label() }})</th><th scope="col">{{ _('Method') }}</th><th scope="col">{{ _('Recorded By') }}</th><th scope="col"></th>
+    <th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Period') }}</th><th scope="col" class="num-col">{{ _('Owed (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col" class="num-col">{{ _('Paid (%(currency_label)s)', currency_label=currency_label()) }}</th>
+    <th scope="col" class="num-col">{{ _('Residual (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col">{{ _('Method') }}</th><th scope="col">{{ _('Recorded By') }}</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for s in history %}

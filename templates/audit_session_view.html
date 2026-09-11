@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Audit — {{ sess.audit_date|localdate }} — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Audit') }} — {{ sess.audit_date|localdate }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Audit — {{ sess.audit_date|localdate }}</h1>
-    <p class="page-sub">{{ _('Performed by %(sess)s ·', sess=sess.performed_by_name or "—") }} <span class="badge {{ 'ok' if sess.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if sess.status=='Confirmed' else 'Saved' }}</span></p>
+    <h1>{{ _('Audit — %(audit_date)s', audit_date=sess.audit_date|localdate) }}</h1>
+    <p class="page-sub">{{ _('Performed by %(sess)s ·', sess=sess.performed_by_name or "—") }} <span class="badge {{ 'ok' if sess.status=='Confirmed' else 'warn' }}">{{ _('Confirmed') if sess.status=='Confirmed' else _('Saved') }}</span></p>
   </div>
   {% if not readonly %}
   <div style="display:flex; gap:10px;">
@@ -89,10 +89,10 @@ function confirmAudit() {
   });
   const missing = totalItems - counted;
   let lines = [];
-  lines.push(`${counted} of ${totalItems} items have a Stock Counted value entered.`);
-  if (missing > 0) lines.push(`${missing} item(s) have no Stock Counted value and will be skipped (kept unchanged).`);
-  if (negative > 0) lines.push(`⚠ ${negative} item(s) have a negative Stock Counted value — please check before confirming.`);
-  if (suspiciousZero > 0) lines.push(`${suspiciousZero} item(s) are counted as 0 in stock — please double-check these.`);
+  lines.push({{ _('{counted} of {total} items have a Stock Counted value entered.')|tojson }}.replace('{counted}', counted).replace('{total}', totalItems));
+  if (missing > 0) lines.push({{ _('{missing} item(s) have no Stock Counted value and will be skipped (kept unchanged).')|tojson }}.replace('{missing}', missing));
+  if (negative > 0) lines.push('⚠ ' + {{ _('{negative} item(s) have a negative Stock Counted value — please check before confirming.')|tojson }}.replace('{negative}', negative));
+  if (suspiciousZero > 0) lines.push({{ _('{zero} item(s) are counted as 0 in stock — please double-check these.')|tojson }}.replace('{zero}', suspiciousZero));
   document.getElementById('confirmSummary').innerHTML = lines.map(l => `<div>${l}</div>`).join('');
   document.getElementById('confirmModal').style.display = 'flex';
 }

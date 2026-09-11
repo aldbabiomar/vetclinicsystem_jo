@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Distributors — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Distributors') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
@@ -25,7 +25,7 @@
 <div class="card" style="margin:16px 0;">
   <div class="section-title" style="margin-top:0;">{{ _('Who You Owe Most') }}</div>
   <table>
-    <thead><tr><th scope="col">{{ _('Distributor') }}</th><th scope="col" class="num-col">Outstanding ({{ currency_label() }})</th></tr></thead>
+    <thead><tr><th scope="col">{{ _('Distributor') }}</th><th scope="col" class="num-col">{{ _('Outstanding (%(currency_label)s)', currency_label=currency_label()) }}</th></tr></thead>
     <tbody>
       {% for r in payables.top_outstanding %}
       <tr>
@@ -68,7 +68,7 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Contact') }}</th><th scope="col">{{ _('Phone') }}</th><th scope="col">{{ _('Email') }}</th><th scope="col" class="num-col">{{ _('Lead Time') }}</th><th scope="col">{{ _('Terms') }}</th><th scope="col" class="num-col">Outstanding ({{ currency_label() }})</th><th scope="col"></th>
+    <th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Contact') }}</th><th scope="col">{{ _('Phone') }}</th><th scope="col">{{ _('Email') }}</th><th scope="col" class="num-col">{{ _('Lead Time') }}</th><th scope="col">{{ _('Terms') }}</th><th scope="col" class="num-col">{{ _('Outstanding (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col"></th>
   </tr></thead>
   <tbody>
     {% for d in distributors %}

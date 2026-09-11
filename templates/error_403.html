@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Not Allowed — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Not Allowed') }} — {{ clinic_name }}{% endblock %}
 
 {# A 403 today only ever fires after the login gate (role checks run on
    authenticated routes), so {% block auth_content %} shouldn't normally be

@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Cash Register — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Cash Register') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>{{ _('Cash Register') }}</h1>
-    <p class="page-sub">Every POS sale, Visit/Inpatient/Boarding payment, and refund on {{ day }} — for end-of-day
-      cash-up against what's physically in the till.</p>
+    <p class="page-sub">{{ _('Every POS sale, Visit/Inpatient/Boarding payment, and refund on %(day)s — for end-of-day cash-up against what\'s physically in the till.', day=day) }}</p>
   </div>
 </div>
 
@@ -25,18 +24,18 @@
 <table>
   <thead><tr>
     <th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Employee') }}</th><th scope="col">{{ _('Type') }}</th><th scope="col" class="num-col">{{ _('Subtotal') }}</th>
-    <th scope="col" class="num-col">{{ _('Discount') }}</th><th scope="col" class="num-col">Total ({{ currency_label() }})</th><th scope="col">{{ _('Payment') }}</th>
+    <th scope="col" class="num-col">{{ _('Discount') }}</th><th scope="col" class="num-col">{{ _('Total (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col">{{ _('Payment') }}</th>
   </tr></thead>
   <tbody>
     {% for r in ledger %}
     <tr {% if r.total < 0 %}style="color:var(--danger);"{% endif %}>
       <td class="small">{{ r.event_date[:16] if r.event_date|length > 10 else r.event_date }}</td>
       <td class="small">{{ r.employee or "—" }}</td>
-      <td class="small">{{ r.event_type }}</td>
+      <td class="small">{{ r.event_type|tr }}</td>
       <td class="num-col">{{ r.subtotal|money }}</td>
       <td class="num-col">{{ r.discount_percent }}%</td>
       <td class="num-col">{{ r.total|money }}</td>
-      <td class="small">{{ r.payment_method or "—" }}</td>
+      <td class="small">{{ (r.payment_method or "—")|tr }}</td>
     </tr>
     {% else %}
     <tr><td colspan="7" class="empty-note">{{ _('No money-in/money-out activity recorded on %(day)s.', day=day) }}</td></tr>
@@ -62,9 +61,9 @@
     <tr style="font-weight:650; border-top:2px solid var(--line);">
       <td colspan="3">{{ _('Totals for %(day)s', day=day) }}</td>
       <td colspan="3" class="num-col">
-        Cash {{ totals.Cash|money }} &nbsp;·&nbsp; Card {{ totals.Card|money }} &nbsp;·&nbsp; Transfer {{ totals.Transfer|money }}
-        {% if totals.other %}&nbsp;·&nbsp; Other {{ totals.other|money }}{% endif %}
-        &nbsp;·&nbsp; All {{ totals.all|money }} {{ currency_label() }}
+        {{ _('Cash') }} {{ totals.Cash|money }} &nbsp;·&nbsp; {{ _('Card') }} {{ totals.Card|money }} &nbsp;·&nbsp; {{ _('Transfer') }} {{ totals.Transfer|money }}
+        {% if totals.other %}&nbsp;·&nbsp; {{ _('Other') }} {{ totals.other|money }}{% endif %}
+        &nbsp;·&nbsp; {{ _('All') }} {{ totals.all|money }} {{ currency_label() }}
       </td>
       <td>
         {% if latest_audit %}
@@ -82,22 +81,19 @@
 
 {% if latest_audit %}
 <p class="small muted" style="margin-top:12px;">
-  Last audited {{ latest_audit.created_at[:16] }} by {{ latest_audit.performed_by_name or "—" }} —
-  counted {{ latest_audit.counted_cash|money }} {{ currency_label() }} cash against a system total of {{ latest_audit.system_cash|money }} {{ currency_label() }}
-  ({{ latest_audit.difference|money }} {{ currency_label() }} difference){% if latest_audit.notes %}: "{{ latest_audit.notes }}"{% endif %}.
+  {{ _('Last audited %(at)s by %(who)s — counted %(counted)s %(cur)s cash against a system total of %(system)s %(cur)s (%(difference)s %(cur)s difference)', at=latest_audit.created_at[:16], who=latest_audit.performed_by_name or '—', counted=latest_audit.counted_cash|money, system=latest_audit.system_cash|money, difference=latest_audit.difference|money, cur=currency_label()) }}{% if latest_audit.notes %}: "{{ latest_audit.notes }}"{% endif %}.
 </p>
 {% endif %}
 
 <div id="payoutModal" class="modal-overlay" style="display:{{ 'flex' if payout_form else 'none' }};">
   <div class="modal-box" style="max-width:420px;">
     <h2 style="margin-top:0;">{{ _('Pay From Cash Register') }}</h2>
-    <p class="small muted" style="margin-top:-6px;">Logs cash leaving the till on {{ day }} for a reason that isn't a
-      refund — petty cash, paying a supplier directly out of the drawer, etc.</p>
+    <p class="small muted" style="margin-top:-6px;">{{ _('Logs cash leaving the till on %(day)s for a reason that isn\'t a refund — petty cash, paying a supplier directly out of the drawer, etc.', day=day) }}</p>
     <form method="post" action="{{ url_for('sales.cash_register_payout_new') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="day" value="{{ fv(payout_form, 'day', day) }}">
       <div class="form-grid">
-        <div class="field" style="grid-column:1/-1;"><label for="cashregister-1-amount">Amount ({{ currency_label() }})</label>
+        <div class="field" style="grid-column:1/-1;"><label for="cashregister-1-amount">{{ _('Amount (%(currency_label)s)', currency_label=currency_label()) }}</label>
           <input id="cashregister-1-amount" type="number" name="amount" min="1" step="0.001" required autofocus value="{{ fv(payout_form, 'amount') }}">
         </div>
         <div class="field" style="grid-column:1/-1;"><label for="cashregister-2-reason">{{ _('Reason') }}</label>

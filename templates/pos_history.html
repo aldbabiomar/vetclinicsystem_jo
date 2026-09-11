@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Sales History — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Sales History') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Sales History') }}</h1><p class="page-sub">{{ total_count }} retail sales{% if date_filter %} on {{ date_filter }}{% endif %}.</p></div>
+  <div><h1>{{ _('Sales History') }}</h1><p class="page-sub">{% if date_filter %}{{ _('%(total_count)s retail sales on %(day)s.', total_count=total_count, day=date_filter) }}{% else %}{{ _('%(total_count)s retail sales.', total_count=total_count) }}{% endif %}</p></div>
   <form class="search-bar" method="get" style="margin:0;">
     <input type="date" name="date" value="{{ date_filter or '' }}">
     <button class="btn secondary" type="submit">{{ _('View by Date') }}</button>
@@ -11,7 +11,7 @@
 </div>
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Cashier') }}</th><th scope="col" class="num-col">{{ _('Subtotal') }}</th><th scope="col" class="num-col">{{ _('Discount') }}</th><th scope="col" class="num-col">Total ({{ currency_label() }})</th><th scope="col">{{ _('Payment') }}</th><th scope="col"></th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Cashier') }}</th><th scope="col" class="num-col">{{ _('Subtotal') }}</th><th scope="col" class="num-col">{{ _('Discount') }}</th><th scope="col" class="num-col">{{ _('Total (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col">{{ _('Payment') }}</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for s in sales %}
     <tr>
@@ -19,13 +19,13 @@
       <td class="num-col">{{ s.subtotal|money }}</td>
       <td class="num-col">{{ s.discount_percent }}%</td>
       <td class="num-col">{{ s.total|money }}</td>
-      <td>{{ s.payment_method or "—" }}</td>
+      <td>{{ (s.payment_method or "—")|tr }}</td>
       <td style="white-space:nowrap;">
         <a class="btn small secondary" href="{{ url_for('sales.pos_receipt', sale_id=s.id) }}">{{ _('View') }}</a>
         <a class="btn small secondary" href="{{ url_for('sales.pos_export_receipt', sale_id=s.id) }}">{{ _('Export Bill (PDF)') }}</a>
       </td>
     </tr>
-    {% else %}<tr><td colspan="7" class="empty-note">{% if date_filter %}No sales recorded on {{ date_filter }}.{% else %}No sales yet.{% endif %}</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="7" class="empty-note">{% if date_filter %}{{ _('No sales recorded on %(day)s.', day=date_filter) }}{% else %}{{ _('No sales yet.') }}{% endif %}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Patients — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Patients') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Patients') }}</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} on file.{% endif %} New patients are created from Log a Visit.</p></div>
+  <div><h1>{{ _('Patients') }}</h1><p class="page-sub">{% if search %}{{ _('%(total_count)s result(s) for "%(search)s".', total_count=total_count, search=search) }}{% else %}{{ _('%(total_count)s on file.', total_count=total_count) }}{% endif %} {{ _('New patients are created from Log a Visit.') }}</p></div>
   <a class="btn" href="{{ url_for('clinical.visit_new_start') }}">{{ _('+ Log a Visit') }}</a>
 </div>
 
@@ -13,9 +13,9 @@
 </form>
 
 <div class="filter-chips">
-  {% for key, label in [('id','Patient ID'), ('animal_name','Animal Name'), ('species','Species'), ('owner','Owner')] %}
+  {% for key, label in [('id', _('Patient ID')), ('animal_name', _('Animal Name')), ('species', _('Species')), ('owner', _('Owner'))] %}
   <a class="chip {{ 'active' if sort==key }}" href="{{ url_for('clinical.patients_list', q=search, sort=key, dir='asc' if sort!=key or direction=='desc' else 'desc') }}">
-    Sort: {{ label }} {% if sort==key %}{{ '↓' if direction=='desc' else '↑' }}{% endif %}
+    {{ _('Sort:') }} {{ label }} {% if sort==key %}{{ '↓' if direction=='desc' else '↑' }}{% endif %}
   </a>
   {% endfor %}
 </div>

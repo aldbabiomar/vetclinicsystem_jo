@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Log In — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Log In') }} — {{ clinic_name }}{% endblock %}
 {% block auth_content %}
 <div class="auth-wrap">
   <div class="auth-card">
@@ -34,11 +34,11 @@
         var el = document.getElementById('lockoutCountdown');
         function tick() {
           var msLeft = unlockAt - new Date();
-          if (msLeft <= 0) { el.textContent = 'You can try logging in again now.'; return; }
+          if (msLeft <= 0) { el.textContent = {{ _('You can try logging in again now.')|tojson }}; return; }
           var totalSec = Math.ceil(msLeft / 1000);
           var m = Math.floor(totalSec / 60);
           var s = totalSec % 60;
-          el.textContent = 'Account locked — try again in ' + m + 'm ' + (s < 10 ? '0' : '') + s + 's.';
+          el.textContent = {{ _('Account locked — try again in {m}m {s}s.')|tojson }}.replace('{m}', m).replace('{s}', (s < 10 ? '0' : '') + s);
           setTimeout(tick, 1000);
         }
         tick();

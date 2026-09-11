@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Audit History — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Audit History') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div><h1>{{ _('Audit History') }}</h1><p class="page-sub">{{ _('One session per shelf-walk. Only Confirmed audits count toward Inventory Status and the Ordering Sheet. %(total_count)s shown.', total_count=total_count) }}</p></div>
@@ -15,7 +15,7 @@
     <tr>
       <td>{{ s.audit_date|localdate }}</td>
       <td>{{ s.performed_by_name or "—" }}</td>
-      <td><span class="badge {{ 'ok' if s.status=='Confirmed' else 'warn' }}">{{ 'Confirmed' if s.status=='Confirmed' else 'Saved' }}</span></td>
+      <td><span class="badge {{ 'ok' if s.status=='Confirmed' else 'warn' }}">{{ _('Confirmed') if s.status=='Confirmed' else _('Saved') }}</span></td>
       <td class="num-col">{{ s.lines_filled }}</td>
       <td style="display:flex; gap:6px;">
         <a class="btn small secondary" href="{{ url_for('inventory.audit_session_view', session_id=s.id) }}">{{ _('View') }}</a>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Settings — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Settings') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>{{ _('Settings') }}</h1><p class="page-sub">{{ _('Staff on the clinic network can reach this app at') }} <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.</p></div></div>
 
@@ -71,7 +71,7 @@
 
   <div class="section-title">{{ _('Remote Monitoring (optional)') }}</div>
   <p class="small muted u-mt-tight">
-    {{ _('Off unless you fill this in. When set, this clinic sends a short daily status ping — counts and statuses only, never patient, owner or staff details, and never any amounts. The point is the') }} <em>{{ _('missing') }}</em> {{ _('ping: if this machine stops sending, whoever maintains the system gets told, which is the one thing the app cannot report while it is switched off.') }}
+    {{ _('Off unless you fill this in. When set, this clinic sends a short daily status ping — counts and statuses only, never patient, owner or staff details, and never any amounts. The point is the %(missing)s ping: if this machine stops sending, whoever maintains the system gets told, which is the one thing the app cannot report while it is switched off.', missing=('<em>%s</em>'|safe) % _('missing')) }}
   </p>
   <div class="form-grid">
     <div class="field full">
@@ -79,7 +79,7 @@
       <input id="settings-12-heartbeat_url" name="heartbeat_url" type="url" placeholder="{{ _('https://… (leave blank to disable)') }}"
              value="{{ settings.heartbeat_url or '' }}" autocomplete="off" spellcheck="false">
       <p class="small muted u-stack-2">
-        {{ _('Must start with') }} <code>https://</code>{{ _('. Use a different URL for each clinic, so an alert can say which one went quiet.') }} <strong>{{ _('Treat it like a password') }}</strong> {{ _('— anyone who has it can send a fake ping and stop a real alert from ever reaching you.') }}
+        {{ _('Must start with %(scheme)s. Use a different URL for each clinic, so an alert can say which one went quiet. %(warning)s — anyone who has it can send a fake ping and stop a real alert from ever reaching you.', scheme='<code>https://</code>'|safe, warning=('<strong>%s</strong>'|safe) % _('Treat it like a password')) }}
       </p>
     </div>
     {% if settings.heartbeat_install_id %}
@@ -124,8 +124,8 @@
     {% for b in recent_backups %}
     <tr>
       <td>{{ b.started_at }}</td>
-      <td class="muted">{{ (b.triggered_by or "—") | title }}</td>
-      <td>{% if b.status == 'success' %}<span class="badge">{{ _('Success') }}</span>{% elif b.status == 'failed' %}<span class="badge danger">Failed — {{ b.error }}</span>{% else %}<span class="badge warn">{{ _('Running') }}</span>{% endif %}</td>
+      <td class="muted">{{ ((b.triggered_by or "—") | title)|tr }}</td>
+      <td>{% if b.status == 'success' %}<span class="badge">{{ _('Success') }}</span>{% elif b.status == 'failed' %}<span class="badge danger">{{ _('Failed — %(error)s', error=b.error) }}</span>{% else %}<span class="badge warn">{{ _('Running') }}</span>{% endif %}</td>
       <td>{{ (b.filesize_bytes / 1024 / 1024) | round(1) if b.filesize_bytes else "—" }}{% if b.filesize_bytes %} MB{% endif %}</td>
       <td class="muted">{{ b.filepath or "—" }}</td>
     </tr>
@@ -143,7 +143,7 @@
 </div>
 {% endif %}
 <p class="small muted u-mt-tight">
-  {{ _('Replaces') }} <strong>{{ _('all') }}</strong> {{ _('current data in VetClinicSystem JO with the contents of a backup file. This can\'t be undone — take a fresh backup first if you\'re not sure. Uploaded files (X-rays, lab results) aren\'t part of the backup itself and are unaffected by a restore, but any that were attached') }} <em>{{ _('after') }}</em> {{ _('the backup being restored was taken will need reconnecting — run') }} <code>{{ _('python3 reconcile_attachments.py') }}</code> {{ _('from the app folder afterward to find and relink them safely.') }}
+  {{ _('Replaces %(all)s current data in VetClinicSystem JO with the contents of a backup file. This can\'t be undone — take a fresh backup first if you\'re not sure. Uploaded files (X-rays, lab results) aren\'t part of the backup itself and are unaffected by a restore, but any that were attached %(after)s the backup being restored was taken will need reconnecting — run %(command)s from the app folder afterward to find and relink them safely.', all=('<strong>%s</strong>'|safe) % _('all'), after=('<em>%s</em>'|safe) % _('after'), command='<code>python3 reconcile_attachments.py</code>'|safe) }}
 </p>
 <div class="form-grid">
   <div class="field full"><label for="restoreFileInput">{{ _('Backup File To Restore') }}</label>
@@ -170,8 +170,8 @@
     {% for r in recent_restores %}
     <tr>
       <td>{{ r.started_at }}</td>
-      <td class="muted">{{ (r.triggered_by or "—") | title }}</td>
-      <td>{% if r.status == 'success' %}<span class="badge">{{ _('Success') }}</span>{% else %}<span class="badge danger">Failed — {{ r.error }}</span>{% endif %}</td>
+      <td class="muted">{{ ((r.triggered_by or "—") | title)|tr }}</td>
+      <td>{% if r.status == 'success' %}<span class="badge">{{ _('Success') }}</span>{% else %}<span class="badge danger">{{ _('Failed — %(error)s', error=r.error) }}</span>{% endif %}</td>
       <td class="muted">{{ r.source_file or "—" }}</td>
     </tr>
     {% endfor %}
@@ -278,11 +278,11 @@ async function checkForUpdates() {
       document.getElementById('updChangelogBody').textContent = data.latest_body || '';
       document.getElementById('updAvailablePanel').style.display = '';
     } else {
-      statusEl.textContent = "You're on the latest version.";
+      statusEl.textContent = {{ _('You\'re on the latest version.')|tojson }};
       document.getElementById('updAvailablePanel').style.display = 'none';
     }
   } catch (err) {
-    statusEl.textContent = "Couldn't check for updates.";
+    statusEl.textContent = {{ _('Couldn\'t check for updates.')|tojson }};
   } finally {
     btn.disabled = false;
   }
@@ -291,7 +291,7 @@ async function checkForUpdates() {
 function waitForRestart(successMessage) {
   const panel = document.getElementById('updateProgress');
   panel.style.display = 'block';
-  panel.textContent = 'Restarting VetClinicSystem JO — this page will reconnect automatically.';
+  panel.textContent = {{ _('Restarting VetClinicSystem JO — this page will reconnect automatically.')|tojson }};
   let attempts = 0;
   const poll = setInterval(async () => {
     attempts++;
@@ -305,7 +305,7 @@ function waitForRestart(successMessage) {
     } catch (err) { /* still restarting — keep polling */ }
     if (attempts > 60) {  // ~2 minutes
       clearInterval(poll);
-      panel.textContent = "Taking longer than expected to come back — check with whoever manages this computer.";
+      panel.textContent = {{ _('Taking longer than expected to come back — check with whoever manages this computer.')|tojson }};
     }
   }, 2000);
 }
@@ -320,7 +320,7 @@ function runUpdateJob(startUrl, actionLabel) {
   })
     .then(res => res.json().then(data => ({ ok: res.ok, data })))
     .then(({ ok, data }) => {
-      if (!ok || !data.job_id) { panel.textContent = data.error || (actionLabel + ' failed to start.'); return; }
+      if (!ok || !data.job_id) { panel.textContent = data.error || {{ _('{job} failed to start.')|tojson }}.replace('{job}', actionLabel); return; }
       const poll = setInterval(async () => {
         const res = await fetch('{{ url_for('settings.settings_job_status') }}?job_id=' + data.job_id);
         const s = await res.json();
@@ -341,17 +341,17 @@ function runUpdateJob(startUrl, actionLabel) {
         }
       }, 1500);
     })
-    .catch(() => { panel.textContent = actionLabel + ' failed to start.'; });
+    .catch(() => { panel.textContent = {{ _('{job} failed to start.')|tojson }}.replace('{job}', actionLabel); });
 }
 
 async function applyUpdate() {
-  const ok = await window.VZDialog.confirm('This will restart VetClinicSystem JO for everyone for about 30 seconds. A backup will be taken first. Continue?');
+  const ok = await window.VZDialog.confirm({{ _('This will restart VetClinicSystem JO for everyone for about 30 seconds. A backup will be taken first. Continue?')|tojson }});
   if (!ok) return;
   runUpdateJob('{{ url_for('settings.settings_updates_apply') }}', 'Update');
 }
 
 async function rollbackUpdate() {
-  const ok = await window.VZDialog.confirm('This will roll back to the previous version and restart VetClinicSystem JO for everyone for about 30 seconds. Continue?');
+  const ok = await window.VZDialog.confirm({{ _('This will roll back to the previous version and restart VetClinicSystem JO for everyone for about 30 seconds. Continue?')|tojson }});
   if (!ok) return;
   runUpdateJob('{{ url_for('settings.settings_updates_rollback') }}', 'Rollback');
 }
@@ -382,24 +382,24 @@ document.getElementById('backupNowForm').addEventListener('submit', async functi
       headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
     });
     const data = await res.json();
-    if (!res.ok || !data.job_id) throw new Error(data.error || 'Could not start the backup.');
+    if (!res.ok || !data.job_id) throw new Error(data.error || {{ _('Could not start the backup.')|tojson }});
     window.VZProgress.poll(data.job_id, '{{ url_for('settings.settings_job_status') }}', {}, {
       onUpdate: (d) => window.VZProgress.render(panel, d),
       onDone: (d) => {
         resetSubmitButton(btn);
-        window.VZToast.show(d.message || (d.ok ? 'Backup complete.' : 'Backup failed.'), d.ok ? 'success' : 'error');
+        window.VZToast.show(d.message || (d.ok ? {{ _('Backup complete.')|tojson }} : {{ _('Backup failed.')|tojson }}), d.ok ? 'success' : 'error');
         setTimeout(() => window.location.reload(), 900);
       },
       onError: (d) => {
         resetSubmitButton(btn);
         window.VZProgress.render(panel, { status: 'error', steps: ['Backup'], current: 0, message: d.message });
-        window.VZToast.show(d.message || 'Backup failed.', 'error');
+        window.VZToast.show(d.message || {{ _('Backup failed.')|tojson }}, 'error');
       },
     });
   } catch (err) {
     resetSubmitButton(btn);
     panel.style.display = 'none';
-    window.VZToast.show(err.message || 'Could not start the backup.', 'error');
+    window.VZToast.show(err.message || {{ _('Could not start the backup.')|tojson }}, 'error');
   }
 });
 
@@ -422,28 +422,28 @@ document.getElementById('restoreForm').addEventListener('submit', async function
       body: formData,
     });
     const data = await res.json();
-    if (!res.ok || !data.job_id) throw new Error('Could not start the restore.');
+    if (!res.ok || !data.job_id) throw new Error({{ _('Could not start the restore.')|tojson }});
     window.VZProgress.poll(data.job_id, '{{ url_for('settings.settings_job_status') }}', { kind: 'restore' }, {
       onUpdate: (d) => window.VZProgress.render(panel, d),
       onDone: (d) => {
         if (d.ok) {
-          window.VZToast.show(`${d.message}. Please log in again.`, 'success');
+          window.VZToast.show({{ _('{message}. Please log in again.')|tojson }}.replace('{message}', d.message), 'success');
           setTimeout(() => { window.location = '{{ url_for('login') }}'; }, 1200);
         } else {
           resetSubmitButton(btn);
-          window.VZToast.show(d.message || 'Restore failed.', 'error');
+          window.VZToast.show(d.message || {{ _('Restore failed.')|tojson }}, 'error');
         }
       },
       onError: (d) => {
         resetSubmitButton(btn);
         window.VZProgress.render(panel, { status: 'error', steps: ['Restore'], current: 0, message: d.message });
-        window.VZToast.show(d.message || 'Restore failed.', 'error');
+        window.VZToast.show(d.message || {{ _('Restore failed.')|tojson }}, 'error');
       },
     });
   } catch (err) {
     resetSubmitButton(btn);
     panel.style.display = 'none';
-    window.VZToast.show('Could not start the restore.', 'error');
+    window.VZToast.show({{ _('Could not start the restore.')|tojson }}, 'error');
   }
 });
 </script>
@@ -491,7 +491,7 @@ document.getElementById('folderBrowserList').addEventListener('click', function(
 // targetInputId: the <input> this picker fills in on selection.
 // opts.filePicker: when true, also lists files matching opts.ext and lets
 // the user click one directly to select it (used by Restore, which needs
-// an exact .dump file rather than a folder — "Select This Folder" doesn't
+// an exact .dump file rather than a folder — {{ _('Select This Folder')|tojson }} doesn't
 // make sense there, so it's hidden and the New Folder control too, since
 // restoring reads an existing backup rather than creating a destination).
 function openFolderBrowser(targetInputId, opts) {
@@ -499,7 +499,7 @@ function openFolderBrowser(targetInputId, opts) {
   folderBrowserTargetInputId = targetInputId;
   folderBrowserFilePicker = !!opts.filePicker;
   folderBrowserExt = opts.ext || '';
-  document.getElementById('folderBrowserTitle').textContent = folderBrowserFilePicker ? 'Choose Backup File' : 'Choose Backup Folder';
+  document.getElementById('folderBrowserTitle').textContent = folderBrowserFilePicker ? {{ _('Choose Backup File')|tojson }} : {{ _('Choose Backup Folder')|tojson }};
   document.getElementById('folderBrowserNewFolderRow').style.display = folderBrowserFilePicker ? 'none' : 'flex';
   document.getElementById('folderBrowserSelectBtn').style.display = folderBrowserFilePicker ? 'none' : 'inline-flex';
   window.VZSpring.present(document.getElementById('folderBrowserModal'), true, {});
@@ -511,7 +511,7 @@ async function loadFolderBrowser(path) {
   const errEl = document.getElementById('folderBrowserError');
   const listEl = document.getElementById('folderBrowserList');
   errEl.style.display = 'none';
-  listEl.innerHTML = '<div class="small muted u-pad-5">Loading…</div>';
+  listEl.innerHTML = '<div class="small muted u-pad-5">' + {{ _('Loading…')|tojson }} + '</div>';
   try {
     const params = new URLSearchParams();
     if (path) params.set('path', path);
@@ -521,7 +521,7 @@ async function loadFolderBrowser(path) {
     const res = await fetch(url);
     const data = await res.json();
     if (!res.ok) {
-      errEl.textContent = data.error || 'Could not open that folder.';
+      errEl.textContent = data.error || {{ _('Could not open that folder.')|tojson }};
       errEl.style.display = 'block';
       listEl.innerHTML = '';
       return;
@@ -538,7 +538,7 @@ async function loadFolderBrowser(path) {
       const row = document.createElement('div');
       row.className = 'folder-browser-row';
       row.style.cssText = 'cursor:pointer; padding:8px 10px;';
-      row.textContent = '↑ .. (up one level)';
+      row.textContent = {{ _('↑ .. (up one level)')|tojson }};
       row.dataset.action = 'nav';
       row.dataset.path = data.parent;
       listEl.appendChild(row);
@@ -548,7 +548,7 @@ async function loadFolderBrowser(path) {
       const empty = document.createElement('div');
       empty.className = 'small muted';
       empty.style.padding = '12px';
-      empty.textContent = `No ${folderBrowserFilePicker ? 'backup files' : 'subfolders'} here.`;
+      empty.textContent = `No ${folderBrowserFilePicker ? {{ _('backup files')|tojson }} : 'subfolders'} here.`;
       listEl.appendChild(empty);
     } else {
       const sep = data.current.includes('\\') ? '\\' : '/';
@@ -573,7 +573,7 @@ async function loadFolderBrowser(path) {
       }
     }
   } catch (e) {
-    errEl.textContent = 'Could not reach the server.';
+    errEl.textContent = {{ _('Could not reach the server.')|tojson }};
     errEl.style.display = 'block';
     listEl.innerHTML = '';
   }
@@ -595,14 +595,14 @@ async function folderBrowserNewFolder() {
     });
     const data = await res.json();
     if (!res.ok) {
-      errEl.textContent = data.error || 'Could not create that folder.';
+      errEl.textContent = data.error || {{ _('Could not create that folder.')|tojson }};
       errEl.style.display = 'block';
       return;
     }
     nameInput.value = '';
     loadFolderBrowser(data.path);
   } catch (e) {
-    errEl.textContent = 'Could not reach the server.';
+    errEl.textContent = {{ _('Could not reach the server.')|tojson }};
     errEl.style.display = 'block';
   }
 }

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Follow-Ups — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Follow-Ups') }} — {{ clinic_name }}{% endblock %}
 {% block main_class %}main-wide{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>{{ _('Follow-Ups') }}</h1><p class="page-sub">Auto-generated from visits marked "follow-up needed". {{ total_count }} shown.</p></div></div>
+<div class="page-head"><div><h1>{{ _('Follow-Ups') }}</h1><p class="page-sub">{{ _('Auto-generated from visits marked "follow-up needed". %(total_count)s shown.', total_count=total_count) }}</p></div></div>
 
 <div class="filter-chips">
   <a class="chip {{ 'active' if not show_all }}" href="{{ url_for('clinical.followups_list') }}">{{ _('Pending Only') }}</a>
@@ -25,7 +25,7 @@
         <form method="post" class="inline-form" action="{{ url_for('clinical.followup_status_update', visit_id=f.visit_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <select name="status" data-vzh="followups-list-1" class="small">
-            {% for s in ['Pending','Completed','Cancelled','N/A'] %}<option value="{{ s }}" {{ 'selected' if f.followup_status==s }}>{{ s }}</option>{% endfor %}
+            {% for s in ['Pending','Completed','Cancelled','N/A'] %}<option value="{{ s }}" {{ 'selected' if f.followup_status==s }}> {{ s|tr }} </option>{% endfor %}
           </select>
         </form>
       </td>

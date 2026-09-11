@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Consignment Shrinkage — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Consignment Shrinkage') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>{{ _('Consignment Shrinkage') }}</h1>
-    <p class="page-sub">Damaged/expired Consignment stock, written off before it sold. {{ total_count }} entr{{ 'y' if total_count == 1 else 'ies' }} on file.</p>
+    <p class="page-sub">{{ _('Damaged/expired Consignment stock, written off before it sold.') }} {% if total_count == 1 %}{{ _('1 entry on file.') }}{% else %}{{ _('%(total_count)s entries on file.', total_count=total_count) }}{% endif %}</p>
   </div>
   {% if has_permission('manage_consignment_stock') %}
   <button class="btn" id="newItemBtn" style="display:{{ 'none' if open_new_form else 'inline-flex' }};" data-vzh="consignment-shrinkage-1">{{ _('+ Log Shrinkage') }}</button>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Edit Owner' if owner else 'New Owner' }} — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Edit Owner') if owner else _('New Owner') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>{{ 'Edit Owner' if owner else 'New Owner' }}</h1></div></div>
+<div class="page-head"><div><h1>{{ _('Edit Owner') if owner else _('New Owner') }}</h1></div></div>
 <div class="card">
 <form method="post" data-track-unsaved>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -12,7 +12,7 @@
     <div class="field full"><label for="ownerform-4-notes">{{ _('Notes') }}</label><textarea id="ownerform-4-notes" name="notes">{{ fv(form, 'notes', owner.notes if owner else '') }}</textarea></div>
   </div>
   <div class="form-actions">
-    <button class="btn" type="submit">{{ 'Save Changes' if owner else 'Add Owner' }}</button>
+    <button class="btn" type="submit">{{ _('Save Changes') if owner else _('Add Owner') }}</button>
     <a class="btn secondary" href="{{ url_for('clinical.owner_detail', owner_id=owner.id) if owner else url_for('clinical.owners_list') }}">{{ _('Cancel') }}</a>
   </div>
 </form>

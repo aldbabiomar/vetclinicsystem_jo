@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Server Busy — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Server Busy') }} — {{ clinic_name }}{% endblock %}
 
 {# Reachable in both logged-in and logged-out states (a pool exhaustion
    can happen on the login POST itself), same reasoning as error_404.html —

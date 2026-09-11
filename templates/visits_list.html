@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Visits — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Visits') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Visits') }}</h1><p class="page-sub">{{ total_count }} visits{% if day_filter %} on {{ day_filter }}{% endif %}.</p></div>
+  <div><h1>{{ _('Visits') }}</h1><p class="page-sub">{% if day_filter %}{{ _('%(total_count)s visits on %(day)s.', total_count=total_count, day=day_filter) }}{% else %}{{ _('%(total_count)s visits.', total_count=total_count) }}{% endif %}</p></div>
   <a class="btn" href="{{ url_for('clinical.visit_new_start') }}">{{ _('+ Log a Visit') }}</a>
 </div>
 
@@ -23,7 +23,7 @@
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Animal') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Type') }}</th><th scope="col">{{ _('Doctor') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col">{{ _('Payment') }}</th><th scope="col" class="num-col">Bill ({{ currency_label() }})</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Animal') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Type') }}</th><th scope="col">{{ _('Doctor') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col">{{ _('Payment') }}</th><th scope="col" class="num-col">{{ _('Bill (%(currency_label)s)', currency_label=currency_label()) }}</th></tr></thead>
   <tbody>
     {% for v in visits %}
     <tr data-vz-href="{{ url_for('clinical.visit_detail', visit_id=v.id) }}" tabindex="0" role="link" style="cursor:pointer;">
@@ -31,7 +31,7 @@
       <td>{{ v.visit_type|tr }}{% if v.grooming_needed=='Y' %} <span class="badge primary">{{ _('Grooming') }}</span>{% endif %}</td>
       <td>{{ v.doctor or "—" }}</td>
       <td><span class="badge {{ 'ok' if v.case_status=='Resolved' else ('danger' if v.case_status=='Deceased/Euthanized' else 'warn') }}">{{ v.case_status|tr }}</span></td>
-      <td><span class="badge {{ 'ok' if v.billing.status=='Fully Paid' else ('danger' if v.billing.status=='Unpaid' else 'muted') }}">{{ v.billing.status }}</span></td>
+      <td><span class="badge {{ 'ok' if v.billing.status=='Fully Paid' else ('danger' if v.billing.status=='Unpaid' else 'muted') }}">{{ v.billing.status|tr }}</span></td>
       <td class="num-col">{{ v.billing.total|money }}</td>
     </tr>
     {% else %}<tr><td colspan="9" class="empty-note">{{ _('No visits match.') }}</td></tr>{% endfor %}

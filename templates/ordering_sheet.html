@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Ordering Sheet — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Ordering Sheet') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
@@ -25,7 +25,7 @@
         <span class="badge {{ 'danger' if r.priority=='CRITICAL' else ('warn' if r.priority in ['URGENT','SOON'] else ('muted' if r.priority=='No data' else 'ok')) }}">{{ r.priority|tr }}</span>
       </td>
       <td class="num-col">{{ r.suggested_order_qty if r.suggested_order_qty is not none else "—" }}</td>
-      <td class="small muted" title="{{ r.trend_recommendation }}">{{ r.usage_trend }}</td>
+      <td class="small muted" title="{{ r.trend_recommendation|tr }}">{{ r.usage_trend|tr }}</td>
       <td>{{ r.distributor_name or "—" }}</td>
       <td class="num-col">{{ r.lead_time_days if r.lead_time_days is not none else "—" }}</td>
       <td class="small muted">

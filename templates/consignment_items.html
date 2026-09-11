@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Consignment Items — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Consignment Items') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
@@ -32,7 +32,7 @@
                  {{ 'checked' if i.ownership_type == 'Consignment' }}
                  data-vzh="consignment-items-1" data-vz-arg="{{ i.id }}">
         {% else %}
-          {{ 'Yes' if i.ownership_type == 'Consignment' else 'No' }}
+          {{ _('Yes') if i.ownership_type == 'Consignment' else _('No') }}
         {% endif %}
       </td>
       <td class="dist-cell">
@@ -61,7 +61,7 @@
         {% endif %}
       </td>
       <td class="small muted" style="white-space:nowrap;">
-        {% if is_locked %}Locked — has activity{% endif %}
+        {% if is_locked %}{{ _('Locked — has activity') }}{% endif %}
       </td>
     </tr>
     {% else %}

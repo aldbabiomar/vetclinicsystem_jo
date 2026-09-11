@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Dashboard') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>{{ _('Dashboard') }}</h1>
-    <p class="page-sub">Snapshot as of today, {{ today }}.{% if current_role == 'Admin' %} Staff on the clinic network can reach this app at <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.{% endif %}</p>
+    <p class="page-sub">{{ _('Snapshot as of today, %(today)s.', today=today) }}{% if current_role == 'Admin' %} {{ _('Staff on the clinic network can reach this app at') }} <strong>http://{{ lan_address }}:{{ bind_port }}</strong>.{% endif %}</p>
   </div>
   <div style="display:flex; gap:10px;">
     <a class="btn secondary" href="{{ url_for('clinical.visit_new_start') }}">{{ _('+ Log a Visit') }}</a>
@@ -25,24 +25,25 @@
 
 {% if unbilled_count %}
 <div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
-  {{ unbilled_count }} bill{{ 'ing has' if unbilled_count == 1 else 's have' }} no Date Billed set — {{ 'it is' if unbilled_count == 1 else 'they are' }} missing from Monthly &amp; Yearly P&amp;L until fixed.
+  {% if unbilled_count == 1 %}{{ _('1 bill has no Date Billed set — it is missing from Monthly & Yearly P&L until fixed.') }}{% else %}{{ _('%(unbilled_count)s bills have no Date Billed set — they are missing from Monthly & Yearly P&L until fixed.', unbilled_count=unbilled_count) }}{% endif %}
 </div>
 {% endif %}
 
 {% if migration_failures %}
 <div class="flash warn" style="background:var(--warn-tint); color:var(--warn-ink); margin-bottom:16px;">
-  Some schema updates couldn't be applied on the last launch — some newer features may not work correctly: {{ migration_failures }}
+  {{ _("Some schema updates couldn't be applied on the last launch — some newer "
+        "features may not work correctly: %(migration_failures)s", migration_failures=migration_failures) }}
 </div>
 {% endif %}
 
 {% if self_check %}
 <div class="selfcheck-banner {{ 'fail' if self_check.status == 'fail' else 'warn' }}">
-  <strong>{{ 'This install needs attention' if self_check.status == 'fail' else 'Health check warning' }}</strong>
+  <strong>{{ _('This install needs attention') if self_check.status == 'fail' else _('Health check warning') }}</strong>
   <ul style="margin:6px 0 0; padding-left:20px;">
     {% for f in self_check.findings %}<li>{{ f.message }}</li>{% endfor %}
   </ul>
   <div class="small" style="margin-top:6px;">
-    Last checked {{ self_check.ran_at.replace('T', ' ') }} —
+    {{ _('Last checked %(ran_at)s', ran_at=self_check.ran_at.replace('T', ' ')) }} —
     <a href="{{ url_for('settings.settings_page') }}" style="color:inherit; text-decoration:underline;">{{ _('Open Settings →') }}</a>
   </div>
 </div>
@@ -66,7 +67,7 @@
 </div>
 <script nonce="{{ csp_nonce }}">
 (function () {
-  // Session-only dismissal, deliberately: a day-long "don't show again" means
+  // Session-only dismissal, deliberately: a day-long {{ _('don\'t show again')|tojson }} means
   // a machine rebooted every morning never shows it again. sessionStorage
   // clears when the browser session ends, so a reboot re-surfaces it.
   var KEY = 'vetclinicsystemjo-selfcheck-dismissed';
@@ -121,7 +122,7 @@
     {% if snap.wellness_due %}
       {% for w in snap.wellness_due[:6] %}
       <div class="list-line">
-        <div><div class="who">{{ w.animal_name }} <span class="meta">({{ w.owner_name }})</span></div><div class="meta">{{ w.wellness_type|tr }} due {{ w.wellness_next_dose_date|localdate }}</div></div>
+        <div><div class="who">{{ w.animal_name }} <span class="meta">({{ w.owner_name }})</span></div><div class="meta">{{ _('%(wellness_type)s due %(due_date)s', wellness_type=w.wellness_type|tr, due_date=w.wellness_next_dose_date|localdate) }}</div></div>
         <a class="btn small secondary" href="{{ url_for('clinical.wellness_list') }}">{{ _('Open') }}</a>
       </div>
       {% endfor %}
@@ -155,9 +156,9 @@
       {% set audit_expiry_combined = snap.overdue_audit + snap.expiring %}
       {% for i in audit_expiry_combined[:6] %}
         {% if i.audit_status in ('OVERDUE', 'Never audited') %}
-          <div class="list-line"><div class="who">{{ i.name }}</div><span class="badge danger">{{ i.audit_status }}</span></div>
+          <div class="list-line"><div class="who">{{ i.name }}</div><span class="badge danger">{{ i.audit_status|tr }}</span></div>
         {% else %}
-          <div class="list-line"><div class="who">{{ i.name }}</div><span class="badge warn">{{ i.expiry_status }}</span></div>
+          <div class="list-line"><div class="who">{{ i.name }}</div><span class="badge warn">{{ i.expiry_status|tr }}</span></div>
         {% endif %}
       {% endfor %}
       {% if audit_expiry_combined|length > 6 %}<div style="margin-top:10px;"><a href="{{ url_for('inventory.inventory_status_page') }}">{{ _('View inventory status →') }}</a></div>{% endif %}

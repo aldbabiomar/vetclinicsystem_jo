@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Price List — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Price List') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Price List') }}</h1><p class="page-sub">{% if search %}{{ total_count }} result(s) for "{{ search }}".{% else %}{{ total_count }} items.{% endif %} Admin-only page — visible to Vet/Reception only as a read-only picker while billing.</p></div>
+  <div><h1>{{ _('Price List') }}</h1><p class="page-sub">{% if search %}{{ _('%(total_count)s result(s) for "%(search)s".', total_count=total_count, search=search) }}{% else %}{{ _('%(total_count)s items.', total_count=total_count) }}{% endif %} {{ _('Admin-only page — visible to Vet/Reception only as a read-only picker while billing.') }}</p></div>
   <div style="display:flex; gap:10px;">
     <button class="btn" id="saveChangesBtn" type="button" disabled data-bulk-url="{{ url_for('inventory.price_list_bulk_edit') }}">{{ _('Save Changes') }}</button>
     <button class="btn secondary" id="newItemBtn" style="display:{{ 'none' if show_new_form else 'inline-flex' }};" data-vzh="price-list-1">{{ _('+ New Item') }}</button>
@@ -11,7 +11,7 @@
 
 <div class="filter-chips">
   <a class="chip {{ 'active' if not active_cat }}" href="{{ url_for('inventory.price_list') }}">{{ _('All') }}</a>
-  {% for c in categories %}<a class="chip {{ 'active' if active_cat==c }}" href="{{ url_for('inventory.price_list', category=c) }}">{{ c }}</a>{% endfor %}
+  {% for c in categories %}<a class="chip {{ 'active' if active_cat==c }}" href="{{ url_for('inventory.price_list', category=c) }}">{{ c|tr }}</a>{% endfor %}
 </div>
 
 {% if flagged_price %}
@@ -33,7 +33,7 @@
     <div class="form-grid">
       <div class="field"><label for="newItemName">{{ _('Name') }}</label><input required name="name" id="newItemName" value="{{ fv(new_form, 'name') }}"></div>
       <div class="field"><label for="pricelist-1-category">{{ _('Category') }}</label>
-        <select id="pricelist-1-category" name="category" required data-vzh="price-list-2">{% for c in categories %}<option {{ 'selected' if fv(new_form, 'category')==c }}>{{ c }}</option>{% endfor %}</select>
+        <select id="pricelist-1-category" name="category" required data-vzh="price-list-2">{% for c in categories %}<option value="{{ c }}" {{ 'selected' if fv(new_form, 'category')==c }}> {{ c|tr }} </option>{% endfor %}</select>
       </div>
       <div class="field"><label for="newItemCost">{{ _('Cost Price (%(currency_label)s)', currency_label=currency_label()) }}</label><input type="number" step="0.001" name="cost_price" id="newItemCost" value="{{ fv(new_form, 'cost_price') }}"></div>
       <div class="field"><label for="pricelist-2-sale_price">{{ _('Sale Price (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="pricelist-2-sale_price" type="number" step="0.001" name="sale_price" value="{{ fv(new_form, 'sale_price') }}"></div>
@@ -55,7 +55,7 @@
 
 <div class="table-wrap sticky-scroll">
 <table>
-  <thead><tr><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Category') }}</th><th scope="col" class="num-col">Cost ({{ currency_label() }})</th><th scope="col" class="num-col">Sale ({{ currency_label() }})</th><th scope="col">{{ _('Notes') }}</th><th scope="col" title="{{ _('Checked = a discount can be applied to a bill including this item.') }}">{{ _('Can Be Discounted?') }}</th><th scope="col"></th></tr></thead>
+  <thead><tr><th scope="col">{{ _('ID') }}</th><th scope="col">{{ _('Name') }}</th><th scope="col">{{ _('Category') }}</th><th scope="col" class="num-col">{{ _('Cost (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col" class="num-col">{{ _('Sale (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col">{{ _('Notes') }}</th><th scope="col" title="{{ _('Checked = a discount can be applied to a bill including this item.') }}">{{ _('Can Be Discounted?') }}</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for i in items %}
     {% set row_form = form if (edit_error_id and edit_error_id == i.id) else None %}
@@ -66,7 +66,7 @@
       <td><input form="edit-{{ i.id }}" name="name" value="{{ fv(row_form, 'name', i.name) }}" style="border:none; background:transparent; padding:2px; width:100%;"></td>
       <td>
         <select form="edit-{{ i.id }}" name="category" style="border:none; background:transparent;">
-          {% for c in categories %}<option {{ 'selected' if fv(row_form, 'category', i.category)==c }}>{{ c }}</option>{% endfor %}
+          {% for c in categories %}<option value="{{ c }}" {{ 'selected' if fv(row_form, 'category', i.category)==c }}> {{ c|tr }} </option>{% endfor %}
         </select>
       </td>
       <td class="num-col"><input form="edit-{{ i.id }}" type="number" step="0.001" name="cost_price" value="{{ fv(row_form, 'cost_price', i.cost_price if i.cost_price is not none else '') }}" style="border:none; background:transparent; padding:2px; width:80px; text-align:right;"></td>

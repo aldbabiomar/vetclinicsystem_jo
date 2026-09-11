@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Consignment Sales by Distributor — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Consignment Sales by Distributor') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
@@ -23,7 +23,7 @@
 <table>
   <thead class="sticky-header"><tr>
     <th scope="col">{{ _('Month') }}</th><th scope="col">{{ _('Distributor') }}</th><th scope="col">{{ _('Item') }}</th><th scope="col" class="num-col">{{ _('Units Sold') }}</th>
-    <th scope="col" class="num-col">Revenue ({{ currency_label() }})</th><th scope="col" class="num-col">{{ _('Owed to Distributor (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col" class="num-col">{{ _('Your Markup (%(currency_label)s)', currency_label=currency_label()) }}</th>
+    <th scope="col" class="num-col">{{ _('Revenue (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col" class="num-col">{{ _('Owed to Distributor (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col" class="num-col">{{ _('Your Markup (%(currency_label)s)', currency_label=currency_label()) }}</th>
   </tr></thead>
   <tbody>
     {% for r in rows %}

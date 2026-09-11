@@ -10,7 +10,7 @@
   <div class="field"><label for="visitfields-2-doctor">{{ _('Doctor') }}</label>
     <select id="visitfields-2-doctor" name="doctor">
       <option value="">{{ _('Select Vet…') }}</option>
-      {% for v in vets %}<option value="{{ v.full_name }}" {{ 'selected' if fv(form, 'doctor', visit.doctor if visit else '')==v.full_name }}>{{ v.full_name }}</option>{% endfor %}
+      {% for v in vets %}<option value="{{ v.full_name }}" {{ 'selected' if fv(form, 'doctor', visit.doctor if visit else '')==v.full_name }}> {{ v.full_name }} </option>{% endfor %}
     </select>
   </div>
   <div class="field"><label for="visitfields-3-weight_kg">{{ _('Weight (KG)') }}</label><input id="visitfields-3-weight_kg" type="number" step="0.1" min="0" name="weight_kg" value="{{ fv(form, 'weight_kg', visit.weight_kg if visit and visit.weight_kg is not none else '') }}"></div>
@@ -33,7 +33,7 @@
   <div class="field wellness-only"><label for="visitfields-5-wellness_type">{{ _('Wellness Type') }}</label>
     <select id="visitfields-5-wellness_type" name="wellness_type">
       <option value="">—</option>
-      {% for w in wellness_types %}<option {{ 'selected' if fv(form, 'wellness_type', visit.wellness_type if visit else '')==w }}>{{ w }}</option>{% endfor %}
+      {% for w in wellness_types %}<option value="{{ w }}" {{ 'selected' if fv(form, 'wellness_type', visit.wellness_type if visit else '')==w }}> {{ w|tr }} </option>{% endfor %}
     </select>
   </div>
   <div class="field wellness-only"><label for="wellnessNextDoseDate">{{ _('Next Dose Date') }}</label><input type="date" name="wellness_next_dose_date" id="wellnessNextDoseDate" value="{{ fv(form, 'wellness_next_dose_date', visit.wellness_next_dose_date if visit else '') }}"></div>
@@ -53,7 +53,7 @@
     {% set current_services = (form.getlist('grooming_services') if form else (visit.grooming_services.split(',') if visit and visit.grooming_services else [])) %}
     {% for gs in grooming_services %}
     <label class="checkbox-row small" style="text-transform:none; font-weight:400;">
-      <input type="checkbox" name="grooming_services" value="{{ gs }}" {{ 'checked' if gs in current_services }}> {{ gs }}
+      <input type="checkbox" name="grooming_services" value="{{ gs }}" {{ 'checked' if gs in current_services }}> {{ gs|tr }}
     </label>
     {% endfor %}
   </div>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Appointments — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Appointments') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div><h1>{{ _('Appointments') }}</h1><p class="page-sub">{{ _('Slot length and hours are set in Settings.') }}</p></div>
@@ -24,7 +24,7 @@
           <td class="small">{{ a.slot_label }}</td>
           <td>{{ a.pet_name }}</td>
           <td>{{ a.owner_name }}</td>
-          <td class="small">{{ a.vet_name if a.resource_type=='vet' else 'Grooming' }}</td>
+          <td class="small">{{ a.vet_name if a.resource_type=='vet' else _('Grooming') }}</td>
           <td class="small muted">{{ a.reason }}</td>
           <td><button class="btn small danger" type="button" data-appt-id="{{ a.id }}" data-pet-name="{{ a.pet_name }}" data-vzh="appointments-1">{{ _('Cancel') }}</button></td>
         </tr>
@@ -36,7 +36,7 @@
 {% endif %}
 <p class="small muted" style="margin:-8px 0 12px;">
   {% if show_past %}
-  Showing unreachable bookings from any date, including past ones.
+  {{ _('Showing unreachable bookings from any date, including past ones.') }}
   <a href="{{ url_for('clinical.appointments_page', week=week_anchor, day=selected_day) }}">{{ _('Hide past bookings') }}</a>
   {% else %}
   <a href="{{ url_for('clinical.appointments_page', week=week_anchor, day=selected_day, show_past=1) }}">{{ _('Show past unreachable bookings') }}</a>
@@ -45,7 +45,7 @@
 <div class="tabs">
   {% for d in days %}
   <a class="{{ 'active' if d.isoformat()==selected_day }}" href="{{ url_for('clinical.appointments_page', week=week_anchor, day=d.isoformat()) }}">
-    {{ d.strftime('%a %d %b') }}
+    {{ d|weekdate }}
   </a>
   {% endfor %}
 </div>
@@ -59,7 +59,7 @@
   <div class="appt-head-cell">{{ _('Slot') }}</div>
   {% for col in columns %}
   <div class="appt-head-cell">
-    {{ col.label }}
+    {{ col.label|tr }}
   </div>
   {% endfor %}
 
@@ -91,7 +91,7 @@
       <div class="field" style="margin-bottom:10px;"><label for="appointments-1-pet_name">{{ _('Pet Name') }}</label><input id="appointments-1-pet_name" required name="pet_name" value="{{ fv(form, 'pet_name') }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="appointments-2-owner_name">{{ _('Owner Name') }}</label><input id="appointments-2-owner_name" required name="owner_name" value="{{ fv(form, 'owner_name') }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="appointments-3-appointment_type">{{ _('Type') }}</label>
-        <select id="appointments-3-appointment_type" name="appointment_type"><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Medical' }}>{{ _('Medical') }}</option><option {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Grooming' }}>{{ _('Grooming') }}</option></select>
+        <select id="appointments-3-appointment_type" name="appointment_type"><option value="Medical" {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Medical' }}>{{ _('Medical') }}</option><option value="Grooming" {{ 'selected' if fv(form, 'appointment_type', 'Medical')=='Grooming' }}>{{ _('Grooming') }}</option></select>
       </div>
       <div class="field" style="margin-bottom:14px;"><label for="appointments-4-reason">{{ _('Reason') }}</label><input id="appointments-4-reason" name="reason" value="{{ fv(form, 'reason') }}"></div>
       <div style="display:flex; gap:10px; justify-content:flex-end;">
@@ -118,7 +118,7 @@ function openAdd(btn) {
 async function cancelAppt(el) {
   const id = el.dataset.apptId;
   const name = el.dataset.petName;
-  const ok = await window.VZDialog.confirm(`Cancel ${name}'s appointment?`, { originEl: el, okLabel: 'Cancel Appointment', cancelLabel: 'Keep It' });
+  const ok = await window.VZDialog.confirm({{ _("Cancel {name}'s appointment?")|tojson }}.replace('{name}', name), { originEl: el, okLabel: {{ _('Cancel Appointment')|tojson }}, cancelLabel: {{ _('Keep It')|tojson }} });
   if (!ok) return;
   const f = document.getElementById('cancelForm');
   f.action = `{{ url_for('clinical.appointment_cancel', appt_id=999999999) }}`.replace('999999999', encodeURIComponent(id));

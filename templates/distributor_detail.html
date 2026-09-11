@@ -54,7 +54,7 @@
   {% if bill.notes %}<p class="muted">{{ bill.notes }}</p>{% endif %}
 
   <table>
-    <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">Amount ({{ currency_label() }})</th><th scope="col">{{ _('Method') }}</th><th scope="col">{{ _('Notes') }}</th><th scope="col"></th></tr></thead>
+    <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Amount (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col">{{ _('Method') }}</th><th scope="col">{{ _('Notes') }}</th><th scope="col"></th></tr></thead>
     <tbody>
       {% for p in bill.payments %}
       <tr>
@@ -76,11 +76,11 @@
   <form method="post" action="{{ url_for('consignment.distributor_payment_new', dist_id=distributor.id, bill_id=bill.id) }}" class="form-grid" style="margin-top:12px;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field"><label for="billpay-payment_date-{{ bill.id }}">{{ _('Payment Date') }}</label><input id="billpay-payment_date-{{ bill.id }}" required type="date" name="payment_date" value="{{ fv(pay_form, 'payment_date', today) }}"></div>
-    <div class="field"><label for="billpay-amount-{{ bill.id }}">Amount ({{ currency_label() }})</label><input id="billpay-amount-{{ bill.id }}" required type="number" step="0.001" min="0.001" max="{{ bill.balance }}" name="amount" value="{{ fv(pay_form, 'amount') }}"></div>
+    <div class="field"><label for="billpay-amount-{{ bill.id }}">{{ _('Amount (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="billpay-amount-{{ bill.id }}" required type="number" step="0.001" min="0.001" max="{{ bill.balance }}" name="amount" value="{{ fv(pay_form, 'amount') }}"></div>
     <div class="field"><label for="billpay-method-{{ bill.id }}">{{ _('Method') }}</label>
       <select id="billpay-method-{{ bill.id }}" name="method">
         <option value="" {{ 'selected' if fv(pay_form, 'method')=='' }}>—</option>
-        <option {{ 'selected' if fv(pay_form, 'method')=='Cash' }}>{{ _('Cash') }}</option><option {{ 'selected' if fv(pay_form, 'method')=='Card' }}>{{ _('Card') }}</option><option {{ 'selected' if fv(pay_form, 'method')=='Transfer' }}>{{ _('Transfer') }}</option>
+        <option value="Cash" {{ 'selected' if fv(pay_form, 'method')=='Cash' }}>{{ _('Cash') }}</option><option value="Card" {{ 'selected' if fv(pay_form, 'method')=='Card' }}>{{ _('Card') }}</option><option value="Transfer" {{ 'selected' if fv(pay_form, 'method')=='Transfer' }}>{{ _('Transfer') }}</option>
       </select>
     </div>
     <div class="field full"><label for="billpay-notes-{{ bill.id }}">{{ _('Notes') }}</label><input id="billpay-notes-{{ bill.id }}" name="notes" value="{{ fv(pay_form, 'notes') }}"></div>

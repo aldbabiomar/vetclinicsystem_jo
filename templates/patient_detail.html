@@ -34,7 +34,7 @@
     {% for c in cases %}
     <tr data-vz-href="{{ url_for('clinical.inpatient_detail', case_id=c.id) }}" tabindex="0" role="link" style="cursor:pointer;">
       <td>{{ c.admission_date|localdate }}</td><td>{{ c.dismissal_date|localdate or "—" }}</td><td>{{ c.complaint or "—" }}</td>
-      <td><span class="badge {{ 'ok' if c.dismissed else 'warn' }}">{{ 'Discharged' if c.dismissed else 'Admitted' }}</span></td>
+      <td><span class="badge {{ 'ok' if c.dismissed else 'warn' }}">{{ _('Discharged') if c.dismissed else _('Admitted') }}</span></td>
     </tr>
     {% endfor %}
   </tbody>
@@ -46,7 +46,7 @@
 <div class="section-title">{{ _('Boarding Sessions (%(boarding_sessions)s)', boarding_sessions=boarding_sessions|length) }}</div>
 <div class="table-wrap" style="margin-bottom:24px;">
 <table>
-  <thead><tr><th scope="col">{{ _('Entry') }}</th><th scope="col">{{ _('Dismissal') }}</th><th scope="col">{{ _('Room') }}</th><th scope="col" class="num-col">Total ({{ currency_label() }})</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Entry') }}</th><th scope="col">{{ _('Dismissal') }}</th><th scope="col">{{ _('Room') }}</th><th scope="col" class="num-col">{{ _('Total (%(currency_label)s)', currency_label=currency_label()) }}</th></tr></thead>
   <tbody>
     {% for b in boarding_sessions %}
     <tr data-vz-href="{{ url_for('clinical.boarding_page') }}" tabindex="0" role="link" style="cursor:pointer;">
@@ -82,7 +82,7 @@
 <div class="section-title">{{ _('Visit History (%(visits)s)', visits=visits|length) }}</div>
 <div class="table-wrap">
 <table>
-  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Type') }}</th><th scope="col">{{ _('Doctor') }}</th><th scope="col">{{ _('Complaint') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col">{{ _('Follow-Up') }}</th><th scope="col" class="num-col">Bill ({{ currency_label() }})</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Type') }}</th><th scope="col">{{ _('Doctor') }}</th><th scope="col">{{ _('Complaint') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col">{{ _('Follow-Up') }}</th><th scope="col" class="num-col">{{ _('Bill (%(currency_label)s)', currency_label=currency_label()) }}</th></tr></thead>
   <tbody>
     {% for v in visits %}
     <tr data-vz-href="{{ url_for('clinical.visit_detail', visit_id=v.id) }}" tabindex="0" role="link" style="cursor:pointer;">

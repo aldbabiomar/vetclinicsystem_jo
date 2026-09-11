@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Insights — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Insights') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div><h1>{{ _('Insights') }}</h1><p class="page-sub">{{ _('Management-level view over the last %(months_back)s months. Admin only.', months_back=months_back) }}</p></div>
@@ -33,7 +33,7 @@
 <table>
   <thead><tr>
     <th scope="col">{{ _('Month') }}</th>
-    {% for c in revenue.categories %}<th scope="col" class="num-col">{{ c }}</th>{% endfor %}
+    {% for c in revenue.categories %}<th scope="col" class="num-col">{{ c|tr }}</th>{% endfor %}
     <th scope="col" class="num-col">{{ _('Total') }}</th>
   </tr></thead>
   <tbody>
@@ -61,7 +61,7 @@
     <p class="small muted" style="margin-top:-6px;">{{ _('Visit count & billings generated, last %(months_back)s months.', months_back=months_back) }}</p>
     <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">{{ _('Vet') }}</th><th scope="col" class="num-col">{{ _('Visits') }}</th><th scope="col" class="num-col">Revenue ({{ currency_label() }})</th><th scope="col" class="num-col">{{ _('Avg / Visit') }}</th></tr></thead>
+      <thead><tr><th scope="col">{{ _('Vet') }}</th><th scope="col" class="num-col">{{ _('Visits') }}</th><th scope="col" class="num-col">{{ _('Revenue (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col" class="num-col">{{ _('Avg / Visit') }}</th></tr></thead>
       <tbody>
         {% for v in vets %}
         <tr>
@@ -110,7 +110,7 @@
   <tbody>
     {% for d in weekday_load %}
     <tr style="{{ 'background:var(--muted-tint);' if d.is_weekend }}">
-      <td><strong>{{ d.day }}</strong>{% if d.is_weekend %} <span class="badge muted">{{ _('Weekend') }}</span>{% endif %}</td>
+      <td><strong>{{ d.day|tr }}</strong>{% if d.is_weekend %} <span class="badge muted">{{ _('Weekend') }}</span>{% endif %}</td>
       <td class="num-col">{{ d.appointments }}</td>
       <td class="num-col">{{ d.visits_same_weekday }}</td>
       <td class="num-col">{% if d.fulfillment_ratio is not none %}{{ (d.fulfillment_ratio*100)|round(0)|int }}%{% else %}—{% endif %}</td>
@@ -147,7 +147,7 @@
 </p>
 <div class="table-wrap" style="margin-bottom:24px; max-height:420px; overflow-y:auto;">
 <table>
-  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col" class="num-col">Difference ({{ currency_label() }})</th></tr></thead>
+  <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Status') }}</th><th scope="col" class="num-col">{{ _('Difference (%(currency_label)s)', currency_label=currency_label()) }}</th></tr></thead>
   <tbody>
     {% for d in cash_register_health %}
     <tr>

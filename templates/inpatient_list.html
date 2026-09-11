@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Inpatient Cases — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Inpatient Cases') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>{{ _('Inpatient Cases') }}</h1><p class="page-sub">{{ total_count }} shown.</p></div>
+  <div><h1>{{ _('Inpatient Cases') }}</h1><p class="page-sub">{{ _('%(total_count)s shown.', total_count=total_count) }}</p></div>
   <a class="btn" href="{{ url_for('clinical.inpatient_new') }}">{{ _('+ Admit Patient') }}</a>
 </div>
 <div class="filter-chips">
@@ -13,16 +13,16 @@
 <div class="table-wrap sticky-scroll">
 <table>
   <thead><tr><th scope="col">{{ _('Admitted') }}</th><th scope="col">{{ _('Animal') }}</th><th scope="col">{{ _('Owner') }}</th><th scope="col">{{ _('Complaint') }}</th><th scope="col">{{ _('Status') }}</th>
-    {% if balance_due %}<th scope="col" class="num-col">Balance ({{ currency_label() }})</th>{% endif %}</tr></thead>
+    {% if balance_due %}<th scope="col" class="num-col">{{ _('Balance (%(currency_label)s)', currency_label=currency_label()) }}</th>{% endif %}</tr></thead>
   <tbody>
     {% for c in cases %}
     <tr data-vz-href="{{ url_for('clinical.inpatient_detail', case_id=c.id) }}" tabindex="0" role="link" style="cursor:pointer;">
       <td>{{ c.admission_date|localdate }}</td><td><strong>{{ c.animal_name }}</strong></td><td>{{ c.owner_name }}</td>
       <td>{{ c.complaint or "—" }}</td>
-      <td><span class="badge {{ 'ok' if c.dismissed else 'warn' }}">{{ 'Discharged' if c.dismissed else 'Admitted' }}</span></td>
+      <td><span class="badge {{ 'ok' if c.dismissed else 'warn' }}">{{ _('Discharged') if c.dismissed else _('Admitted') }}</span></td>
       {% if balance_due %}<td class="num-col">{{ (c.total - c.paid)|money }}</td>{% endif %}
     </tr>
-    {% else %}<tr><td colspan="{{ 6 if balance_due else 5 }}" class="empty-note">{{ "No discharged cases with a balance due." if balance_due else "No inpatient cases." }}</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="{{ 6 if balance_due else 5 }}" class="empty-note">{{ _("No discharged cases with a balance due.") if balance_due else _("No inpatient cases.") }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

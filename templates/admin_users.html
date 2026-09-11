@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Users & Roles — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Users & Roles') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
@@ -36,10 +36,10 @@
             {% if u.custom_discount_cap is none %}
               <span class="muted">{{ _('Role default (%(u)s%%)', u=u.role_discount_cap) }}</span>
             {% else %}
-              <span class="badge primary">Custom: {{ u.custom_discount_cap }}%</span>
+              <span class="badge primary">{{ _('Custom: %(cap)s%%', cap=u.custom_discount_cap) }}</span>
             {% endif %}
           </td>
-          <td><span class="badge {{ 'ok' if u.active else 'muted' }}">{{ 'Active' if u.active else 'Disabled' }}</span></td>
+          <td><span class="badge {{ 'ok' if u.active else 'muted' }}">{{ _('Active') if u.active else _('Disabled') }}</span></td>
           <td>
             <form method="post" action="{{ url_for('admin.admin_user_reset_password', user_id=u.id) }}" class="inline-form" style="display:flex; gap:6px;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -50,7 +50,7 @@
           <td>
             <form method="post" action="{{ url_for('admin.admin_user_toggle', user_id=u.id) }}" class="inline-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="btn small {{ 'danger' if u.active else 'secondary' }}" type="submit" {{ 'disabled' if u.id == session_user_id }}>{{ 'Disable' if u.active else 'Enable' }}</button>
+              <button class="btn small {{ 'danger' if u.active else 'secondary' }}" type="submit" {{ 'disabled' if u.id == session_user_id }}>{{ _('Disable') if u.active else _('Enable') }}</button>
             </form>
           </td>
         </tr>
@@ -70,22 +70,22 @@
       {% if role.is_system %}
       <div class="role-card-head">
         <div class="role-card-title">
-          <h3>{{ role.name }} <span class="lock-ico" role="img" aria-label="{{ _('System role — can\'t be renamed, deleted, or edited') }}" title="{{ _('System role — can\'t be renamed, deleted, or edited') }}">🔒</span></h3>
-          <p class="role-card-desc">{{ role.description or '' }}</p>
+          <h3>{{ role.name|tr }} <span class="lock-ico" role="img" aria-label="{{ _('System role — can\'t be renamed, deleted, or edited') }}" title="{{ _('System role — can\'t be renamed, deleted, or edited') }}">🔒</span></h3>
+          <p class="role-card-desc">{{ (role.description or '')|tr }}</p>
         </div>
         <div class="role-card-actions"><span class="badge muted">{{ _('System role') }}</span><button class="btn small secondary" type="button" disabled>{{ _('Delete') }}</button></div>
       </div>
       {% for cat, perms in perm_categories %}
-      <div class="perm-block"><div class="perm-cat-label">{{ cat }}</div><div class="perm-grid">
+      <div class="perm-block"><div class="perm-cat-label">{{ cat|tr }}</div><div class="perm-grid">
         {% for key, label in perms %}
-        <label class="perm-row"><input type="checkbox" checked disabled><span>{{ label }}</span></label>
+        <label class="perm-row"><input type="checkbox" checked disabled><span>{{ label|tr }}</span></label>
         {% endfor %}
       </div></div>
       {% endfor %}
       <div class="role-card-foot">
         <div class="cap-field"><label class="small muted" for="rolecap-{{ role.id }}">{{ _('Max Discount') }}</label><input id="rolecap-{{ role.id }}" type="number" value="{{ role.discount_cap }}" disabled><span class="small muted">%</span></div>
         <label class="perm-row" style="margin-left:16px;" title="{{ _('Whether staff with this role show up as a vet to assign in Appointments, Visits, Grooming, and Inpatient') }}"><input type="checkbox" {{ 'checked' if role.is_vet_role }} disabled><span>{{ _('Can be assigned as a vet') }}</span></label>
-        <div class="staff-count">{{ staff_counts.get(role.id, 0) }} staff member{{ '' if staff_counts.get(role.id, 0) == 1 else 's' }} · always keeps at least one Admin</div>
+        <div class="staff-count">{% if staff_counts.get(role.id, 0) == 1 %}{{ _('1 staff member · always keeps at least one Admin') }}{% else %}{{ _('%(n)s staff members · always keeps at least one Admin', n=staff_counts.get(role.id, 0)) }}{% endif %}</div>
       </div>
       {% else %}
       <form method="post" action="{{ url_for('admin.admin_role_edit', role_id=role.id) }}" class="role-card-form" data-track-dirty>
@@ -102,9 +102,9 @@
           </div>
         </div>
         {% for cat, perms in perm_categories %}
-        <div class="perm-block"><div class="perm-cat-label">{{ cat }}</div><div class="perm-grid">
+        <div class="perm-block"><div class="perm-cat-label">{{ cat|tr }}</div><div class="perm-grid">
           {% for key, label in perms %}
-          <label class="perm-row"><input type="checkbox" name="permissions" value="{{ key }}" {{ 'checked' if key in role_perms.get(role.id, []) }}><span>{{ label }}</span></label>
+          <label class="perm-row"><input type="checkbox" name="permissions" value="{{ key }}" {{ 'checked' if key in role_perms.get(role.id, []) }}><span>{{ label|tr }}</span></label>
           {% endfor %}
         </div></div>
         {% endfor %}
@@ -112,7 +112,7 @@
           <div class="cap-field"><label class="small muted" for="roleeditcap-{{ role.id }}">{{ _('Max Discount') }}</label><input id="roleeditcap-{{ role.id }}" type="number" name="discount_cap" value="{{ role.discount_cap }}" min="0" max="100"><span class="small muted">%</span></div>
           <label class="perm-row" style="margin-left:16px;" title="{{ _('Whether staff with this role show up as a vet to assign in Appointments, Visits, Grooming, and Inpatient') }}"><input type="checkbox" name="is_vet_role" {{ 'checked' if role.is_vet_role }}><span>{{ _('Can be assigned as a vet') }}</span></label>
           <div style="display:flex; align-items:center; gap:14px;">
-            <div class="staff-count">{{ staff_counts.get(role.id, 0) }} staff member{{ '' if staff_counts.get(role.id, 0) == 1 else 's' }}</div>
+            <div class="staff-count">{% if staff_counts.get(role.id, 0) == 1 %}{{ _('1 staff member') }}{% else %}{{ _('%(n)s staff members', n=staff_counts.get(role.id, 0)) }}{% endif %}</div>
             <div class="role-card-save">
               <span class="role-card-dirty-note">{{ _('Unsaved changes') }}</span>
               <button type="button" class="btn small secondary" data-vzh="admin-users-5">{{ _('Cancel') }}</button>
@@ -184,9 +184,9 @@
       <div style="height:10px;"></div>
 
       {% for cat, perms in perm_categories %}
-      <div class="perm-block"><div class="perm-cat-label">{{ cat }}</div><div class="perm-grid">
+      <div class="perm-block"><div class="perm-cat-label">{{ cat|tr }}</div><div class="perm-grid">
         {% for key, label in perms %}
-        <label class="perm-row"><input type="checkbox" name="permissions" value="{{ key }}"><span>{{ label }}</span></label>
+        <label class="perm-row"><input type="checkbox" name="permissions" value="{{ key }}"><span>{{ label|tr }}</span></label>
         {% endfor %}
       </div></div>
       {% endfor %}
@@ -268,15 +268,18 @@
     if (staffCount > 0) {
       reassignBlock.style.display = '';
       simpleText.style.display = 'none';
-      const label = staffCount === 1 ? '1 staff member' : (staffCount + ' staff members');
-      document.getElementById('deleteRoleStaffLine').textContent = label + ' currently assigned to ' + roleName + '.';
-      confirmBtn.textContent = 'Move & Delete';
-      confirmBtn.dataset.savingLabel = 'Moving & deleting…';
+      const label = staffCount === 1
+        ? {{ _('1 staff member currently assigned to {role}.')|tojson }}
+        : {{ _('{count} staff members currently assigned to {role}.')|tojson }}
+            .replace('{count}', staffCount);
+      document.getElementById('deleteRoleStaffLine').textContent = label.replace('{role}', roleName);
+      confirmBtn.textContent = {{ _('Move & Delete')|tojson }};
+      confirmBtn.dataset.savingLabel = {{ _('Moving & deleting…')|tojson }};
       select.setAttribute('name', 'reassign_to');
     } else {
       reassignBlock.style.display = 'none';
       simpleText.style.display = '';
-      confirmBtn.textContent = 'Delete Role';
+      confirmBtn.textContent = {{ _('Delete Role')|tojson }};
       confirmBtn.dataset.savingLabel = 'Deleting…';
       select.removeAttribute('name'); // nothing to reassign — don't submit a target
     }

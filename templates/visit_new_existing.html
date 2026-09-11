@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Log Visit — Existing Patient — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Log Visit — Existing Patient') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>{{ _('Log Visit — Existing Patient') }}</h1></div></div>
 
@@ -33,21 +33,21 @@ searchInput.addEventListener('input', () => {
   clearTimeout(debounceTimer);
   const q = searchInput.value.trim();
   if (q.length === 0) { resultsDiv.innerHTML = ''; return; }
-  if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">Type at least 2 characters.</div>'; return; }
+  if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-note">' + {{ _('Type at least 2 characters.')|tojson }} + '</div>'; return; }
   debounceTimer = setTimeout(() => {
     fetch(`{{ url_for('clinical.api_patients_search') }}?q=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .then(data => {
-        if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">No matches.</div>'; return; }
+        if (!data.length) { resultsDiv.innerHTML = '<div class="empty-note">' + {{ _('No matches.')|tojson }} + '</div>'; return; }
         window.__searchResults = data;
         resultsDiv.innerHTML = data.map((p, idx) =>
           `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" data-vz-act="visit-new-existing-1">
              <div><div class="who">${escapeHtml(p.animal_name)} <span class="meta">(${escapeHtml(p.species || '')})</span></div>
-             <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || 'no phone')} · ${escapeHtml(p.id)}${p.microchip ? ' · Chip: ' + escapeHtml(p.microchip) : ''}</div></div>
+             <div class="meta">Owner: ${escapeHtml(p.owner_name)} · ${escapeHtml(p.owner_phone || {{ _('no phone')|tojson }})} · ${escapeHtml(p.id)}${p.microchip ? ' · Chip: ' + escapeHtml(p.microchip) : ''}</div></div>
            </div>`
         ).join('');
       })
-      .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">Could not search patients; check server connection.</div>'; });
+      .catch(() => { resultsDiv.innerHTML = '<div class="empty-note">' + {{ _('Could not search patients; check server connection.')|tojson }} + '</div>'; });
   }, 200);
 });
 function selectPatient(p) {

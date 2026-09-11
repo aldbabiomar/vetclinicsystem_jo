@@ -6,7 +6,7 @@
   {% else %}
     <span class="btn small secondary disabled">{{ _('← Prev') }}</span>
   {% endif %}
-  <span class="pagination-info">Page {{ page }} of {{ total_pages }}{% if total_count is defined and total_count is not none %} ({{ total_count }} total){% endif %}</span>
+  <span class="pagination-info">{{ _('Page %(page)s of %(total_pages)s', page=page, total_pages=total_pages) }}{% if total_count is defined and total_count is not none %} {{ _('(%(total_count)s total)', total_count=total_count) }}{% endif %}</span>
   {% if page < total_pages %}
     <a class="btn small secondary" href="{{ pagination_url(page + 1, page_param) }}">{{ _('Next →') }}</a>
   {% else %}

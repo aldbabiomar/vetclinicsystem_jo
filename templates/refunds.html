@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Refunds — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Refunds') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>{{ _('Refunds') }}</h1><p class="page-sub">{{ _('Refund a retail sale (restores stock, optional) or reduce revenue for a service. Both remove the amount from Monthly & Yearly P&L, in the month the refund is processed.') }}</p></div></div>
 
@@ -33,9 +33,9 @@
           <div class="field"><label for="refunds-2-refund_method">{{ _('Method') }}</label>
             <select id="refunds-2-refund_method" name="refund_method">
               <option value="" {{ 'selected' if fv(retail_form, 'refund_method')=='' }}>—</option>
-              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Cash' }}>{{ _('Cash') }}</option>
-              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Card' }}>{{ _('Card') }}</option>
-              <option {{ 'selected' if fv(retail_form, 'refund_method')=='Transfer' }}>{{ _('Transfer') }}</option>
+              <option value="Cash" {{ 'selected' if fv(retail_form, 'refund_method')=='Cash' }}>{{ _('Cash') }}</option>
+              <option value="Card" {{ 'selected' if fv(retail_form, 'refund_method')=='Card' }}>{{ _('Card') }}</option>
+              <option value="Transfer" {{ 'selected' if fv(retail_form, 'refund_method')=='Transfer' }}>{{ _('Transfer') }}</option>
             </select>
           </div>
           <div class="field"><label for="refunds-3-reason">{{ _('Reason (optional)') }}</label><input id="refunds-3-reason" type="text" name="reason" value="{{ fv(retail_form, 'reason') }}" placeholder="{{ _('e.g. wrong item, customer changed mind') }}"></div>
@@ -51,7 +51,7 @@
 
   <div class="card">
     <div class="section-title" style="margin-top:0;">{{ _('Service Refund') }}</div>
-    <p class="small muted">{{ _('Removes a revenue amount only — no stock is touched. Enter') }} <strong>{{ _('exactly one') }}</strong> {{ _('of Visit ID, Inpatient Case ID or Boarding ID: the refund reverses that specific record, and the amount is capped at what is still refundable against it. A goodwill refund with no record behind it belongs in Cash Register instead.') }}</p>
+    <p class="small muted">{{ _('Removes a revenue amount only — no stock is touched. Enter %(exactly_one)s of Visit ID, Inpatient Case ID or Boarding ID: the refund reverses that specific record, and the amount is capped at what is still refundable against it. A goodwill refund with no record behind it belongs in Cash Register instead.', exactly_one=('<strong>%s</strong>'|safe) % _('exactly one')) }}</p>
     <form method="post" action="{{ url_for('sales.refund_service_save') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
@@ -60,9 +60,9 @@
         <div class="field"><label for="refunds-6-refund_method">{{ _('Method') }}</label>
           <select id="refunds-6-refund_method" name="refund_method">
             <option value="" {{ 'selected' if fv(service_form, 'refund_method')=='' }}>—</option>
-            <option {{ 'selected' if fv(service_form, 'refund_method')=='Cash' }}>{{ _('Cash') }}</option>
-            <option {{ 'selected' if fv(service_form, 'refund_method')=='Card' }}>{{ _('Card') }}</option>
-            <option {{ 'selected' if fv(service_form, 'refund_method')=='Transfer' }}>{{ _('Transfer') }}</option>
+            <option value="Cash" {{ 'selected' if fv(service_form, 'refund_method')=='Cash' }}>{{ _('Cash') }}</option>
+            <option value="Card" {{ 'selected' if fv(service_form, 'refund_method')=='Card' }}>{{ _('Card') }}</option>
+            <option value="Transfer" {{ 'selected' if fv(service_form, 'refund_method')=='Transfer' }}>{{ _('Transfer') }}</option>
           </select>
         </div>
         <div class="field"><label for="refunds-7-visit_id">{{ _('Visit ID') }} <span class="muted">{{ _('(one of these three)') }}</span></label><input id="refunds-7-visit_id" type="text" name="visit_id" value="{{ fv(service_form, 'visit_id') }}" placeholder="e.g. V001"></div>
@@ -85,7 +85,7 @@
 </div>
 {% if date_filter %}<p class="small muted" style="margin:-6px 0 12px;">{{ _('Showing refunds on %(date_filter)s only.', date_filter=date_filter) }}</p>{% endif %}
 {% if not refunds %}
-<p class="empty-note">{% if date_filter %}No refunds recorded on {{ date_filter }}.{% else %}No refunds recorded yet.{% endif %}</p>
+<p class="empty-note">{% if date_filter %}{{ _('No refunds recorded on %(day)s.', day=date_filter) }}{% else %}{{ _('No refunds recorded yet.') }}{% endif %}</p>
 {% else %}
 <div class="table-wrap sticky-scroll">
 <table>
@@ -104,16 +104,16 @@
       </td>
       <td class="small">
         {% if r.refund_type == 'retail' %}
-          {% if r.sale_id %}<a href="{{ url_for('sales.pos_receipt', sale_id=r.sale_id) }}">Sale #{{ r.sale_id }}</a> — {% endif %}{% for it in r.refund_lines %}{{ it.name }} × {{ it.quantity|int }}{{ ", " if not loop.last }}{% endfor %}
+          {% if r.sale_id %}<a href="{{ url_for('sales.pos_receipt', sale_id=r.sale_id) }}">{{ _('Sale #%(sale_id)s', sale_id=r.sale_id) }}</a> — {% endif %}{% for it in r.refund_lines %}{{ it.name }} × {{ it.quantity|int }}{{ ", " if not loop.last }}{% endfor %}
         {% else %}
-          {% if r.visit_id %}Visit {{ r.visit_id }}{% endif %}
-          {% if r.inpatient_case_id %}{{ ", " if r.visit_id }}Inpatient Case {{ r.inpatient_case_id }}{% endif %}
-          {% if r.boarding_id %}Boarding {{ r.boarding_id }}{% endif %}
+          {% if r.visit_id %}{{ _('Visit %(visit_id)s', visit_id=r.visit_id) }}{% endif %}
+          {% if r.inpatient_case_id %}{{ ", " if r.visit_id }}{{ _('Inpatient Case %(case_id)s', case_id=r.inpatient_case_id) }}{% endif %}
+          {% if r.boarding_id %}{{ _('Boarding %(boarding_id)s', boarding_id=r.boarding_id) }}{% endif %}
           {% if not r.visit_id and not r.inpatient_case_id and not r.boarding_id %}—{% endif %}
         {% endif %}
       </td>
       <td class="num-col">{{ r.amount|money }} {{ currency_label() }}{% if r.cleanup_amount_at_refund %}<div class="meta small">{{ _('Clean Up on original bill: %(r)s %(currency_label)s', r=r.cleanup_amount_at_refund|money, currency_label=currency_label()) }}</div>{% endif %}</td>
-      <td class="small">{{ r.refund_method or "—" }}</td>
+      <td class="small">{{ (r.refund_method or "—")|tr }}</td>
       <td class="small muted">{{ r.reason or "—" }}</td>
       <td class="small">{{ r.processed_by_name or "—" }}</td>
     </tr>
@@ -132,28 +132,28 @@ function lookupRefundSale() {
   const input = document.getElementById('refundSaleId');
   const saleId = input.value.trim();
   const linesDiv = document.getElementById('refundSaleLines');
-  if (!saleId) { window.VZToast.show('Enter a sale ID first.', 'error'); return; }
+  if (!saleId) { window.VZToast.show({{ _('Enter a sale ID first.')|tojson }}, 'error'); return; }
   fetch(`{{ url_for('sales.api_sale_refundable_items', sale_id=999999999) }}`.replace('999999999', encodeURIComponent(saleId)))
     .then(r => r.json().then(data => ({ ok: r.ok, data })))
     .then(({ ok, data }) => {
-      if (!ok) { window.VZToast.show(data.error || 'Sale not found.', 'error'); refundSaleId = null; refundLines = []; linesDiv.innerHTML = '<div class="empty-note">Look up a sale to see its refundable items.</div>'; document.getElementById('refundSaleCleanupNote').style.display = 'none'; renderRefundTotal(); return; }
+      if (!ok) { window.VZToast.show(data.error || {{ _('Sale not found.')|tojson }}, 'error'); refundSaleId = null; refundLines = []; linesDiv.innerHTML = '<div class="empty-note">' + {{ _('Look up a sale to see its refundable items.')|tojson }} + '</div>'; document.getElementById('refundSaleCleanupNote').style.display = 'none'; renderRefundTotal(); return; }
       refundSaleId = data.sale_id;
       refundLines = data.lines.map(l => ({ ...l, refundQty: 0 }));
       const cleanupNote = document.getElementById('refundSaleCleanupNote');
       if (data.cleanup_amount) {
-        cleanupNote.textContent = `This sale had a ${data.cleanup_amount} {{ currency_label() }} Clean Up applied — total refunds against it can't exceed what was actually collected (${data.sale_total} {{ currency_label() }}).`;
+        cleanupNote.textContent = {{ _("This sale had a {cleanup} %(currency_label)s Clean Up applied — total refunds against it can't exceed what was actually collected ({total} %(currency_label)s).", currency_label=currency_label())|tojson }}.replace('{cleanup}', data.cleanup_amount).replace('{total}', data.sale_total);
         cleanupNote.style.display = 'block';
       } else {
         cleanupNote.style.display = 'none';
       }
       renderRefundLines();
     })
-    .catch(() => { window.VZToast.show('Could not look up that sale; check server connection.', 'error'); });
+    .catch(() => { window.VZToast.show({{ _('Could not look up that sale; check server connection.')|tojson }}, 'error'); });
 }
 
 function renderRefundLines() {
   const linesDiv = document.getElementById('refundSaleLines');
-  if (!refundLines.length) { linesDiv.innerHTML = '<div class="empty-note">This sale has nothing left to refund.</div>'; renderRefundTotal(); return; }
+  if (!refundLines.length) { linesDiv.innerHTML = '<div class="empty-note">' + {{ _('This sale has nothing left to refund.')|tojson }} + '</div>'; renderRefundTotal(); return; }
   linesDiv.innerHTML = `<p class="small muted" style="margin:6px 0;">Sale #${refundSaleId} — set the quantity to refund for each line:</p>` + refundLines.map((l, idx) => `
     <div class="pos-cart-line">
       <div>${escapeHtml(l.name)}<div class="meta small">${l.unit_price} {{ currency_label() }} each — ${l.remaining} left refundable</div></div>
@@ -179,7 +179,7 @@ function renderRefundTotal() {
 
 function prepareRefundSubmit() {
   const selected = refundLines.filter(l => l.refundQty > 0);
-  if (!refundSaleId || !selected.length) { window.VZToast.show('Look up a sale and enter at least one refund quantity.', 'error'); return false; }
+  if (!refundSaleId || !selected.length) { window.VZToast.show({{ _('Look up a sale and enter at least one refund quantity.')|tojson }}, 'error'); return false; }
   document.getElementById('refundSaleIdHidden').value = refundSaleId;
   document.getElementById('restockHidden').value = document.getElementById('restockCheck').checked ? 'on' : '';
   const container = document.getElementById('refundFieldsHidden');

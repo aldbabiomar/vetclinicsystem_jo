@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Wellness — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Wellness') }} — {{ clinic_name }}{% endblock %}
 {% block main_class %}main-wide{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>{{ _('Wellness Reminders') }}</h1><p class="page-sub">{{ _('Reminders start 5 days before the next dose date. Flagged for admin if 2+ weeks overdue and uncontacted. %(total_count)s shown.', total_count=total_count) }}</p></div></div>
@@ -25,8 +25,8 @@
       <td>
         <select form="w-{{ w.visit_id }}" name="wellness_contact_method" class="small">
           <option value="">—</option>
-          <option {{ 'selected' if w.wellness_contact_method=='Phone Call' }}>{{ _('Phone Call') }}</option>
-          <option {{ 'selected' if w.wellness_contact_method=='Message' }}>{{ _('Message') }}</option>
+          <option value="Phone Call" {{ 'selected' if w.wellness_contact_method=='Phone Call' }}>{{ _('Phone Call') }}</option>
+          <option value="Message" {{ 'selected' if w.wellness_contact_method=='Message' }}>{{ _('Message') }}</option>
         </select>
       </td>
       <td><button class="btn small secondary" form="w-{{ w.visit_id }}" type="submit">{{ _('Save') }}</button></td>

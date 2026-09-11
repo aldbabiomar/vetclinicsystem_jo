@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Page Not Found — {{ clinic_name }}{% endblock %}
+{% block title %}{{ _('Page Not Found') }} — {{ clinic_name }}{% endblock %}
 
 {# base.html renders {% block content %} only inside the logged-in shell,
    and {% block auth_content %} only in the logged-out layout (see
