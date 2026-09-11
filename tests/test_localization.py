@@ -76,14 +76,22 @@ def test_an_unknown_language_falls_back_to_english(client):
 
 
 @needs_db
-def test_an_untranslated_string_falls_back_to_english(client):
-    """Most of the catalogue is deliberately still blank, awaiting the
-    translator. Blank must mean "show English", never "show nothing"."""
-    _as(client, "ar")
-    body = client.get("/").data.decode("utf-8")
-    assert "Shrinkage" in body, (
-        "an untranslated msgid rendered as something other than its English "
-        "source — a blank msgstr must fall through to the msgid")
+def test_an_untranslated_string_falls_back_to_english(client, flask_app):
+    """A string with no catalogue entry must render as its English source,
+    never as blank. That is what makes it safe to add an English string and
+    translate it later.
+
+    Tests the MECHANISM with a msgid that will never be in the catalogue,
+    rather than naming a string that happens to be untranslated today: the
+    first version of this test asserted "Shrinkage" falls back, and broke the
+    moment Shrinkage was translated. A guard pinned to a temporary state is a
+    guard with an expiry date on it."""
+    from flask_babel import gettext
+    with flask_app.test_request_context("/", headers={"Cookie": "lang=ar"}):
+        assert gettext("__no such string will ever be translated__") == \
+            "__no such string will ever be translated__"
+        # CONTROL: a string that IS in the catalogue does not fall through
+        assert gettext(KNOWN_EN) == KNOWN_AR
 
 
 # ---------------------------------------------------------------------------

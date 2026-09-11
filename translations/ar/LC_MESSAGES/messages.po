@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-11 12:18+0300\n"
+"POT-Creation-Date: 2026-09-11 13:24+0300\n"
 "PO-Revision-Date: 2026-09-11 12:18+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ar\n"
@@ -22,25 +22,25 @@ msgstr ""
 #: core.py:347
 #, python-format
 msgid "%(label)s is required."
-msgstr ""
+msgstr "حقل %(label)s مطلوب."
 
 #: core.py:364
 #, python-format
 msgid "Discount must be between 0%% and %(cap)s%% for your role."
-msgstr ""
+msgstr "يجب أن يكون الخصم بين ٠٪ و %(cap)s٪ لصلاحية دورك."
 
 #: core.py:387
 msgid "Clean Up amount can't be negative."
-msgstr ""
+msgstr "قيمة الإعفاء عن الفئات القليلة لا يمكن أن تكون سالبة"
 
 #: core.py:389
 #, python-format
-msgid "Clean Up can't exceed %(cap)s JOD total on this bill."
-msgstr ""
+msgid "Clean Up on this bill can't exceed %(cap)s JOD in total."
+msgstr "لا يمكن الإعفاء عن الفئات القليلة أكثر من %(cap)s كمجموع لهذه الفاتورة"
 
 #: core.py:391
 msgid "Clean Up can't exceed the remaining balance."
-msgstr ""
+msgstr "قيمة الإعفاء عن الفئات القليلة لا يمكن أن تزيد عن الرصيد المتبقي"
 
 #: templates/base.html:27
 msgid "Open menu"
@@ -80,11 +80,11 @@ msgstr "الزيارات"
 
 #: templates/base.html:75
 msgid "Follow-Ups"
-msgstr ""
+msgstr "المتابعات"
 
 #: templates/base.html:76
 msgid "Wellness"
-msgstr ""
+msgstr "الرعاية الوقائية"
 
 #: templates/base.html:77
 msgid "Grooming"
@@ -108,7 +108,7 @@ msgstr "حالات التنويم"
 
 #: templates/base.html:93
 msgid "Inventory Status"
-msgstr ""
+msgstr "حالة المخزون"
 
 #: templates/base.html:94
 msgid "Ordering Sheet"
@@ -116,11 +116,11 @@ msgstr "كشف الطلبات"
 
 #: templates/base.html:95
 msgid "Audit History"
-msgstr ""
+msgstr "سجل الجرد"
 
 #: templates/base.html:96
 msgid "Inventory Catalog"
-msgstr ""
+msgstr "دليل الأصناف"
 
 #: templates/base.html:97
 msgid "Distributors"
@@ -140,7 +140,7 @@ msgstr "الاستلام"
 
 #: templates/base.html:113
 msgid "Shrinkage"
-msgstr ""
+msgstr "الهالك"
 
 #: templates/base.html:114
 msgid "Returns"
@@ -148,19 +148,19 @@ msgstr "المرتجعات إلى المورد"
 
 #: templates/base.html:115
 msgid "Sales by Distributor"
-msgstr ""
+msgstr "المبيعات حسب المورد"
 
 #: templates/base.html:118
 msgid "Settlements"
-msgstr ""
+msgstr "التسويات"
 
 #: templates/base.html:130
 msgid "Point of Sale"
-msgstr ""
+msgstr "نقطة البيع"
 
 #: templates/base.html:131
 msgid "Sales History"
-msgstr ""
+msgstr "سجل المبيعات"
 
 #: templates/base.html:133
 msgid "Price List"
@@ -172,15 +172,15 @@ msgstr "المرتجعات"
 
 #: templates/base.html:139
 msgid "Cash Register"
-msgstr ""
+msgstr "الصندوق"
 
 #: templates/base.html:142
 msgid "Monthly P&L"
-msgstr ""
+msgstr "الأرباح والخسائر الشهرية"
 
 #: templates/base.html:143
 msgid "Yearly P&L"
-msgstr ""
+msgstr "الأرباح والخسائر السنوية"
 
 #: templates/base.html:146
 msgid "Insights"
@@ -188,15 +188,15 @@ msgstr "التحليلات"
 
 #: templates/base.html:147
 msgid "Retention"
-msgstr ""
+msgstr "ولاء العملاء"
 
 #: templates/base.html:160
 msgid "Users & Roles"
-msgstr ""
+msgstr "المستخدمون والصلاحيات"
 
 #: templates/base.html:163
 msgid "Logins and Changes"
-msgstr ""
+msgstr "سجل الدخول والتغييرات"
 
 #: templates/base.html:166
 msgid "Settings"
@@ -205,4 +205,7 @@ msgstr "الإعدادات"
 #: templates/base.html:174
 msgid "Log Out"
 msgstr "تسجيل الخروج"
+
+#~ msgid "Clean Up can't exceed %(cap)s JOD total on this bill."
+#~ msgstr ""
 
