@@ -3,6 +3,27 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.14.0] - 2026-09-11
+
+### Changed
+- **The language is now chosen in Settings, not from the header.** Open
+  Settings, pick English or العربية from the Language dropdown in Clinic
+  Settings, and press Save Settings the same as any other field there. It
+  applies to the whole clinic now, so every screen shows the same language
+  instead of each one remembering its own.
+  **If you were using Arabic, set it once after updating.** The old header
+  button remembered the choice inside each browser, and that memory cannot
+  carry across to the new setting — the app will start in English until
+  someone picks العربية in Settings.
+- Three things are renamed in Arabic, at the clinic's request: Inpatient is
+  now الإقامة المرضية, Boarding is الإقامة الفندقية, and Refunds is
+  المرتجعات النقدية. Consignment Returns — stock going back to a distributor —
+  is deliberately unchanged, because it has always been a different thing from
+  a refund to a client.
+
+### Fixed
+- The grooming service "Zoning" now reads تهذيب المنطقة الحساسة.
+
 ## [1.13.0] - 2026-09-11
 
 ### Added
