@@ -3,6 +3,15 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.14.3] - 2026-09-12
+
+### Fixed
+- **The health-check warning now waits for an answer.** Clicking the
+  background used to dismiss it. It is telling you the install has failed its
+  health check three days running, so it now stays until you choose "Open
+  Settings" or "Not now".
+- In Arabic, "Slot Length" in Settings now reads مدة الموعد.
+
 ## [1.14.2] - 2026-09-12
 
 ### Fixed
