@@ -230,6 +230,9 @@
       if (overlay.dataset.backdropBound === "1") return;
       overlay.dataset.backdropBound = "1";
       overlay.addEventListener("click", function (e) {
+        // A modal that reports a problem the admin has to act on opts out:
+        // a stray backdrop click should not dismiss something unread.
+        if (overlay.hasAttribute("data-no-backdrop-close")) return;
         if (e.target === overlay) window.VZSpring.present(overlay, false, {});
       });
     });

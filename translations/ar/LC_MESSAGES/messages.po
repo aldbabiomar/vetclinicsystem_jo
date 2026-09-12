@@ -2582,7 +2582,7 @@ msgstr "المواعيد"
 
 #: templates/appointments.html:5
 msgid "Slot length and hours are set in Settings."
-msgstr "تُضبط مدة الفترة وساعات العمل من الإعدادات."
+msgstr "تُضبط مدة الموعد وساعات العمل من الإعدادات."
 
 #: templates/appointments.html:7
 msgid "This Week"
@@ -2600,7 +2600,7 @@ msgid ""
 "hours/slot length (Settings). Cancel and rebook to fix."
 msgstr ""
 "ما زال محجوزًا، لكن إما أن الطبيب المُسنَد لم يعد نشطًا، أو أن وقت الموعد"
-" لم يعد يطابق ساعات العمل أو مدة الفترة الحالية للعيادة (الإعدادات). ألغِ"
+" لم يعد يطابق ساعات العمل أو مدة الموعد الحالية للعيادة (الإعدادات). ألغِ"
 " الحجز وأعد الحجز للتصحيح."
 
 #: templates/appointments.html:19
@@ -5903,7 +5903,7 @@ msgstr "ينتهي اليوم عند"
 
 #: templates/settings.html:35
 msgid "Slot Length (Minutes)"
-msgstr "مدة الفترة (بالدقائق)"
+msgstr "مدة الموعد (بالدقائق)"
 
 #: templates/settings.html:39
 msgid "Backups"
