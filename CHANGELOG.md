@@ -3,6 +3,28 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.15.2] - 2026-09-19
+
+### Fixed
+- **Follow-Ups and Wellness no longer run off the edge of their table.** On a
+  laptop-width screen the table was wider than the white panel behind it, so
+  it spilled out of the panel and the whole page could be scrolled sideways.
+  The column headings now wrap instead, and everything fits.
+- **Action buttons now sit in the bottom-right corner** of the panel they
+  belong to, rather than under the fields on the left: Revoke Card and Issue
+  Card on an owner, Save Operating Costs on Monthly P&L, and every button on
+  an inpatient case (Save, Log Update, Log Contact Attempt, Add to Bill,
+  Upload). In Arabic they move to the opposite corner, as they should.
+- **"+ Admit Patient" moved up onto the filter row** on Inpatient Cases,
+  alongside Currently Admitted / All Cases / Balance Due, at the far end.
+- **Sales History and Users & Roles read more tightly.** Their columns were
+  being stretched evenly across the full width, which left gaps between short
+  values; the space now goes to the columns that use it.
+
+All of the above was checked on a laptop, an iPad and a phone: nothing is cut
+off, no page scrolls sideways, and on small screens the wide tables still
+scroll within their own panel.
+
 ## [1.15.1] - 2026-09-19
 
 ### Fixed
