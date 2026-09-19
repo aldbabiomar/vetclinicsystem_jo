@@ -1081,3 +1081,24 @@ html[dir="rtl"] .vz-toast-stack { left: 16px; right: auto; }
 .rewards-enrol-row .field { flex: 0 1 220px; }
 .rewards-enrol-row .rewards-enrol-hint { flex: 1 1 180px; min-width: 0; margin: 0; }
 .rewards-enrol-row .btn { margin-inline-start: auto; }
+
+/* Column proportions for two tables whose auto-layout spread seven columns
+   evenly across a wide card, leaving gaps between short values. Declared here
+   rather than as <col style="width:..."> so they stay off the inline-style
+   ratchet (tests/test_inline_styles.py); .table-fixed makes them
+   authoritative. The slack goes where it is used: the action buttons on
+   Sales History, and Reset Password's input on the staff table. */
+.table-sales-history col:nth-child(1) { width: 16%; }
+.table-sales-history col:nth-child(2) { width: 14%; }
+.table-sales-history col:nth-child(3) { width: 11%; }
+.table-sales-history col:nth-child(4) { width: 12%; }
+.table-sales-history col:nth-child(5) { width: 12%; }
+.table-sales-history col:nth-child(6) { width: 10%; }
+.table-sales-history col:nth-child(7) { width: 25%; }
+.table-staff col:nth-child(1) { width: 16%; }
+.table-staff col:nth-child(2) { width: 12%; }
+.table-staff col:nth-child(3) { width: 12%; }
+.table-staff col:nth-child(4) { width: 14%; }
+.table-staff col:nth-child(5) { width: 9%; }
+.table-staff col:nth-child(6) { width: 24%; }
+.table-staff col:nth-child(7) { width: 13%; }

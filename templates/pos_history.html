@@ -10,7 +10,11 @@
   </form>
 </div>
 <div class="table-wrap sticky-scroll">
-<table>
+<table class="table-fixed table-sales-history">
+  {# Column proportions live in style.css (.table-sales-history col:nth-child),
+     not in style= attributes — inline widths here would land on the
+     tests/test_inline_styles.py ratchet. #}
+  <colgroup><col><col><col><col><col><col><col></colgroup>
   <thead><tr><th scope="col">{{ _('Date') }}</th><th scope="col">{{ _('Cashier') }}</th><th scope="col" class="num-col">{{ _('Subtotal') }}</th><th scope="col" class="num-col">{{ _('Discount') }}</th><th scope="col" class="num-col">{{ _('Total (%(currency_label)s)', currency_label=currency_label()) }}</th><th scope="col">{{ _('Payment') }}</th><th scope="col"></th></tr></thead>
   <tbody>
     {% for s in sales %}
