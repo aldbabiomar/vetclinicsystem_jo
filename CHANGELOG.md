@@ -3,6 +3,15 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.15.1] - 2026-09-19
+
+### Fixed
+- **The "issue a rewards card" form now sits on one line.** The card number,
+  the expiry date, the note explaining it and the Issue Card button were each
+  being placed on their own row, which left the note wrapping awkwardly around
+  the button. They now read across in one row with the button in the corner.
+  In Arabic the button moves to the opposite corner, as it should.
+
 ## [1.15.0] - 2026-09-19
 
 ### Added
