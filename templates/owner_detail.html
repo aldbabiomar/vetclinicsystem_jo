@@ -41,16 +41,18 @@
       {% if owner.is_member %}{{ _('This card lapsed on %(date)s. Issuing a new one starts a fresh term.', date=owner.member_expires_on|localdate) }}
       {% else %}{{ _('Not a member.') }}{% endif %}
     </p>
-    <form method="post" action="{{ url_for('clinical.owner_rewards_enroll', owner_id=owner.id) }}" class="form-grid">
+    <form method="post" action="{{ url_for('clinical.owner_rewards_enroll', owner_id=owner.id) }}" class="rewards-enrol-row">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <label>{{ _('Card Number (optional)') }}
-        <input type="text" name="member_card_number" dir="ltr" value="{{ owner.member_card_number or '' }}">
-      </label>
-      <label>{{ _('Expires') }}
-        <input type="date" name="member_expires_on" value="{{ default_expiry }}">
-        <span class="small muted">{{ _('Pre-filled from the term in Settings. Clear it for a card that never expires.') }}</span>
-      </label>
-      <div><button class="btn" type="submit">{{ _('Issue Card') }}</button></div>
+      <div class="field">
+        <label for="rewards-card-number">{{ _('Card Number (optional)') }}</label>
+        <input id="rewards-card-number" type="text" name="member_card_number" dir="ltr" value="{{ owner.member_card_number or '' }}">
+      </div>
+      <div class="field">
+        <label for="rewards-expires">{{ _('Expires') }}</label>
+        <input id="rewards-expires" type="date" name="member_expires_on" value="{{ default_expiry }}">
+      </div>
+      <p class="small muted rewards-enrol-hint">{{ _('Pre-filled from the term in Settings. Clear it for a card that never expires.') }}</p>
+      <button class="btn" type="submit">{{ _('Issue Card') }}</button>
     </form>
   {% endif %}
 </div>

@@ -1045,3 +1045,16 @@ html[dir="rtl"] .vz-toast-stack { left: 16px; right: auto; }
    `!important` because the whole point is to outrank whatever class the
    element happens to carry. */
 [hidden] { display: none !important; }
+
+/* The "issue a card" row: card number, expiry, the hint, and the button all
+   on one line, with the button pushed to the far corner and sitting on the
+   inputs' baseline.
+
+   margin-inline-start (not margin-left) so the button lands in the correct
+   corner under RTL as well — this panel renders in Arabic too.
+   flex-wrap keeps it usable at phone width: the parts stack and the button
+   stays on the corner of whatever line it ends up on. */
+.rewards-enrol-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 18px; }
+.rewards-enrol-row .field { flex: 0 1 220px; }
+.rewards-enrol-row .rewards-enrol-hint { flex: 1 1 180px; min-width: 0; margin: 0; }
+.rewards-enrol-row .btn { margin-inline-start: auto; }
