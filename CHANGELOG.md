@@ -3,6 +3,50 @@
 All notable changes to VetClinicSystem JO are documented in this file, in
 [Keep a Changelog](https://keepachangelog.com) style.
 
+## [1.15.0] - 2026-09-19
+
+### Added
+- **Rewards cards.** A member's bill is discounted automatically, at one
+  clinic-wide percentage set in Settings (Settings > Rewards Card; 0 switches
+  the programme off). Staff issue and revoke cards from the owner's page.
+  The discount applies to **eligible Price List items only** — anything marked
+  "Can Be Discounted?" — and everything else on the same bill is charged in
+  full. It works on all four places money is taken: visits, inpatient stays,
+  boarding and the till.
+- **Cards are valid for a fixed term**, 12 months by default, editable per
+  card when it is issued and changeable in Settings. The owner's page warns
+  when a card is within 30 days of lapsing. A lapsed card simply stops
+  discounting; it is never deleted, so you can still see who used to be a
+  member.
+- **A customer can be identified at the till.** This is optional — an ordinary
+  walk-in sale is unchanged and needs no extra click — and is there for when a
+  card is presented.
+- Retail sales with a customer recorded now count towards that customer's
+  spending on Insights.
+
+### Changed
+- **The card's discount is the only discount a member's bill can carry.** Staff
+  discounts are refused on a member's bill rather than silently ignored, so the
+  reason is visible. An administrator can remove a card discount from a bill it
+  should not have landed on — that action can only ever remove one, never add
+  or change one.
+- **Insights now covers the last 12 months instead of all time**, and subtracts
+  refunds. **The two client figures on that page will drop, in some cases
+  sharply** — that is the change, not a fault. They previously counted every
+  payment ever made and never subtracted money that was given back. The labels
+  now say which period they cover.
+- A member's bill is decided once, when the bill is raised. Enrolling someone
+  afterwards, revoking their card, or changing the rate never alters a bill
+  that already exists.
+- Receipts and exports name the discount they are showing — "Member discount"
+  rather than just "Discount".
+
+### Note for setup
+- **Price List items are not discountable by default.** Before handing out
+  cards, go through Price List and tick "Can Be Discounted?" on everything the
+  card should apply to — otherwise the card will discount nothing. The bulk
+  editor on that page does this a page at a time.
+
 ## [1.14.3] - 2026-09-12
 
 ### Fixed
