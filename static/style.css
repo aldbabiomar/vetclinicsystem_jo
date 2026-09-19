@@ -344,6 +344,13 @@ tfoot td {
 }
 tfoot tr:first-child td { border-top: 2px solid var(--line); }
 .table-wrap.sticky-scroll { overflow: visible; }
+/* These wraps deliberately do NOT scroll (the header sticks to the PAGE, not
+   to the card), so a table wider than the card overflows it: the white card
+   stops short and the whole page scrolls sideways. Letting the header labels
+   wrap gives the columns back the width they need to fit.
+   Scoped to sticky-scroll — every other table scrolls inside its card and
+   keeps single-line headers. */
+.table-wrap.sticky-scroll thead th { white-space: normal; }
 .sticky-header th { z-index: 2; }
 .row-flag-mismatch td { background: var(--warn-tint) !important; border-inline-start: 3px solid var(--warn); }
 /* Numeric columns keep a FIXED right alignment rather than the direction-aware
@@ -390,6 +397,11 @@ input:focus, select:focus, textarea:focus {
 }
 textarea { resize: vertical; min-height: 72px; }
 .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+/* Opt-in: push a form's buttons to the far corner. A MODIFIER rather than a
+   change to .form-actions itself, which 19 templates share — right-aligning
+   all of them is not what was asked for. justify-content follows the writing
+   direction, so this is the left corner in Arabic. */
+.form-actions.form-actions-end { justify-content: flex-end; }
 .checkbox-row { display: flex; align-items: center; gap: 8px; flex-direction: row; }
 .checkbox-row input { width: auto; }
 
@@ -414,6 +426,14 @@ textarea { resize: vertical; min-height: 72px; }
 .tabs a:hover { text-decoration: none; color: var(--primary); }
 
 .filter-chips { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+/* A primary action sharing the filter row sits in the far corner.
+   margin-inline-start so it lands correctly under RTL; flex-wrap above means
+   it drops to its own line on a phone rather than squashing the chips. */
+.filter-chips > .btn { margin-inline-start: auto; }
+/* The attachments upload row: file picker on the left, button in the corner.
+   Was an inline style; moved here so it stays off the inline-style ratchet. */
+.inpatient-upload-row { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.inpatient-upload-row .btn { margin-inline-start: auto; }
 .chip {
   padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line);
   font-size: 12.5px; font-weight: 600; color: var(--ink-soft); background: var(--paper);
@@ -1028,7 +1048,10 @@ html[dir="rtl"] .vz-toast-stack { left: 16px; right: auto; }
    failure that ratchet's own docstring describes.)
 --------------------------------------------------------------------------- */
 .rewards-panel { margin-bottom: 16px; }
-.rewards-actions { margin-top: 12px; }
+/* Revoke Card sits in the panel's far corner, matching Issue Card on the
+   enrol form. justify-content: flex-end follows the writing direction on its
+   own, so this is the LEFT corner in Arabic without a second rule. */
+.rewards-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
 .member-discount-row { margin: 8px 0; }
 .member-discount-remove { display: inline; margin-inline-start: 8px; }
 .pos-field-row { margin: 10px 0; }

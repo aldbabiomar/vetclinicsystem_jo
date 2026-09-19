@@ -3,12 +3,12 @@
 {% block content %}
 <div class="page-head">
   <div><h1>{{ _('Inpatient Cases') }}</h1><p class="page-sub">{{ _('%(total_count)s shown.', total_count=total_count) }}</p></div>
-  <a class="btn" href="{{ url_for('clinical.inpatient_new') }}">{{ _('+ Admit Patient') }}</a>
 </div>
 <div class="filter-chips">
   <a class="chip {{ 'active' if not show_all and not balance_due }}" href="{{ url_for('clinical.inpatient_list') }}">{{ _('Currently Admitted') }}</a>
   <a class="chip {{ 'active' if show_all and not balance_due }}" href="{{ url_for('clinical.inpatient_list', all=1) }}">{{ _('All Cases') }}</a>
   <a class="chip {{ 'active' if balance_due }}" href="{{ url_for('clinical.inpatient_list', view='balance_due') }}">{{ _('Balance Due') }}</a>
+  <a class="btn" href="{{ url_for('clinical.inpatient_new') }}">{{ _('+ Admit Patient') }}</a>
 </div>
 <div class="table-wrap sticky-scroll">
 <table>
