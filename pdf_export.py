@@ -17,6 +17,33 @@ from decimal import Decimal
 import logic
 import attachments
 
+
+def _discount_row(subtotal, discount_percent, discount_source, pre_cleanup_total, suffix="", fmt=",.3f"):
+    """The "Discount" line of a receipt — one helper for all five exports.
+
+    Reads the pre-Clean-Up total rather than re-deriving `subtotal * (1 - d)`,
+    which is what the five copies of this used to do. That re-derivation is
+    wrong on a MEMBER's bill by the value of every non-discountable line,
+    because the card comes off the eligible lines only — the receipt would
+    print a discount the total did not reflect.
+
+    Every export must satisfy `subtotal - discount - Clean Up = total`, and
+    that holds here by construction: the amount printed IS
+    `subtotal - pre_cleanup_total`.
+
+    English only, deliberately — PDF exports are permanently outside the
+    Arabic localization (ARABIC_LOCALIZATION_PLAN.md §0).
+
+    Returns None when there is no discount, so the row stays off the receipt
+    exactly as it did before.
+    """
+    if not discount_percent:
+        return None
+    label = "Member discount" if discount_source == "member" else "Discount"
+    return [f"{label} ({discount_percent:.0f}%)",
+            f"-{subtotal - pre_cleanup_total:{fmt}}{suffix}"]
+
+
 PRIMARY = colors.black
 LINE = colors.HexColor("#BFBFBF")
 ACCENT_TINT = colors.HexColor("#F2F2F2")
@@ -178,10 +205,11 @@ def export_patient_billing(db, patient_id):
             amount = l.get("line_total", l["price"])
             label = l["name"] if not l.get("quantity") or l["quantity"] == 1 else f"{l['name']} × {l['quantity']:g}"
             data.append([label, f"{amount:.3f}"])
-        pre_cleanup_total = round(summary["subtotal"] * (1 - summary["discount_percent"] / Decimal(100)), 3)
         data.append(["Subtotal", f"{summary['subtotal']:.3f}"])
-        if summary["discount_percent"]:
-            data.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - pre_cleanup_total:.3f}"])
+        _drow = _discount_row(summary["subtotal"], summary["discount_percent"],
+                              summary.get("discount_source"), summary["pre_cleanup_total"], fmt=".3f")
+        if _drow:
+            data.append(_drow)
         if summary["cleanup_amount"]:
             data.append(["Clean Up", f"-{summary['cleanup_amount']:.3f}"])
         data.append(["Total", f"{summary['total']:.3f}"])
@@ -235,10 +263,16 @@ def export_sale_receipt(db, sale_id):
     story.append(t)
     story.append(Spacer(1, 14))
 
-    pre_cleanup_total = round(sale["subtotal"] * (1 - sale["discount_percent"] / Decimal(100)), 3)
     summary_rows = [["Subtotal", f"{sale['subtotal']:,.3f} JOD"]]
-    if sale["discount_percent"]:
-        summary_rows.append([f"Discount ({sale['discount_percent']:.0f}%)", f"-{sale['subtotal'] - pre_cleanup_total:,.3f} JOD"])
+    # A sale stores no pre-Clean-Up figure, so it comes back from the two
+    # stored amounts. That is NOT the re-derivation this helper exists to
+    # avoid: `total` is the real recorded total, already correct for a
+    # member's mixed cart, and cleanup_amount_error() caps the write-off at
+    # the total so the sum is exact rather than clamped.
+    _drow = _discount_row(sale["subtotal"], sale["discount_percent"], sale["discount_source"],
+                          sale["total"] + (sale["cleanup_amount"] or 0), " JOD")
+    if _drow:
+        summary_rows.append(_drow)
     if sale["cleanup_amount"]:
         summary_rows.append(["Clean Up", f"-{sale['cleanup_amount']:,.3f} JOD"])
     summary_rows.append(["Total", f"{sale['total']:,.3f} JOD"])
@@ -331,10 +365,11 @@ def export_visit_pdf(db, visit_id):
             data.append([label, f"{amount:,.3f}"])
         story.append(_section_table(data, [120 * mm, 45 * mm]))
         story.append(Spacer(1, 6))
-    pre_cleanup_total = round(summary["subtotal"] * (1 - summary["discount_percent"] / Decimal(100)), 3)
     bill_rows = [["Subtotal", f"{summary['subtotal']:,.3f} JOD"]]
-    if summary["discount_percent"]:
-        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - pre_cleanup_total:,.3f} JOD"])
+    _drow = _discount_row(summary["subtotal"], summary["discount_percent"],
+                          summary.get("discount_source"), summary["pre_cleanup_total"], " JOD")
+    if _drow:
+        bill_rows.append(_drow)
     if summary["cleanup_amount"]:
         bill_rows.append(["Clean Up", f"-{summary['cleanup_amount']:,.3f} JOD"])
     bill_rows.append(["Total", f"{summary['total']:,.3f} JOD"])
@@ -418,10 +453,11 @@ def export_inpatient_pdf(db, case_id):
             data.append([l["name"], f"{l['quantity']:g}", f"{l['unit_price']:,.3f}", f"{l['line_total']:,.3f}"])
         story.append(_section_table(data, [70 * mm, 20 * mm, 35 * mm, 40 * mm]))
         story.append(Spacer(1, 6))
-    pre_cleanup_total = round(summary["subtotal"] * (1 - summary["discount_percent"] / Decimal(100)), 3)
     bill_rows = [["Subtotal", f"{summary['subtotal']:,.3f} JOD"]]
-    if summary["discount_percent"]:
-        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - pre_cleanup_total:,.3f} JOD"])
+    _drow = _discount_row(summary["subtotal"], summary["discount_percent"],
+                          summary.get("discount_source"), summary["pre_cleanup_total"], " JOD")
+    if _drow:
+        bill_rows.append(_drow)
     if summary["cleanup_amount"]:
         bill_rows.append(["Clean Up", f"-{summary['cleanup_amount']:,.3f} JOD"])
     bill_rows.append(["Total", f"{summary['total']:,.3f} JOD"])
@@ -496,11 +532,12 @@ def export_boarding_pdf(db, boarding_id):
     bill_rows = [
         ["Price per Day", f"{b['price_per_day']:,.3f} JOD" if b["price_per_day"] is not None else "\u2014"],
     ]
-    pre_cleanup_total = round(summary["subtotal"] * (1 - summary["discount_percent"] / Decimal(100)), 3)
     if summary["discount_percent"] or summary["cleanup_amount"]:
         bill_rows.append(["Subtotal", f"{summary['subtotal']:,.3f} JOD"])
-    if summary["discount_percent"]:
-        bill_rows.append([f"Discount ({summary['discount_percent']:.0f}%)", f"-{summary['subtotal'] - pre_cleanup_total:,.3f} JOD"])
+    _drow = _discount_row(summary["subtotal"], summary["discount_percent"],
+                          summary.get("discount_source"), summary["pre_cleanup_total"], " JOD")
+    if _drow:
+        bill_rows.append(_drow)
     if summary["cleanup_amount"]:
         bill_rows.append(["Clean Up", f"-{summary['cleanup_amount']:,.3f} JOD"])
     bill_rows.append(["Total", f"{summary['total']:,.3f} JOD"])

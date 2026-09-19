@@ -28,6 +28,15 @@
     <div class="field"><label for="settings-5-expiry_soon_days">{{ _('Expiry Warning Window (Days)') }}</label><input id="settings-5-expiry_soon_days" type="number" name="expiry_soon_days" value="{{ settings.expiry_soon_days }}" min="1" max="3650" step="1"></div>
   </div>
 
+  <div class="section-title">{{ _('Rewards Card') }}</div>
+  <div class="form-grid">
+    {# A percentage, so step="any" — the staff discount beside it already
+       accepts fractions and the two must not disagree about what a valid
+       rate looks like. 0 switches the programme off. #}
+    <div class="field"><label for="settings-r1-member_discount_percent">{{ _('Member Discount (%%)') }}</label><input id="settings-r1-member_discount_percent" type="number" name="member_discount_percent" value="{{ settings.get('member_discount_percent', '0') }}" min="0" max="50" step="any"><span class="small muted">{{ _('0 switches the rewards programme off. Applies to eligible Price List items only.') }}</span></div>
+    <div class="field"><label for="settings-r2-member_term_months">{{ _('Card Valid For (Months)') }}</label><input id="settings-r2-member_term_months" type="number" name="member_term_months" value="{{ settings.get('member_term_months', '12') }}" min="1" max="120" step="1"><span class="small muted">{{ _('Pre-fills the expiry date when a card is issued. Existing cards keep the date they were given.') }}</span></div>
+  </div>
+
   <div class="section-title">{{ _('Appointments') }}</div>
   <div class="form-grid">
     <div class="field"><label for="settings-6-appt_start_time">{{ _('Day Starts At') }}</label><input id="settings-6-appt_start_time" type="time" name="appt_start_time" value="{{ settings.appt_start_time }}"></div>

@@ -138,7 +138,8 @@ PERMISSION_CATEGORIES = [
 PERMISSION_LABELS = [
     _("Manage Owners"), _("Manage Patients"), _("Manage Visits"),
     _("Manage Follow-Ups"), _("Manage Wellness Plans"), _("Manage Grooming"),
-    _("Manage Boarding"), _("Manage Appointments"), _("Manage Inpatient Cases"),
+    _("Manage Boarding"), _("Manage Appointments"), _("Manage Rewards Members"),
+    _("Manage Inpatient Cases"),
     _("View Inventory Status"), _("Manage Ordering Sheet"), _("Manage Audit History"),
     _("Manage Inventory Catalog"), _("Manage Distributors"), _("Process POS Sales"),
     _("View Sales History"), _("Manage Price List"), _("Manage Refunds"),

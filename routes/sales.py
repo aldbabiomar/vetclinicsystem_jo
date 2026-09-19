@@ -208,7 +208,8 @@ def pos_page():
     cap = auth.discount_cap_for()
     # Fresh one-time token per page load — see pos_checkout()'s dedup
     # check and idx_sales_idempotency_key in schema_postgres.sql.
-    return render_template("pos.html", discount_cap=cap, idempotency_key=uuid.uuid4().hex)
+    return render_template("pos.html", discount_cap=cap, idempotency_key=uuid.uuid4().hex,
+                           member_rate=logic.member_discount_rate(db))
 
 
 # ---------------------------------------------------------------------------
@@ -293,6 +294,9 @@ def _priced_cart_lines(db, qty_by_item, cost_by_item, distributor_by_item):
     exactly as it did when this was one long function.
     """
     subtotal, lines, notices = 0, [], []
+    # One query for the whole cart rather than one per line, and read from
+    # the same active price_list row item_sale_price() prices from.
+    discountable_by_item = logic.discountable_by_item_ids(db, list(qty_by_item))
     for iid, qty in qty_by_item.items():
         price = logic.item_sale_price(db, iid)
         if price is None:
@@ -325,8 +329,12 @@ def _priced_cart_lines(db, qty_by_item, cost_by_item, distributor_by_item):
                 f"{status['name']} in stock — sale blocked.")
         line_total = price * qty
         subtotal += line_total
+        # Missing means no active linked price_list row, which is charged in
+        # full -- the conservative side, and unreachable in practice since
+        # item_sale_price() above would have skipped the line already.
         lines.append((iid, qty, price, line_total,
-                      cost_by_item.get(iid), distributor_by_item.get(iid)))
+                      cost_by_item.get(iid), distributor_by_item.get(iid),
+                      discountable_by_item.get(iid, False)))
     return subtotal, lines, notices, None
 
 
@@ -354,7 +362,8 @@ def _cash_payment_for(f, total):
 
 
 def _record_sale(db, lines, *, subtotal, discount_percent, total, cleanup_amount,
-                 payment_method, cash_received, change_given, idempotency_key, now):
+                 payment_method, cash_received, change_given, idempotency_key, now,
+                 owner_id=None, discount_source="staff"):
     """Write the sale, its lines, and the stock movements. Returns the sale id.
 
     Caller commits — this deliberately does not, so the whole checkout stays
@@ -363,19 +372,21 @@ def _record_sale(db, lines, *, subtotal, discount_percent, total, cleanup_amount
     """
     cur = db.execute(
         "INSERT INTO sales (sale_date, cashier_id, subtotal, discount_percent, discount_applied_by, total, "
-        "payment_method, cash_received, change_given, idempotency_key, cleanup_amount, cleanup_applied_by) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
+        "payment_method, cash_received, change_given, idempotency_key, cleanup_amount, cleanup_applied_by, "
+        "owner_id, discount_source) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
         (now, session["user_id"], round(subtotal, 3), discount_percent,
          session["user_id"] if discount_percent else None, total, payment_method,
          cash_received, change_given, idempotency_key, cleanup_amount,
-         session["user_id"] if cleanup_amount else None),
+         session["user_id"] if cleanup_amount else None,
+         owner_id, discount_source),
     )
     sale_id = cur.fetchone()["id"]
-    for iid, qty, price, line_total, unit_cost, distributor_id in lines:
+    for iid, qty, price, line_total, unit_cost, distributor_id, discountable in lines:
         db.execute(
-            "INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost, distributor_id) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (sale_id, iid, qty, price, round(line_total, 3), unit_cost, distributor_id))
+            "INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, line_total, unit_cost, distributor_id, discountable) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (sale_id, iid, qty, price, round(line_total, 3), unit_cost, distributor_id, discountable))
         db.execute(
             "INSERT INTO inventory_transactions (item_id, change_qty, reason, ref_id, timestamp, user_id) "
             "VALUES (?,?,?,?,?,?)",
@@ -403,7 +414,8 @@ def pos_checkout():
         # cart itself starts empty again, same as a fresh /pos page load.
         cap = auth.discount_cap_for()
         return render_template("pos.html", discount_cap=cap,
-                                idempotency_key=f.get("idempotency_key") or uuid.uuid4().hex, form=f)
+                                idempotency_key=f.get("idempotency_key") or uuid.uuid4().hex, form=f,
+                                member_rate=logic.member_discount_rate(db))
 
     def refuse(message):
         flash(message, "error")
@@ -429,13 +441,36 @@ def pos_checkout():
         discount_percent = parse_money(f.get("discount_percent")) or 0
     except BadNumber:
         return refuse("Discount must be a valid number.")
-    cap = auth.discount_cap_for()
-    error = discount_percent_error(discount_percent, cap)
-    if error:
-        return refuse(error)
+
+    # Identifying the customer is OPTIONAL and opt-in — nothing prompts for
+    # it and the walk-in path is unchanged, so owner_id is NULL on most sales
+    # by design. It is filled in when a rewards card is presented.
+    owner_id = (f.get("owner_id") or "").strip() or None
+    owner = None
+    if owner_id:
+        owner = db.execute("SELECT * FROM owners WHERE id=?", (owner_id,)).fetchone()
+        if not owner:
+            return refuse("That customer no longer exists — search again.")
+    member_percent, discount_source = logic.member_discount_for(db, owner)
+    if discount_source == "member":
+        # Card only. Refused outright rather than silently ignored, so the
+        # cashier sees why the number they typed did not take effect.
+        if discount_percent > 0:
+            return refuse("This customer's rewards card already discounts this sale — "
+                          "a staff discount can't be added on top of it.")
+        discount_percent = member_percent
+    else:
+        # The role cap bounds STAFF discretion only; a member's rate is
+        # clinic policy and deliberately does not pass through it (§6).
+        error = discount_percent_error(discount_percent, auth.discount_cap_for())
+        if error:
+            return refuse(error)
     if not item_ids:
         return refuse("Cart is empty.")
-    if discount_percent > 0:
+    # Scoped to staff discounts. A member's card discounts the ELIGIBLE lines
+    # and charges the rest in full, which is the whole point of the per-line
+    # snapshot.
+    if discount_source == "staff" and discount_percent > 0:
         blocked = logic.non_discountable_line_names_for_items(db, item_ids)
         if blocked:
             return refuse("Can't apply a discount — the cart includes item(s) marked as "
@@ -455,7 +490,15 @@ def pos_checkout():
     if not lines:
         return refuse("Nothing to sell.")
 
-    total = round(subtotal * (1 - discount_percent / Decimal(100)), 3)
+    # The discount comes off the eligible lines only, through the same
+    # logic.discounted_raw_total() the bill path uses — one function, not the
+    # formula written out twice (SEAM_RULES.md F1 is what that costs). On a
+    # staff discount every line is eligible, because the guard above refuses
+    # the sale otherwise, so this is unchanged for any non-member sale.
+    discountable_subtotal = sum(
+        line_total for _iid, _qty, _price, line_total, _cost, _dist, discountable in lines
+        if discountable)
+    total = round(logic.discounted_raw_total(subtotal, discountable_subtotal, discount_percent), 3)
     try:
         cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
     except BadNumber:
@@ -481,7 +524,8 @@ def pos_checkout():
             db, lines, subtotal=subtotal, discount_percent=discount_percent, total=total,
             cleanup_amount=cleanup_amount, payment_method=f.get("payment_method"),
             cash_received=cash_received, change_given=change_given,
-            idempotency_key=idempotency_key, now=now)
+            idempotency_key=idempotency_key, now=now,
+            owner_id=owner_id, discount_source=discount_source)
         db.commit()
     except dbmod.IntegrityError:
         # The fast-path check above isn't atomic — two near-simultaneous

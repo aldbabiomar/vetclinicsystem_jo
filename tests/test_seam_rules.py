@@ -250,3 +250,187 @@ def test_date_arguments_use_or_rather_than_a_get_default():
         "ABSENT — a present-but-empty '?date=' keeps the empty string and reaches "
         "the query. Use `request.args.get(key) or default`:\n  "
         + "\n  ".join(offenders))
+
+
+# ---------------------------------------------------------------------------
+# Rules 5-8 — the rewards card (features/REWARDS_CARD_PLAN.md §11.1).
+#
+# This feature puts ONE new rule on four payment paths that were already
+# shaped differently from each other, which is the exact situation every
+# entry in SEAM_RULES.md §2 came out of. These four rules are the parts that
+# must not drift apart.
+#
+# They scan logic.py and pdf_export.py as well as the route modules, because
+# after the blueprint split most of the money code is not in a route at all.
+# ---------------------------------------------------------------------------
+def _money_modules():
+    """Every module that can do bill arithmetic — a live walk, not a list."""
+    mods = _route_modules()
+    for extra in ("logic.py", "pdf_export.py", "core.py", "money.py"):
+        p = ROOT / extra
+        if p.exists():
+            mods.append(p)
+    return mods
+
+
+def _all_functions():
+    """[(module, func, source, node, module_src)] across _money_modules()."""
+    out = []
+    for path in _money_modules():
+        src = path.read_text(encoding="utf-8")
+        tree = ast.parse(src)
+        lines = src.splitlines(keepends=True)
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                end = getattr(node, "end_lineno", None) or node.lineno
+                out.append((path.name, node.name,
+                            "".join(lines[node.lineno - 1:end]), node, src))
+    return out
+
+
+LINE_TABLES = ("visit_billing_lines", "inpatient_billing", "sale_items")
+
+
+def test_rule5_every_billed_line_insert_snapshots_discountability():
+    """A line inserted without `discountable` is a line whose eligibility was
+    never recorded, so every later recomputation of that bill and every refund
+    against it prices it wrong.
+
+    The dropped NOT NULL default catches this at runtime too (setup.py drops
+    it deliberately), but only once someone exercises that path. This catches
+    it at the source.
+    """
+    inserts, offenders = 0, []
+    for mod, fn, src, _node, _msrc in _all_functions():
+        for m in re.finditer(r"INSERT INTO (%s)\s*\(([^)]*)\)" % "|".join(LINE_TABLES),
+                             src, re.S):
+            inserts += 1
+            if "discountable" not in m.group(2):
+                offenders.append(f"{mod}:{fn} -> INSERT INTO {m.group(1)}")
+    assert inserts >= 3, (
+        f"expected to find an INSERT for each of {LINE_TABLES}, found {inserts} — "
+        "this scan has lost its subject and would pass against anything")
+    assert not offenders, (
+        "billed-line INSERT(s) that do not record `discountable`:\n  "
+        + "\n  ".join(offenders))
+
+
+def test_rule6_every_bill_total_call_passes_the_discountable_subtotal():
+    """`compute_bill_totals(..., discountable_subtotal=...)` is keyword-only
+    and has no default precisely so a caller cannot forget it — forgetting it
+    would silently treat a non-discountable item as discountable and produce a
+    wrong total with nothing to show for it.
+
+    Walks the AST rather than the text: a call split across lines, or one
+    whose keyword sits under a comment mentioning it, is not something a
+    regex can judge. SEAM_RULES.md §3 records that rule 3's first
+    text-matching draft was proven blind by its own mutation run.
+    """
+    calls, offenders = 0, []
+    for path in _money_modules():
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            fname = (node.func.attr if isinstance(node.func, ast.Attribute)
+                     else getattr(node.func, "id", None))
+            if fname != "compute_bill_totals":
+                continue
+            calls += 1
+            if not any(kw.arg == "discountable_subtotal" for kw in node.keywords):
+                offenders.append(f"{path.name}:{node.lineno}")
+    assert calls >= 5, (
+        f"expected several compute_bill_totals() calls, found {calls} — "
+        "the scan has lost its subject")
+    assert not offenders, (
+        "compute_bill_totals() call(s) with no discountable_subtotal:\n  "
+        + "\n  ".join(offenders))
+
+
+def test_rule7_a_route_writing_a_discount_from_a_request_checks_its_source():
+    """"Card only": a member's bill carries the card's discount and nothing
+    else. Any route that takes a discount percentage from the REQUEST and
+    writes it must first establish whether the bill is a member's — otherwise
+    it is a path that can overwrite, raise or wipe a card discount.
+
+    Tested as a GROUP rather than one route at a time, which is the whole
+    point: three of these four were safe only because of a refusal added to a
+    fourth.
+    """
+    checked, offenders = 0, []
+    for mod, fn, src, _node, _msrc in _all_functions():
+        writes_discount = re.search(
+            r"(UPDATE\s+\w+\s+SET[^\"']*discount_percent\s*=|"
+            r"INSERT INTO\s+\w+\s*\([^)]*discount_percent)", src, re.S)
+        reads_request = "request.form" in src or re.search(r"\bf\.get\(", src)
+        if not (writes_discount and reads_request):
+            continue
+        checked += 1
+        if "discount_source" not in src:
+            offenders.append(f"{mod}:{fn}")
+    assert checked >= 3, (
+        f"expected several request-driven discount writers, found {checked} — "
+        "the scan has lost its subject")
+    assert not offenders, (
+        "route(s) writing a request-supplied discount without consulting "
+        "discount_source:\n  " + "\n  ".join(offenders))
+
+
+# The only places a discount percentage may be turned into money. Everything
+# else must go through logic.discounted_raw_total() or read a STORED total.
+# A new report that re-derives `lines x (1 - d)` is exactly how JO's P&L gap
+# would come back (features/REWARDS_CARD_PLAN.md §2.1).
+DISCOUNT_ARITHMETIC_ALLOWED = {
+    "discounted_raw_total",       # the one shared formula
+    "compute_bill_totals",        # calls it
+    "refundable_sale_items",      # per line, against the line's own snapshot
+    "_revenue_and_cogs_by_month",  # weights a stored total by discounted share
+    "revenue_by_category",        # ditto, in SQL
+    "payable_total",              # rounding, not discounting
+    "member_discount_rate",       # reads the setting
+}
+
+
+def _without_comments(src):
+    """Python `#` and SQL `--` comments removed.
+
+    A comment that DESCRIBES the formula is not the formula. SEAM_RULES.md
+    §7.3 records a mutation that was edited into a comment containing the
+    words FOR UPDATE rather than into the SQL below it, and passed.
+    """
+    out = []
+    for line in src.splitlines():
+        line = re.sub(r"#.*$", "", line)
+        line = re.sub(r"--.*$", "", line)
+        out.append(line)
+    return "\n".join(out)
+
+
+DIVIDES_BY_100 = re.compile(r"/\s*100(?:\.0)?\b|Decimal\(100\)")
+
+
+def test_rule8_discount_arithmetic_only_happens_where_it_is_allowed():
+    """A percentage turned into money outside the allow-list is a second
+    implementation of the bill, and the two will disagree the first time a
+    member's bill carries a non-discountable line.
+
+    Scanned per FUNCTION, not per line, deliberately: the P&L weighting reads
+    the rate on one line and divides on another, and a line-scoped version of
+    this rule did not see it. Its own floor is what reported that — the first
+    draft found 2 of the 4 real sites and said so rather than passing.
+    """
+    seen, offenders = 0, []
+    for mod, fn, src, _node, _msrc in _all_functions():
+        body = _without_comments(src)
+        if "discount" not in body.lower() or not DIVIDES_BY_100.search(body):
+            continue
+        seen += 1
+        if fn not in DISCOUNT_ARITHMETIC_ALLOWED:
+            offenders.append(f"{mod}:{fn}")
+    assert seen >= 3, (
+        f"expected to find discount arithmetic at the allow-listed sites, found "
+        f"{seen} — the scan has lost its subject and would pass against anything")
+    assert not offenders, (
+        "discount arithmetic outside the allow-list — use "
+        "logic.discounted_raw_total() or read the stored total:\n  "
+        + "\n  ".join(offenders))

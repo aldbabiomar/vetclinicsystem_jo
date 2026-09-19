@@ -81,7 +81,8 @@
     <form method="post" id="paymentForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field" style="margin-bottom:10px;"><label for="boarding-6-amount">{{ _('Amount (%(currency_label)s)', currency_label=currency_label()) }}</label><input id="boarding-6-amount" type="number" step="0.001" min="1" name="amount" required value="{{ fv(form, 'amount') if payment_error_id else '' }}"></div>
-      <div class="field" style="margin-bottom:10px;"><label for="paymentDiscountInput">{{ _('Discount (max %(discount_cap)s%%)', discount_cap=discount_cap) }}</label><input type="number" step="0.01" min="0" max="{{ discount_cap }}" name="discount_percent" id="paymentDiscountInput" value="{{ fv(form, 'discount_percent') if payment_error_id else '0' }}"></div>
+      <div class="field" id="paymentDiscountField" style="margin-bottom:10px;"><label for="paymentDiscountInput">{{ _('Discount (max %(discount_cap)s%%)', discount_cap=discount_cap) }}</label><input type="number" step="0.01" min="0" max="{{ discount_cap }}" name="discount_percent" id="paymentDiscountInput" value="{{ fv(form, 'discount_percent') if payment_error_id else '0' }}"></div>
+      <p class="small muted" id="paymentMemberNote" hidden>{{ _('This stay carries a rewards-card discount, which this form cannot change.') }}</p>
       <div class="field" style="margin-bottom:10px;"><label for="boarding-7-cleanup_amount">{{ _('Clean Up (max %(CLEANUP_CAP)s %(currency_label)s)', CLEANUP_CAP=CLEANUP_CAP, currency_label=currency_label()) }}</label><input id="boarding-7-cleanup_amount" type="number" step="0.001" min="0" name="cleanup_amount" value="{{ fv(form, 'cleanup_amount') if payment_error_id else '0' }}"></div>
       <div class="field" style="margin-bottom:10px;"><label for="boarding-8-method">{{ _('Method') }}</label>
         <select id="boarding-8-method" name="method">
@@ -122,7 +123,7 @@
         <div class="action-btns">
           <button class="btn small danger" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-vzh="boarding-8">{{ _('Something\'s Wrong!') }}</button>
           <div class="action-btns-row">
-            <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-discount="{{ s.discount_percent or 0 }}" data-vzh="boarding-9">{{ _('Payment') }}</button>
+            <button class="btn small secondary" type="button" data-id="{{ s.id }}" data-name="{{ s.animal_name }}" data-discount="{{ s.discount_percent or 0 }}" data-member="{{ 1 if s.billing.discount_source == 'member' else 0 }}" data-vzh="boarding-9">{{ _('Payment') }}</button>
             <button class="btn small secondary" type="button" data-vzh="boarding-10" data-vz-arg="{{ s.id }}">{{ _('Edit') }}</button>
           </div>
           <a class="btn small secondary" href="{{ url_for('clinical.boarding_export_pdf', boarding_id=s.id) }}">{{ _('Export (PDF)') }}</a>
@@ -241,6 +242,19 @@ function openPayment(btn) {
   // the next time someone recorded one.
   const d = document.getElementById('paymentDiscountInput');
   if (d) d.value = discount || '0';
+  // A member's stay carries its card's rate and this form cannot change it.
+  // The input is DISABLED as well as hidden, so it is not submitted at all --
+  // boarding_payment() reads an absent field as "keep the card's rate", which
+  // is what lets a member's stay still be paid. Refusing on absence instead
+  // would have blocked payment outright. `hidden` rather than an inline
+  // display style: it cannot be defeated by a class and stays off the
+  // inline-style ratchet.
+  const isMember = btn.dataset.member === '1';
+  if (d) d.disabled = isMember;
+  const dField = document.getElementById('paymentDiscountField');
+  if (dField) dField.hidden = isMember;
+  const dNote = document.getElementById('paymentMemberNote');
+  if (dNote) dNote.hidden = !isMember;
   document.getElementById('paymentModal').style.display = 'flex';
 }
 function toggleEdit(id) {

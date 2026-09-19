@@ -9,7 +9,7 @@
   <div class="pos-cart-line"><div>{{ i.name }} × {{ i.quantity }}</div><div>{{ i.line_total|money }} {{ currency_label() }}</div></div>
   {% endfor %}
   <div class="detail-item" style="margin-top:12px;"><div class="k">{{ _('Subtotal') }}</div><div class="v">{{ sale.subtotal|money }} {{ currency_label() }}</div></div>
-  {% if sale.discount_percent %}<div class="detail-item"><div class="k">{{ _('Discount') }}</div><div class="v">{{ sale.discount_percent }}%</div></div>{% endif %}
+  {% if sale.discount_percent %}<div class="detail-item"><div class="k">{{ _('Member discount') if sale.discount_source == 'member' else _('Discount') }}</div><div class="v">{{ sale.discount_percent }}%</div></div>{% endif %}
   <div class="detail-item"><div class="k">{{ _('Total') }}</div><div class="v" style="font-size:20px; font-weight:700;">{{ sale.total|money }} {{ currency_label() }}</div></div>
   <div class="detail-item"><div class="k">{{ _('Payment Method') }}</div><div class="v">{{ sale.payment_method or "—" }}</div></div>
   {% if sale.cash_received is not none %}

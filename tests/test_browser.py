@@ -616,3 +616,170 @@ def test_an_empty_chart_explains_itself(signed_in):
     assert found >= 2, (
         f"only {found} chart cards found — the selector has stopped matching the "
         f"page, so this guard would pass while checking nothing")
+
+# ---------------------------------------------------------------------------
+# Rewards card — the one thing about it only a browser can check.
+#
+# Everything else is asserted in test_rewards.py, which is faster and needs no
+# browser. What cannot be checked there is whether the POS page's own
+# JavaScript arrives at the SAME total the server does: the preview is a
+# second implementation of logic.discounted_raw_total(), and on a member's
+# mixed cart the two could disagree while both look plausible. A customer sees
+# the preview and is charged the server's figure.
+#
+# COMPARISON.md §59 is the standing reason this needs a browser at all: five
+# UI bugs shipped that rendered HTTP 200 with valid JavaScript and were
+# invisible to the suite, the probe sweep and the render checker.
+# ---------------------------------------------------------------------------
+import uuid as _uuid
+from datetime import date as _date, datetime as _datetime
+from decimal import Decimal
+
+
+def _rid(prefix):
+    return f"{prefix}{_uuid.uuid4().hex[:8].upper()}"
+
+
+@pytest.fixture
+def member_cart(db):
+    """A member owner, a 10% rate, and two retail items with stock — one
+    discountable, one not.
+
+    The confirmed audit is not set-dressing: pos_checkout() refuses to sell
+    anything whose current_stock is None, so without it every checkout here
+    would fail for an unrelated reason and the test would pass while checking
+    nothing.
+    """
+    owner_id = _rid("O")
+    db.execute("INSERT INTO owners (id, name, is_member, member_since) VALUES (?,?,?,?)",
+               (owner_id, f"Rewards Browser {owner_id}", True, _date.today().isoformat()))
+    db.execute("INSERT INTO settings (key,value) VALUES (?,?) "
+               "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+               ("member_discount_percent", "10"))
+    items = {}
+    audit_ids = []
+    for key, can_discount in (("a", True), ("b", False)):
+        inv_id, pl_id = _rid("BINV"), _rid("BPL")
+        name = f"Browser Rewards {key.upper()} {inv_id}"
+        db.execute("INSERT INTO inventory_list (id, name, category, unit, track_expiry, cost_price, ownership_type, active) "
+                   "VALUES (?,?,?,?,?,?,?,?)",
+                   (inv_id, name, "Retail", "unit", False, 0, "Owned", True))
+        db.execute("INSERT INTO price_list (id, name, category, cost_price, sale_price, active, linked_item_id, can_discount) "
+                   "VALUES (?,?,?,?,?,?,?,?)",
+                   (pl_id, name, "Retail", 0, Decimal("10.500"), True, inv_id, can_discount))
+        cur = db.execute("INSERT INTO audit_sessions (audit_date, performed_by, status, created_at, confirmed_at) "
+                         "VALUES (?,?,?,?,?) RETURNING id",
+                         (_date.today().isoformat(), "U001", "Confirmed",
+                          _datetime.now().isoformat(timespec="seconds"),
+                          _datetime.now().isoformat(timespec="microseconds")))
+        sid = cur.fetchone()["id"]
+        audit_ids.append(sid)
+        db.execute("INSERT INTO audit_session_lines (session_id, item_id, stock_counted, received_since_prior) "
+                   "VALUES (?,?,?,?)", (sid, inv_id, 50, 0))
+        items[key] = {"inv_id": inv_id, "pl_id": pl_id, "name": name}
+    db.commit()
+    yield {"owner_id": owner_id, "owner_name": f"Rewards Browser {owner_id}", "items": items}
+    db.execute("INSERT INTO settings (key,value) VALUES (?,?) "
+               "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+               ("member_discount_percent", "0"))
+    for it in items.values():
+        db.execute("DELETE FROM inventory_transactions WHERE item_id=?", (it["inv_id"],))
+        db.execute("DELETE FROM sale_items WHERE item_id=?", (it["inv_id"],))
+        db.execute("DELETE FROM audit_session_lines WHERE item_id=?", (it["inv_id"],))
+        db.execute("DELETE FROM price_list WHERE id=?", (it["pl_id"],))
+        db.execute("DELETE FROM inventory_list WHERE id=?", (it["inv_id"],))
+    for sid in audit_ids:
+        db.execute("DELETE FROM audit_sessions WHERE id=?", (sid,))
+    db.execute("DELETE FROM sales WHERE owner_id=?", (owner_id,))
+    db.execute("DELETE FROM owners WHERE id=?", (owner_id,))
+    db.commit()
+
+
+def _add_item_to_cart(page, name):
+    """Search for one item and click ITS row.
+
+    The search box is cleared first and the result is matched by name, not by
+    position. Adding a second item without both of those silently re-clicks
+    the first item's stale result — the name-search path does not clear
+    #posResults after a pick, so a positional selector is satisfied
+    immediately by the row that is already there. That is a test that adds the
+    same item twice and reports a total.
+    """
+    page.fill("#posSearch", "")
+    page.fill("#posSearch", name)
+    row = f'#posResults [data-vz-act="pos-4"]:has-text("{name}")'
+    page.wait_for_selector(row, timeout=10000)
+    page.click(row)
+    page.wait_for_function(
+        "n => [...document.querySelectorAll('.pos-cart-line')].some(l => l.textContent.includes(n))",
+        arg=name, timeout=10000)
+
+
+def _shown_total(page):
+    """The number the cashier actually reads, parsed out of the rendered text.
+
+    `,` is the thousands separator and `.` the decimal point in both apps'
+    toLocaleString output, so stripping everything else is safe for IQ's whole
+    dinars and JO's three decimals alike.
+    """
+    raw = page.inner_text("#cartTotal")
+    import re
+    return float(re.sub(r"[^\d.]", "", raw.replace(",", "")))
+
+
+def test_the_pos_preview_matches_the_server_on_a_member_mixed_cart(browser, db, member_cart):
+    """GUARD. The POS preview computes the member discount in JavaScript; the
+    server computes it again in Python. A member's cart is the only place they
+    can disagree, because it is the only place the discount applies to some
+    lines and not others.
+
+    Also asserts the staff-discount input is hidden — a convenience, not the
+    rule (pos_checkout refuses a staff discount on a member's cart regardless),
+    but a visible input that silently posts 0 would be its own bug.
+    """
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    page = ctx.new_page()
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    try:
+        _login(page)
+        page.goto(f"{APP_URL}/pos", wait_until="networkidle")
+
+        _add_item_to_cart(page, member_cart["items"]["a"]["name"])
+        _add_item_to_cart(page, member_cart["items"]["b"]["name"])
+
+        # Before a customer is chosen this is an ordinary walk-in sale: the
+        # staff discount field is on show and nothing is discounted.
+        assert not page.is_hidden("#posDiscountField"), (
+            "the staff discount field should be visible on a walk-in sale")
+        assert _shown_total(page) == 21.0
+
+        page.fill("#posCustomerInput", member_cart["owner_name"][:20])
+        page.wait_for_selector('#posCustomerResults [data-vz-act="pos-9"]', timeout=10000)
+        page.click('#posCustomerResults [data-vz-act="pos-9"]')
+
+        page.wait_for_function("() => document.getElementById('posDiscountField').hidden",
+                               timeout=10000)
+        assert page.is_hidden("#posDiscountField"), (
+            "the staff discount input must not be offered on a member's sale")
+        assert page.is_visible("#posMemberNote"), "the member note should explain why"
+
+        previewed = _shown_total(page)
+        # 10% off the eligible 10000, the other 10000 charged in full.
+        assert previewed == 19.95, (
+            f"the preview shows {previewed}; the card discounts eligible lines only")
+
+        page.select_option("#paymentMethod", "Card")
+        page.click("#completeSaleBtn")
+        page.wait_for_load_state("networkidle")
+
+        row = db.execute(
+            "SELECT total, discount_percent, discount_source, owner_id FROM sales "
+            "WHERE owner_id=? ORDER BY id DESC LIMIT 1", (member_cart["owner_id"],)).fetchone()
+        assert row, "the sale was not recorded against the customer"
+        assert row["discount_source"] == "member"
+        assert float(row["total"]) == previewed, (
+            f"the till showed {previewed} and the server charged {row['total']}")
+        assert not errors, f"JavaScript errors during the sale: {errors}"
+    finally:
+        ctx.close()

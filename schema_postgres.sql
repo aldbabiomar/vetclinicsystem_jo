@@ -140,7 +140,21 @@ CREATE TABLE IF NOT EXISTS owners (
     name TEXT NOT NULL,
     phone TEXT,
     address TEXT,
-    notes TEXT
+    notes TEXT,
+    -- Rewards card (features/REWARDS_CARD_PLAN.md). is_member and
+    -- member_expires_on are deliberately separate facts: expiry never flips
+    -- is_member, so "lapsed" stays distinguishable from "never joined".
+    -- A card is active when is_member AND (member_expires_on IS NULL OR
+    -- member_expires_on >= today) -- computed at read time through one
+    -- helper, never by a background job that could stop running silently.
+    is_member BOOLEAN NOT NULL DEFAULT FALSE,
+    member_card_number TEXT,
+    member_since DATE,
+    -- NULL means the card never expires; the enroll form always pre-fills
+    -- today + settings.member_term_months, so NULL only arises if someone
+    -- clears the field on purpose.
+    member_expires_on DATE,
+    member_enrolled_by TEXT REFERENCES users(id) ON DELETE RESTRICT
 );
 -- Nothing in the app looked up an existing owner by phone before
 -- inserting a new one, so re-entering an existing owner's info (e.g. from
@@ -152,6 +166,14 @@ CREATE TABLE IF NOT EXISTS owners (
 -- app.py's owner_new()/visit_new_patient() catch the resulting
 -- IntegrityError and redirect to the existing owner instead of erroring.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_owners_phone_unique ON owners(phone) WHERE phone IS NOT NULL;
+-- The unique index on member_card_number is NOT here: it indexes a column
+-- that only the migration list adds, and apply_schema() runs BEFORE
+-- apply_incremental_migrations() -- so an index here works on a fresh
+-- install and aborts the entire schema apply on every UPGRADE. It lives in
+-- setup.py's INCREMENTAL_SCHEMA_STATEMENTS beside its ALTER instead, the
+-- same as idx_patients_microchip_unique. Guarded by
+-- tests/test_migrations.py::test_no_index_in_the_schema_file_depends_on_a_migration_added_column,
+-- which is what caught it.
 
 CREATE TABLE IF NOT EXISTS patients (
     id TEXT PRIMARY KEY,
@@ -501,6 +523,13 @@ CREATE TABLE IF NOT EXISTS billing (
     date_billed DATE,
     discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
     discount_applied_by TEXT,
+    -- Which kind of discount discount_percent holds. A member's rewards
+    -- card and a staff discount share this one slot on purpose: every
+    -- money reader already reads discount_percent, and a second column
+    -- would be one more thing each of them could forget. A bill never
+    -- carries both (the card is the only discount a member's bill can
+    -- take), so one slot is enough. See features/REWARDS_CARD_PLAN.md A1.
+    discount_source TEXT NOT NULL DEFAULT 'staff' CHECK (discount_source IN ('staff','member')),
     notes TEXT,
     -- The final payable figure for this bill (what compute_bill_totals()
     -- actually charges), kept in sync by logic.refresh_visit_billing_total()
@@ -532,6 +561,14 @@ CREATE TABLE IF NOT EXISTS visit_billing_lines (
     unit_price NUMERIC(12,3) NOT NULL,
     unit_cost NUMERIC(12,3),
     created_at TEXT NOT NULL,
+    -- Was this line eligible for a discount when it was billed, copied
+    -- from price_list.can_discount at insert. Snapshotted for the same
+    -- reason unit_price is: can_discount can be edited at any time, and
+    -- without the snapshot a later edit would silently change a past
+    -- bill's total and misprice its refunds. NOT NULL with no default so
+    -- a future insert site that forgets it fails loudly instead of
+    -- silently marking a non-discountable item discountable.
+    discountable BOOLEAN NOT NULL,
     FOREIGN KEY (visit_id) REFERENCES visits(id),
     FOREIGN KEY (price_id) REFERENCES price_list(id)
 );
@@ -572,6 +609,13 @@ CREATE TABLE IF NOT EXISTS boarding_sessions (
     cleanup_applied_by TEXT,
     discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
     discount_applied_by TEXT,
+    -- Which kind of discount discount_percent holds. A member's rewards
+    -- card and a staff discount share this one slot on purpose: every
+    -- money reader already reads discount_percent, and a second column
+    -- would be one more thing each of them could forget. A bill never
+    -- carries both (the card is the only discount a member's bill can
+    -- take), so one slot is enough. See features/REWARDS_CARD_PLAN.md A1.
+    discount_source TEXT NOT NULL DEFAULT 'staff' CHECK (discount_source IN ('staff','member')),
     dismissed BOOLEAN NOT NULL DEFAULT FALSE,   -- has the animal actually left yet
     created_by TEXT,
     -- Set on every boarding_edit() save — lets the edit form detect (and
@@ -618,6 +662,13 @@ CREATE TABLE IF NOT EXISTS inpatient_cases (
     supervising_vet_id TEXT,
     discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
     discount_applied_by TEXT,
+    -- Which kind of discount discount_percent holds. A member's rewards
+    -- card and a staff discount share this one slot on purpose: every
+    -- money reader already reads discount_percent, and a second column
+    -- would be one more thing each of them could forget. A bill never
+    -- carries both (the card is the only discount a member's bill can
+    -- take), so one slot is enough. See features/REWARDS_CARD_PLAN.md A1.
+    discount_source TEXT NOT NULL DEFAULT 'staff' CHECK (discount_source IN ('staff','member')),
     created_by TEXT,
     -- The final payable figure for this case (what compute_bill_totals()
     -- actually charges), kept in sync by logic.refresh_inpatient_total()
@@ -709,6 +760,14 @@ CREATE TABLE IF NOT EXISTS inpatient_billing (
     unit_cost NUMERIC(12,3),
     logged_by TEXT,
     timestamp TEXT NOT NULL,
+    -- Was this line eligible for a discount when it was billed, copied
+    -- from price_list.can_discount at insert. Snapshotted for the same
+    -- reason unit_price is: can_discount can be edited at any time, and
+    -- without the snapshot a later edit would silently change a past
+    -- bill's total and misprice its refunds. NOT NULL with no default so
+    -- a future insert site that forgets it fails loudly instead of
+    -- silently marking a non-discountable item discountable.
+    discountable BOOLEAN NOT NULL,
     FOREIGN KEY (case_id) REFERENCES inpatient_cases(id),
     FOREIGN KEY (price_id) REFERENCES price_list(id),
     -- See F-19.
@@ -749,6 +808,17 @@ CREATE TABLE IF NOT EXISTS sales (
     subtotal NUMERIC(12,3) NOT NULL,
     discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
     discount_applied_by TEXT,
+    -- Which kind of discount discount_percent holds. A member's rewards
+    -- card and a staff discount share this one slot on purpose: every
+    -- money reader already reads discount_percent, and a second column
+    -- would be one more thing each of them could forget. A bill never
+    -- carries both (the card is the only discount a member's bill can
+    -- take), so one slot is enough. See features/REWARDS_CARD_PLAN.md A1.
+    discount_source TEXT NOT NULL DEFAULT 'staff' CHECK (discount_source IN ('staff','member')),
+    -- The customer this sale is attributed to, when staff identified one
+    -- at checkout. NULL on an ordinary walk-in, which is the common case:
+    -- selecting a customer is opt-in and nothing prompts for it.
+    owner_id TEXT REFERENCES owners(id) ON DELETE RESTRICT,
     total NUMERIC(12,3) NOT NULL,
     payment_method TEXT,
     -- Cash payment method only — what the customer actually handed over
@@ -809,6 +879,14 @@ CREATE TABLE IF NOT EXISTS sale_items (
     -- NULL for non-Consignment items and for sales that predate this
     -- column. See ORPHANED_RECORDS_AUDIT.md F-07.
     distributor_id TEXT REFERENCES distributors(id),
+    -- Was this line eligible for a discount when it was billed, copied
+    -- from price_list.can_discount at insert. Snapshotted for the same
+    -- reason unit_price is: can_discount can be edited at any time, and
+    -- without the snapshot a later edit would silently change a past
+    -- bill's total and misprice its refunds. NOT NULL with no default so
+    -- a future insert site that forgets it fails loudly instead of
+    -- silently marking a non-discountable item discountable.
+    discountable BOOLEAN NOT NULL,
     FOREIGN KEY (sale_id) REFERENCES sales(id),
     FOREIGN KEY (item_id) REFERENCES inventory_list(id)
 );

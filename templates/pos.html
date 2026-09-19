@@ -17,10 +17,21 @@
     <div id="cartLines"><div class="empty-note" id="emptyCart">{{ _('Cart is empty.') }}</div></div>
     <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line);">
       <div class="detail-item"><div class="k">{{ _('Subtotal') }}</div><div class="v" id="cartSubtotal">0 {{ currency_label() }}</div></div>
-      <div class="field" style="margin:10px 0;">
+      {# Identifying the customer is OPTIONAL and opt-in: nothing prompts
+         for it, an ordinary walk-in needs no extra click, and most sales
+         will carry no customer at all. It is filled in when a rewards card
+         is presented. #}
+      <div class="field pos-field-row">
+        <label for="posCustomerInput">{{ _('Customer (optional)') }}</label>
+        <input type="text" id="posCustomerInput" autocomplete="off" placeholder="{{ _('Name, phone or card number') }}">
+        <div id="posCustomerResults"></div>
+        <div id="posCustomerChosen" class="small pos-customer-chosen" hidden></div>
+      </div>
+      <div class="field pos-field-row" id="posDiscountField">
         <label for="discountInput">{{ _('Discount %% (Max %(discount_cap)s%%)', discount_cap=discount_cap) }}</label>
         <input type="number" id="discountInput" min="0" max="{{ discount_cap }}" value="{{ fv(form, 'discount_percent', '0') }}" data-vzh="pos-1">
       </div>
+      <p class="small muted pos-field-row" id="posMemberNote" hidden></p>
       <div class="field" style="margin:10px 0;">
         <label for="cleanupInput">{{ _('Clean Up (max %(CLEANUP_CAP)s %(currency_label)s)', CLEANUP_CAP=CLEANUP_CAP, currency_label=currency_label()) }}</label>
         <input type="number" id="cleanupInput" step="0.001" min="0" value="{{ fv(form, 'cleanup_amount', '0') }}" data-vzh="pos-1">
@@ -45,6 +56,7 @@
       <form method="post" action="{{ url_for('sales.pos_checkout') }}" id="checkoutForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+        <input type="hidden" name="owner_id" id="ownerIdHidden">
         <input type="hidden" name="discount_percent" id="discountHidden">
         <input type="hidden" name="cleanup_amount" id="cleanupHidden">
         <input type="hidden" name="payment_method" id="paymentHidden">
@@ -96,7 +108,11 @@ function addToCart(item) {
     if (item.stock != null && existing.qty + 1 > item.stock) { window.VZToast.show({{ _('Only {stock} in stock.')|tojson }}.replace('{stock}', item.stock), 'warn'); return; }
     existing.qty += 1;
   } else {
-    cart.push({id: item.id, name: item.name, price: item.price, qty: 1, stock: item.stock});
+    // discountable comes from the lookup API (both its branches) and is what
+    // lets the preview below discount a member's eligible lines only. Absent
+    // means not eligible — the conservative side.
+    cart.push({id: item.id, name: item.name, price: item.price, qty: 1, stock: item.stock,
+               discountable: !!item.discountable});
   }
   renderCart();
 }
@@ -135,8 +151,14 @@ function renderCart() {
       </div>`).join('');
   }
   const subtotal = cart.reduce((s,c) => s + c.price * c.qty, 0);
-  const discount = parseFloat(document.getElementById('discountInput').value) || 0;
-  const preCleanupTotal = subtotal * (1 - discount/100);
+  // A member's card discounts the ELIGIBLE lines only and charges the rest
+  // in full; a staff discount covers the whole cart because pos_checkout()
+  // refuses the sale otherwise. Mirrors logic.discounted_raw_total().
+  const discount = window.__posMember ? window.__posMemberRate
+                                      : (parseFloat(document.getElementById('discountInput').value) || 0);
+  const discountableSubtotal = cart.reduce(
+    (s,c) => s + ((window.__posMember ? c.discountable : true) ? c.price * c.qty : 0), 0);
+  const preCleanupTotal = discountableSubtotal * (1 - discount/100) + (subtotal - discountableSubtotal);
   const cleanup = parseFloat(document.getElementById('cleanupInput').value) || 0;
   // Preview only — pos_checkout() recomputes and validates the
   // authoritative total (and the Clean Up cap) server-side regardless of
@@ -169,7 +191,10 @@ function renderChange(total) {
 }
 function prepareSubmit() {
   if (!cart.length) { window.VZToast.show({{ _('Cart is empty.')|tojson }}, 'error'); return false; }
-  document.getElementById('discountHidden').value = document.getElementById('discountInput').value;
+  // A member's sale posts no staff discount at all: pos_checkout() refuses a
+  // non-zero one on a member's cart, and applies the card's rate itself.
+  document.getElementById('discountHidden').value =
+    window.__posMember ? '0' : document.getElementById('discountInput').value;
   document.getElementById('cleanupHidden').value = document.getElementById('cleanupInput').value;
   document.getElementById('paymentHidden').value = document.getElementById('paymentMethod').value;
   document.getElementById('cashReceivedHidden').value =
@@ -209,6 +234,59 @@ toggleCashFields();
 {% endif %}
 </script>
 <script nonce="{{ csp_nonce }}">
+const customerInput = document.getElementById('posCustomerInput');
+const customerResults = document.getElementById('posCustomerResults');
+const customerChosen = document.getElementById('posCustomerChosen');
+window.__posMember = false;
+window.__posMemberRate = {{ member_rate|tojson }};
+let customerTimer;
+
+function chooseCustomer(o) {
+  document.getElementById('ownerIdHidden').value = o ? o.id : '';
+  window.__posMember = !!(o && o.is_member && window.__posMemberRate > 0);
+  customerResults.innerHTML = '';
+  customerInput.value = '';
+  if (o) {
+    customerChosen.innerHTML = escapeHtml(o.name) + (o.phone ? ' · ' + escapeHtml(o.phone) : '')
+      + ' <button type="button" class="btn small secondary" data-vz-act="pos-10">'
+      + {{ _('Clear')|tojson }} + '</button>';
+    customerChosen.hidden = false;
+  } else {
+    customerChosen.hidden = true;
+  }
+  // `hidden` rather than an inline display style: it cannot be defeated by a
+  // class and stays off the inline-style ratchet.
+  document.getElementById('posDiscountField').hidden = window.__posMember;
+  const note = document.getElementById('posMemberNote');
+  note.textContent = window.__posMember
+    ? {{ _('Rewards card: {rate} off eligible items. A staff discount cannot be added on top.')|tojson }}
+        .replace('{rate}', window.__posMemberRate + '%')
+    : '';
+  note.hidden = !window.__posMember;
+  renderCart();
+}
+
+customerInput.addEventListener('input', () => {
+  clearTimeout(customerTimer);
+  const q = customerInput.value.trim();
+  if (q.length < 2) { customerResults.innerHTML = ''; return; }
+  customerTimer = setTimeout(() => {
+    fetch(`{{ url_for('clinical.api_owners_search') }}?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(list => {
+        if (!list.length) { customerResults.innerHTML = '<div class="empty-note">' + {{ _('No matches.')|tojson }} + '</div>'; return; }
+        window.__posCustomerResults = list;
+        customerResults.innerHTML = list.map((o, idx) =>
+          `<div class="list-line" style="cursor:pointer;" data-idx="${idx}" data-vz-act="pos-9">
+             <div class="who">${escapeHtml(o.name)}${o.is_member ? ' <span class="badge primary">' + {{ _('Member')|tojson }} + '</span>' : ''}</div>
+             <div class="meta">${escapeHtml(o.phone || '')}</div>
+           </div>`
+        ).join('');
+      })
+      .catch(() => { customerResults.innerHTML = '<div class="empty-note">' + {{ _('Could not search customers; check server connection.')|tojson }} + '</div>'; });
+  }, 200);
+});
+
 VZ.bind('pos-1', 'input', function (event) { renderCart(); });
 VZ.bind('pos-2', 'change', function (event) { toggleCashFields(); });
 VZ.bind('pos-3', 'click', function (event) { return prepareSubmit(); });
@@ -217,5 +295,7 @@ VZ.action('pos-5', function (event) { changeQty(this.dataset.lineId,-1); });
 VZ.action('pos-6', function (event) { setQty(this.dataset.lineId, this.value); });
 VZ.action('pos-7', function (event) { changeQty(this.dataset.lineId,1); });
 VZ.action('pos-8', function (event) { removeLine(this.dataset.lineId); });
+VZ.action('pos-9', function (event) { chooseCustomer(window.__posCustomerResults[this.dataset.idx]); });
+VZ.action('pos-10', function (event) { chooseCustomer(null); });
 </script>
 {% endblock %}

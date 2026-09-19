@@ -1,0 +1,30 @@
+{# The rewards-card discount line on a bill screen.
+
+   ONE macro for all three billable surfaces (visit, inpatient, boarding) so
+   they cannot drift apart on what a member's bill looks like — three copies
+   of one rule is the shape every entry in SEAM_RULES.md came from.
+
+   The caller hides its own staff-discount input when
+   summary.discount_source == 'member'. That hiding is a CONVENIENCE: the
+   real rule is the server-side refusal in visit_discount_save(),
+   inpatient_discount_save() and boarding_payment(). A card discount is never
+   editable here — the Remove button posts to the admin-only, remove-only
+   route, which reads no percentage at all.
+#}
+{% macro member_discount_line(summary, remove_url) %}
+  <div class="detail-item member-discount-row">
+    <div class="k">{{ _('Member discount') }}</div>
+    <div class="v">
+      <span class="badge primary">{{ _('%(rate)s%% on eligible items', rate=format_percent(summary.discount_percent)) }}</span>
+      {% if summary.discountable_subtotal is defined and summary.discountable_subtotal < summary.subtotal %}
+        <span class="small muted">{{ _('Some items on this bill are not eligible and are charged in full.') }}</span>
+      {% endif %}
+      {% if has_permission('manage_rewards') and remove_url %}
+      <form method="post" action="{{ remove_url }}" class="member-discount-remove">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn small secondary" type="submit">{{ _('Remove') }}</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}

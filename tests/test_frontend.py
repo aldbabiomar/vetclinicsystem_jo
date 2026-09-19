@@ -41,7 +41,9 @@ STRUCTURAL_COLOURS = {"#fff", "#ffffff", "#000", "#000000", "#fff0", "#0000"}
 
 # Partials and the base layout itself do not extend anything.
 STANDALONE_TEMPLATES = {"base.html", "_visit_fields.html",
-                        "_error_dog.html", "_pagination.html"}
+                        "_error_dog.html", "_pagination.html",
+                        # A macro file, imported by the three bill screens.
+                        "_member_discount.html"}
 
 
 @pytest.fixture(scope="module")

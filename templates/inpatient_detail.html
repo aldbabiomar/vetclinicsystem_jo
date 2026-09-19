@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_member_discount.html" import member_discount_line with context %}
 {% block title %}{{ case.animal_name }} — {{ _('Inpatient') }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -160,11 +161,15 @@
     {% else %}<div class="empty-note">{{ _('No procedures billed yet.') }}</div>{% endfor %}
 
     <div class="detail-item" style="margin-top:12px;"><div class="k">{{ _('Subtotal') }}</div><div class="v">{{ billing.subtotal|money }} {{ currency_label() }}</div></div>
+    {% if billing.discount_source == 'member' %}
+      {{ member_discount_line(billing, url_for('clinical.rewards_remove_discount', surface='inpatient', bill_id=case.id)) }}
+    {% else %}
     <form method="post" action="{{ url_for('clinical.inpatient_discount_save', case_id=case.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field" style="flex:1;"><label for="inpatientdetail-11-discount_percent">{{ _('Discount %% (Max %(discount_cap)s%%)', discount_cap=discount_cap) }}</label><input id="inpatientdetail-11-discount_percent" type="number" name="discount_percent" max="{{ discount_cap }}" min="0" value="{{ fv(form, 'discount_percent', billing.discount_percent) if discount_error else billing.discount_percent }}"></div>
       <button class="btn small secondary" type="submit">{{ _('Apply') }}</button>
     </form>
+    {% endif %}
     <div class="detail-item"><div class="k">{{ _('Total') }}</div><div class="v" style="font-size:20px; font-weight:700;">{{ billing.total|money }} {{ currency_label() }}</div></div>
     {% if billing.cleanup_amount %}<div class="detail-item"><div class="k">{{ _('Clean Up applied') }}</div><div class="v">{{ billing.cleanup_amount|money }} {{ currency_label() }}</div></div>{% endif %}
     <span class="badge {{ 'ok' if billing.status=='Fully Paid' else ('danger' if billing.status=='Unpaid' else 'muted') }}">{{ billing.status|tr }}</span>

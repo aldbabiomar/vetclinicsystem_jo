@@ -24,7 +24,10 @@ VetClinicSystem/                  <- the shared workspace
 │   └── ORPHANED_RECORDS_AUDIT.md every way a row could be left unreachable
 ├── features/
 │   ├── CLEANUP_FEATURE_PLAN.md   the "Clean Up" write-off design (built)
-│   └── MONITORING_FEATURE_PLAN.md the four monitoring layers (built)
+│   ├── MONITORING_FEATURE_PLAN.md the four monitoring layers (built)
+│   └── `REWARDS_CARD_PLAN.md`    the member-discount rewards card: one
+│                                 percentage off the eligible lines of a
+│                                 member's bill, on all four payment surfaces
 └── webapps/
     ├── vetclinicsystem_iq-main/  <- one of these is this repo
     └── vetclinicsystem_jo-main/
@@ -52,6 +55,7 @@ fall behind the citations again.
 - `MONITORING_FEATURE_PLAN.md`
 - `ORPHANED_RECORDS_AUDIT.md`
 - `RELEASE_WORKFLOW.md`
+- `REWARDS_CARD_PLAN.md`
 
 Documents that used to be cited and no longer exist anywhere —
 `BUGFIXES.md`, `CLAUDE_CODE_RELEASE_WORKFLOW.md`, `UPDATE_MECHANISM_PLAN.md`,

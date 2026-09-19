@@ -147,6 +147,33 @@ def api_patients_search():
                       "microchip": r["microchip"]} for r in rows])
 
 
+@bp.route("/api/owners/search")
+@auth.permission_required("process_pos_sales")
+def api_owners_search():
+    """Customer lookup for POS, when a rewards card is presented.
+
+    Matches name, phone or printed card number. `is_member` is the ACTIVE
+    answer from logic.is_active_member() — a lapsed card must not badge as
+    current at the till, which is the one place it would mislead a customer
+    to their face.
+
+    logic.like_pattern() escapes the term: raw user input in a LIKE was
+    already a bug here once, which is why tests/test_search_wildcards.py
+    exists.
+    """
+    db = get_db()
+    term = request.args.get("q", "").strip()
+    if len(term) < 2:
+        return jsonify([])
+    pat = logic.like_pattern(term)
+    rows = db.execute(
+        "SELECT * FROM owners WHERE name ILIKE ? OR phone ILIKE ? OR member_card_number ILIKE ? "
+        "ORDER BY name LIMIT 10", (pat, pat, pat)).fetchall()
+    return jsonify([{"id": r["id"], "name": r["name"], "phone": r["phone"],
+                     "is_member": logic.is_active_member(r),
+                     "card_number": r["member_card_number"]} for r in rows])
+
+
 # ---------------------------------------------------------------------------
 # Owners
 # ---------------------------------------------------------------------------
@@ -229,7 +256,101 @@ def owner_detail(owner_id):
         flash(_("Owner not found."), "error")
         return redirect(url_for("clinical.owners_list"))
     patients = db.execute("SELECT * FROM patients WHERE owner_id=? ORDER BY animal_name", (owner_id,)).fetchall()
-    return render_template("owner_detail.html", owner=owner, patients=patients)
+    enrolled_by = None
+    if owner["member_enrolled_by"]:
+        u = db.execute("SELECT username FROM users WHERE id=?", (owner["member_enrolled_by"],)).fetchone()
+        enrolled_by = u["username"] if u else None
+    return render_template(
+        "owner_detail.html", owner=owner, patients=patients,
+        is_active_member=logic.is_active_member(owner),
+        member_expires_in_days=logic.member_expires_in_days(owner),
+        member_expiring_soon_days=logic.MEMBER_EXPIRING_SOON_DAYS,
+        member_rate=logic.member_discount_rate(db),
+        member_enrolled_by=enrolled_by,
+        default_expiry=logic.member_default_expiry(db).isoformat())
+
+
+@bp.route("/owners/<owner_id>/rewards/enroll", methods=["POST"])
+@auth.permission_required("manage_rewards")
+def owner_rewards_enroll(owner_id):
+    """Issue (or re-issue) a rewards card to this owner.
+
+    Membership is read at BILL CREATION and snapshotted onto the bill, so
+    enrolling someone changes nothing about any bill that already exists --
+    that is deliberate (A2) and is what stops a large open bill being
+    retro-discounted by enrolling its owner mid-stay.
+    """
+    db = get_db()
+    f = request.form
+    # Locked before the read-modify-write below so two near-simultaneous
+    # enrolments of the same owner serialise rather than interleave -- the
+    # same rule every other bill-adjacent mutation here follows (SEAM_RULES
+    # S1 is what skipping it cost last time).
+    owner = db.execute("SELECT * FROM owners WHERE id=? FOR UPDATE", (owner_id,)).fetchone()
+    if not owner:
+        flash(_("Owner not found."), "error")
+        return redirect(url_for("clinical.owners_list"))
+    back = redirect(url_for("clinical.owner_detail", owner_id=owner_id))
+
+    card = (f.get("member_card_number") or "").strip() or None
+    try:
+        # A blank expiry means a card that never lapses. The form always
+        # pre-fills today + the clinic's term, so reaching NULL takes
+        # deliberately clearing the field.
+        expires = clean_date(f.get("member_expires_on"), field="member_expires_on")
+    except BadDate as e:
+        flash(str(e), "error")
+        return back
+
+    today = date.today().isoformat()
+    try:
+        db.execute(
+            "UPDATE owners SET is_member=true, member_card_number=?, member_since=?, "
+            "member_expires_on=?, member_enrolled_by=? WHERE id=?",
+            (card, today, expires, session.get("user_id"), owner_id))
+        auth.log_change(db, "owners", owner_id, "update", {
+            "is_member": (owner["is_member"], True),
+            "member_card_number": (owner["member_card_number"], card),
+            "member_since": (owner["member_since"], today),
+            "member_expires_on": (owner["member_expires_on"], expires),
+        })
+        db.commit()
+    except dbmod.IntegrityError:
+        # idx_owners_member_card is what actually prevents two owners
+        # holding the same printed card number; this catches the request
+        # that loses the race (or the plain duplicate).
+        db.rollback()
+        flash(_("That card number is already issued to another owner."), "error")
+        return back
+    flash(_("Rewards card issued."), "success")
+    return back
+
+
+@bp.route("/owners/<owner_id>/rewards/unenroll", methods=["POST"])
+@auth.permission_required("manage_rewards")
+def owner_rewards_unenroll(owner_id):
+    """Revoke this owner's card. Future bills only -- a bill created while
+    the card was valid keeps its discount (A2). An admin who needs that
+    discount off an already-created bill uses the per-bill removal action.
+
+    member_since and member_expires_on are left as the historical record;
+    is_member=false is what is_active_member() reads. The card NUMBER is
+    cleared so a returned physical card can be re-issued to someone else
+    without tripping the unique index.
+    """
+    db = get_db()
+    owner = db.execute("SELECT * FROM owners WHERE id=? FOR UPDATE", (owner_id,)).fetchone()
+    if not owner:
+        flash(_("Owner not found."), "error")
+        return redirect(url_for("clinical.owners_list"))
+    db.execute("UPDATE owners SET is_member=false, member_card_number=NULL WHERE id=?", (owner_id,))
+    auth.log_change(db, "owners", owner_id, "update", {
+        "is_member": (owner["is_member"], False),
+        "member_card_number": (owner["member_card_number"], None),
+    })
+    db.commit()
+    flash(_("Rewards card revoked."), "success")
+    return redirect(url_for("clinical.owner_detail", owner_id=owner_id))
 
 
 @bp.route("/owners/<owner_id>/edit", methods=["GET", "POST"])
@@ -654,9 +775,16 @@ def _create_visit(db, patient_id, f):
 
 
 def _create_inpatient_case(db, patient_id, visit_id, complaint, admission_date, weight_kg=None, bcs=None):
+    # Decided once, at admission (A2). A stay admitted the day before its
+    # owner enrols carries no discount even though the whole bill accrues
+    # afterwards — put to the clinic owner explicitly and accepted.
+    member_percent, member_source = logic.member_discount_for(
+        db, logic.owner_for_patient(db, patient_id))
     cur = db.execute(
-        "INSERT INTO inpatient_cases (patient_id, visit_id, complaint, admission_date, weight_kg, bcs, dismissed, created_by) VALUES (?,?,?,?,?,?,false,?) RETURNING id",
-        (patient_id, visit_id, complaint, admission_date or date.today().isoformat(), weight_kg, bcs, session.get("user_id")),
+        "INSERT INTO inpatient_cases (patient_id, visit_id, complaint, admission_date, weight_kg, bcs, dismissed, created_by, "
+        "discount_percent, discount_source, discount_applied_by) VALUES (?,?,?,?,?,?,false,?,?,?,?) RETURNING id",
+        (patient_id, visit_id, complaint, admission_date or date.today().isoformat(), weight_kg, bcs, session.get("user_id"),
+         member_percent, member_source, session.get("user_id") if member_percent else None),
     )
     case_id = cur.fetchone()["id"]
     auth.log_change(db, "inpatient_cases", str(case_id), "create")
@@ -889,7 +1017,7 @@ def visit_billing_save(visit_id):
             if not qty or qty <= 0:
                 continue
             price_row = db.execute(
-                "SELECT name, category, sale_price, cost_price FROM price_list WHERE id=?", (pid,)
+                "SELECT name, category, sale_price, cost_price, can_discount FROM price_list WHERE id=?", (pid,)
             ).fetchone()
             if not price_row:
                 had_bad_price = True
@@ -897,6 +1025,10 @@ def visit_billing_save(visit_id):
             priced_lines.append({
                 "price_id": pid, "name": price_row["name"], "category": price_row["category"],
                 "quantity": qty, "unit_price": price_row["sale_price"], "unit_cost": price_row["cost_price"],
+                # Snapshotted for the same reason unit_price is: a later Price
+                # List edit must not change what this bill already charged, or
+                # what a refund against it pays back.
+                "discountable": bool(price_row["can_discount"]),
             })
         if not priced_lines:
             flash(_("Add at least one billed item."), "error")
@@ -908,9 +1040,14 @@ def visit_billing_save(visit_id):
         # otherwise silently carry forward onto items added afterward that
         # were never supposed to be discountable at all.
         existing_discount = db.execute(
-            "SELECT discount_percent FROM billing WHERE visit_id=?", (visit_id,)
+            "SELECT discount_percent, discount_source FROM billing WHERE visit_id=?", (visit_id,)
         ).fetchone()
-        if existing_discount and (existing_discount["discount_percent"] or 0) > 0:
+        # Scoped to STAFF discounts. A member's card discounts the eligible
+        # lines and charges the rest in full — that is what the per-line
+        # snapshot is for. Left unscoped this would refuse every
+        # non-discountable item on a member's bill.
+        if (existing_discount and (existing_discount["discount_percent"] or 0) > 0
+                and existing_discount["discount_source"] == "staff"):
             blocked = logic.non_discountable_line_names(db, [l["price_id"] for l in priced_lines])
             if blocked:
                 flash(_("Can't save — this bill has a %(discount_percent)s%% discount applied, but includes item(s) marked as not discountable: %(join)s. Remove the discount first, or leave these items off this bill.", discount_percent=f"{existing_discount['discount_percent']:.0f}", join=', '.join(blocked)), "error")
@@ -945,9 +1082,16 @@ def visit_billing_save(visit_id):
     # ORPHANED_RECORDS_AUDIT.md F-14.
     if existing:
         new_subtotal = manual_amount if billing_type == "Manual" else sum(l["quantity"] * l["unit_price"] for l in priced_lines)
+        # From the cart being SAVED, not the bill as it stands — this check is
+        # about what the bill is becoming. A Manual bill is discountable in
+        # full (A4).
+        new_discountable = (manual_amount if billing_type == "Manual"
+                            else sum(l["quantity"] * l["unit_price"]
+                                     for l in priced_lines if l["discountable"]))
         paid_row = db.execute("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE visit_id=?", (visit_id,)).fetchone()
-        new_total, _unused, _unused, _unused = logic.compute_bill_totals(
-            new_subtotal or 0, existing["discount_percent"], 0, existing["cleanup_amount"])
+        new_total, _unused, _unused, _unused, _unused = logic.compute_bill_totals(
+            new_subtotal or 0, existing["discount_percent"], 0, existing["cleanup_amount"],
+            discountable_subtotal=new_discountable or 0)
         if paid_row["s"] > new_total:
             flash(_("That change would leave %(fmt_money)s paid against a %(fmt_money2)s JOD bill. Process a service refund for the difference first.", fmt_money=logic.fmt_money(paid_row['s']), fmt_money2=logic.fmt_money(new_total)), "error")
             return redisplay()
@@ -958,11 +1102,22 @@ def visit_billing_save(visit_id):
     # existing row and both attempt an INSERT, the second raising an
     # unhandled UniqueViolation. ON CONFLICT makes the second one an
     # atomic update instead of a crash.
+    # The card is read once, when the bill row is first created, and
+    # snapshotted onto it (A2). The discount fields are in the INSERT column
+    # list and deliberately NOT in the DO UPDATE clause: every later save of
+    # this bill goes through the UPDATE branch, and listing them there would
+    # re-stamp the snapshot on every edit.
+    visit_row = db.execute("SELECT patient_id FROM visits WHERE id=?", (visit_id,)).fetchone()
+    member_percent, member_source = logic.member_discount_for(
+        db, logic.owner_for_patient(db, visit_row["patient_id"]) if visit_row else None)
     db.execute(
-        "INSERT INTO billing (visit_id, billing_type, manual_amount, date_billed, notes) VALUES (?,?,?,?,?) "
+        "INSERT INTO billing (visit_id, billing_type, manual_amount, date_billed, notes, "
+        "discount_percent, discount_source, discount_applied_by) VALUES (?,?,?,?,?,?,?,?) "
         "ON CONFLICT (visit_id) DO UPDATE SET billing_type=excluded.billing_type, "
         "manual_amount=excluded.manual_amount, date_billed=excluded.date_billed, notes=excluded.notes",
-        (visit_id, billing_type, manual_amount, date_billed, notes),
+        (visit_id, billing_type, manual_amount, date_billed, notes,
+         member_percent, member_source,
+         session.get("user_id") if member_percent else None),
     )
     if billing_type == "Automatic":
         # Snapshot the current Price List values for every item in the
@@ -1019,6 +1174,16 @@ def visit_discount_save(visit_id):
     if not db.execute("SELECT id FROM visits WHERE id=? FOR UPDATE", (visit_id,)).fetchone():
         flash(_("Visit not found."), "error")
         return redirect(url_for("clinical.visits_list"))
+    # Card only (owner's decision): the card's discount is the only discount
+    # a member's bill can carry, so this route refuses outright rather than
+    # silently ignoring the input. Note this blocks setting it to 0 as well —
+    # an admin who needs a wrongly-applied card discount off an existing bill
+    # uses rewards_remove_discount() below, which can only ever remove.
+    member_bill = db.execute(
+        "SELECT discount_source FROM billing WHERE visit_id=?", (visit_id,)).fetchone()
+    if member_bill and member_bill["discount_source"] == "member":
+        flash(_("This bill carries a rewards-card discount. A staff discount can't be added on top of it, and can't replace it."), "error")
+        return redisplay()
     if percent > 0:
         summary = logic.visit_billing_summary(db, visit_id)
         blocked = logic.non_discountable_line_names(db, [l["id"] for l in summary["lines"]])
@@ -1044,6 +1209,81 @@ def visit_discount_save(visit_id):
     db.commit()
     flash(_("%(percent)s%% discount applied.", percent=f"{percent:.0f}"), "success")
     return redirect(url_for("clinical.visit_detail", visit_id=visit_id))
+
+
+# The one way back out of a member discount. See
+# features/REWARDS_CARD_PLAN.md §7.3 — this OVERRIDES the plan's original A9
+# ("no v1 way to strip a member discount off an existing bill").
+#
+# It exists because §7.1 refuses every staff submission on a member's bill,
+# which blocks typing 0 exactly as firmly as typing 15 — so without this, a
+# card discount that lands on the wrong bill is permanent. That happens for
+# ordinary reasons: a pet registered under the wrong owner, or a card issued
+# on a duplicate owner row.
+#
+# REMOVE-ONLY, and that is the whole design. It sets the discount to zero and
+# the source back to 'staff'. It reads NO percentage from the request — there
+# is no field to post — so it cannot add a discount, cannot raise one, and
+# cannot be turned into a staff-discount back door by a caller passing a
+# number. Do NOT add a percent parameter "for symmetry" later.
+#
+# POS sales are deliberately NOT included: money has already changed hands and
+# the drawer has been reconciled against that total, so re-totalling a
+# completed sale would put the till out. A mis-rung sale is corrected by
+# refunding and ringing it again, which POS already supports.
+_REWARD_REMOVAL_SURFACES = {
+    "visit": ("billing", "visit_id", "clinical.visit_detail", "visit_id"),
+    "inpatient": ("inpatient_cases", "id", "clinical.inpatient_detail", "case_id"),
+    "boarding": ("boarding_sessions", "id", "clinical.boarding_page", None),
+}
+
+
+@bp.route("/rewards/<surface>/<bill_id>/remove-discount", methods=["POST"])
+@auth.permission_required("manage_rewards")
+def rewards_remove_discount(surface, bill_id):
+    db = get_db()
+    spec = _REWARD_REMOVAL_SURFACES.get(surface)
+    if not spec:
+        abort(404)
+    table, key, endpoint, kwarg = spec
+    back = (redirect(url_for(endpoint, **{kwarg: bill_id})) if kwarg
+            else redirect(url_for(endpoint)))
+
+    # Locked like every other mutation of these rows, so a concurrent billing
+    # save serialises behind this rather than recomputing a total from a
+    # discount this is in the middle of clearing (SEAM_RULES S1).
+    row = db.execute(f"SELECT discount_percent, discount_source FROM {table} WHERE {key}=? FOR UPDATE",
+                     (bill_id,)).fetchone()
+    if not row:
+        flash(_("That bill no longer exists."), "error")
+        return back
+    if row["discount_source"] != "member":
+        # Nothing to remove. Said plainly rather than silently succeeding, so
+        # this never reads as a way to clear a staff discount.
+        flash(_("This bill doesn't carry a rewards-card discount."), "error")
+        return back
+
+    db.execute(f"UPDATE {table} SET discount_percent=0, discount_source='staff', "
+               f"discount_applied_by=NULL WHERE {key}=?", (bill_id,))
+    # Leaves an ordinary, staff-shaped, undiscounted bill — a state the rest
+    # of the system already understands, not a fourth kind of bill.
+    if surface == "visit":
+        logic.refresh_visit_billing_total(db, bill_id)
+        b = db.execute("SELECT date_billed FROM billing WHERE visit_id=?", (bill_id,)).fetchone()
+        if b and b["date_billed"]:
+            logic.recompute_month_summary(db, logic.month_key(b["date_billed"]))
+    elif surface == "inpatient":
+        logic.refresh_inpatient_total(db, bill_id)
+        logic.recompute_months_summary(db, logic.months_touched_by_inpatient_case(db, bill_id))
+    else:
+        logic.refresh_boarding_total(db, bill_id)
+    auth.log_change(db, table, str(bill_id), "update", {
+        "discount_percent": (row["discount_percent"], 0),
+        "discount_source": ("member", "staff"),
+    })
+    db.commit()
+    flash(_("Rewards-card discount removed from this bill."), "success")
+    return back
 
 
 @bp.route("/visits/<visit_id>/payment", methods=["POST"])
@@ -1379,13 +1619,18 @@ def boarding_new():
     if total_is_auto:
         total = logic.boarding_suggested_total(price_per_day, entry_date, dismissal_date)
     special_needs = f.get("special_needs") == "on"
+    member_percent, member_source = logic.member_discount_for(
+        db, logic.owner_for_patient(db, patient_id))
     cur = db.execute(
         "INSERT INTO boarding_sessions (patient_id, entry_date, dismissal_date, admitted_items, special_needs, "
-        "special_needs_notes, room, price_per_day, total, total_is_auto, dismissed, created_by) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,false,?) RETURNING id",
+        "special_needs_notes, room, price_per_day, total, total_is_auto, dismissed, created_by, "
+        "discount_percent, discount_source, discount_applied_by) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,false,?,?,?,?) RETURNING id",
         (patient_id, entry_date, dismissal_date, f.get("admitted_items"), special_needs,
          f.get("special_needs_notes") if special_needs else None, f.get("room"), price_per_day, total,
-         total_is_auto, session.get("user_id")),
+         total_is_auto, session.get("user_id"),
+         member_percent, member_source,
+         session.get("user_id") if member_percent else None),
     )
     boarding_id = cur.fetchone()["id"]
     logic.refresh_boarding_total(db, boarding_id)
@@ -1565,16 +1810,29 @@ def boarding_payment(boarding_id):
         flash(_("Payment amount must be greater than 0."), "error")
         return redisplay()
     summary = logic.boarding_billing_summary(db, boarding_id)
+    # The discount arrives in the SAME submission as the payment, so this has
+    # to settle before the balance checks below that use it.
+    raw_discount = f.get("discount_percent")
     try:
-        discount_percent = parse_money(f.get("discount_percent")) or 0
+        discount_percent = parse_money(raw_discount) or 0
     except BadNumber:
         flash(_("Discount must be a valid number."), "error")
         return redisplay()
-    cap = auth.discount_cap_for()
-    error = discount_percent_error(discount_percent, cap)
-    if error:
-        flash(error, "error")
-        return redisplay()
+    if summary["discount_source"] == "member":
+        # Card only. Refuse an attempt to CHANGE the rate — but a submission
+        # that simply omits the field (the input is hidden on a member's
+        # stay) keeps the card's own rate, so paying a member's bill still
+        # works. Refusing on absence would have broken that outright.
+        if raw_discount is not None and discount_percent != summary["discount_percent"]:
+            flash(_("This bill carries a rewards-card discount. A staff discount can't be added on top of it, and can't replace it."), "error")
+            return redisplay()
+        discount_percent = summary["discount_percent"]
+    else:
+        cap = auth.discount_cap_for()
+        error = discount_percent_error(discount_percent, cap)
+        if error:
+            flash(error, "error")
+            return redisplay()
     try:
         cleanup_amount = parse_money(f.get("cleanup_amount")) or 0
     except BadNumber:
@@ -1592,15 +1850,17 @@ def boarding_payment(boarding_id):
     # validate against the bill as this submission would leave it, not as it
     # stands now. Checking the payment against the pre-submission balance
     # would let a discount-and-pay-in-full click overpay the discounted bill.
-    _unused, _unused, balance_after_discount, _unused = logic.compute_bill_totals(
-        summary["subtotal"], discount_percent, summary["paid"], summary["cleanup_amount"])
+    _unused, _unused, balance_after_discount, _unused, _unused = logic.compute_bill_totals(
+        summary["subtotal"], discount_percent, summary["paid"], summary["cleanup_amount"],
+        discountable_subtotal=summary["discountable_subtotal"])
     error = cleanup_amount_error(cleanup_amount, summary["cleanup_amount"], balance_after_discount)
     if error:
         flash(error, "error")
         return redisplay()
-    _unused, _unused, balance, _unused = logic.compute_bill_totals(
+    _unused, _unused, balance, _unused, _unused = logic.compute_bill_totals(
         summary["subtotal"], discount_percent, summary["paid"],
-        summary["cleanup_amount"] + cleanup_amount)
+        summary["cleanup_amount"] + cleanup_amount,
+        discountable_subtotal=summary["discountable_subtotal"])
     if amount > balance:
         flash(_("That's more than the remaining balance of %(fmt_money)s JOD on this stay.", fmt_money=logic.fmt_money(balance)), "error")
         return redisplay()
@@ -1885,10 +2145,14 @@ def inpatient_billing_add(case_id):
     # otherwise silently carry forward onto procedures added afterward
     # that were never supposed to be discountable at all (mirrors
     # visit_billing_save()'s equivalent check).
-    existing_case = db.execute("SELECT discount_percent FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
+    existing_case = db.execute("SELECT discount_percent, discount_source FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
     existing_discount = (existing_case["discount_percent"] or 0) if existing_case else 0
+    existing_source = (existing_case["discount_source"] if existing_case else "staff") or "staff"
     blocked_pids = set()
-    if existing_discount > 0:
+    # Scoped to STAFF discounts, same reasoning as visit_billing_save(). Note
+    # JO skips the individual blocked line where IQ refuses the whole
+    # submission — same rule, each app's own shape (CLAUDE.md §1).
+    if existing_discount > 0 and existing_source == "staff":
         blocked_pids = {r["id"] for r in db.execute(
             f"SELECT id FROM price_list WHERE id IN ({','.join('?' * len(price_ids))}) AND can_discount=false",
             price_ids,
@@ -1909,14 +2173,15 @@ def inpatient_billing_add(case_id):
         # the moment this procedure is added to the bill — so a price
         # edit made next month can't reach back and change what this
         # stay's bill (or that month's revenue/COGS report) says today.
-        price_row = db.execute("SELECT sale_price, cost_price FROM price_list WHERE id=?", (pid,)).fetchone()
+        price_row = db.execute("SELECT sale_price, cost_price, can_discount FROM price_list WHERE id=?", (pid,)).fetchone()
         if not price_row:
             had_bad_price = True
             continue
         db.execute(
-            "INSERT INTO inpatient_billing (case_id, price_id, quantity, unit_price, unit_cost, logged_by, timestamp) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (case_id, pid, qty, price_row["sale_price"], price_row["cost_price"], session["user_id"], now),
+            "INSERT INTO inpatient_billing (case_id, price_id, quantity, unit_price, unit_cost, discountable, logged_by, timestamp) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (case_id, pid, qty, price_row["sale_price"], price_row["cost_price"],
+             bool(price_row["can_discount"]), session["user_id"], now),
         )
         added += 1
     if added:
@@ -1951,8 +2216,14 @@ def inpatient_billing_delete(case_id, line_id):
     summary = logic.inpatient_billing_summary(db, case_id)
     this_line = next((l for l in summary["lines"] if l["id"] == line_id), None)
     remaining_subtotal = summary["subtotal"] - (this_line["line_total"] if this_line else 0)
-    remaining_total, _unused, _unused, _unused = logic.compute_bill_totals(
-        remaining_subtotal, summary["discount_percent"], 0, summary["cleanup_amount"])
+    # Only subtract this line from the discountable side if it was itself
+    # discountable — otherwise removing a full-price line would shrink the
+    # discounted portion it never belonged to.
+    remaining_discountable = summary["discountable_subtotal"] - (
+        this_line["line_total"] if (this_line and this_line["discountable"]) else 0)
+    remaining_total, _unused, _unused, _unused, _unused = logic.compute_bill_totals(
+        remaining_subtotal, summary["discount_percent"], 0, summary["cleanup_amount"],
+        discountable_subtotal=remaining_discountable)
     if summary["paid"] > remaining_total:
         flash(_("Removing this line would leave %(fmt_money)s paid against a %(fmt_money2)s JOD bill. Process a service refund for the difference first.", fmt_money=logic.fmt_money(summary['paid']), fmt_money2=logic.fmt_money(remaining_total)), "error")
         return redirect(url_for("clinical.inpatient_detail", case_id=case_id))
@@ -1997,6 +2268,12 @@ def inpatient_discount_save(case_id):
     if not db.execute("SELECT id FROM inpatient_cases WHERE id=? FOR UPDATE", (case_id,)).fetchone():
         flash(_("Inpatient case not found."), "error")
         return redirect(url_for("clinical.inpatient_list"))
+    # Card only — see visit_discount_save().
+    member_case = db.execute(
+        "SELECT discount_source FROM inpatient_cases WHERE id=?", (case_id,)).fetchone()
+    if member_case and member_case["discount_source"] == "member":
+        flash(_("This bill carries a rewards-card discount. A staff discount can't be added on top of it, and can't replace it."), "error")
+        return redisplay()
     if percent > 0:
         price_ids = [r["price_id"] for r in db.execute(
             "SELECT DISTINCT price_id FROM inpatient_billing WHERE case_id=?", (case_id,)

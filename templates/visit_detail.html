@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_member_discount.html" import member_discount_line with context %}
 {% block title %}{{ visit.id }} — {{ clinic_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -118,11 +119,15 @@
       <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
         {% for l in summary.lines %}<div class="list-line"><div>{{ l.name }}{% if l.quantity and l.quantity != 1 %} × {{ l.quantity|round(2) }}{% endif %}</div><div>{{ (l.line_total if l.line_total is defined else l.price)|money }} {{ currency_label() }}</div></div>{% endfor %}
         <div class="detail-item" style="margin-top:8px;"><div class="k">{{ _('Subtotal') }}</div><div class="v">{{ summary.subtotal|money }} {{ currency_label() }}</div></div>
+        {% if summary.discount_source == 'member' %}
+          {{ member_discount_line(summary, url_for('clinical.rewards_remove_discount', surface='visit', bill_id=visit.id)) }}
+        {% else %}
         <form method="post" action="{{ url_for('clinical.visit_discount_save', visit_id=visit.id) }}" style="display:flex; gap:8px; align-items:flex-end; margin:8px 0;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="field" style="flex:1;"><label for="visitdetail-4-discount_percent">{{ _('Discount %% (Max %(discount_cap)s%%)', discount_cap=discount_cap) }}</label><input id="visitdetail-4-discount_percent" type="number" step="1" max="{{ discount_cap }}" min="0" name="discount_percent" value="{{ fv(form, 'discount_percent', summary.discount_percent) if discount_error else summary.discount_percent }}"></div>
           <button class="btn small secondary" type="submit">{{ _('Apply') }}</button>
         </form>
+        {% endif %}
         <div class="detail-item"><div class="k">{{ _('Total') }}</div><div class="v" style="font-size:20px; font-weight:700;">{{ summary.total|money }} {{ currency_label() }}</div></div>
         <div class="detail-item"><div class="k">{{ _('Paid') }}</div><div class="v">{{ summary.paid|money }} {{ currency_label() }}</div></div>
         {% if summary.cleanup_amount %}<div class="detail-item"><div class="k">{{ _('Clean Up applied') }}</div><div class="v">{{ summary.cleanup_amount|money }} {{ currency_label() }}</div></div>{% endif %}

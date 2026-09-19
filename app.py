@@ -609,6 +609,13 @@ app.jinja_env.globals["pagination_url"] = pagination_url
 app.jinja_env.globals["has_permission"] = auth.has_permission
 app.jinja_env.globals["bind_port"] = BIND_PORT
 app.jinja_env.globals["fv"] = form_value
+# logic.format_percent() strips the meaningless decimal tail; display_number()
+# converts to Arabic-Indic digits when the locale is ar. Composed here rather
+# than in logic.py, which deliberately has no Flask imports — and composed at
+# all because core.display_number()'s own docstring is the rule: a number on
+# its way into a user-facing message converts, or one sentence carries two
+# numeral systems.
+app.jinja_env.globals["format_percent"] = lambda v: display_number(logic.format_percent(v))
 app.jinja_env.globals["CLEANUP_CAP"] = CLEANUP_CAP
 
 
@@ -1185,7 +1192,9 @@ def insights():
         job_defs = [
             ("revenue", lambda c: logic.revenue_by_category(c, months_back=months_back)),
             ("vets", lambda c: logic.vet_performance(c, months_back=months_back)),
-            ("clients", lambda c: logic.client_value(c, limit=20)),
+            # Same window as every other panel on this page — the client
+            # list used to be lifetime while the tiles beside it were not.
+            ("clients", lambda c: logic.client_value(c, limit=20, months_back=months_back)),
             ("weekday_load", lambda c: logic.appointment_weekday_load(c, months_back=months_back)),
             ("occupancy", lambda c: logic.inpatient_boarding_occupancy(c, months_back=months_back)),
             ("payment_mix", lambda c: [dict(r) for r in c.execute(

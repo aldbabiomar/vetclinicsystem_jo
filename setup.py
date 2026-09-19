@@ -377,6 +377,50 @@ INCREMENTAL_SCHEMA_STATEMENTS = [
     "ALTER TABLE appointments DROP CONSTRAINT IF EXISTS appointments_created_by_fkey",
     "ALTER TABLE appointments ADD CONSTRAINT appointments_created_by_fkey "
     "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT",
+    # ---- Rewards card (features/REWARDS_CARD_PLAN.md) ----
+    # Membership. is_member and member_expires_on are separate facts on
+    # purpose: expiry never flips is_member, so a lapsed member stays
+    # distinguishable from someone who never joined.
+    "ALTER TABLE owners ADD COLUMN IF NOT EXISTS is_member BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE owners ADD COLUMN IF NOT EXISTS member_card_number TEXT",
+    "ALTER TABLE owners ADD COLUMN IF NOT EXISTS member_since DATE",
+    "ALTER TABLE owners ADD COLUMN IF NOT EXISTS member_expires_on DATE",
+    "ALTER TABLE owners ADD COLUMN IF NOT EXISTS member_enrolled_by TEXT REFERENCES users(id) ON DELETE RESTRICT",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_owners_member_card "
+    "ON owners(member_card_number) WHERE member_card_number IS NOT NULL",
+    # Which kind of discount discount_percent holds, on all four billable
+    # surfaces. Postgres has no ADD CONSTRAINT IF NOT EXISTS, so the CHECK
+    # rides on the ADD COLUMN (which is itself guarded) rather than being
+    # added separately -- same approach as the boarding discount above.
+    "ALTER TABLE billing ADD COLUMN IF NOT EXISTS discount_source TEXT NOT NULL DEFAULT 'staff' "
+    "CHECK (discount_source IN ('staff','member'))",
+    "ALTER TABLE inpatient_cases ADD COLUMN IF NOT EXISTS discount_source TEXT NOT NULL DEFAULT 'staff' "
+    "CHECK (discount_source IN ('staff','member'))",
+    "ALTER TABLE boarding_sessions ADD COLUMN IF NOT EXISTS discount_source TEXT NOT NULL DEFAULT 'staff' "
+    "CHECK (discount_source IN ('staff','member'))",
+    "ALTER TABLE sales ADD COLUMN IF NOT EXISTS discount_source TEXT NOT NULL DEFAULT 'staff' "
+    "CHECK (discount_source IN ('staff','member'))",
+    # POS customer link. NULL on an ordinary walk-in -- selecting a customer
+    # is opt-in, so this stays NULL on most sales by design.
+    "ALTER TABLE sales ADD COLUMN IF NOT EXISTS owner_id TEXT REFERENCES owners(id) ON DELETE RESTRICT",
+    # Per-line discount eligibility, snapshotted at insert.
+    #
+    # Backfilling TRUE is correct for every existing row: the column only
+    # matters when discount_percent > 0, every existing discounted bill is a
+    # STAFF discount, and the old guards already refused a staff discount on
+    # any bill holding a non-discountable line -- so all their lines were
+    # discountable at the time. Rows with no discount are unaffected either way.
+    #
+    # The default is then DROPPED so a future insert site that forgets the
+    # column fails loudly on NOT NULL, rather than silently marking a
+    # non-discountable item as discountable. schema_postgres.sql declares it
+    # NOT NULL with no default for the same reason.
+    "ALTER TABLE visit_billing_lines ADD COLUMN IF NOT EXISTS discountable BOOLEAN NOT NULL DEFAULT TRUE",
+    "ALTER TABLE inpatient_billing ADD COLUMN IF NOT EXISTS discountable BOOLEAN NOT NULL DEFAULT TRUE",
+    "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS discountable BOOLEAN NOT NULL DEFAULT TRUE",
+    "ALTER TABLE visit_billing_lines ALTER COLUMN discountable DROP DEFAULT",
+    "ALTER TABLE inpatient_billing ALTER COLUMN discountable DROP DEFAULT",
+    "ALTER TABLE sale_items ALTER COLUMN discountable DROP DEFAULT",
 ]
 
 

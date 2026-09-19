@@ -17,7 +17,7 @@
     <tr>
       <td>{{ s.sale_date[:16] }}</td><td>{{ s.cashier_name or "—" }}</td>
       <td class="num-col">{{ s.subtotal|money }}</td>
-      <td class="num-col">{{ s.discount_percent }}%</td>
+      <td class="num-col">{{ s.discount_percent }}%{% if s.discount_source == 'member' %} <span class="badge primary">{{ _('Member') }}</span>{% endif %}</td>
       <td class="num-col">{{ s.total|money }}</td>
       <td>{{ (s.payment_method or "—")|tr }}</td>
       <td style="white-space:nowrap;">

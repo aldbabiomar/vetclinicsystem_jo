@@ -1016,3 +1016,32 @@ tr[tabindex="0"]:focus-visible { outline-offset: -2px; }
 html[dir="rtl"] .icon-chevron,
 html[dir="rtl"] .chevron { transform: scaleX(-1); }
 html[dir="rtl"] .vz-toast-stack { left: 16px; right: auto; }
+/* ---------------------------------------------------------------------------
+   Rewards card — the owner panel, the per-bill discount line, and the POS
+   customer picker. Declared here rather than inline so none of it lands on
+   the inline-style ratchet (tests/test_inline_styles.py).
+
+   Nothing here sets `display` on an element a script shows or hides: those
+   toggle the `hidden` ATTRIBUTE instead of an inline style, which a class
+   cannot defeat and which keeps them off the ratchet too. (An element hidden
+   by a CSS class cannot be revealed by clearing an inline style — the exact
+   failure that ratchet's own docstring describes.)
+--------------------------------------------------------------------------- */
+.rewards-panel { margin-bottom: 16px; }
+.rewards-actions { margin-top: 12px; }
+.member-discount-row { margin: 8px 0; }
+.member-discount-remove { display: inline; margin-inline-start: 8px; }
+.pos-field-row { margin: 10px 0; }
+.pos-customer-chosen { margin-top: 4px; }
+
+/* The `hidden` attribute must actually hide.
+   The UA stylesheet's `[hidden] { display: none }` is the weakest possible
+   rule, so ANY class that sets `display` beats it — `.field` is
+   `display: flex`, which silently made `el.hidden = true` a no-op on the POS
+   and boarding discount fields. The scripts said the field was hidden, the
+   attribute was set, and the input was still on screen.
+   Found by tests/test_browser.py, which is the only tier that could see it:
+   the attribute was correct, so nothing server-side was wrong.
+   `!important` because the whole point is to outrank whatever class the
+   element happens to carry. */
+[hidden] { display: none !important; }

@@ -10,8 +10,8 @@
 
 <div class="stat-grid">
   <div class="stat-card ok"><div class="num">{{ revenue.totals_by_month.values()|sum|money }}</div><div class="label">{{ _('Revenue, Last %(months_back)s Months (%(currency_label)s)', months_back=months_back, currency_label=currency_label()) }}</div></div>
-  <div class="stat-card"><div class="num">{{ active_client_count }}</div><div class="label">{{ _('Clients With Paid Visits (Lifetime)') }}</div></div>
-  <div class="stat-card"><div class="num">{{ avg_spend|money }}</div><div class="label">{{ _('Avg. Lifetime Spend / Client (%(currency_label)s)', currency_label=currency_label()) }}</div></div>
+  <div class="stat-card"><div class="num">{{ active_client_count }}</div><div class="label">{{ _('Clients Who Paid, Last %(months_back)s Months', months_back=months_back) }}</div></div>
+  <div class="stat-card"><div class="num">{{ avg_spend|money }}</div><div class="label">{{ _('Avg. Spend / Client, Last %(months_back)s Months (%(currency_label)s)', months_back=months_back, currency_label=currency_label()) }}</div></div>
   <div class="stat-card"><div class="num">{{ vets|length }}</div><div class="label">{{ _('Vets Billing This Window') }}</div></div>
 </div>
 
@@ -87,15 +87,15 @@
   </div>
 
   <div class="card panel">
-    <h2>{{ _('Top Clients by Lifetime Spend') }}</h2>
-    <p class="small muted" style="margin-top:-6px;">{{ _('From visit, inpatient & boarding payments (walk-in POS retail sales aren\'t linked to a client in this system).') }}</p>
+    <h2>{{ _('Top Clients by Spend, Last %(months_back)s Months', months_back=months_back) }}</h2>
+    <p class="small muted" style="margin-top:-6px;">{{ _('Payments for visits, inpatient care and boarding, plus retail sales where a customer was identified at the till, less any refunds. Walk-in sales with no customer recorded aren\'t counted.') }}</p>
     <div class="table-wrap">
     <table>
       <thead><tr><th scope="col">{{ _('Owner') }}</th><th scope="col" class="num-col">{{ _('Payments') }}</th><th scope="col" class="num-col">{{ _('Total Paid (%(currency_label)s)', currency_label=currency_label()) }}</th></tr></thead>
       <tbody>
         {% for c in top_clients %}
         <tr>
-          <td><a href="{{ url_for('clinical.owner_detail', owner_id=c.id) }}">{{ c.name }}</a></td>
+          <td><a href="{{ url_for('clinical.owner_detail', owner_id=c.id) }}">{{ c.name }}</a>{% if c.is_member %} <span class="badge primary">{{ _('Member') }}</span>{% endif %}</td>
           <td class="num-col">{{ c.payment_count }}</td>
           <td class="num-col">{{ c.total_paid|money }}</td>
         </tr>
